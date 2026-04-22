@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Tournament Command Center</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-container": "#00f4fe",
+                        "on-tertiary-fixed-variant": "#414750",
+                        "on-tertiary-container": "#5c626b",
+                        "error-container": "#93000a",
+                        "tertiary-fixed": "#dde3ed",
+                        "primary-fixed-dim": "#2ae500",
+                        "tertiary": "#f9faff",
+                        "outline-variant": "#3c4b35",
+                        "background": "#111316",
+                        "on-secondary-fixed-variant": "#004f53",
+                        "surface-container-highest": "#333538",
+                        "error": "#ffb4ab",
+                        "secondary-fixed": "#63f7ff",
+                        "on-primary-fixed": "#022100",
+                        "on-primary-container": "#107100",
+                        "tertiary-container": "#d8dee8",
+                        "primary": "#efffe3",
+                        "primary-fixed": "#79ff5b",
+                        "inverse-on-surface": "#2f3034",
+                        "on-surface-variant": "#baccb0",
+                        "on-tertiary-fixed": "#161c23",
+                        "on-primary": "#053900",
+                        "surface-container-high": "#282a2d",
+                        "on-error-container": "#ffdad6",
+                        "tertiary-fixed-dim": "#c1c7d1",
+                        "primary-container": "#39ff14",
+                        "surface-tint": "#2ae500",
+                        "on-background": "#e2e2e6",
+                        "secondary": "#e6feff",
+                        "inverse-primary": "#106e00",
+                        "on-surface": "#e2e2e6",
+                        "inverse-surface": "#e2e2e6",
+                        "surface-bright": "#37393d",
+                        "surface-variant": "#333538",
+                        "on-secondary-container": "#006c71",
+                        "on-tertiary": "#2b3139",
+                        "on-primary-fixed-variant": "#095300",
+                        "on-secondary-fixed": "#002021",
+                        "on-error": "#690005",
+                        "surface-dim": "#111316",
+                        "outline": "#85967c",
+                        "on-secondary": "#003739",
+                        "surface-container-low": "#1a1c1f",
+                        "surface-container": "#1e2023",
+                        "surface-container-lowest": "#0c0e11",
+                        "surface": "#111316",
+                        "secondary-fixed-dim": "#00dce5"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "stack-default": "16px",
+                        "margin-page": "32px",
+                        "panel-padding": "20px",
+                        "unit": "4px",
+                        "gutter": "16px",
+                        "stack-compact": "8px"
+                    },
+                    "fontFamily": {
+                        "body-xs": ["Inter"],
+                        "h2-bold": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "h3-caps": ["Inter"],
+                        "h1-bold": ["Inter"],
+                        "data-mono": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-xs": ["12px", { "lineHeight": "1.4", "letterSpacing": "0", "fontWeight": "400" }],
+                        "h2-bold": ["24px", { "lineHeight": "1.3", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-sm": ["14px", { "lineHeight": "1.5", "letterSpacing": "0", "fontWeight": "400" }],
+                        "label-caps": ["11px", { "lineHeight": "1", "letterSpacing": "0.08em", "fontWeight": "600" }],
+                        "h3-caps": ["14px", { "lineHeight": "1.2", "letterSpacing": "0.05em", "fontWeight": "700" }],
+                        "h1-bold": ["32px", { "lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "data-mono": ["13px", { "lineHeight": "1.2", "letterSpacing": "-0.01em", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-sm antialiased selection:bg-primary-container selection:text-on-primary-container">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 flex justify-between items-center px-6 h-16 bg-[#1A1D21] border-b border-[#2D333B] shadow-[0_4px_20px_-2px_rgba(0,0,0,0.8)]">
+<div class="flex items-center gap-8">
+<span class="text-2xl font-black italic text-[#39FF14] tracking-tighter">SMASH_COMMAND</span>
+<nav class="hidden md:flex items-center gap-6">
+<a class="font-['Inter'] uppercase tracking-widest text-xs font-bold text-gray-400 hover:text-white transition-colors hover:bg-[#24292E] px-2 py-1 rounded cursor-pointer active:opacity-80" href="#">LIVE</a>
+<a class="font-['Inter'] uppercase tracking-widest text-xs font-bold text-gray-400 hover:text-white transition-colors hover:bg-[#24292E] px-2 py-1 rounded cursor-pointer active:opacity-80" href="#">SQUAD</a>
+<!-- Active State -->
+<a class="font-['Inter'] uppercase tracking-widest text-xs font-bold text-[#39FF14] border-b-2 border-[#39FF14] pb-2 cursor-pointer active:opacity-80" href="#">BRACKETS</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<button class="bg-[#24292E] text-white border border-[#2D333B] px-4 py-1.5 rounded-DEFAULT font-label-caps text-label-caps hover:bg-[#333538] transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]">radar</span>
+                TACTICAL_INTEL
+            </button>
+<div class="flex items-center gap-2 text-gray-400">
+<button class="p-1.5 rounded-DEFAULT hover:bg-[#24292E] hover:text-white transition-colors">
+<span class="material-symbols-outlined">notifications_active</span>
+</button>
+<button class="p-1.5 rounded-DEFAULT hover:bg-[#24292E] hover:text-white transition-colors">
+<span class="material-symbols-outlined">monitoring</span>
+</button>
+</div>
+<img alt="Lead Coach Avatar" class="w-8 h-8 rounded-full border border-[#2D333B] object-cover" data-alt="Close up portrait of a serious male sports coach with short dark hair, wearing a dark track jacket, moody lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDdFzw9eIA7uCA-6JV4W7VI0QLjvpfkzgIKtiHfMUOymzBaATXa7rndr8C92bYSXgDRYVIdiQroWeHdqupxq9CJYTUResleJPJM_XATlYiMajtACrDap87qZi7pFaQToXVmqBPRGPjrEu7f62IgATDgCsmb4PId7cAL1KeTaW2Kf742nz3ghXwa9UFDnD002Y9F_i28EstI3ZzOE4BR0VxR762VG39R0OSKWAYo6hc2dwShoidDbKUj3xFKI9V375sI8o6cfiGXnX4"/>
+</div>
+</header>
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-16 bottom-0 w-64 flex flex-col pt-8 z-40 bg-[#121417] border-r border-[#2D333B]">
+<div class="px-6 mb-8">
+<h2 class="text-[#39FF14] font-black text-lg tracking-wider">STRATEGIST_HUB</h2>
+<p class="text-gray-500 font-data-mono text-[10px] mt-1">V1.04-STABLE</p>
+</div>
+<nav class="flex-1 flex flex-col gap-1">
+<a class="flex items-center gap-3 text-gray-500 py-3 px-4 hover:bg-[#1A1D21] hover:text-gray-200 transition-all duration-150 ease-in-out font-['Inter'] font-semibold text-[13px]" href="#">
+<span class="material-symbols-outlined">leaderboard</span>
+                Command
+            </a>
+<a class="flex items-center gap-3 text-gray-500 py-3 px-4 hover:bg-[#1A1D21] hover:text-gray-200 transition-all duration-150 ease-in-out font-['Inter'] font-semibold text-[13px]" href="#">
+<span class="material-symbols-outlined">psychology</span>
+                Tactics
+            </a>
+<a class="flex items-center gap-3 text-gray-500 py-3 px-4 hover:bg-[#1A1D21] hover:text-gray-200 transition-all duration-150 ease-in-out font-['Inter'] font-semibold text-[13px]" href="#">
+<span class="material-symbols-outlined">sports_handball</span>
+                Athletes
+            </a>
+<!-- Active State -->
+<a class="flex items-center gap-3 bg-[#24292E] text-[#39FF14] border-l-4 border-[#39FF14] py-3 px-4 transition-all duration-150 ease-in-out font-['Inter'] font-semibold text-[13px]" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">account_tree</span>
+                Events
+            </a>
+<a class="flex items-center gap-3 text-gray-500 py-3 px-4 hover:bg-[#1A1D21] hover:text-gray-200 transition-all duration-150 ease-in-out font-['Inter'] font-semibold text-[13px]" href="#">
+<span class="material-symbols-outlined">settings</span>
+                Settings
+            </a>
+</nav>
+<div class="p-4 border-t border-[#2D333B]">
+<button class="w-full bg-[#39FF14] text-black font-bold text-xs tracking-wider uppercase py-3 rounded-DEFAULT hover:bg-[#2ae500] transition-colors flex justify-center items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">add_box</span>
+                NEW_SESSION
+            </button>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="ml-64 mt-16 p-margin-page min-h-screen">
+<!-- Header -->
+<div class="mb-8 flex justify-between items-end">
+<div>
+<p class="font-label-caps text-label-caps text-primary-container mb-2 uppercase flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary-container animate-pulse"></span>
+                    Singapore Open - Super 750
+                </p>
+<h1 class="font-h1-bold text-h1-bold text-on-surface">Quarter Finals</h1>
+</div>
+<div class="text-right">
+<p class="font-data-mono text-data-mono text-on-surface-variant">PRIZE POOL: $850,000</p>
+</div>
+</div>
+<!-- Bento Grid -->
+<div class="grid grid-cols-12 gap-gutter">
+<!-- Scouting Panel (Col 1-4) -->
+<div class="col-span-12 xl:col-span-4 bg-surface-container-low border border-surface-container-highest rounded-lg flex flex-col shadow-[0_8px_16px_-4px_rgba(0,0,0,0.4)] relative overflow-hidden">
+<div class="absolute top-0 right-0 p-3">
+<span class="bg-error-container text-on-error-container font-label-caps text-label-caps px-2 py-1 rounded-DEFAULT">THREAT: HIGH</span>
+</div>
+<div class="p-panel-padding border-b border-surface-container-highest flex-none">
+<h3 class="font-h3-caps text-h3-caps text-on-surface uppercase flex items-center gap-2">
+<span class="material-symbols-outlined text-on-surface-variant">person_search</span>
+                        Next Opponent
+                    </h3>
+</div>
+<div class="p-panel-padding flex-1 flex flex-col gap-6">
+<div class="flex items-center gap-4">
+<div class="w-20 h-20 rounded-lg overflow-hidden border-2 border-surface-container-highest relative">
+<img alt="Opponent Profile" class="w-full h-full object-cover" data-alt="Headshot of a focused male badminton player with short hair, wearing a red performance shirt, intense stare, dark background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBgW6oKUGfEQOldpmFGe3C1klmdWCQLaKNCc0umnUeoD9dhiuXyU0oKYhWw4TzPTiGbgX4KIc0c5ZJYlaGwyz3AyyVUsOZrEdI2avlY9ulvyW4jSFj2jmLjtYMe1O6GoVRtezVDw5ELGzJPJ8mKjRBW6_7ntq09imDY0GsQ1lQXX796g9NlmFUwOgV0G2WN6Pv7kaIjZiWTPxZE8O6g5zA1ISWwPgw8TSHKG8hIV_M3xd7Svddbz29h93l5LcOfHoNv07Tomw7DdVo"/>
+<div class="absolute bottom-0 w-full bg-black/80 text-center font-data-mono text-[10px] py-0.5 text-primary-container">WR: 4</div>
+</div>
+<div>
+<h4 class="font-h2-bold text-h2-bold">L. Shi Yu</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant">China (CHN)</p>
+<p class="font-data-mono text-data-mono text-secondary-container mt-1">Aggressive Baseliner</p>
+</div>
+</div>
+<div class="space-y-4">
+<div>
+<div class="flex justify-between font-label-caps text-label-caps text-on-surface-variant mb-1">
+<span>SMASH POWER</span>
+<span class="text-on-surface text-data-mono">92/100</span>
+</div>
+<div class="h-1.5 w-full bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-error rounded-full" style="width: 92%"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between font-label-caps text-label-caps text-on-surface-variant mb-1">
+<span>STAMINA</span>
+<span class="text-on-surface text-data-mono">85/100</span>
+</div>
+<div class="h-1.5 w-full bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-primary-container rounded-full" style="width: 85%"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between font-label-caps text-label-caps text-on-surface-variant mb-1">
+<span>NET PLAY</span>
+<span class="text-on-surface text-data-mono">78/100</span>
+</div>
+<div class="h-1.5 w-full bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-secondary-container rounded-full" style="width: 78%"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Tactics & Action Panel (Col 5-12) -->
+<div class="col-span-12 xl:col-span-8 bg-surface-container-low border border-surface-container-highest rounded-lg flex flex-col shadow-[0_8px_16px_-4px_rgba(0,0,0,0.4)]">
+<div class="p-panel-padding border-b border-surface-container-highest flex justify-between items-center">
+<h3 class="font-h3-caps text-h3-caps text-on-surface uppercase flex items-center gap-2">
+<span class="material-symbols-outlined text-on-surface-variant">strategy</span>
+                        Tactic Lock-in
+                    </h3>
+<span class="font-data-mono text-data-mono text-on-surface-variant">MATCH START: T-15m</span>
+</div>
+<div class="p-panel-padding flex-1 flex flex-col gap-6">
+<div class="grid grid-cols-3 gap-4">
+<button class="bg-surface-container text-left p-4 rounded-DEFAULT border border-primary-container/30 hover:border-primary-container hover:bg-surface-container-high transition-all group focus:border-primary-container focus:ring-1 focus:ring-primary-container outline-none">
+<span class="material-symbols-outlined text-primary-container mb-2 block group-hover:scale-110 transition-transform">bolt</span>
+<h4 class="font-label-caps text-label-caps text-on-surface mb-1">Fast Attacks</h4>
+<p class="font-body-xs text-body-xs text-on-surface-variant">Focus on quick flat exchanges to exploit opponent's height.</p>
+</button>
+<button class="bg-surface-container-high text-left p-4 rounded-DEFAULT border border-surface-container-highest hover:border-secondary-container hover:bg-surface-container-highest transition-all group outline-none">
+<span class="material-symbols-outlined text-secondary-container mb-2 block group-hover:scale-110 transition-transform">all_out</span>
+<h4 class="font-label-caps text-label-caps text-on-surface mb-1">Spread Court</h4>
+<p class="font-body-xs text-body-xs text-on-surface-variant">Utilize four corners to drain opponent stamina early.</p>
+</button>
+<button class="bg-surface-container-high text-left p-4 rounded-DEFAULT border border-surface-container-highest hover:border-error hover:bg-surface-container-highest transition-all group outline-none">
+<span class="material-symbols-outlined text-error mb-2 block group-hover:scale-110 transition-transform">shield</span>
+<h4 class="font-label-caps text-label-caps text-on-surface mb-1">Defensive Wall</h4>
+<p class="font-body-xs text-body-xs text-on-surface-variant">Absorb smashes, wait for unforced errors.</p>
+</button>
+</div>
+<div class="mt-auto pt-6 border-t border-surface-container-highest flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center border border-surface-container-highest">
+<img alt="Your Player" class="w-full h-full object-cover rounded-full" data-alt="Headshot of a determined female badminton player looking forward, professional jersey, stadium lights background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAb7OCKOeO41jKvXEQvNPkaIyFGdmiF5w1gRmEF79AjzoHSTwxYkSOuZvv74Cuj3-gDg-0kSfSjIiAmGcia-y1YZQYR2XRB7DoNc-4z14jZzuE5v9DelIVir35xaVfY2J2CaZ1g8d-cBRQm47LlUdANLpLPfa5P_hUa_ZZq2mpsm1jzkBMMQ9UdcDpF2a29CgdWngIvlcnrcdu3U5JGsgwFbPHYJdtsaeluaj-aVNmgbUFIHgY7qE-lFTz5SSsnU6F8lSOZ_uFo5uE"/>
+</div>
+<div>
+<p class="font-label-caps text-label-caps text-on-surface-variant">YOUR ATHLETE</p>
+<p class="font-data-mono text-data-mono text-on-surface">A. Yamaguchi</p>
+</div>
+</div>
+<button class="bg-primary-container text-on-primary-container font-h3-caps text-h3-caps px-8 py-4 rounded-DEFAULT hover:bg-primary-fixed-dim transition-colors flex items-center gap-2 shadow-[0_0_15px_rgba(57,255,20,0.3)] hover:shadow-[0_0_25px_rgba(57,255,20,0.5)]">
+                            ENTER MATCH
+                            <span class="material-symbols-outlined">play_arrow</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Visual Bracket Panel (Col 1-12) -->
+<div class="col-span-12 bg-surface-container-low border border-surface-container-highest rounded-lg shadow-[0_8px_16px_-4px_rgba(0,0,0,0.4)] overflow-x-auto">
+<div class="p-panel-padding border-b border-surface-container-highest">
+<h3 class="font-h3-caps text-h3-caps text-on-surface uppercase flex items-center gap-2">
+<span class="material-symbols-outlined text-on-surface-variant">account_tree</span>
+                        Knockout Tree
+                    </h3>
+</div>
+<div class="p-8 min-w-[800px] flex justify-between">
+<!-- Column 1: Quarter Finals -->
+<div class="flex flex-col justify-around gap-8 w-64 relative">
+<!-- Match 1 -->
+<div class="bg-surface-container border border-surface-container-highest rounded-DEFAULT flex flex-col relative z-10">
+<div class="flex justify-between items-center p-3 border-b border-surface-container-highest bg-[#24292E]">
+<span class="font-data-mono text-data-mono text-on-surface flex items-center gap-2"><span class="w-4 h-4 inline-block bg-[url('https://flagcdn.com/jp.svg')] bg-cover rounded-sm"></span>A. Yamaguchi</span>
+<span class="font-h3-caps text-h3-caps text-primary-container">2</span>
+</div>
+<div class="flex justify-between items-center p-3">
+<span class="font-data-mono text-data-mono text-on-surface-variant flex items-center gap-2"><span class="w-4 h-4 inline-block bg-[url('https://flagcdn.com/in.svg')] bg-cover rounded-sm"></span>P. V. Sindhu</span>
+<span class="font-data-mono text-data-mono text-on-surface-variant">0</span>
+</div>
+</div>
+<!-- Connector Lines -->
+<div class="absolute right-[-24px] top-[25%] bottom-[25%] w-6 border-r-2 border-t-2 border-b-2 border-surface-container-highest z-0"></div>
+<div class="absolute right-[-48px] top-1/2 w-6 border-t-2 border-surface-container-highest z-0"></div>
+<!-- Match 2 -->
+<div class="bg-surface-container border border-primary-container rounded-DEFAULT flex flex-col relative z-10 shadow-[0_0_10px_rgba(57,255,20,0.1)]">
+<div class="flex justify-between items-center p-3 border-b border-surface-container-highest relative overflow-hidden">
+<div class="absolute inset-0 bg-primary-container/10"></div>
+<span class="font-data-mono text-data-mono text-on-surface flex items-center gap-2 z-10"><span class="w-4 h-4 inline-block bg-[url('https://flagcdn.com/cn.svg')] bg-cover rounded-sm"></span>L. Shi Yu</span>
+<span class="font-label-caps text-label-caps text-primary-container z-10">LIVE</span>
+</div>
+<div class="flex justify-between items-center p-3 relative overflow-hidden">
+<div class="absolute inset-0 bg-primary-container/10"></div>
+<span class="font-data-mono text-data-mono text-on-surface flex items-center gap-2 z-10"><span class="w-4 h-4 inline-block bg-[url('https://flagcdn.com/jp.svg')] bg-cover rounded-sm"></span>A. Yamaguchi</span>
+<span class="font-label-caps text-label-caps text-primary-container z-10 animate-pulse">UP NEXT</span>
+</div>
+</div>
+</div>
+<!-- Column 2: Semi Finals -->
+<div class="flex flex-col justify-center w-64 relative">
+<div class="bg-surface-container border border-surface-container-highest rounded-DEFAULT flex flex-col opacity-50">
+<div class="flex justify-between items-center p-3 border-b border-surface-container-highest">
+<span class="font-data-mono text-data-mono text-on-surface-variant">TBD</span>
+<span class="font-data-mono text-data-mono text-on-surface-variant">-</span>
+</div>
+<div class="flex justify-between items-center p-3">
+<span class="font-data-mono text-data-mono text-on-surface-variant">TBD</span>
+<span class="font-data-mono text-data-mono text-on-surface-variant">-</span>
+</div>
+</div>
+</div>
+<!-- Column 3: Finals (Placeholder) -->
+<div class="flex flex-col justify-center w-64">
+<div class="border-2 border-dashed border-surface-container-highest rounded-DEFAULT p-6 flex flex-col items-center justify-center text-on-surface-variant gap-2 bg-surface/50">
+<span class="material-symbols-outlined text-[32px]">emoji_events</span>
+<span class="font-label-caps text-label-caps">GRAND FINAL</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

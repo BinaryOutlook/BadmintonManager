@@ -29,22 +29,23 @@ Exit criteria:
 - match outcomes are reproducible from a seed
 - commentary and score flow are readable
 
-## `v0.2` Match Presentation and Tactical Clarity
+## `v0.2` Super Build: Command Center and Tactical Operations
 
 Status: Planned
 
 Goal:
 
-- improve commentary quality
-- add clearer pressure, fatigue, and momentum reads
-- improve tactic explanation surfaces
-- make between-set intervention feel meaningful
+- ship the command-center visual identity shown in the `UIDEMOs` mockups
+- add opponent scouting, athlete dossiers, and tactical intel surfaces
+- upgrade live match presentation to point-by-point tactical operations
+- add richer telemetry, recap storytelling, and stronger end-of-run payoff
 
 Exit criteria:
 
-- the UI explains why matches turned
-- tactic choices are visible in the match output
-- players can distinguish pressure collapse from ordinary variance
+- the player can complete a run through the new command-center shell
+- live matches progress point by point while staying deterministic
+- scouting, directives, and team talks visibly explain why matches turn
+- the tournament recap feels like a meaningful conclusion instead of a reset screen
 
 ## `v0.3` Manager Loop Expansion
 

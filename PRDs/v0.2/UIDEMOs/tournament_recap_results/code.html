@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Tournament Result - Strategist Hub</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-container": "#00f4fe",
+                        "on-tertiary-fixed-variant": "#414750",
+                        "on-tertiary-container": "#5c626b",
+                        "error-container": "#93000a",
+                        "tertiary-fixed": "#dde3ed",
+                        "primary-fixed-dim": "#2ae500",
+                        "tertiary": "#f9faff",
+                        "outline-variant": "#3c4b35",
+                        "background": "#111316",
+                        "on-secondary-fixed-variant": "#004f53",
+                        "surface-container-highest": "#333538",
+                        "error": "#ffb4ab",
+                        "secondary-fixed": "#63f7ff",
+                        "on-primary-fixed": "#022100",
+                        "on-primary-container": "#107100",
+                        "tertiary-container": "#d8dee8",
+                        "primary": "#efffe3",
+                        "primary-fixed": "#79ff5b",
+                        "inverse-on-surface": "#2f3034",
+                        "on-surface-variant": "#baccb0",
+                        "on-tertiary-fixed": "#161c23",
+                        "on-primary": "#053900",
+                        "surface-container-high": "#282a2d",
+                        "on-error-container": "#ffdad6",
+                        "tertiary-fixed-dim": "#c1c7d1",
+                        "primary-container": "#39ff14",
+                        "surface-tint": "#2ae500",
+                        "on-background": "#e2e2e6",
+                        "secondary": "#e6feff",
+                        "inverse-primary": "#106e00",
+                        "on-surface": "#e2e2e6",
+                        "inverse-surface": "#e2e2e6",
+                        "surface-bright": "#37393d",
+                        "surface-variant": "#333538",
+                        "on-secondary-container": "#006c71",
+                        "on-tertiary": "#2b3139",
+                        "on-primary-fixed-variant": "#095300",
+                        "on-secondary-fixed": "#002021",
+                        "on-error": "#690005",
+                        "surface-dim": "#111316",
+                        "outline": "#85967c",
+                        "on-secondary": "#003739",
+                        "surface-container-low": "#1a1c1f",
+                        "surface-container": "#1e2023",
+                        "surface-container-lowest": "#0c0e11",
+                        "surface": "#111316",
+                        "secondary-fixed-dim": "#00dce5"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "stack-default": "16px",
+                        "margin-page": "32px",
+                        "panel-padding": "20px",
+                        "unit": "4px",
+                        "gutter": "16px",
+                        "stack-compact": "8px"
+                    },
+                    "fontFamily": {
+                        "body-xs": ["Inter"],
+                        "h2-bold": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "h3-caps": ["Inter"],
+                        "h1-bold": ["Inter"],
+                        "data-mono": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-xs": ["12px", { "lineHeight": "1.4", "letterSpacing": "0", "fontWeight": "400" }],
+                        "h2-bold": ["24px", { "lineHeight": "1.3", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-sm": ["14px", { "lineHeight": "1.5", "letterSpacing": "0", "fontWeight": "400" }],
+                        "label-caps": ["11px", { "lineHeight": "1", "letterSpacing": "0.08em", "fontWeight": "600" }],
+                        "h3-caps": ["14px", { "lineHeight": "1.2", "letterSpacing": "0.05em", "fontWeight": "700" }],
+                        "h1-bold": ["32px", { "lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "data-mono": ["13px", { "lineHeight": "1.2", "letterSpacing": "-0.01em", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.fill {
+            font-variation-settings: 'FILL' 1;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface min-h-screen font-body-sm overflow-x-hidden">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 flex justify-between items-center px-6 h-16 bg-[#1A1D21] text-[#39FF14] shadow-[0_4px_20px_-2px_rgba(0,0,0,0.8)] border-b border-[#2D333B]">
+<div class="flex items-center gap-6">
+<span class="text-2xl font-black italic text-[#39FF14] tracking-tighter">SMASH_COMMAND</span>
+<nav class="hidden md:flex gap-4">
+<a class="font-['Inter'] uppercase tracking-widest text-xs font-bold text-gray-400 hover:text-white transition-colors cursor-pointer active:opacity-80 transition-all hover:bg-[#24292E] px-2 py-1" href="#">LIVE</a>
+<a class="font-['Inter'] uppercase tracking-widest text-xs font-bold text-gray-400 hover:text-white transition-colors cursor-pointer active:opacity-80 transition-all hover:bg-[#24292E] px-2 py-1" href="#">SQUAD</a>
+<a class="font-['Inter'] uppercase tracking-widest text-xs font-bold text-[#39FF14] border-b-2 border-[#39FF14] pb-2 cursor-pointer active:opacity-80 transition-all" href="#">BRACKETS</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<button class="flex items-center gap-2 bg-[#2D333B] text-white px-3 py-1.5 rounded text-xs font-bold uppercase hover:bg-[#333538] transition-colors border border-[#2D333B]">
+                TACTICAL_INTEL
+            </button>
+<div class="flex gap-2">
+<button class="p-1.5 rounded hover:bg-[#24292E] transition-colors text-gray-400 hover:text-white">
+<span class="material-symbols-outlined text-[20px]">notifications_active</span>
+</button>
+<button class="p-1.5 rounded hover:bg-[#24292E] transition-colors text-gray-400 hover:text-white">
+<span class="material-symbols-outlined text-[20px]">monitoring</span>
+</button>
+</div>
+<img alt="Lead Coach Avatar" class="w-8 h-8 rounded-full border border-[#2D333B]" data-alt="A professional headshot of a badminton coach, intense expression, dark background with subtle neon lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC9JsPfRUWXTBXA8xwLfn_9GQ008OgaFMFJ17hZGT1yTFumsdCUS4AYgkMeWjvgntKFXf0sAxOhxHn5CjX7QbZcTAw8z5-6dwEvGPK2lg0EE8k31ET4FQjnCC_UsZLS2-y-QwJFRJrNEb59R9mvIknN8CaC9yGR7mXNMwI7sfo3mE2qCPgygB0LcHYm4dgAgKwR8_LgQ3aDQp8WCdwUWioBbgWCur1dbAwjiBOnMrJiOPWprh49k67XKps68HVzp6K6Krojet7IEbc"/>
+</div>
+</header>
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-16 bottom-0 w-64 flex flex-col pt-8 z-40 bg-[#121417] text-[#39FF14] border-r border-[#2D333B] hidden md:flex">
+<div class="px-6 mb-8">
+<div class="flex items-center gap-3 mb-2">
+<img alt="Tournament Logo" class="w-10 h-10 rounded-full border border-[#2D333B]" data-alt="A stylized sleek logo representing a badminton tournament, high contrast, dark mode aesthetic" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC07YRmKiudfyt6fZcPDNqWlU_TZg3nl-fsBdcNJwYsR_WoZyyEbG3o9zTru1ThN7K2x2sJl60-Gxakxsf7ShoTmfG4yZEO7JXaHvKq5dCkxz0RZ4lCKfWqu_GCMac90x0c9thA-5Vy01x8eSPpTawnRRlfGCUw3ynQ6lwqCGa5TKjsxD5rOMJOUcomzSMT5ZSnZVQ_hgiXqIyaS-YbLtFmHgpNuePanLj22u7Jc_IkMNlV7ux6fy9ukYke3iZZzpfXaUNTrWQHkEI"/>
+<div>
+<div class="text-[#39FF14] font-black text-sm uppercase">STRATEGIST_HUB</div>
+<div class="text-xs text-gray-500 font-mono">V1.04-STABLE</div>
+</div>
+</div>
+<button class="mt-4 w-full bg-[#39FF14] text-black font-bold uppercase text-xs py-2 px-4 rounded hover:bg-opacity-90 transition-opacity">
+                NEW_SESSION
+            </button>
+</div>
+<nav class="flex-1 font-['Inter'] font-semibold text-[13px]">
+<a class="flex items-center gap-3 py-3 px-4 text-gray-500 hover:bg-[#1A1D21] hover:text-gray-200 transition-all duration-150 ease-in-out" href="#">
+<span class="material-symbols-outlined">leaderboard</span>
+                Command
+            </a>
+<a class="flex items-center gap-3 py-3 px-4 bg-[#24292E] text-[#39FF14] border-l-4 border-[#39FF14] transition-all duration-150 ease-in-out" href="#">
+<span class="material-symbols-outlined">psychology</span>
+                Tactics
+            </a>
+<a class="flex items-center gap-3 py-3 px-4 text-gray-500 hover:bg-[#1A1D21] hover:text-gray-200 transition-all duration-150 ease-in-out" href="#">
+<span class="material-symbols-outlined">sports_handball</span>
+                Athletes
+            </a>
+<a class="flex items-center gap-3 py-3 px-4 text-gray-500 hover:bg-[#1A1D21] hover:text-gray-200 transition-all duration-150 ease-in-out" href="#">
+<span class="material-symbols-outlined">account_tree</span>
+                Events
+            </a>
+<a class="flex items-center gap-3 py-3 px-4 text-gray-500 hover:bg-[#1A1D21] hover:text-gray-200 transition-all duration-150 ease-in-out" href="#">
+<span class="material-symbols-outlined">settings</span>
+                Settings
+            </a>
+</nav>
+</aside>
+<!-- Main Canvas -->
+<main class="md:ml-64 pt-16 min-h-screen p-margin-page bg-surface flex flex-col gap-gutter">
+<!-- Header Section -->
+<header class="flex flex-col gap-stack-compact mb-4">
+<h1 class="font-h1-bold text-h1-bold text-primary-container tracking-tighter uppercase">Tournament Winner</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant max-w-2xl">
+                A dominant performance throughout the bracket. High stamina retention allowed for an overwhelming final assault. Key victory in the Quarter-Finals set the momentum for the entire run.
+            </p>
+</header>
+<!-- Main Bento Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+<!-- Path to Victory (Bracket) Panel -->
+<div class="col-span-1 lg:col-span-8 bg-[#1A1D21] border border-[#2D333B] rounded p-panel-padding shadow-[0_8px_16px_-4px_rgba(0,0,0,0.6)] flex flex-col gap-stack-default">
+<div class="flex items-center justify-between border-b border-[#2D333B] pb-2">
+<h3 class="font-h3-caps text-h3-caps text-on-surface uppercase tracking-widest">Tournament Path</h3>
+<span class="font-data-mono text-data-mono text-primary-fixed-dim">FINAL STAGE REACHED</span>
+</div>
+<div class="flex-1 flex items-center justify-center py-8">
+<!-- Simplified abstracted bracket visual -->
+<div class="flex items-center gap-4 w-full overflow-x-auto pb-4">
+<!-- R1 -->
+<div class="flex flex-col gap-4 min-w-[140px]">
+<div class="bg-surface-container-high border border-[#2D333B] p-2 rounded">
+<div class="font-label-caps text-label-caps text-on-surface-variant mb-1">R16</div>
+<div class="font-data-mono text-data-mono text-on-surface flex justify-between">
+<span>Opponent A</span> <span class="text-primary-container">2-0</span>
+</div>
+</div>
+<div class="h-px bg-[#2D333B] w-full"></div>
+</div>
+<div class="h-px w-8 bg-[#2D333B]"></div>
+<!-- QF -->
+<div class="flex flex-col gap-4 min-w-[140px]">
+<div class="bg-[#24292E] border border-primary-container p-2 rounded shadow-[0_4px_10px_-2px_rgba(57,255,20,0.1)]">
+<div class="font-label-caps text-label-caps text-primary-container mb-1">QF</div>
+<div class="font-data-mono text-data-mono text-on-surface flex justify-between">
+<span>Rival Seed</span> <span class="text-primary-container">2-1</span>
+</div>
+</div>
+<div class="h-px bg-[#2D333B] w-full"></div>
+</div>
+<div class="h-px w-8 bg-[#2D333B]"></div>
+<!-- SF -->
+<div class="flex flex-col gap-4 min-w-[140px]">
+<div class="bg-surface-container-high border border-[#2D333B] p-2 rounded">
+<div class="font-label-caps text-label-caps text-on-surface-variant mb-1">SF</div>
+<div class="font-data-mono text-data-mono text-on-surface flex justify-between">
+<span>Dark Horse</span> <span class="text-primary-container">2-0</span>
+</div>
+</div>
+<div class="h-px bg-[#2D333B] w-full"></div>
+</div>
+<div class="h-px w-8 bg-[#2D333B]"></div>
+<!-- Final -->
+<div class="flex flex-col gap-4 min-w-[160px]">
+<div class="bg-surface-container-highest border-2 border-primary-container p-3 rounded shadow-[0_0_15px_rgba(57,255,20,0.2)]">
+<div class="font-label-caps text-label-caps text-primary-container mb-1 flex items-center gap-1">
+<span class="material-symbols-outlined fill text-[14px]">emoji_events</span> FINAL
+                                </div>
+<div class="font-data-mono text-data-mono text-on-surface flex justify-between font-bold">
+<span>Top Seed</span> <span class="text-primary-container">2-1</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Run Stats Panel -->
+<div class="col-span-1 lg:col-span-4 bg-[#1A1D21] border border-[#2D333B] rounded p-panel-padding shadow-[0_8px_16px_-4px_rgba(0,0,0,0.6)] flex flex-col gap-stack-default">
+<div class="border-b border-[#2D333B] pb-2">
+<h3 class="font-h3-caps text-h3-caps text-on-surface uppercase tracking-widest">Run Telemetry</h3>
+</div>
+<div class="flex flex-col gap-4 flex-1">
+<div class="flex justify-between items-end border-b border-[#2D333B] pb-2">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Matches Won</span>
+<span class="font-h2-bold text-h2-bold text-primary-container">4</span>
+</div>
+<div class="flex justify-between items-end border-b border-[#2D333B] pb-2">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Total Smashes</span>
+<span class="font-h2-bold text-h2-bold text-secondary-fixed-dim">127</span>
+</div>
+<div class="flex justify-between items-end border-b border-[#2D333B] pb-2">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Max HR</span>
+<div class="flex items-baseline gap-1">
+<span class="font-h2-bold text-h2-bold text-error">184</span>
+<span class="font-data-mono text-data-mono text-on-surface-variant text-[10px]">bpm</span>
+</div>
+</div>
+<div class="flex justify-between items-end pb-2">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Stamina Drain</span>
+<div class="flex items-center gap-2">
+<div class="w-24 h-2 bg-surface-container-high rounded overflow-hidden">
+<div class="h-full bg-primary-container w-[45%]"></div>
+</div>
+<span class="font-data-mono text-data-mono text-primary-container">45%</span>
+</div>
+</div>
+</div>
+<div class="mt-auto pt-4 border-t border-[#2D333B]">
+<button class="w-full bg-primary-container text-on-primary font-h3-caps text-h3-caps uppercase py-3 rounded hover:bg-primary-fixed transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined">restart_alt</span>
+                        START NEW SESSION
+                    </button>
+</div>
+</div>
+</div>
+</main>
+</body></html>

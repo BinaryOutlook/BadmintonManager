@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>SMASH_COMMAND - Tournament Setup</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-container": "#00f4fe",
+                        "on-tertiary-fixed-variant": "#414750",
+                        "on-tertiary-container": "#5c626b",
+                        "error-container": "#93000a",
+                        "tertiary-fixed": "#dde3ed",
+                        "primary-fixed-dim": "#2ae500",
+                        "tertiary": "#f9faff",
+                        "outline-variant": "#3c4b35",
+                        "background": "#111316",
+                        "on-secondary-fixed-variant": "#004f53",
+                        "surface-container-highest": "#333538",
+                        "error": "#ffb4ab",
+                        "secondary-fixed": "#63f7ff",
+                        "on-primary-fixed": "#022100",
+                        "on-primary-container": "#107100",
+                        "tertiary-container": "#d8dee8",
+                        "primary": "#efffe3",
+                        "primary-fixed": "#79ff5b",
+                        "inverse-on-surface": "#2f3034",
+                        "on-surface-variant": "#baccb0",
+                        "on-tertiary-fixed": "#161c23",
+                        "on-primary": "#053900",
+                        "surface-container-high": "#282a2d",
+                        "on-error-container": "#ffdad6",
+                        "tertiary-fixed-dim": "#c1c7d1",
+                        "primary-container": "#39ff14",
+                        "surface-tint": "#2ae500",
+                        "on-background": "#e2e2e6",
+                        "secondary": "#e6feff",
+                        "inverse-primary": "#106e00",
+                        "on-surface": "#e2e2e6",
+                        "inverse-surface": "#e2e2e6",
+                        "surface-bright": "#37393d",
+                        "surface-variant": "#333538",
+                        "on-secondary-container": "#006c71",
+                        "on-tertiary": "#2b3139",
+                        "on-primary-fixed-variant": "#095300",
+                        "on-secondary-fixed": "#002021",
+                        "on-error": "#690005",
+                        "surface-dim": "#111316",
+                        "outline": "#85967c",
+                        "on-secondary": "#003739",
+                        "surface-container-low": "#1a1c1f",
+                        "surface-container": "#1e2023",
+                        "surface-container-lowest": "#0c0e11",
+                        "surface": "#111316",
+                        "secondary-fixed-dim": "#00dce5"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "stack-default": "16px",
+                        "margin-page": "32px",
+                        "panel-padding": "20px",
+                        "unit": "4px",
+                        "gutter": "16px",
+                        "stack-compact": "8px"
+                    },
+                    "fontFamily": {
+                        "body-xs": ["Inter"],
+                        "h2-bold": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "h3-caps": ["Inter"],
+                        "h1-bold": ["Inter"],
+                        "data-mono": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-xs": ["12px", {"lineHeight": "1.4", "letterSpacing": "0", "fontWeight": "400"}],
+                        "h2-bold": ["24px", {"lineHeight": "1.3", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "body-sm": ["14px", {"lineHeight": "1.5", "letterSpacing": "0", "fontWeight": "400"}],
+                        "label-caps": ["11px", {"lineHeight": "1", "letterSpacing": "0.08em", "fontWeight": "600"}],
+                        "h3-caps": ["14px", {"lineHeight": "1.2", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                        "h1-bold": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "data-mono": ["13px", {"lineHeight": "1.2", "letterSpacing": "-0.01em", "fontWeight": "500"}]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-[#121417] text-on-background antialiased min-h-screen flex flex-col font-body-sm">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 flex justify-between items-center px-6 h-16 bg-[#1A1D21] border-b border-[#2D333B] shadow-[0_4px_20px_-2px_rgba(0,0,0,0.8)]">
+<div class="flex items-center gap-8">
+<span class="text-2xl font-black italic text-[#39FF14] tracking-tighter">SMASH_COMMAND</span>
+<nav class="hidden md:flex items-center gap-6">
+<a class="font-['Inter'] uppercase tracking-widest text-xs font-bold text-gray-400 hover:text-white transition-colors cursor-pointer active:opacity-80 transition-all hover:bg-[#24292E] px-2 py-1 rounded" href="#">LIVE</a>
+<a class="font-['Inter'] uppercase tracking-widest text-xs font-bold text-[#39FF14] border-b-2 border-[#39FF14] pb-2 cursor-pointer active:opacity-80 transition-all" href="#">SQUAD</a>
+<a class="font-['Inter'] uppercase tracking-widest text-xs font-bold text-gray-400 hover:text-white transition-colors cursor-pointer active:opacity-80 transition-all hover:bg-[#24292E] px-2 py-1 rounded" href="#">BRACKETS</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<button class="flex items-center gap-2 px-4 py-1.5 bg-[#24292E] border border-[#2D333B] rounded text-primary-container font-label-caps text-label-caps hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-[16px]">arrow_right</span>
+                Search
+            </button>
+<div class="flex items-center gap-3">
+<button class="text-gray-400 hover:text-primary-container transition-colors p-1">
+<span class="material-symbols-outlined">notifications_active</span>
+</button>
+<button class="text-gray-400 hover:text-primary-container transition-colors p-1">
+<span class="material-symbols-outlined">monitoring</span>
+</button>
+<button class="bg-[#39FF14] text-black font-label-caps text-label-caps px-4 py-2 rounded font-bold uppercase hover:bg-opacity-90 transition-opacity flex items-center gap-2">
+                    TACTICAL_INTEL
+                </button>
+<img alt="Lead Coach Avatar" class="w-8 h-8 rounded-full border-2 border-[#2D333B]" data-alt="professional portrait of a sports coach in dark athletic wear, focused expression, dramatic studio lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB2H32piNQFLcAZ0MFjDZ8oB3N1mssuaLNNXDk4fdMmoSxmxhboS1ZTjoBAguEzxzphn9N_dhd950HUVvIyOhCQYDZyEaKazXRfz7R7VmKVjw2_7mLMBYfJrU_0wM-p1IfoRSp3gG9MeTbFqd2cUsCF3jtRSCGPCZj2EB65UsCRL8r7D8MTreikBjNgJXnShjmcFKQXdGMkq7VMYycMmTgsCuvjbS4D5Hl4gG_c7j2StNzgA6ASU9bziSIcKUFXCqGdmOXAqcXWh88"/>
+</div>
+</div>
+</header>
+<!-- SideNavBar & Main Content Wrapper -->
+<div class="flex flex-1 pt-16">
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-16 bottom-0 w-64 flex flex-col pt-8 z-40 bg-[#121417] border-r border-[#2D333B]">
+<div class="px-6 pb-6 border-b border-[#2D333B] mb-4">
+<div class="flex items-center gap-3 mb-4">
+<img alt="Tournament Logo" class="w-12 h-12 rounded border border-[#2D333B]" data-alt="abstract geometric sports logo in neon green and dark charcoal, metallic finish" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDRga1n3KmovLMn7j6O18ZuIms8NTXmOEHWdA6LvftrSFdFyfQxamxSXHnNJoq5nBVZwKaLNCL6rFNFT6lmT-FiSttXCgXSDmHOnrNIXDtxFreKQsTRAsDogP-YP4c3dXeWoatyXtd03XzJ0Zkt0U0YkbXZxunCXZWTeeKYrk7xvqpGzAqkzUuAGzqnHAj4czP_fWGN5BKuLLtP6Eh90VoAW6_D5mWJkV25P3HlLwTFCMXUEEM-vNALdbriI4SuouBWWalGlVHCRdI"/>
+<div>
+<h2 class="text-[#39FF14] font-black font-h3-caps text-h3-caps tracking-wide">STRATEGIST_HUB</h2>
+<span class="text-gray-500 font-data-mono text-[10px]">V1.04-STABLE</span>
+</div>
+</div>
+<button class="w-full bg-[#24292E] text-white border border-[#2D333B] py-2 font-label-caps text-label-caps rounded hover:bg-[#1A1D21] transition-colors border-[#39FF14]/30">
+                    NEW_SESSION
+                </button>
+</div>
+<nav class="flex-1 flex flex-col gap-1">
+<a class="flex items-center gap-3 text-gray-500 py-3 px-4 hover:bg-[#1A1D21] hover:text-gray-200 transition-all duration-150 ease-in-out font-['Inter'] font-semibold text-[13px]" href="#">
+<span class="material-symbols-outlined text-[20px]">leaderboard</span>
+                    Command
+                </a>
+<a class="flex items-center gap-3 bg-[#24292E] text-[#39FF14] border-l-4 border-[#39FF14] py-3 px-4 transition-all duration-150 ease-in-out font-['Inter'] font-semibold text-[13px]" href="#">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">psychology</span>
+                    Tactics
+                </a>
+<a class="flex items-center gap-3 text-gray-500 py-3 px-4 hover:bg-[#1A1D21] hover:text-gray-200 transition-all duration-150 ease-in-out font-['Inter'] font-semibold text-[13px]" href="#">
+<span class="material-symbols-outlined text-[20px]">sports_handball</span>
+                    Athletes
+                </a>
+<a class="flex items-center gap-3 text-gray-500 py-3 px-4 hover:bg-[#1A1D21] hover:text-gray-200 transition-all duration-150 ease-in-out font-['Inter'] font-semibold text-[13px]" href="#">
+<span class="material-symbols-outlined text-[20px]">account_tree</span>
+                    Events
+                </a>
+<a class="flex items-center gap-3 text-gray-500 py-3 px-4 hover:bg-[#1A1D21] hover:text-gray-200 transition-all duration-150 ease-in-out font-['Inter'] font-semibold text-[13px]" href="#">
+<span class="material-symbols-outlined text-[20px]">settings</span>
+                    Settings
+                </a>
+</nav>
+</aside>
+<!-- Main Content Area -->
+<main class="ml-64 flex-1 p-margin-page overflow-y-auto">
+<div class="flex justify-between items-end mb-8 border-b border-[#2D333B] pb-4">
+<div>
+<h1 class="font-h1-bold text-h1-bold text-white mb-2">TOURNAMENT DEPLOYMENT</h1>
+<p class="font-body-sm text-body-sm text-gray-400">Configure athlete and tactical parameters for the upcoming circuit.</p>
+</div>
+<div class="flex gap-4">
+<button class="px-6 py-3 bg-[#39FF14] text-black font-h3-caps text-h3-caps rounded hover:bg-opacity-90 transition-opacity shadow-[0_0_15px_rgba(57,255,20,0.3)]">
+                        START TOURNAMENT
+                    </button>
+</div>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-12 gap-gutter">
+<!-- Player Pool (Left 8 cols) -->
+<div class="col-span-12 xl:col-span-8 space-y-gutter">
+<div class="bg-[#1A1D21] border border-[#2D333B] rounded p-panel-padding shadow-[0_4px_12px_-2px_rgba(0,0,0,0.5)]">
+<div class="flex justify-between items-center mb-6">
+<h3 class="font-h3-caps text-h3-caps text-white flex items-center gap-2">
+<span class="material-symbols-outlined text-[#39FF14]">groups</span>
+                                ACTIVE ROSTER
+                            </h3>
+<div class="flex gap-2">
+<span class="px-2 py-1 bg-[#24292E] rounded text-gray-400 font-label-caps text-[10px] border border-[#2D333B]">FILTERS: OFF</span>
+</div>
+</div>
+<div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+<!-- Athlete Card 1 (Selected) -->
+<div class="bg-[#24292E] border border-[#39FF14] rounded p-4 cursor-pointer relative shadow-[0_0_10px_rgba(57,255,20,0.15)] group">
+<div class="absolute top-2 right-2 w-2 h-2 bg-[#39FF14] rounded-full animate-pulse"></div>
+<div class="flex items-center gap-3 mb-3">
+<img alt="Athlete" class="w-12 h-12 rounded-full border border-[#39FF14]" data-alt="professional male badminton player looking intensely focused, athletic gear, dark background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuABcJwlycl66DaMHvBF51OQ5m638J186RcqIuD2WEbByXYo3jIO6ueadQKMlKUPyzEIpMn7feCn_OsI9Y4X8kZwsakuFLV5w1FZxXCP2zXtEXcEoe0YlZkQDiCrLuztFpQPsHwsl5UFMUnD-ikH5HfpRalINKs2PS2hDlhi4KdATtxFlR4wPVUjF_7qovOxrlCyUGuuGhNoopifZFY14CxTGmatVdGnISYJUq0uYKtOghbciPj99RMT25nWHO3GfMUisGzWMJ0iOYk"/>
+<div>
+<div class="font-data-mono text-data-mono text-white font-bold">K. MOMOTA</div>
+<div class="font-label-caps text-[10px] text-gray-400">RNK: #1</div>
+</div>
+</div>
+<div class="w-full bg-[#121417] h-1.5 rounded-full mb-1">
+<div class="bg-[#39FF14] h-1.5 rounded-full" style="width: 92%"></div>
+</div>
+<div class="text-right font-data-mono text-[10px] text-gray-500">OVR 92</div>
+</div>
+<!-- Athlete Card 2 -->
+<div class="bg-[#121417] border border-[#2D333B] rounded p-4 cursor-pointer hover:border-gray-500 transition-colors group">
+<div class="flex items-center gap-3 mb-3">
+<img alt="Athlete" class="w-12 h-12 rounded-full border border-[#2D333B] opacity-70 group-hover:opacity-100" data-alt="young male athlete in red jersey, side profile, dramatic sports lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBhGVR57QoTHfsAbnss05JN4CORXRZhzAicZSCz3VLQluBweCbWtVtBnI6tERkXG-eoFdNy6kHwJ-7XCcxyHBtHlXswDdxpaNvEvpkpO-_kAzMNJ88k25-jJeDPB5SERwGyX5JEBUsRPUEba6QVfJbJ5pARhDVkBLkyi0KbWvwOKk4NN2RgZ1fxFTSH7q1gJ1uJlxUoE9C6lRZ71gY_yel3POESoj5shTMvh5klR6UCSHSz1im9iayLvXWD1pr18j7wQpW08hGC9Bg"/>
+<div>
+<div class="font-data-mono text-data-mono text-gray-300">V. AXELSEN</div>
+<div class="font-label-caps text-[10px] text-gray-500">RNK: #2</div>
+</div>
+</div>
+<div class="w-full bg-[#1A1D21] h-1.5 rounded-full mb-1">
+<div class="bg-gray-500 h-1.5 rounded-full" style="width: 89%"></div>
+</div>
+<div class="text-right font-data-mono text-[10px] text-gray-600">OVR 89</div>
+</div>
+<!-- Athlete Card 3 -->
+<div class="bg-[#121417] border border-[#2D333B] rounded p-4 cursor-pointer hover:border-gray-500 transition-colors group">
+<div class="flex items-center gap-3 mb-3">
+<img alt="Athlete" class="w-12 h-12 rounded-full border border-[#2D333B] opacity-70 group-hover:opacity-100" data-alt="asian male badminton player wiping sweat, intense match expression, dark arena background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAK64_gvMaClK3X1Y7vNkqByXaIhM4jtGPKbNIzAeSOvBIgNfO303KfCpREsPfLz5YWEMnvmgbI7R8EtINwe_InnpjlipgjA3gpWnEJhdfLyKRYwJsSOOI4f_gVltm-mq3GNP0lnm92wt4HSx9Jvo9t0TlbiwNbSADeXGysrctCalnbLNgQ2SzRpS_4zTWH7hHy0xbIKzxevkkGRb_Zr_h3ksP8ypaSEhLXLOefJvGnpxWpXC7sr6xvL_WU2fg2mYuThnJcqUbsxfM"/>
+<div>
+<div class="font-data-mono text-data-mono text-gray-300">C. LONG</div>
+<div class="font-label-caps text-[10px] text-gray-500">RNK: #4</div>
+</div>
+</div>
+<div class="w-full bg-[#1A1D21] h-1.5 rounded-full mb-1">
+<div class="bg-gray-500 h-1.5 rounded-full" style="width: 86%"></div>
+</div>
+<div class="text-right font-data-mono text-[10px] text-gray-600">OVR 86</div>
+</div>
+</div>
+</div>
+<!-- Tactical Lens Selection -->
+<div class="bg-[#1A1D21] border border-[#2D333B] rounded p-panel-padding shadow-[0_4px_12px_-2px_rgba(0,0,0,0.5)]">
+<h3 class="font-h3-caps text-h3-caps text-white mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-[#00f4fe]">radar</span>
+                            STRATEGIC OVERRIDE
+                        </h3>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+<!-- Tactic 1 -->
+<div class="bg-[#121417] border border-[#2D333B] rounded p-4 cursor-pointer hover:bg-[#24292E] transition-colors">
+<span class="material-symbols-outlined text-gray-400 mb-2">bolt</span>
+<h4 class="font-h3-caps text-[12px] text-white mb-1">AGGRESSIVE SMASH</h4>
+<p class="font-body-xs text-[10px] text-gray-500">Prioritizes power attacks from rear court. High stamina drain.</p>
+</div>
+<!-- Tactic 2 (Active) -->
+<div class="bg-[#24292E] border border-[#00f4fe] rounded p-4 cursor-pointer relative shadow-[0_0_15px_rgba(0,244,254,0.15)]">
+<div class="absolute top-0 right-0 w-0 h-0 border-t-[20px] border-t-[#00f4fe] border-l-[20px] border-l-transparent"></div>
+<span class="material-symbols-outlined text-[#00f4fe] mb-2">grid_goldenratio</span>
+<h4 class="font-h3-caps text-[12px] text-[#00f4fe] mb-1">BALANCED CONTROL</h4>
+<p class="font-body-xs text-[10px] text-gray-300">Focus on placement and rally endurance. Moderate pace.</p>
+</div>
+<!-- Tactic 3 -->
+<div class="bg-[#121417] border border-[#2D333B] rounded p-4 cursor-pointer hover:bg-[#24292E] transition-colors">
+<span class="material-symbols-outlined text-gray-400 mb-2">shield</span>
+<h4 class="font-h3-caps text-[12px] text-white mb-1">DEFENSIVE NET-PLAY</h4>
+<p class="font-body-xs text-[10px] text-gray-500">Draw opponent to net, exploit lift errors. Requires high agility.</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Athlete Dossier (Right 4 cols) -->
+<div class="col-span-12 xl:col-span-4">
+<div class="bg-[#1A1D21] border border-[#39FF14] rounded p-panel-padding shadow-[0_8px_24px_-4px_rgba(57,255,20,0.1)] h-full flex flex-col">
+<div class="flex justify-between items-start mb-6 border-b border-[#2D333B] pb-4">
+<div>
+<h3 class="font-label-caps text-[#39FF14] mb-1 tracking-widest">SELECTED OPERATIVE</h3>
+<div class="font-h2-bold text-h2-bold text-white uppercase">K. MOMOTA</div>
+<div class="flex items-center gap-2 mt-2">
+<span class="px-2 py-0.5 bg-[#24292E] border border-[#2D333B] rounded font-data-mono text-[10px] text-gray-300">JPN</span>
+<span class="px-2 py-0.5 bg-[#121417] border border-[#39FF14]/50 rounded font-data-mono text-[10px] text-[#39FF14]">WORLD #1</span>
+</div>
+</div>
+<img alt="Athlete Profile" class="w-20 h-20 rounded border border-[#39FF14]" data-alt="close up professional male badminton player, intense focus, dark background with green rim light" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD_JT_d6LZo7vfLb8Azsk6Lyd6hNTO8NWW5cF6y1vRxilr603dqvF_-4RwBuOIUOv7TTEjgwkK_3RwDIRnTJMphkuFkEq6tg0Nd3ACITMl0l7PbYOwD7ewbc4qfXp1VEwqQengnu-xeGxTcPuMxGNt3EkdBxLdyKo4nWY9rgkhFcDlARUjqe0LR7qzkBd9tMS8Vl3R0Z8J-LJ8yKnmohMtIM4tTa77tgtSu1lAo9ohAd-mYJB_CbRh_sCTFtdejugF9u7M0jVq28uo"/>
+</div>
+<div class="flex-1 space-y-6">
+<!-- Telemetry Bars -->
+<div>
+<h4 class="font-label-caps text-gray-500 mb-3 border-b border-[#2D333B] pb-1">BIOMETRIC CAPABILITY</h4>
+<div class="space-y-4">
+<!-- Stat 1 -->
+<div>
+<div class="flex justify-between font-data-mono text-[11px] mb-1">
+<span class="text-gray-300">POWER</span>
+<span class="text-white">88</span>
+</div>
+<div class="w-full bg-[#121417] h-2 border border-[#2D333B]">
+<div class="bg-gray-300 h-full" style="width: 88%"></div>
+</div>
+</div>
+<!-- Stat 2 -->
+<div>
+<div class="flex justify-between font-data-mono text-[11px] mb-1">
+<span class="text-[#00f4fe]">SPEED</span>
+<span class="text-white">95</span>
+</div>
+<div class="w-full bg-[#121417] h-2 border border-[#2D333B]">
+<div class="bg-[#00f4fe] h-full shadow-[0_0_8px_rgba(0,244,254,0.5)]" style="width: 95%"></div>
+</div>
+</div>
+<!-- Stat 3 -->
+<div>
+<div class="flex justify-between font-data-mono text-[11px] mb-1">
+<span class="text-[#39FF14]">STAMINA</span>
+<span class="text-white">92</span>
+</div>
+<div class="w-full bg-[#121417] h-2 border border-[#2D333B]">
+<div class="bg-[#39FF14] h-full shadow-[0_0_8px_rgba(57,255,20,0.5)]" style="width: 92%"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Form Status -->
+<div class="bg-[#121417] p-4 rounded border border-[#2D333B]">
+<div class="flex items-center justify-between mb-2">
+<span class="font-label-caps text-gray-500">CURRENT FORM</span>
+<span class="material-symbols-outlined text-[#39FF14] text-[16px]">trending_up</span>
+</div>
+<div class="font-body-xs text-gray-300">
+                                    Peak physical condition. Recent telemetry indicates optimal smash velocity in late-game scenarios.
+                                </div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

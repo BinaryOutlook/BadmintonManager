@@ -42,9 +42,9 @@ What is now stable:
 
 ## Next
 
-- [ ] add richer match analytics and tactical explanations
-- [ ] add better between-set feedback and coach guidance
-- [ ] decide whether `v0.2` adds player development or presentation depth
+- [ ] build the `v0.2` command-center shell and screen redesign
+- [ ] expand live match flow to point-by-point tactical operations
+- [ ] add scouting, telemetry, and run recap systems for `v0.2`
 - [ ] improve save migration coverage as the state model grows
 
 ## Blockers

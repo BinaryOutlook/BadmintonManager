@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>SMASH_COMMAND - Live Match</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "secondary-container": "#00f4fe",
+                    "on-tertiary-fixed-variant": "#414750",
+                    "on-tertiary-container": "#5c626b",
+                    "error-container": "#93000a",
+                    "tertiary-fixed": "#dde3ed",
+                    "primary-fixed-dim": "#2ae500",
+                    "tertiary": "#f9faff",
+                    "outline-variant": "#3c4b35",
+                    "background": "#111316",
+                    "on-secondary-fixed-variant": "#004f53",
+                    "surface-container-highest": "#333538",
+                    "error": "#ffb4ab",
+                    "secondary-fixed": "#63f7ff",
+                    "on-primary-fixed": "#022100",
+                    "on-primary-container": "#107100",
+                    "tertiary-container": "#d8dee8",
+                    "primary": "#efffe3",
+                    "primary-fixed": "#79ff5b",
+                    "inverse-on-surface": "#2f3034",
+                    "on-surface-variant": "#baccb0",
+                    "on-tertiary-fixed": "#161c23",
+                    "on-primary": "#053900",
+                    "surface-container-high": "#282a2d",
+                    "on-error-container": "#ffdad6",
+                    "tertiary-fixed-dim": "#c1c7d1",
+                    "primary-container": "#39ff14",
+                    "surface-tint": "#2ae500",
+                    "on-background": "#e2e2e6",
+                    "secondary": "#e6feff",
+                    "inverse-primary": "#106e00",
+                    "on-surface": "#e2e2e6",
+                    "inverse-surface": "#e2e2e6",
+                    "surface-bright": "#37393d",
+                    "surface-variant": "#333538",
+                    "on-secondary-container": "#006c71",
+                    "on-tertiary": "#2b3139",
+                    "on-primary-fixed-variant": "#095300",
+                    "on-secondary-fixed": "#002021",
+                    "on-error": "#690005",
+                    "surface-dim": "#111316",
+                    "outline": "#85967c",
+                    "on-secondary": "#003739",
+                    "surface-container-low": "#1a1c1f",
+                    "surface-container": "#1e2023",
+                    "surface-container-lowest": "#0c0e11",
+                    "surface": "#111316",
+                    "secondary-fixed-dim": "#00dce5"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "stack-default": "16px",
+                    "margin-page": "32px",
+                    "panel-padding": "20px",
+                    "unit": "4px",
+                    "gutter": "16px",
+                    "stack-compact": "8px"
+            },
+            "fontFamily": {
+                    "body-xs": [
+                            "Inter"
+                    ],
+                    "h2-bold": [
+                            "Inter"
+                    ],
+                    "body-sm": [
+                            "Inter"
+                    ],
+                    "label-caps": [
+                            "Inter"
+                    ],
+                    "h3-caps": [
+                            "Inter"
+                    ],
+                    "h1-bold": [
+                            "Inter"
+                    ],
+                    "data-mono": [
+                            "Inter"
+                    ]
+            },
+            "fontSize": {
+                    "body-xs": [
+                            "12px",
+                            {
+                                    "lineHeight": "1.4",
+                                    "letterSpacing": "0",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "h2-bold": [
+                            "24px",
+                            {
+                                    "lineHeight": "1.3",
+                                    "letterSpacing": "-0.01em",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "body-sm": [
+                            "14px",
+                            {
+                                    "lineHeight": "1.5",
+                                    "letterSpacing": "0",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "label-caps": [
+                            "11px",
+                            {
+                                    "lineHeight": "1",
+                                    "letterSpacing": "0.08em",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "h3-caps": [
+                            "14px",
+                            {
+                                    "lineHeight": "1.2",
+                                    "letterSpacing": "0.05em",
+                                    "fontWeight": "700"
+                            }
+                    ],
+                    "h1-bold": [
+                            "32px",
+                            {
+                                    "lineHeight": "1.2",
+                                    "letterSpacing": "-0.02em",
+                                    "fontWeight": "700"
+                            }
+                    ],
+                    "data-mono": [
+                            "13px",
+                            {
+                                    "lineHeight": "1.2",
+                                    "letterSpacing": "-0.01em",
+                                    "fontWeight": "500"
+                            }
+                    ]
+            }
+    },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.fill-icon {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background antialiased font-body-sm h-screen overflow-hidden flex flex-col">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 flex justify-between items-center px-6 h-16 bg-[#1A1D21] border-b border-[#2D333B] shadow-[0_4px_20px_-2px_rgba(0,0,0,0.8)] font-['Inter'] uppercase tracking-widest text-xs font-bold">
+<div class="flex items-center gap-8">
+<div class="text-2xl font-black italic text-[#39FF14] tracking-tighter">
+                SMASH_COMMAND
+            </div>
+<!-- Navigation Links -->
+<nav class="hidden md:flex items-center gap-6 h-full">
+<a class="text-[#39FF14] border-b-2 border-[#39FF14] pb-2 cursor-pointer active:opacity-80 transition-all" href="#">LIVE</a>
+<a class="text-gray-400 hover:text-white transition-colors hover:bg-[#24292E] cursor-pointer active:opacity-80 transition-all px-2 py-1 rounded" href="#">SQUAD</a>
+<a class="text-gray-400 hover:text-white transition-colors hover:bg-[#24292E] cursor-pointer active:opacity-80 transition-all px-2 py-1 rounded" href="#">BRACKETS</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<button class="bg-[#39FF14] text-black px-4 py-2 font-bold uppercase tracking-widest text-xs rounded-sm hover:opacity-90 transition-opacity flex items-center gap-2">
+                TACTICAL_INTEL
+            </button>
+<div class="flex items-center gap-3">
+<button class="text-gray-400 hover:text-white transition-colors">
+<span class="material-symbols-outlined">notifications_active</span>
+</button>
+<button class="text-gray-400 hover:text-white transition-colors">
+<span class="material-symbols-outlined">monitoring</span>
+</button>
+<img alt="Lead Coach Avatar" class="w-8 h-8 rounded-full border border-[#2D333B]" data-alt="professional portrait of a confident male sports coach in a dark stadium environment with dramatic lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBrS74god3dG5xGqW7pJWG6TYzBJuvAEmcaxXU251LGBBKBnJW9eDfMi5pglP6e1wH2RzlkGCmTGTXjcrYxGwrHEcTP83UV6kqrD-LjsOhBqM5GlscQTJM32YXx_txAaofelY7HCV3to1QPcatdH8NS-k0iAFp1wSF5PlnTPOnb-63tAlCi6ZiUHP-X8S1ItMoFNY8fxXqFa9nud4gIfGZubSTKxa0PiHa1NkS2SpNvloyMBt4G3lbKL4jQ8Bc7esGTVFTEUXlQets"/>
+</div>
+</div>
+</header>
+<!-- SideNavBar & Main Content Wrapper -->
+<div class="flex flex-1 pt-16 h-full w-full">
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-16 bottom-0 w-64 flex flex-col pt-8 z-40 bg-[#121417] border-r border-[#2D333B] font-['Inter'] font-semibold text-[13px]">
+<div class="px-6 mb-8">
+<div class="flex items-center gap-3 mb-2">
+<img alt="Tournament Logo" class="w-10 h-10 rounded-DEFAULT border border-[#2D333B]" data-alt="abstract metallic sports logo featuring a shuttlecock on a dark carbon fiber background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA0G1fkcAwhnGIBpMohqVVSKHSMsj0e_nJLjVTYIyh58wBPPEc-Wl5P3rJXFPMVmwWoYwDR2toLdWC307I004CSQ2fvmzPDD18Zz2YOf6uU5ZgotdqPBkPeeOpVT4YkeVN3BXeiigClIUl7GVKPfV9TCo6X2zotmwkm0ww1cuiLDaHUa4y7C_wUZ1Za5FkcGO5oyjWyLXtVBrtlqWbjVGQAkRTc5ZGiN6Fcz9YWiXcK5T5NrxZSKQdZLVyE1V7L-mJWdAyVqoRcyUc"/>
+<div>
+<h2 class="text-[#39FF14] font-black tracking-tight text-sm">STRATEGIST_HUB</h2>
+<p class="text-gray-500 text-[10px] tracking-wider uppercase">V1.04-STABLE</p>
+</div>
+</div>
+<button class="w-full mt-4 bg-transparent border border-[#2D333B] text-white py-2 rounded-sm hover:border-[#39FF14] hover:text-[#39FF14] transition-colors flex items-center justify-center gap-2 uppercase tracking-wider text-xs">
+<span class="material-symbols-outlined text-[16px]">add</span>
+                    NEW_SESSION
+                </button>
+</div>
+<nav class="flex-1 flex flex-col gap-1">
+<a class="bg-[#24292E] text-[#39FF14] border-l-4 border-[#39FF14] py-3 px-4 transition-all duration-150 ease-in-out flex items-center gap-3" href="#">
+<span class="material-symbols-outlined">leaderboard</span>
+                    Command
+                </a>
+<a class="text-gray-500 py-3 px-4 hover:bg-[#1A1D21] hover:text-gray-200 transition-all duration-150 ease-in-out flex items-center gap-3" href="#">
+<span class="material-symbols-outlined">psychology</span>
+                    Tactics
+                </a>
+<a class="text-gray-500 py-3 px-4 hover:bg-[#1A1D21] hover:text-gray-200 transition-all duration-150 ease-in-out flex items-center gap-3" href="#">
+<span class="material-symbols-outlined">sports_handball</span>
+                    Athletes
+                </a>
+<a class="text-gray-500 py-3 px-4 hover:bg-[#1A1D21] hover:text-gray-200 transition-all duration-150 ease-in-out flex items-center gap-3" href="#">
+<span class="material-symbols-outlined">account_tree</span>
+                    Events
+                </a>
+<a class="text-gray-500 py-3 px-4 hover:bg-[#1A1D21] hover:text-gray-200 transition-all duration-150 ease-in-out flex items-center gap-3" href="#">
+<span class="material-symbols-outlined">settings</span>
+                    Settings
+                </a>
+</nav>
+</aside>
+<!-- Main Canvas -->
+<main class="ml-64 flex-1 p-margin-page overflow-y-auto bg-background grid grid-cols-12 gap-gutter relative">
+<!-- Match Header / Scoreboard -->
+<div class="col-span-12 bg-surface-container-low border border-outline-variant rounded-DEFAULT p-panel-padding shadow-[0_8px_16px_-4px_rgba(0,0,0,0.6)] flex flex-col mb-stack-default">
+<div class="flex justify-between items-center mb-6">
+<div class="flex items-center gap-3">
+<span class="w-3 h-3 rounded-full bg-secondary-container animate-pulse"></span>
+<h2 class="font-h3-caps text-secondary-container uppercase">Quarter-Finals • Court 1</h2>
+</div>
+<div class="font-data-mono text-on-surface-variant bg-surface-container-high px-3 py-1 rounded-DEFAULT border border-outline-variant">
+                        T: 45:12
+                    </div>
+</div>
+<div class="flex justify-between items-stretch">
+<!-- Player 1 -->
+<div class="flex-1 flex flex-col justify-center items-center">
+<div class="font-h2-bold text-on-surface mb-2">AXELSEN V.</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined fill-icon text-primary-container text-[16px]">sports_tennis</span>
+<span class="font-label-caps text-on-surface-variant uppercase tracking-widest text-[10px]">Serving</span>
+</div>
+</div>
+<!-- Score -->
+<div class="flex flex-col items-center justify-center px-12 border-x border-outline-variant">
+<div class="font-label-caps text-on-surface-variant mb-2">SET 2 (1-0)</div>
+<div class="flex items-baseline gap-6">
+<span class="font-h1-bold text-[64px] text-primary-container leading-none">18</span>
+<span class="font-h2-bold text-on-surface-variant">-</span>
+<span class="font-h1-bold text-[64px] text-on-surface leading-none">16</span>
+</div>
+</div>
+<!-- Player 2 -->
+<div class="flex-1 flex flex-col justify-center items-center opacity-80">
+<div class="font-h2-bold text-on-surface mb-2">LEE Z. J.</div>
+<div class="h-5"></div> <!-- Spacer for alignment -->
+</div>
+</div>
+</div>
+<!-- Left Column: Telemetry & Momentum -->
+<div class="col-span-12 lg:col-span-4 flex flex-col gap-gutter">
+<!-- Player 1 Telemetry -->
+<div class="bg-surface-container-low border border-outline-variant rounded-DEFAULT p-panel-padding shadow-sm">
+<h3 class="font-h3-caps text-on-surface mb-4 border-b border-outline-variant pb-2">AXELSEN V. • Telemetry</h3>
+<div class="flex flex-col gap-4">
+<div>
+<div class="flex justify-between font-label-caps text-on-surface-variant mb-1">
+<span>Stamina</span>
+<span class="text-primary-container">78%</span>
+</div>
+<div class="h-2 w-full bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-primary-container" style="width: 78%"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between font-label-caps text-on-surface-variant mb-1">
+<span>Momentum</span>
+<span class="text-secondary-container">High</span>
+</div>
+<div class="flex gap-1 h-6">
+<div class="flex-1 bg-surface-container-high border border-outline-variant rounded-sm"></div>
+<div class="flex-1 bg-secondary-container opacity-20 rounded-sm"></div>
+<div class="flex-1 bg-secondary-container opacity-60 rounded-sm"></div>
+<div class="flex-1 bg-secondary-container rounded-sm shadow-[0_0_8px_rgba(0,244,254,0.5)]"></div>
+<div class="flex-1 bg-surface-container-high border border-outline-variant rounded-sm"></div>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-2 mt-2">
+<div class="bg-surface-container-high p-2 rounded-sm border border-outline-variant flex flex-col items-center">
+<span class="font-label-caps text-on-surface-variant mb-1">Smash Spd</span>
+<span class="font-data-mono text-on-surface text-lg">384 <span class="text-[10px]">km/h</span></span>
+</div>
+<div class="bg-surface-container-high p-2 rounded-sm border border-outline-variant flex flex-col items-center">
+<span class="font-label-caps text-on-surface-variant mb-1">Errors</span>
+<span class="font-data-mono text-on-surface text-lg">4</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Player 2 Telemetry -->
+<div class="bg-surface-container-low border border-outline-variant rounded-DEFAULT p-panel-padding shadow-sm">
+<h3 class="font-h3-caps text-on-surface mb-4 border-b border-outline-variant pb-2">LEE Z. J. • Telemetry</h3>
+<div class="flex flex-col gap-4">
+<div>
+<div class="flex justify-between font-label-caps text-on-surface-variant mb-1">
+<span>Stamina</span>
+<span class="text-on-surface">62%</span>
+</div>
+<div class="h-2 w-full bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-on-surface-variant" style="width: 62%"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between font-label-caps text-on-surface-variant mb-1">
+<span>Momentum</span>
+<span class="text-error">Declining</span>
+</div>
+<div class="flex gap-1 h-6">
+<div class="flex-1 bg-surface-container-high border border-outline-variant rounded-sm"></div>
+<div class="flex-1 bg-surface-container-high border border-outline-variant rounded-sm"></div>
+<div class="flex-1 bg-error opacity-60 rounded-sm"></div>
+<div class="flex-1 bg-surface-container-high border border-outline-variant rounded-sm"></div>
+<div class="flex-1 bg-surface-container-high border border-outline-variant rounded-sm"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Middle Column: Commentary Feed -->
+<div class="col-span-12 lg:col-span-5 bg-surface-container-low border border-outline-variant rounded-DEFAULT flex flex-col shadow-sm h-[500px]">
+<div class="p-panel-padding border-b border-outline-variant flex justify-between items-center bg-surface-container">
+<h3 class="font-h3-caps text-on-surface">Live Tactical Feed</h3>
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">sort</span>
+</div>
+<div class="flex-1 overflow-y-auto p-4 flex flex-col gap-3 font-body-sm">
+<!-- Events -->
+<div class="flex gap-3 bg-surface-container-high p-3 rounded-sm border-l-2 border-primary-container">
+<span class="font-data-mono text-on-surface-variant text-xs mt-0.5">45:12</span>
+<div>
+<div class="font-bold text-on-surface text-sm">Axelsen wins point with cross-court smash.</div>
+<div class="text-on-surface-variant text-xs mt-1">Speed: 384km/h. Lee out of position.</div>
+</div>
+</div>
+<div class="flex gap-3 p-3">
+<span class="font-data-mono text-on-surface-variant text-xs mt-0.5">44:30</span>
+<div>
+<div class="text-on-surface text-sm">Long rally (34 shots). Both players showing fatigue.</div>
+</div>
+</div>
+<div class="flex gap-3 bg-surface-container-high p-3 rounded-sm border-l-2 border-secondary-container">
+<span class="font-data-mono text-on-surface-variant text-xs mt-0.5">43:45</span>
+<div>
+<div class="font-bold text-on-surface text-sm">Tactical Alert: Lee targeting backhand corner.</div>
+<div class="text-on-surface-variant text-xs mt-1">Last 4 returns directed to deep backhand.</div>
+</div>
+</div>
+<div class="flex gap-3 p-3">
+<span class="font-data-mono text-on-surface-variant text-xs mt-0.5">42:10</span>
+<div>
+<div class="text-on-surface text-sm">Lee Z. J. unforced error (net).</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Coaching Interventions -->
+<div class="col-span-12 lg:col-span-3 flex flex-col gap-gutter">
+<div class="bg-surface-container-low border border-outline-variant rounded-DEFAULT p-panel-padding shadow-sm flex-1">
+<h3 class="font-h3-caps text-on-surface mb-4 border-b border-outline-variant pb-2 flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary-container">campaign</span>
+                        Directives
+                    </h3>
+<div class="flex flex-col gap-3">
+<button class="w-full bg-surface-container-highest border border-outline-variant text-on-surface py-3 px-4 rounded-sm hover:border-secondary-container hover:bg-surface-container-high transition-colors font-label-caps tracking-wider text-left flex justify-between items-center group">
+                            Target Backhand
+                            <span class="material-symbols-outlined text-on-surface-variant group-hover:text-secondary-container text-[16px]">arrow_forward</span>
+</button>
+<button class="w-full bg-surface-container-highest border border-outline-variant text-on-surface py-3 px-4 rounded-sm hover:border-secondary-container hover:bg-surface-container-high transition-colors font-label-caps tracking-wider text-left flex justify-between items-center group">
+                            Safe Play (Lift)
+                            <span class="material-symbols-outlined text-on-surface-variant group-hover:text-secondary-container text-[16px]">arrow_forward</span>
+</button>
+<button class="w-full bg-surface-container-highest border border-outline-variant text-on-surface py-3 px-4 rounded-sm hover:border-primary-container hover:bg-surface-container-high transition-colors font-label-caps tracking-wider text-left flex justify-between items-center group mt-4">
+                            Push Pace
+                            <span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary-container text-[16px]">bolt</span>
+</button>
+</div>
+<div class="mt-8 pt-6 border-t border-outline-variant">
+<button class="w-full bg-primary-container text-background py-4 px-4 rounded-sm hover:bg-primary-fixed transition-colors font-h3-caps tracking-widest text-center shadow-[0_0_15px_rgba(57,255,20,0.3)]">
+                            SIMULATE NEXT POINT
+                        </button>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>
