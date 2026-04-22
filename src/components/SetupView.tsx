@@ -1,6 +1,6 @@
 import { seededPlayers } from "../game/content/players";
-import { tacticLibrary, tacticOptions } from "../game/content/tactics";
-import { deriveProfile } from "../game/core/ratings";
+import { tacticOptions } from "../game/content/tactics";
+import { deriveAthleteDossier } from "../game/core/intel";
 import type { TacticKey } from "../game/store/store";
 
 interface SetupViewProps {
@@ -11,113 +11,165 @@ interface SetupViewProps {
   onStartTournament: () => void;
 }
 
-const tacticLabels: Record<TacticKey, string> = {
-  balancedControl: "Balanced Control",
-  backhandPress: "Backhand Press",
-  grindingLength: "Grinding Length",
-  allOutAttack: "All-Out Attack"
-};
-
-const tacticDescriptions: Record<TacticKey, string> = {
-  balancedControl: "Stable tempo, strong net pressure, and low drama.",
-  backhandPress: "Lean into targeted pressure and sharper interceptions.",
-  grindingLength: "Pull the match long, protect stamina, and break rhythm.",
-  allOutAttack: "Chase initiative early and accept the risk that comes with it."
-};
+function initials(name: string) {
+  return name
+    .split(" ")
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
+}
 
 export function SetupView(props: SetupViewProps) {
-  const selected = seededPlayers.find((entry) => entry.player.id === props.selectedPlayerId) ?? seededPlayers[0];
-  const profile = deriveProfile(selected.player);
+  const selected =
+    seededPlayers.find((entry) => entry.player.id === props.selectedPlayerId) ?? seededPlayers[0];
+  const dossier = deriveAthleteDossier(selected.player);
+  const overall = Math.round((dossier.power + dossier.speed + dossier.stamina + dossier.control) / 4);
 
   return (
-    <section className="phase-layout">
-      <div className="phase-header">
+    <section className="screen-shell">
+      <div className="screen-header">
         <div>
-          <p className="eyebrow">Tournament Setup</p>
-          <h2>Choose the athlete and the opening tactical lens.</h2>
+          <p className="screen-kicker">Squad</p>
+          <h1 className="screen-title">Tournament Deployment</h1>
+          <p className="screen-copy">
+            Configure the managed athlete and opening tactical override for the next tournament run.
+          </p>
         </div>
-        <button className="primary-button" onClick={props.onStartTournament}>
-          Start tournament run
+        <button className="command-button command-button-primary" onClick={props.onStartTournament}>
+          Start Tournament
         </button>
       </div>
 
-      <div className="setup-grid">
-        <div className="surface-card">
-          <p className="surface-label">Managed Player</p>
-          <div className="selected-player">
+      <div className="deployment-grid">
+        <section className="command-panel command-panel-wide">
+          <div className="panel-header">
+            <h2>Active Roster</h2>
+            <span>{seededPlayers.length} athletes loaded</span>
+          </div>
+          <div className="roster-grid">
+            {seededPlayers.map((entry) => {
+              const entryDossier = deriveAthleteDossier(entry.player);
+              const entryOverall = Math.round(
+                (entryDossier.power + entryDossier.speed + entryDossier.stamina) / 3
+              );
+
+              return (
+                <button
+                  key={entry.player.id}
+                  type="button"
+                  className={`athlete-card ${
+                    entry.player.id === props.selectedPlayerId ? "athlete-card-active" : ""
+                  }`}
+                  aria-pressed={entry.player.id === props.selectedPlayerId}
+                  onClick={() => props.onSelectPlayer(entry.player.id)}
+                >
+                  <div className="athlete-card-header">
+                    <span className="athlete-avatar">{initials(entry.player.name)}</span>
+                    <div>
+                      <strong>{entry.player.name}</strong>
+                      <span>Seed #{entry.seed}</span>
+                    </div>
+                  </div>
+                  <div className="metric-track">
+                    <div className="metric-track-fill" style={{ width: `${entryOverall}%` }} />
+                  </div>
+                  <div className="athlete-card-footer">
+                    <span>{entry.player.styleLabel}</span>
+                    <span>OVR {entryOverall}</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        <aside className="command-panel dossier-panel">
+          <div className="panel-header">
+            <h2>Selected Operative</h2>
+            <span>World #{selected.seed}</span>
+          </div>
+
+          <div className="dossier-identity">
             <div>
+              <p className="dossier-overline">{selected.player.nationality}</p>
               <h3>{selected.player.name}</h3>
-              <p>
-                Seed {selected.seed} · {selected.player.nationality} · {selected.player.styleLabel}
-              </p>
+              <p>{selected.player.styleLabel}</p>
             </div>
-            <div className="rating-chip">
-              <strong>{Math.round(profile.attackPressure)}</strong>
-              <span>Attack Pressure</span>
+            <div className="dossier-avatar">{initials(selected.player.name)}</div>
+          </div>
+
+          <div className="dossier-metrics">
+            <div>
+              <div className="metric-row">
+                <span>Power</span>
+                <strong>{dossier.power}</strong>
+              </div>
+              <div className="metric-track">
+                <div className="metric-track-fill metric-track-fill-neutral" style={{ width: `${dossier.power}%` }} />
+              </div>
+            </div>
+            <div>
+              <div className="metric-row">
+                <span>Speed</span>
+                <strong>{dossier.speed}</strong>
+              </div>
+              <div className="metric-track">
+                <div className="metric-track-fill metric-track-fill-cyan" style={{ width: `${dossier.speed}%` }} />
+              </div>
+            </div>
+            <div>
+              <div className="metric-row">
+                <span>Stamina</span>
+                <strong>{dossier.stamina}</strong>
+              </div>
+              <div className="metric-track">
+                <div className="metric-track-fill" style={{ width: `${dossier.stamina}%` }} />
+              </div>
+            </div>
+            <div>
+              <div className="metric-row">
+                <span>Control</span>
+                <strong>{dossier.control}</strong>
+              </div>
+              <div className="metric-track">
+                <div className="metric-track-fill metric-track-fill-soft" style={{ width: `${dossier.control}%` }} />
+              </div>
             </div>
           </div>
 
-          <div className="attribute-grid">
-            <div className="metric-pill">
-              <span>Front Court</span>
-              <strong>{Math.round(profile.frontCourtControl)}</strong>
-            </div>
-            <div className="metric-pill">
-              <span>Recovery</span>
-              <strong>{Math.round(profile.recoveryQuality)}</strong>
-            </div>
-            <div className="metric-pill">
-              <span>Rally Tolerance</span>
-              <strong>{Math.round(profile.rallyTolerance)}</strong>
-            </div>
-            <div className="metric-pill">
-              <span>Pressure</span>
-              <strong>{Math.round(profile.pressureResistance)}</strong>
-            </div>
+          <div className="dossier-note">
+            <span className="chip chip-primary">OVR {overall}</span>
+            <p className="dossier-note-title">{dossier.formHeadline}</p>
+            <p>{dossier.formSummary}</p>
           </div>
-        </div>
+        </aside>
 
-        <div className="surface-card">
-          <p className="surface-label">Player Pool</p>
-          <div className="player-grid">
-            {seededPlayers.map((entry) => (
+        <section className="command-panel command-panel-wide">
+          <div className="panel-header">
+            <h2>Strategic Override</h2>
+            <span>Commit the opening coaching stance</span>
+          </div>
+          <div className="tactic-option-grid">
+            {tacticOptions.map((option) => (
               <button
-                key={entry.player.id}
-                className={`player-tile ${
-                  entry.player.id === props.selectedPlayerId ? "player-tile-active" : ""
+                key={option.key}
+                type="button"
+                className={`tactic-option-card ${
+                  props.plannedTacticKey === option.key ? "tactic-option-card-active" : ""
                 }`}
-                onClick={() => props.onSelectPlayer(entry.player.id)}
+                aria-pressed={props.plannedTacticKey === option.key}
+                onClick={() => props.onChooseTactic(option.key)}
               >
-                <span className="player-seed">#{entry.seed}</span>
-                <strong>{entry.player.name}</strong>
-                <small>{entry.player.styleLabel}</small>
+                <div className="tactic-option-top">
+                  <span className={`accent-dot accent-dot-${option.accent}`} />
+                  <span className="tactic-cue">{option.cue}</span>
+                </div>
+                <strong>{option.label}</strong>
+                <p>{option.summary}</p>
               </button>
             ))}
           </div>
-        </div>
-
-        <div className="surface-card">
-          <p className="surface-label">Pre-Match Identity</p>
-          <div className="tactic-grid">
-            {(Object.keys(tacticLibrary) as TacticKey[]).map((key) => (
-              <button
-                key={key}
-                className={`tactic-card ${
-                  props.plannedTacticKey === key ? "tactic-card-active" : ""
-                }`}
-                onClick={() => props.onChooseTactic(key)}
-              >
-                <strong>{tacticLabels[key]}</strong>
-                <span>{tacticDescriptions[key]}</span>
-                <small>
-                  {tacticOptions.find((entry) => entry.label === tacticLabels[key])?.tempo ?? tacticLibrary[key].tempo}
-                  {" · "}
-                  {tacticLibrary[key].riskProfile.replace("_", " ")}
-                </small>
-              </button>
-            ))}
-          </div>
-        </div>
+        </section>
       </div>
     </section>
   );

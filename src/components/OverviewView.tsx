@@ -1,5 +1,6 @@
 import { playerMap, seededPlayers } from "../game/content/players";
-import { tacticLibrary } from "../game/content/tactics";
+import { tacticOptions } from "../game/content/tactics";
+import { deriveThreatReport } from "../game/core/intel";
 import type { TournamentState } from "../game/tournament/tournament";
 import type { TacticKey } from "../game/store/store";
 
@@ -12,103 +13,179 @@ interface OverviewViewProps {
   onReset: () => void;
 }
 
-const tacticKeyList = Object.keys(tacticLibrary) as TacticKey[];
+function initials(name: string) {
+  return name
+    .split(" ")
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
+}
 
 export function OverviewView(props: OverviewViewProps) {
-  const selected = seededPlayers.find((entry) => entry.player.id === props.selectedPlayerId) ?? seededPlayers[0];
+  const selected =
+    seededPlayers.find((entry) => entry.player.id === props.selectedPlayerId) ?? seededPlayers[0];
   const currentRound = props.tournament.rounds[props.tournament.currentRoundIndex];
   const managedMatch = currentRound.matches.find((match) => match.managed);
   const opponentId =
     managedMatch?.sideAId === props.selectedPlayerId ? managedMatch.sideBId : managedMatch?.sideAId;
   const opponent = opponentId ? playerMap[opponentId] : undefined;
+  const threatReport = opponent ? deriveThreatReport(selected.player, opponent) : null;
 
   return (
-    <section className="phase-layout">
-      <div className="phase-header">
+    <section className="screen-shell">
+      <div className="screen-header">
         <div>
-          <p className="eyebrow">Bracket Overview</p>
-          <h2>
-            {selected.player.name} is live in the {currentRound.name}.
-          </h2>
-          <p className="section-copy">
-            Every non-managed match has already been resolved. You only play the tie your athlete reaches.
+          <p className="screen-kicker">
+            {props.tournament.name} - {props.tournament.tier}
+          </p>
+          <h1 className="screen-title">Tournament Command Center</h1>
+          <p className="screen-copy">
+            Quarter-by-quarter visibility on the bracket, the next opponent, and the tactic lock-in
+            before the managed tie begins.
           </p>
         </div>
-        <div className="header-actions">
-          <button className="secondary-button" onClick={props.onReset}>
-            Reset run
-          </button>
-          {props.onStartManagedMatch && (
-            <button className="primary-button" onClick={props.onStartManagedMatch}>
-              Start managed match
-            </button>
-          )}
+        <div className="screen-meta">
+          <span>Round: {currentRound.name}</span>
+          <span>Prize Pool: ${props.tournament.prizePoolUsd.toLocaleString()}</span>
         </div>
       </div>
 
-      <div className="overview-grid">
-        <div className="surface-card">
-          <p className="surface-label">Next Opponent</p>
-          {opponent ? (
-            <div className="selected-player">
-              <div>
-                <h3>{opponent.name}</h3>
-                <p>
-                  {opponent.nationality} · {opponent.styleLabel}
-                </p>
-              </div>
-              <div className="rating-chip">
-                <strong>{currentRound.name}</strong>
-                <span>Round</span>
-              </div>
-            </div>
-          ) : (
-            <p>The tournament is waiting on your result.</p>
-          )}
-        </div>
+      <div className="overview-grid-v2">
+        <section className="command-panel">
+          <div className="panel-header">
+            <h2>Next Opponent</h2>
+            <span className={`chip chip-threat-${threatReport?.level.toLowerCase() ?? "low"}`}>
+              Threat: {threatReport?.level ?? "LOW"}
+            </span>
+          </div>
 
-        <div className="surface-card">
-          <p className="surface-label">Tactic Lock-In</p>
-          <div className="tactic-grid">
-            {tacticKeyList.map((key) => (
+          {opponent ? (
+            <>
+              <div className="opponent-identity">
+                <div className="dossier-avatar dossier-avatar-small">{initials(opponent.name)}</div>
+                <div>
+                  <h3>{opponent.name}</h3>
+                  <p>
+                    {opponent.nationality} · {opponent.styleLabel}
+                  </p>
+                </div>
+              </div>
+
+              <div className="dossier-metrics compact-metrics">
+                {threatReport?.strengths.map((strength) => (
+                  <div key={strength.label}>
+                    <div className="metric-row">
+                      <span>{strength.label}</span>
+                      <strong>{strength.value}</strong>
+                    </div>
+                    <div className="metric-track">
+                      <div
+                        className={`metric-track-fill metric-track-fill-${strength.accent}`}
+                        style={{ width: `${strength.value}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <p className="panel-summary">{threatReport?.matchupSummary}</p>
+            </>
+          ) : (
+            <p className="panel-summary">The bracket is waiting on your managed match result.</p>
+          )}
+        </section>
+
+        <section className="command-panel command-panel-wide">
+          <div className="panel-header">
+            <h2>Tactic Lock-In</h2>
+            <span>Enter the match with a clear identity</span>
+          </div>
+
+          <div className="tactic-option-grid tactic-option-grid-wide">
+            {tacticOptions.map((option) => (
               <button
-                key={key}
-                className={`tactic-card ${
-                  props.plannedTacticKey === key ? "tactic-card-active" : ""
+                key={option.key}
+                type="button"
+                className={`tactic-option-card ${
+                  props.plannedTacticKey === option.key ? "tactic-option-card-active" : ""
                 }`}
-                onClick={() => props.onChooseTactic(key)}
+                aria-pressed={props.plannedTacticKey === option.key}
+                onClick={() => props.onChooseTactic(option.key)}
               >
-                <strong>{tacticLibrary[key].label}</strong>
-                <span>
-                  {tacticLibrary[key].tempo} tempo · {tacticLibrary[key].riskProfile.replace("_", " ")}
-                </span>
+                <div className="tactic-option-top">
+                  <span className={`accent-dot accent-dot-${option.accent}`} />
+                  <span className="tactic-cue">{option.cue}</span>
+                </div>
+                <strong>{option.label}</strong>
+                <p>{option.summary}</p>
               </button>
             ))}
           </div>
-        </div>
 
-        <div className="surface-card surface-card-wide">
-          <p className="surface-label">Tournament Path</p>
-          <div className="round-columns">
+          <div className="match-launch-row">
+            <div className="managed-chip">
+              <span className="dossier-avatar dossier-avatar-tiny">{initials(selected.player.name)}</span>
+              <div>
+                <small>Your Athlete</small>
+                <strong>{selected.player.name}</strong>
+              </div>
+            </div>
+
+            <div className="match-launch-actions">
+              <button className="command-button command-button-secondary" onClick={props.onReset}>
+                Reset Run
+              </button>
+              {props.onStartManagedMatch && (
+                <button className="command-button command-button-primary" onClick={props.onStartManagedMatch}>
+                  Enter Match
+                </button>
+              )}
+            </div>
+          </div>
+        </section>
+
+        <section className="command-panel command-panel-full">
+          <div className="panel-header">
+            <h2>Knockout Tree</h2>
+            <span>The managed lane stays highlighted as the tournament resolves</span>
+          </div>
+
+          <div className="bracket-columns">
             {props.tournament.rounds.map((round) => (
-              <div key={round.name} className="round-column">
+              <div key={round.name} className="bracket-round">
                 <h3>{round.name}</h3>
-                <div className="match-stack">
+                <div className="bracket-stack">
                   {round.matches.map((match) => {
                     const sideA = playerMap[match.sideAId];
                     const sideB = playerMap[match.sideBId];
+                    const pendingManaged = match.managed && !match.completed;
+
                     return (
                       <article
                         key={match.id}
-                        className={`match-card ${match.managed ? "match-card-managed" : ""}`}
+                        className={`bracket-card ${match.managed ? "bracket-card-managed" : ""}`}
                       >
-                        <div className="match-row">
-                          <strong>{sideA.name}</strong>
-                          {match.winnerId === sideA.id && <span className="winner-badge">W</span>}
+                        <div className="bracket-row">
+                          <span>{sideA.name}</span>
+                          <span>
+                            {match.completed && match.winnerId === sideA.id
+                              ? "W"
+                              : pendingManaged && sideA.id === props.selectedPlayerId
+                                ? "UP NEXT"
+                                : ""}
+                          </span>
                         </div>
-                        <div className="match-row">
-                          <strong>{sideB.name}</strong>
-                          {match.winnerId === sideB.id && <span className="winner-badge">W</span>}
+                        <div className="bracket-row">
+                          <span>{sideB.name}</span>
+                          <span>
+                            {match.completed && match.winnerId === sideB.id
+                              ? "W"
+                              : pendingManaged && sideB.id === props.selectedPlayerId
+                                ? "UP NEXT"
+                                : pendingManaged
+                                  ? "LIVE"
+                                  : ""}
+                          </span>
                         </div>
                         <small>{match.completed ? match.scoreline : "Managed match pending"}</small>
                       </article>
@@ -118,7 +195,7 @@ export function OverviewView(props: OverviewViewProps) {
               </div>
             ))}
           </div>
-        </div>
+        </section>
       </div>
     </section>
   );

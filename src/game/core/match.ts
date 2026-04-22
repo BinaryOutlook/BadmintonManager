@@ -1,7 +1,11 @@
-import { describePoint } from "../commentary/commentary";
+import { describePoint, describeSet } from "../commentary/commentary";
 import { SeededRng } from "./rng";
 import {
   deriveProfile,
+  directiveRiskModifier,
+  directiveShotModifier,
+  directiveStaminaBurn,
+  directiveZoneModifier,
   getRelevantShotSkill,
   riskModifier,
   scorePressure,
@@ -13,7 +17,9 @@ import {
 import type {
   CourtZone,
   LiveCompetitorState,
+  LiveDirective,
   LiveMatchSession,
+  MatchFeedEvent,
   MatchInput,
   MatchResult,
   MatchStats,
@@ -42,14 +48,14 @@ function opposite(side: Side): Side {
   return side === "A" ? "B" : "A";
 }
 
-function defaultCompetitorState(tactic: MatchInput["tacticA"], stamina: number): LiveCompetitorState {
-  return {
-    stamina,
-    focusShift: 0,
-    composureShift: 0,
-    aggressionShift: 0,
-    tactic
-  };
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function formatClock(totalSeconds: number) {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
 function baseDifficulty(shotType: ShotType) {
@@ -73,13 +79,33 @@ function baseDifficulty(shotType: ShotType) {
   }
 }
 
+function defaultCompetitorState(tactic: MatchInput["tacticA"], stamina: number): LiveCompetitorState {
+  return {
+    stamina,
+    focusShift: 0,
+    composureShift: 0,
+    aggressionShift: 0,
+    tactic,
+    momentum: 50,
+    errors: 0,
+    smashPeakKph: 0,
+    directivePointsRemaining: 0,
+    initialStamina: stamina
+  };
+}
+
+function getActiveDirective(state: LiveCompetitorState) {
+  return state.directivePointsRemaining > 0 ? state.directive : undefined;
+}
+
 function shotWeights(input: {
   shotIndex: number;
   incomingBonus: number;
   aggression: number;
   tactic: LiveCompetitorState["tactic"];
+  directive?: LiveDirective;
 }): Array<{ item: ShotType; weight: number }> {
-  const { shotIndex, incomingBonus, aggression, tactic } = input;
+  const { shotIndex, incomingBonus, aggression, tactic, directive } = input;
   const attackingTilt = aggression / 18 + incomingBonus / 8;
 
   return SHOT_TYPES.map((shotType) => {
@@ -113,11 +139,27 @@ function shotWeights(input: {
       weight += 5;
     }
 
+    if (tactic.pressurePattern === "wide_pressure" && (shotType === "drive" || shotType === "drop")) {
+      weight += 4;
+    }
+
+    if (tactic.pressurePattern === "defensive_absorb" && (shotType === "lift" || shotType === "block")) {
+      weight += 5;
+    }
+
+    weight += directiveShotModifier(directive, shotType);
+
     return { item: shotType, weight: Math.max(1, weight) };
   });
 }
 
-function zoneWeights(shotType: ShotType): Array<{ item: CourtZone; weight: number }> {
+function zoneWeights(input: {
+  shotType: ShotType;
+  directive?: LiveDirective;
+  defender: MatchInput["playerA"];
+}): Array<{ item: CourtZone; weight: number }> {
+  const { shotType, directive, defender } = input;
+
   return COURT_ZONES.map((zone) => {
     let weight = 3;
 
@@ -137,6 +179,8 @@ function zoneWeights(shotType: ShotType): Array<{ item: CourtZone; weight: numbe
       weight += 1;
     }
 
+    weight += directiveZoneModifier(directive, zone, defender);
+
     return { item: zone, weight };
   });
 }
@@ -149,54 +193,6 @@ function createScoreboard(scoreA: number, scoreB: number) {
   return `${scoreA}-${scoreB}`;
 }
 
-function createStatsFromSets(sets: SetSummary[]): MatchStats {
-  const empty: MatchStats = {
-    winnersA: 0,
-    winnersB: 0,
-    unforcedErrorsA: 0,
-    unforcedErrorsB: 0,
-    longestRally: 0,
-    totalPoints: 0
-  };
-
-  return sets.reduce<MatchStats>((stats, set) => {
-    for (const point of set.points) {
-      stats.totalPoints += 1;
-      stats.longestRally = Math.max(stats.longestRally, point.rallyLength);
-
-      const finalShot = point.shots.at(-1);
-
-      if (point.reason === "winner" || point.reason === "forced_error") {
-        if (point.winner === "A") {
-          stats.winnersA += 1;
-        } else {
-          stats.winnersB += 1;
-        }
-      }
-
-      if (point.reason === "unforced_error" || point.reason === "net" || point.reason === "out") {
-        const loser = point.winner === "A" ? "B" : "A";
-
-        if (loser === "A") {
-          stats.unforcedErrorsA += 1;
-        } else {
-          stats.unforcedErrorsB += 1;
-        }
-      }
-
-      if (finalShot?.outcome === "winner") {
-        if (finalShot.actor === "A") {
-          stats.winnersA += 0;
-        } else {
-          stats.winnersB += 0;
-        }
-      }
-    }
-
-    return stats;
-  }, empty);
-}
-
 function createPointSummary(input: Omit<PointSummary, "summary">, matchInput: MatchInput): PointSummary {
   const summaryBase = {
     ...input,
@@ -207,6 +203,35 @@ function createPointSummary(input: Omit<PointSummary, "summary">, matchInput: Ma
     ...summaryBase,
     summary: describePoint(summaryBase, matchInput)
   };
+}
+
+function estimateSmashSpeed(player: MatchInput["playerA"], quality: number) {
+  return clamp(
+    Math.round(
+      player.ratings.technical.smash * 2.45 +
+        player.ratings.physical.explosivenessJump * 1.25 +
+        Math.max(0, quality) * 1.15
+    ),
+    240,
+    428
+  );
+}
+
+function pushFeed(
+  session: LiveMatchSession,
+  kind: MatchFeedEvent["kind"],
+  emphasis: MatchFeedEvent["emphasis"],
+  title: string,
+  detail?: string
+) {
+  session.feed.push({
+    id: `${kind}-${session.feed.length + 1}-${session.clockSeconds}`,
+    kind,
+    emphasis,
+    clockLabel: formatClock(session.clockSeconds),
+    title,
+    detail
+  });
 }
 
 function resolveRally(args: {
@@ -233,6 +258,7 @@ function resolveRally(args: {
     const defender = activeSide === "A" ? input.playerB : input.playerA;
     const defenderProfile = activeSide === "A" ? profileB : profileA;
     const defenderState = activeSide === "A" ? competitorB : competitorA;
+    const directive = getActiveDirective(actorState);
     const shotType =
       shotIndex === 0
         ? ("serve" as const)
@@ -241,21 +267,32 @@ function resolveRally(args: {
               shotIndex,
               incomingBonus,
               aggression: actor.ratings.mental.aggression + actorState.aggressionShift,
-              tactic: actorState.tactic
+              tactic: actorState.tactic,
+              directive
             })
           );
     const targetZone =
-      shotType === "serve" ? rng.pick(["mid_left", "mid_center", "mid_right"] as const) : rng.weightedPick(zoneWeights(shotType));
+      shotType === "serve"
+        ? rng.pick(["mid_left", "mid_center", "mid_right"] as const)
+        : rng.weightedPick(
+            zoneWeights({
+              shotType,
+              directive,
+              defender
+            })
+          );
     const actorPressure = activeSide === "A" ? scorePressure(scoreA, scoreB) : scorePressure(scoreB, scoreA);
     const skill =
       getRelevantShotSkill(actor, shotType) +
       actorState.focusShift * 0.3 +
       actorState.composureShift * 0.15 +
       actorProfile.attackPressure * 0.08 +
-      tacticShotModifier(actorState.tactic, shotType);
+      tacticShotModifier(actorState.tactic, shotType) +
+      directiveShotModifier(directive, shotType) * 0.7;
     const difficulty =
       baseDifficulty(shotType) +
       riskModifier(actorState.tactic.riskProfile) +
+      directiveRiskModifier(directive) +
       targetZoneModifier(targetZone) +
       (shotType === "smash" ? actorState.aggressionShift * 0.18 : 0);
     const execution =
@@ -274,9 +311,10 @@ function resolveRally(args: {
         targetDifficulty: Math.round(difficulty),
         executionScore: Math.round(execution),
         quality,
-        outcome: rng.chance(shotType === "serve" || shotType === "drop" || shotType === "net" ? 0.72 : 0.35)
-          ? "net"
-          : "out"
+        outcome:
+          rng.chance(shotType === "serve" || shotType === "drop" || shotType === "net" ? 0.72 : 0.35)
+            ? "net"
+            : "out"
       };
 
       shots.push(finalShot);
@@ -335,7 +373,8 @@ function resolveRally(args: {
       quality +
       (shotType === "smash" ? 12 : 0) +
       (shotType === "net" || shotType === "drop" ? 6 : 0) +
-      tempoModifiers(actorState.tactic).attack;
+      tempoModifiers(actorState.tactic).attack +
+      (directive === "push_pace" ? 4 : 0);
     const retrievalScore =
       defender.ratings.technical.defenseRetrieval * 0.42 +
       defender.ratings.physical.footworkSpeed * 0.24 +
@@ -379,7 +418,6 @@ function resolveRally(args: {
         outcome: "weak_return"
       });
       incomingBonus = 14;
-      activeSide = activeSide;
       continue;
     }
 
@@ -439,8 +477,10 @@ function resolveRally(args: {
 
 function applyPointFatigue(session: LiveMatchSession, point: PointSummary) {
   const rallyBurn = 1.1 + point.rallyLength * 0.08;
-  const tempoA = tempoModifiers(session.competitorA.tactic).staminaBurn;
-  const tempoB = tempoModifiers(session.competitorB.tactic).staminaBurn;
+  const directiveBurnA = directiveStaminaBurn(getActiveDirective(session.competitorA));
+  const directiveBurnB = directiveStaminaBurn(getActiveDirective(session.competitorB));
+  const tempoA = tempoModifiers(session.competitorA.tactic).staminaBurn * directiveBurnA;
+  const tempoB = tempoModifiers(session.competitorB.tactic).staminaBurn * directiveBurnB;
 
   session.competitorA.stamina = Math.max(38, session.competitorA.stamina - rallyBurn * tempoA);
   session.competitorB.stamina = Math.max(38, session.competitorB.stamina - rallyBurn * tempoB);
@@ -469,6 +509,181 @@ function finalizePendingTalk(target: LiveCompetitorState, teamTalk?: TeamTalk) {
   }
 }
 
+function consumeDirective(state: LiveCompetitorState) {
+  if (state.directivePointsRemaining <= 0) {
+    state.directive = undefined;
+    state.directivePointsRemaining = 0;
+    return;
+  }
+
+  state.directivePointsRemaining -= 1;
+
+  if (state.directivePointsRemaining <= 0) {
+    state.directive = undefined;
+    state.directivePointsRemaining = 0;
+  }
+}
+
+function applyMomentumShift(session: LiveMatchSession, point: PointSummary) {
+  const pressureWeight = 4 + scorePressure(session.currentScoreA, session.currentScoreB) * 0.22;
+  const swing = pressureWeight + point.rallyLength * 0.18;
+
+  if (point.winner === "A") {
+    session.competitorA.momentum = clamp(session.competitorA.momentum + swing, 0, 100);
+    session.competitorB.momentum = clamp(session.competitorB.momentum - swing * 0.72, 0, 100);
+  } else {
+    session.competitorB.momentum = clamp(session.competitorB.momentum + swing, 0, 100);
+    session.competitorA.momentum = clamp(session.competitorA.momentum - swing * 0.72, 0, 100);
+  }
+}
+
+function updateTelemetry(session: LiveMatchSession, point: PointSummary) {
+  for (const shot of point.shots) {
+    if (shot.shotType !== "smash") {
+      continue;
+    }
+
+    const actor = shot.actor === "A" ? session.input.playerA : session.input.playerB;
+    const competitor = shot.actor === "A" ? session.competitorA : session.competitorB;
+    competitor.smashPeakKph = Math.max(competitor.smashPeakKph, estimateSmashSpeed(actor, shot.quality));
+  }
+
+  const loser = point.winner === "A" ? session.competitorB : session.competitorA;
+  const errorReason =
+    point.reason === "unforced_error" ||
+    point.reason === "net" ||
+    point.reason === "out" ||
+    point.reason === "left_long";
+
+  if (errorReason) {
+    loser.errors += 1;
+  }
+}
+
+function createPointFeed(session: LiveMatchSession, point: PointSummary) {
+  const winnerName = point.winner === "A" ? session.input.playerA.name : session.input.playerB.name;
+  const loserName = point.winner === "A" ? session.input.playerB.name : session.input.playerA.name;
+  const managedPressure =
+    point.reason === "winner" || point.reason === "forced_error" ? "positive" : "neutral";
+  const detailParts: string[] = [`Set ${session.currentSetNumber} · ${point.scoreboard}`];
+
+  const winnerState = point.winner === "A" ? session.competitorA : session.competitorB;
+
+  if (winnerState.smashPeakKph > 0 && point.shots.some((shot) => shot.actor === point.winner && shot.shotType === "smash")) {
+    detailParts.push(`Peak smash ${winnerState.smashPeakKph} km/h`);
+  }
+
+  pushFeed(session, "point", managedPressure, point.summary, detailParts.join(" • "));
+
+  if (point.rallyLength >= 18) {
+    pushFeed(
+      session,
+      "warning",
+      "danger",
+      `Long rally (${point.rallyLength} shots). Fatigue is becoming a factor.`,
+      `${winnerName} and ${loserName} are both carrying late-rally load.`
+    );
+  }
+
+  if (winnerState.directive === "target_backhand" || winnerState.directivePointsRemaining > 0) {
+    const targetedSide = point.winner === "A" ? session.input.playerB : session.input.playerA;
+    const backhandSide = targetedSide.handedness === "right" ? "left" : "right";
+    const pressedBackhand = point.shots.some(
+      (shot) => shot.actor === point.winner && shot.targetZone.endsWith(backhandSide)
+    );
+
+    if (pressedBackhand) {
+      pushFeed(
+        session,
+        "alert",
+        "info",
+        `${winnerName} keeps pressing the backhand channel.`,
+        `Repeated pressure is forcing ${loserName} into cramped replies.`
+      );
+    }
+  }
+
+  const staminaWarningSide =
+    session.competitorA.stamina < 54 ? "A" : session.competitorB.stamina < 54 ? "B" : undefined;
+
+  if (staminaWarningSide) {
+    const playerName = staminaWarningSide === "A" ? session.input.playerA.name : session.input.playerB.name;
+    const staminaValue =
+      staminaWarningSide === "A" ? Math.round(session.competitorA.stamina) : Math.round(session.competitorB.stamina);
+
+    pushFeed(
+      session,
+      "warning",
+      "danger",
+      `${playerName} is showing clear stamina drain.`,
+      `Telemetry has dropped to ${staminaValue}%.`
+    );
+  }
+}
+
+function createStatsFromSets(
+  sets: SetSummary[],
+  competitorA: LiveCompetitorState,
+  competitorB: LiveCompetitorState
+): MatchStats {
+  const empty: MatchStats = {
+    winnersA: 0,
+    winnersB: 0,
+    unforcedErrorsA: 0,
+    unforcedErrorsB: 0,
+    totalSmashesA: 0,
+    totalSmashesB: 0,
+    peakSmashSpeedA: Math.round(competitorA.smashPeakKph),
+    peakSmashSpeedB: Math.round(competitorB.smashPeakKph),
+    staminaDrainA: Math.round(competitorA.initialStamina - competitorA.stamina),
+    staminaDrainB: Math.round(competitorB.initialStamina - competitorB.stamina),
+    longestRally: 0,
+    totalPoints: 0
+  };
+
+  return sets.reduce<MatchStats>((stats, set) => {
+    for (const point of set.points) {
+      stats.totalPoints += 1;
+      stats.longestRally = Math.max(stats.longestRally, point.rallyLength);
+
+      for (const shot of point.shots) {
+        if (shot.shotType === "smash") {
+          if (shot.actor === "A") {
+            stats.totalSmashesA += 1;
+          } else {
+            stats.totalSmashesB += 1;
+          }
+        }
+      }
+
+      if (point.reason === "winner" || point.reason === "forced_error") {
+        if (point.winner === "A") {
+          stats.winnersA += 1;
+        } else {
+          stats.winnersB += 1;
+        }
+      }
+
+      if (
+        point.reason === "unforced_error" ||
+        point.reason === "net" ||
+        point.reason === "out" ||
+        point.reason === "left_long"
+      ) {
+        const loser = point.winner === "A" ? "B" : "A";
+
+        if (loser === "A") {
+          stats.unforcedErrorsA += 1;
+        } else {
+          stats.unforcedErrorsB += 1;
+        }
+      }
+    }
+
+    return stats;
+  }, empty);
+}
+
 export function createMatchSession(input: MatchInput): LiveMatchSession {
   return {
     input,
@@ -476,11 +691,54 @@ export function createMatchSession(input: MatchInput): LiveMatchSession {
     setsWonA: 0,
     setsWonB: 0,
     setSummaries: [],
+    currentSetNumber: 1,
+    currentScoreA: 0,
+    currentScoreB: 0,
+    currentSetPoints: [],
     currentServer: (input.seed & 1) === 0 ? "A" : "B",
     competitorA: defaultCompetitorState(input.tacticA, input.playerA.ratings.physical.stamina),
     competitorB: defaultCompetitorState(input.tacticB, input.playerB.ratings.physical.stamina),
+    intermission: false,
+    feed: [],
+    clockSeconds: 0,
     complete: false
   };
+}
+
+export function applyDirective(
+  session: LiveMatchSession,
+  side: Side,
+  directive: LiveDirective
+): LiveMatchSession {
+  if (session.complete) {
+    return session;
+  }
+
+  const nextSession: LiveMatchSession = {
+    ...session,
+    competitorA: { ...session.competitorA },
+    competitorB: { ...session.competitorB },
+    feed: [...session.feed]
+  };
+
+  const target = side === "A" ? nextSession.competitorA : nextSession.competitorB;
+  target.directive = directive;
+  target.directivePointsRemaining = 3;
+
+  pushFeed(
+    nextSession,
+    "directive",
+    directive === "push_pace" ? "positive" : "info",
+    `${side === "A" ? nextSession.input.playerA.name : nextSession.input.playerB.name} queues ${
+      directive === "target_backhand"
+        ? "Target Backhand"
+        : directive === "safe_play_lift"
+          ? "Safe Play (Lift)"
+          : "Push Pace"
+    }.`
+  );
+
+  return nextSession;
 }
 
 export function applyTeamTalk(session: LiveMatchSession, side: Side, teamTalk: TeamTalk): LiveMatchSession {
@@ -491,7 +749,7 @@ export function applyTeamTalk(session: LiveMatchSession, side: Side, teamTalk: T
   };
 }
 
-export function simulateNextSet(session: LiveMatchSession): LiveMatchSession {
+export function simulateNextPoint(session: LiveMatchSession): LiveMatchSession {
   if (session.complete) {
     return session;
   }
@@ -500,85 +758,94 @@ export function simulateNextSet(session: LiveMatchSession): LiveMatchSession {
     ...session,
     competitorA: { ...session.competitorA },
     competitorB: { ...session.competitorB },
-    setSummaries: [...session.setSummaries]
+    setSummaries: [...session.setSummaries],
+    currentSetPoints: [...session.currentSetPoints],
+    feed: [...session.feed]
   };
 
-  finalizePendingTalk(nextSession.competitorA, nextSession.pendingTalkA);
-  finalizePendingTalk(nextSession.competitorB, nextSession.pendingTalkB);
-  nextSession.pendingTalkA = undefined;
-  nextSession.pendingTalkB = undefined;
+  if (nextSession.intermission) {
+    finalizePendingTalk(nextSession.competitorA, nextSession.pendingTalkA);
+    finalizePendingTalk(nextSession.competitorB, nextSession.pendingTalkB);
+    nextSession.pendingTalkA = undefined;
+    nextSession.pendingTalkB = undefined;
+    nextSession.intermission = false;
+  }
 
   const rng = new SeededRng(nextSession.rngState);
-  let scoreA = 0;
-  let scoreB = 0;
-  const points: PointSummary[] = [];
+  const point = resolveRally({
+    input: nextSession.input,
+    competitorA: nextSession.competitorA,
+    competitorB: nextSession.competitorB,
+    scoreA: nextSession.currentScoreA,
+    scoreB: nextSession.currentScoreB,
+    server: nextSession.currentServer,
+    rng
+  });
 
-  while (true) {
-    const point = resolveRally({
-      input: nextSession.input,
-      competitorA: nextSession.competitorA,
-      competitorB: nextSession.competitorB,
-      scoreA,
-      scoreB,
-      server: nextSession.currentServer,
-      rng
-    });
-
-    points.push(point);
-    applyPointFatigue(nextSession, point);
-
-    if (point.winner === "A") {
-      scoreA += 1;
-      nextSession.currentServer = "A";
-    } else {
-      scoreB += 1;
-      nextSession.currentServer = "B";
-    }
-
-    const reachedCap = scoreA === 30 || scoreB === 30;
-    const twoPointMargin = Math.abs(scoreA - scoreB) >= 2;
-    const reachedGamePoint = scoreA >= 21 || scoreB >= 21;
-
-    if (reachedCap || (reachedGamePoint && twoPointMargin)) {
-      break;
-    }
+  if (point.winner === "A") {
+    nextSession.currentScoreA += 1;
+    nextSession.currentServer = "A";
+  } else {
+    nextSession.currentScoreB += 1;
+    nextSession.currentServer = "B";
   }
 
-  const winner: Side = scoreA > scoreB ? "A" : "B";
-  const setSummary: SetSummary = {
-    winner,
-    scoreA,
-    scoreB,
-    points
+  const scoredPoint: PointSummary = {
+    ...point,
+    scoreboard: createScoreboard(nextSession.currentScoreA, nextSession.currentScoreB)
   };
 
-  nextSession.setSummaries.push(setSummary);
+  nextSession.currentSetPoints.push(scoredPoint);
+  applyPointFatigue(nextSession, scoredPoint);
+  applyMomentumShift(nextSession, scoredPoint);
+  updateTelemetry(nextSession, scoredPoint);
+  consumeDirective(nextSession.competitorA);
+  consumeDirective(nextSession.competitorB);
 
-  if (winner === "A") {
-    nextSession.setsWonA += 1;
-  } else {
-    nextSession.setsWonB += 1;
+  nextSession.clockSeconds += 10 + scoredPoint.rallyLength * 2 + rng.nextInt(0, 8);
+  createPointFeed(nextSession, scoredPoint);
+
+  const reachedCap = nextSession.currentScoreA === 30 || nextSession.currentScoreB === 30;
+  const twoPointMargin = Math.abs(nextSession.currentScoreA - nextSession.currentScoreB) >= 2;
+  const reachedGamePoint = nextSession.currentScoreA >= 21 || nextSession.currentScoreB >= 21;
+
+  if (reachedCap || (reachedGamePoint && twoPointMargin)) {
+    const winner: Side = nextSession.currentScoreA > nextSession.currentScoreB ? "A" : "B";
+    const setSummary: SetSummary = {
+      winner,
+      scoreA: nextSession.currentScoreA,
+      scoreB: nextSession.currentScoreB,
+      points: nextSession.currentSetPoints
+    };
+
+    nextSession.setSummaries.push(setSummary);
+    pushFeed(nextSession, "set", winner === "A" ? "positive" : "info", describeSet(setSummary, nextSession.input));
+
+    if (winner === "A") {
+      nextSession.setsWonA += 1;
+    } else {
+      nextSession.setsWonB += 1;
+    }
+
+    if (nextSession.setsWonA === 2 || nextSession.setsWonB === 2) {
+      nextSession.complete = true;
+      nextSession.winner = nextSession.setsWonA > nextSession.setsWonB ? "A" : "B";
+    } else {
+      recoverBetweenSets(nextSession);
+      nextSession.currentSetNumber += 1;
+      nextSession.currentScoreA = 0;
+      nextSession.currentScoreB = 0;
+      nextSession.currentSetPoints = [];
+      nextSession.intermission = true;
+    }
   }
 
-  recoverBetweenSets(nextSession);
   nextSession.rngState = rng.snapshot();
-
-  if (nextSession.setsWonA === 2 || nextSession.setsWonB === 2) {
-    nextSession.complete = true;
-    nextSession.winner = nextSession.setsWonA > nextSession.setsWonB ? "A" : "B";
-  }
-
   return nextSession;
 }
 
-export function simulateMatch(input: MatchInput): MatchResult {
-  let session = createMatchSession(input);
-
-  while (!session.complete) {
-    session = simulateNextSet(session);
-  }
-
-  const stats = createStatsFromSets(session.setSummaries);
+export function getMatchResultFromSession(session: LiveMatchSession): MatchResult {
+  const stats = createStatsFromSets(session.setSummaries, session.competitorA, session.competitorB);
 
   return {
     winner: session.winner ?? "A",
@@ -588,4 +855,14 @@ export function simulateMatch(input: MatchInput): MatchResult {
     stats,
     scoreline: session.setSummaries.map((set) => `${set.scoreA}-${set.scoreB}`).join(", ")
   };
+}
+
+export function simulateMatch(input: MatchInput): MatchResult {
+  let session = createMatchSession(input);
+
+  while (!session.complete) {
+    session = simulateNextPoint(session);
+  }
+
+  return getMatchResultFromSession(session);
 }

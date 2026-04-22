@@ -1,8 +1,14 @@
 import { create } from "zustand";
 import { seededPlayers, playerMap } from "../content/players";
 import { tacticLibrary } from "../content/tactics";
-import { applyTeamTalk, createMatchSession, simulateNextSet as runNextSet } from "../core/match";
-import type { LiveMatchSession, MatchTactic, Side, TeamTalk } from "../core/models";
+import {
+  applyDirective as queueDirective,
+  applyTeamTalk,
+  createMatchSession,
+  getMatchResultFromSession,
+  simulateNextPoint as runNextPoint
+} from "../core/match";
+import type { LiveDirective, LiveMatchSession, MatchTactic, Side, TeamTalk } from "../core/models";
 import {
   advanceTournament,
   createManagedMatchInput,
@@ -37,8 +43,9 @@ interface TournamentStoreState {
   chooseTactic: (tacticKey: TacticKey) => void;
   startTournament: () => void;
   startManagedMatch: () => void;
+  applyDirective: (directive: LiveDirective) => void;
   applyTalk: (teamTalk: TeamTalk) => void;
-  simulateNextSet: () => void;
+  simulateNextPoint: () => void;
   advanceAfterMatch: () => void;
   reset: () => void;
 }
@@ -69,7 +76,7 @@ function persist(state: TournamentStoreState) {
   }
 
   const payload: PersistedSave = {
-    version: 1,
+    version: 2,
     selectedPlayerId: state.selectedPlayerId,
     plannedTacticKey: state.plannedTacticKey,
     seed: state.seed,
@@ -226,13 +233,31 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
       return next;
     });
   },
-  simulateNextSet: () => {
+  applyDirective: (directive) => {
     set((state) => {
       if (!state.liveMatch) {
         return state;
       }
 
-      const session = runNextSet(state.liveMatch.session);
+      const session = queueDirective(state.liveMatch.session, state.liveMatch.managedSide, directive);
+      const next = {
+        ...state,
+        liveMatch: {
+          ...state.liveMatch,
+          session
+        }
+      };
+      persist(next);
+      return next;
+    });
+  },
+  simulateNextPoint: () => {
+    set((state) => {
+      if (!state.liveMatch) {
+        return state;
+      }
+
+      const session = runNextPoint(state.liveMatch.session);
       const next = {
         ...state,
         liveMatch: {
@@ -254,23 +279,7 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
         tournament: state.tournament,
         seededEntries: seededPlayers,
         managedMatchId: state.liveMatch.matchId,
-        managedResult: {
-          winner: state.liveMatch.session.winner ?? "A",
-          setsWonA: state.liveMatch.session.setsWonA,
-          setsWonB: state.liveMatch.session.setsWonB,
-          setSummaries: state.liveMatch.session.setSummaries,
-          stats: {
-            winnersA: 0,
-            winnersB: 0,
-            unforcedErrorsA: 0,
-            unforcedErrorsB: 0,
-            longestRally: 0,
-            totalPoints: 0
-          },
-          scoreline: state.liveMatch.session.setSummaries
-            .map((set) => `${set.scoreA}-${set.scoreB}`)
-            .join(", ")
-        }
+        managedResult: getMatchResultFromSession(state.liveMatch.session)
       });
 
       const next = {

@@ -13,7 +13,9 @@ export const pressurePatternSchema = z.enum([
   "backhand_pressure",
   "front_court_control",
   "rear_court_grind",
-  "all_out_attack"
+  "all_out_attack",
+  "wide_pressure",
+  "defensive_absorb"
 ]);
 export type PressurePattern = z.infer<typeof pressurePatternSchema>;
 
@@ -27,6 +29,13 @@ export const teamTalkSchema = z.enum([
   "calm_down"
 ]);
 export type TeamTalk = z.infer<typeof teamTalkSchema>;
+
+export const liveDirectiveSchema = z.enum([
+  "target_backhand",
+  "safe_play_lift",
+  "push_pace"
+]);
+export type LiveDirective = z.infer<typeof liveDirectiveSchema>;
 
 export const shotTypeSchema = z.enum([
   "serve",
@@ -141,6 +150,12 @@ export interface MatchStats {
   winnersB: number;
   unforcedErrorsA: number;
   unforcedErrorsB: number;
+  totalSmashesA: number;
+  totalSmashesB: number;
+  peakSmashSpeedA: number;
+  peakSmashSpeedB: number;
+  staminaDrainA: number;
+  staminaDrainB: number;
   longestRally: number;
   totalPoints: number;
 }
@@ -168,6 +183,21 @@ export interface LiveCompetitorState {
   composureShift: number;
   aggressionShift: number;
   tactic: MatchTactic;
+  momentum: number;
+  errors: number;
+  smashPeakKph: number;
+  directive?: LiveDirective;
+  directivePointsRemaining: number;
+  initialStamina: number;
+}
+
+export interface MatchFeedEvent {
+  id: string;
+  kind: "directive" | "point" | "warning" | "alert" | "set";
+  emphasis: "neutral" | "positive" | "danger" | "info";
+  clockLabel: string;
+  title: string;
+  detail?: string;
 }
 
 export interface LiveMatchSession {
@@ -176,11 +206,18 @@ export interface LiveMatchSession {
   setsWonA: number;
   setsWonB: number;
   setSummaries: SetSummary[];
+  currentSetNumber: number;
+  currentScoreA: number;
+  currentScoreB: number;
+  currentSetPoints: PointSummary[];
   currentServer: Side;
   competitorA: LiveCompetitorState;
   competitorB: LiveCompetitorState;
   pendingTalkA?: TeamTalk;
   pendingTalkB?: TeamTalk;
+  intermission: boolean;
+  feed: MatchFeedEvent[];
+  clockSeconds: number;
   complete: boolean;
   winner?: Side;
 }

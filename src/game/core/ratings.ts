@@ -1,6 +1,7 @@
 import type {
   CourtZone,
   DerivedProfile,
+  LiveDirective,
   MatchTactic,
   Player,
   RiskProfile,
@@ -88,6 +89,10 @@ export function tacticShotModifier(tactic: MatchTactic, shotType: ShotType) {
       return shotType === "clear" || shotType === "lift" ? 5 : -1;
     case "all_out_attack":
       return shotType === "smash" ? 8 : shotType === "drop" ? 2 : -2;
+    case "wide_pressure":
+      return shotType === "drive" || shotType === "drop" ? 4 : shotType === "clear" ? 2 : 0;
+    case "defensive_absorb":
+      return shotType === "lift" || shotType === "block" ? 5 : shotType === "smash" ? -4 : 0;
   }
 }
 
@@ -100,6 +105,60 @@ export function tempoModifiers(tactic: MatchTactic) {
     case "conserve":
       return { attack: -4, staminaBurn: 0.88 };
   }
+}
+
+export function directiveRiskModifier(directive?: LiveDirective) {
+  switch (directive) {
+    case "target_backhand":
+      return 2;
+    case "safe_play_lift":
+      return -7;
+    case "push_pace":
+      return 5;
+    default:
+      return 0;
+  }
+}
+
+export function directiveShotModifier(directive: LiveDirective | undefined, shotType: ShotType) {
+  switch (directive) {
+    case "target_backhand":
+      return shotType === "drive" || shotType === "smash" || shotType === "drop" ? 4 : 0;
+    case "safe_play_lift":
+      return shotType === "lift" || shotType === "clear" || shotType === "block"
+        ? 5
+        : shotType === "smash"
+          ? -5
+          : 0;
+    case "push_pace":
+      return shotType === "drive" || shotType === "smash" ? 6 : shotType === "net" ? 2 : 0;
+    default:
+      return 0;
+  }
+}
+
+export function directiveStaminaBurn(directive?: LiveDirective) {
+  switch (directive) {
+    case "safe_play_lift":
+      return 0.94;
+    case "push_pace":
+      return 1.16;
+    default:
+      return 1;
+  }
+}
+
+export function directiveZoneModifier(
+  directive: LiveDirective | undefined,
+  zone: CourtZone,
+  defender: Player
+) {
+  if (directive !== "target_backhand") {
+    return 0;
+  }
+
+  const backhandSide = defender.handedness === "right" ? "left" : "right";
+  return zone.endsWith(backhandSide) ? 4 : 0;
 }
 
 export function teamTalkAdjustments(teamTalk: TeamTalk) {

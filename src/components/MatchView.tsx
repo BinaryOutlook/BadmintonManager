@@ -1,148 +1,277 @@
-import { playerMap } from "../game/content/players";
-import type { LiveMatchSession, Side, TeamTalk } from "../game/core/models";
+import { liveDirectiveOptions } from "../game/content/tactics";
+import { telemetryForCompetitor } from "../game/core/intel";
+import type { LiveDirective, LiveMatchSession, Side, TeamTalk } from "../game/core/models";
 
 interface MatchViewProps {
   session: LiveMatchSession;
   managedSide: Side;
   opponentName: string;
   opponentTacticLabel: string;
+  onApplyDirective: (directive: LiveDirective) => void;
   onApplyTalk: (teamTalk: TeamTalk) => void;
-  onSimulateNextSet: () => void;
+  onSimulateNextPoint: () => void;
   onAdvanceAfterMatch: () => void;
 }
 
 const teamTalks: Array<{ id: TeamTalk; label: string; copy: string }> = [
-  { id: "encourage", label: "Encourage", copy: "Lift composure and keep the athlete settled." },
-  { id: "demand_focus", label: "Demand Focus", copy: "Sharpen concentration and accept the edge." },
-  { id: "increase_tempo", label: "Increase Tempo", copy: "Push pace and try to seize initiative." },
-  { id: "calm_down", label: "Calm Down", copy: "Lower volatility and cut the loose errors." }
+  { id: "encourage", label: "Encourage", copy: "Lift composure and stop the match from speeding away." },
+  { id: "demand_focus", label: "Demand Focus", copy: "Sharpen concentration for the first exchanges of the next set." },
+  { id: "increase_tempo", label: "Increase Tempo", copy: "Take the initiative back with earlier attacking intent." },
+  { id: "calm_down", label: "Calm Down", copy: "Reduce volatility and cut the cheap misses." }
 ];
 
 export function MatchView(props: MatchViewProps) {
   const managedPlayer =
     props.managedSide === "A" ? props.session.input.playerA : props.session.input.playerB;
-  const opponentPlayer = props.managedSide === "A" ? props.session.input.playerB : props.session.input.playerA;
-  const commentary = props.session.setSummaries.flatMap((set, index) =>
-    set.points.map((point) => ({
-      id: `${index}-${point.scoreboard}-${point.rallyLength}`,
-      label: `Set ${index + 1} · ${point.scoreboard}`,
-      summary: point.summary
-    }))
+  const opponentPlayer =
+    props.managedSide === "A" ? props.session.input.playerB : props.session.input.playerA;
+  const managedTelemetry = telemetryForCompetitor(
+    managedPlayer,
+    props.managedSide === "A" ? props.session.competitorA : props.session.competitorB,
+    props.managedSide === "A" ? props.session.setsWonA : props.session.setsWonB
   );
-  const commentaryTail = commentary.slice(-14).reverse();
-  const talkWindow = props.session.setSummaries.length > 0 && !props.session.complete;
-  const currentStaminaManaged =
-    props.managedSide === "A" ? props.session.competitorA.stamina : props.session.competitorB.stamina;
-  const currentStaminaOpponent =
-    props.managedSide === "A" ? props.session.competitorB.stamina : props.session.competitorA.stamina;
+  const opponentTelemetry = telemetryForCompetitor(
+    opponentPlayer,
+    props.managedSide === "A" ? props.session.competitorB : props.session.competitorA,
+    props.managedSide === "A" ? props.session.setsWonB : props.session.setsWonA
+  );
+  const feed = [...props.session.feed].reverse().slice(0, 12);
+  const activeDirective =
+    props.managedSide === "A"
+      ? props.session.competitorA.directive
+      : props.session.competitorB.directive;
 
   return (
-    <section className="phase-layout">
-      <div className="phase-header">
+    <section className="screen-shell">
+      <div className="screen-header">
         <div>
-          <p className="eyebrow">Live Match</p>
-          <h2>
-            {managedPlayer.name} vs {opponentPlayer.name}
-          </h2>
-          <p className="section-copy">
-            Opponent default tactic: {props.opponentTacticLabel}. The engine resolves one set at a time so you can
-            intervene between intervals.
+          <p className="screen-kicker">Live</p>
+          <h1 className="screen-title">Match Command Center</h1>
+          <p className="screen-copy">
+            {opponentPlayer.name} opened with {props.opponentTacticLabel}. Point flow is now live, with
+            directives affecting only the next short tactical window.
           </p>
         </div>
-        <div className="header-actions">
-          {!props.session.complete ? (
-            <button className="primary-button" onClick={props.onSimulateNextSet}>
-              Simulate next set
-            </button>
-          ) : (
-            <button className="primary-button" onClick={props.onAdvanceAfterMatch}>
-              Advance bracket
-            </button>
-          )}
+        <div className="screen-meta">
+          <span>Quarter-Finals</span>
+          <span>Court 1</span>
+          <span>T {Math.floor(props.session.clockSeconds / 60)}:{String(props.session.clockSeconds % 60).padStart(2, "0")}</span>
         </div>
       </div>
 
-      <div className="match-grid">
-        <div className="surface-card surface-card-wide">
-          <p className="surface-label">Scoreboard</p>
-          <div className="scoreboard">
-            <div className="score-lane">
-              <div>
-                <h3>{props.session.input.playerA.name}</h3>
-                <p>{playerMap[props.session.input.playerA.id]?.styleLabel}</p>
-              </div>
-              <strong>{props.session.setsWonA}</strong>
+      <div className="match-command-layout">
+        <section className="scoreboard-panel">
+          <div className="scoreboard-topline">
+            <span>Set {props.session.currentSetNumber}</span>
+            <span>
+              Match Score {props.session.setsWonA}-{props.session.setsWonB}
+            </span>
+          </div>
+
+          <div className="scoreboard-main">
+            <div className="scoreboard-athlete">
+              <strong>{props.session.input.playerA.name}</strong>
+              <span>{props.session.currentServer === "A" ? "Serving" : "Receiving"}</span>
             </div>
-            <div className="score-divider">:</div>
-            <div className="score-lane">
-              <strong>{props.session.setsWonB}</strong>
-              <div className="score-lane-right">
-                <h3>{props.session.input.playerB.name}</h3>
-                <p>{playerMap[props.session.input.playerB.id]?.styleLabel}</p>
-              </div>
+
+            <div className="scoreboard-points">
+              <span className="score-value score-value-home">{props.session.currentScoreA}</span>
+              <span className="score-divider">-</span>
+              <span className="score-value">{props.session.currentScoreB}</span>
+            </div>
+
+            <div className="scoreboard-athlete scoreboard-athlete-right">
+              <strong>{props.session.input.playerB.name}</strong>
+              <span>{props.session.currentServer === "B" ? "Serving" : "Receiving"}</span>
             </div>
           </div>
 
-          <div className="stamina-row">
-            <div className="stamina-track">
-              <span>{managedPlayer.name}</span>
-              <div className="stamina-bar">
-                <div className="stamina-fill" style={{ width: `${currentStaminaManaged}%` }} />
-              </div>
-              <strong>{Math.round(currentStaminaManaged)}</strong>
-            </div>
-            <div className="stamina-track">
-              <span>{opponentPlayer.name}</span>
-              <div className="stamina-bar stamina-bar-opponent">
-                <div className="stamina-fill stamina-fill-opponent" style={{ width: `${currentStaminaOpponent}%` }} />
-              </div>
-              <strong>{Math.round(currentStaminaOpponent)}</strong>
-            </div>
-          </div>
-
-          <div className="set-history">
+          <div className="set-summary-row">
             {props.session.setSummaries.map((set, index) => (
-              <article key={`${set.scoreA}-${set.scoreB}-${index}`} className="set-card">
+              <article key={`${set.scoreA}-${set.scoreB}-${index}`} className="set-result-chip">
                 <span>Set {index + 1}</span>
                 <strong>
                   {set.scoreA}-{set.scoreB}
                 </strong>
-                <small>{set.winner === "A" ? props.session.input.playerA.name : props.session.input.playerB.name} closed it.</small>
               </article>
             ))}
+            {!props.session.complete && props.session.intermission && (
+              <article className="set-result-chip set-result-chip-live">
+                <span>Intermission</span>
+                <strong>Set {props.session.currentSetNumber} loading</strong>
+              </article>
+            )}
           </div>
-        </div>
+        </section>
 
-        <div className="surface-card">
-          <p className="surface-label">Team Talk</p>
-          {talkWindow ? (
-            <div className="talk-grid">
-              {teamTalks.map((talk) => (
-                <button key={talk.id} className="talk-card" onClick={() => props.onApplyTalk(talk.id)}>
-                  <strong>{talk.label}</strong>
-                  <span>{talk.copy}</span>
+        <div className="match-columns">
+          <section className="command-panel telemetry-stack">
+            <div className="panel-header">
+              <h2>{managedTelemetry.playerName} Telemetry</h2>
+              <span>{managedTelemetry.momentumLabel}</span>
+            </div>
+
+            <div className="telemetry-block">
+              <div className="metric-row">
+                <span>Stamina</span>
+                <strong>{managedTelemetry.stamina}%</strong>
+              </div>
+              <div className="metric-track">
+                <div className="metric-track-fill" style={{ width: `${managedTelemetry.stamina}%` }} />
+              </div>
+            </div>
+
+            <div className="telemetry-block">
+              <div className="metric-row">
+                <span>Momentum</span>
+                <strong>{managedTelemetry.momentumLabel}</strong>
+              </div>
+              <div className="momentum-bars">
+                {Array.from({ length: 5 }).map((_, index) => {
+                  const threshold = (index + 1) * 20;
+                  return (
+                    <span
+                      key={threshold}
+                      className={`momentum-bar ${
+                        managedTelemetry.momentum >= threshold ? "momentum-bar-active" : ""
+                      }`}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="telemetry-mini-grid">
+              <div className="telemetry-mini-card">
+                <span>Peak Smash</span>
+                <strong>{managedTelemetry.smashPeakKph > 0 ? `${managedTelemetry.smashPeakKph} km/h` : "N/A"}</strong>
+              </div>
+              <div className="telemetry-mini-card">
+                <span>Errors</span>
+                <strong>{managedTelemetry.errors}</strong>
+              </div>
+            </div>
+
+            <div className="panel-header panel-header-inline">
+              <h2>{opponentTelemetry.playerName} Telemetry</h2>
+              <span>{opponentTelemetry.momentumLabel}</span>
+            </div>
+
+            <div className="telemetry-block">
+              <div className="metric-row">
+                <span>Stamina</span>
+                <strong>{opponentTelemetry.stamina}%</strong>
+              </div>
+              <div className="metric-track">
+                <div
+                  className="metric-track-fill metric-track-fill-soft"
+                  style={{ width: `${opponentTelemetry.stamina}%` }}
+                />
+              </div>
+            </div>
+
+            <div className="telemetry-block">
+              <div className="metric-row">
+                <span>Momentum</span>
+                <strong>{opponentTelemetry.momentumLabel}</strong>
+              </div>
+              <div className="momentum-bars">
+                {Array.from({ length: 5 }).map((_, index) => {
+                  const threshold = (index + 1) * 20;
+                  return (
+                    <span
+                      key={threshold}
+                      className={`momentum-bar ${
+                        opponentTelemetry.momentum >= threshold ? "momentum-bar-opponent" : ""
+                      }`}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+
+          <section className="command-panel feed-panel">
+            <div className="panel-header">
+              <h2>Live Tactical Feed</h2>
+              <span>{feed.length} recent events</span>
+            </div>
+
+            <div className="feed-list">
+              {feed.length > 0 ? (
+                feed.map((entry) => (
+                  <article key={entry.id} className={`feed-card feed-card-${entry.emphasis}`}>
+                    <div className="feed-card-top">
+                      <span>{entry.clockLabel}</span>
+                      <span className="feed-kind">{entry.kind}</span>
+                    </div>
+                    <strong>{entry.title}</strong>
+                    {entry.detail && <p>{entry.detail}</p>}
+                  </article>
+                ))
+              ) : (
+                <p className="panel-summary">The first point will seed the live tactical feed.</p>
+              )}
+            </div>
+          </section>
+
+          <section className="command-panel directive-panel">
+            <div className="panel-header">
+              <h2>Directives</h2>
+              <span>{activeDirective ? "Directive armed" : "No live directive queued"}</span>
+            </div>
+
+            <div className="directive-list">
+              {liveDirectiveOptions.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  className={`directive-card ${activeDirective === option.id ? "directive-card-active" : ""}`}
+                  onClick={() => props.onApplyDirective(option.id)}
+                >
+                  <strong>{option.label}</strong>
+                  <span>{option.summary}</span>
                 </button>
               ))}
             </div>
-          ) : (
-            <p>Team talks unlock after a completed set and disappear once the match is settled.</p>
-          )}
-        </div>
 
-        <div className="surface-card">
-          <p className="surface-label">Commentary Feed</p>
-          <div className="commentary-list">
-            {commentaryTail.length > 0 ? (
-              commentaryTail.map((entry) => (
-                <article key={entry.id} className="commentary-card">
-                  <small>{entry.label}</small>
-                  <p>{entry.summary}</p>
-                </article>
-              ))
+            <div className="panel-header panel-header-inline">
+              <h2>Between-Set Team Talk</h2>
+              <span>{props.session.intermission && !props.session.complete ? "Live" : "Locked"}</span>
+            </div>
+
+            {props.session.intermission && !props.session.complete ? (
+              <div className="directive-list">
+                {teamTalks.map((talk) => (
+                  <button
+                    key={talk.id}
+                    type="button"
+                    className="directive-card directive-card-talk"
+                    onClick={() => props.onApplyTalk(talk.id)}
+                  >
+                    <strong>{talk.label}</strong>
+                    <span>{talk.copy}</span>
+                  </button>
+                ))}
+              </div>
             ) : (
-              <p>The first set will populate the rally feed.</p>
+              <p className="panel-summary">
+                Team talks unlock only after a set has closed and before the next one begins.
+              </p>
             )}
-          </div>
+
+            <div className="directive-actions">
+              {!props.session.complete ? (
+                <button className="command-button command-button-primary" onClick={props.onSimulateNextPoint}>
+                  {props.session.intermission ? "Open Next Set" : "Simulate Next Point"}
+                </button>
+              ) : (
+                <button className="command-button command-button-primary" onClick={props.onAdvanceAfterMatch}>
+                  Advance Bracket
+                </button>
+              )}
+            </div>
+          </section>
         </div>
       </div>
     </section>

@@ -40,6 +40,9 @@ describe("tournament progression", () => {
       managedResult
     });
 
+    expect(advanced.managedResults).toHaveLength(1);
+    expect(advanced.managedResults[0]?.round).toBe(managed!.context.roundName);
+
     const currentRound = getCurrentRound(advanced);
 
     if (advanced.eliminated || advanced.championId) {

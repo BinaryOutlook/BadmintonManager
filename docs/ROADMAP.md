@@ -13,7 +13,7 @@ The game should be built from the inside out:
 
 ## `v0.1` Foundation and Tournament MVP
 
-Status: Planned
+Status: In Progress
 
 Goal:
 

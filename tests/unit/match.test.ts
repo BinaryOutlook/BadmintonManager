@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { tacticLibrary } from "../../src/game/content/tactics";
-import { applyTeamTalk, createMatchSession, simulateMatch, simulateNextSet } from "../../src/game/core/match";
+import {
+  applyDirective,
+  applyTeamTalk,
+  createMatchSession,
+  simulateMatch,
+  simulateNextPoint
+} from "../../src/game/core/match";
 import { playerSchema, type Player } from "../../src/game/core/models";
 
 function createPlayer(overrides: Partial<Player> = {}): Player {
@@ -46,14 +52,14 @@ describe("match simulation", () => {
       playerA,
       playerB,
       tacticA: tacticLibrary.balancedControl,
-      tacticB: tacticLibrary.grindingLength
+      tacticB: tacticLibrary.spreadCourt
     });
     const right = simulateMatch({
       seed: 99,
       playerA,
       playerB,
       tacticA: tacticLibrary.balancedControl,
-      tacticB: tacticLibrary.grindingLength
+      tacticB: tacticLibrary.spreadCourt
     });
 
     expect(left).toEqual(right);
@@ -132,7 +138,7 @@ describe("match simulation", () => {
     expect(eliteWins).toBeGreaterThanOrEqual(28);
   });
 
-  it("supports set-by-set live progression with between-set team talks", () => {
+  it("supports point-by-point live progression with directives and between-set team talks", () => {
     const playerA = createPlayer({ id: "a", name: "Coach Side" });
     const playerB = createPlayer({ id: "b", name: "Opponent" });
     let session = createMatchSession({
@@ -140,18 +146,33 @@ describe("match simulation", () => {
       playerA,
       playerB,
       tacticA: tacticLibrary.balancedControl,
-      tacticB: tacticLibrary.allOutAttack
+      tacticB: tacticLibrary.aggressiveSmash
     });
 
-    session = simulateNextSet(session);
+    session = simulateNextPoint(session);
+
+    expect(session.currentSetPoints).toHaveLength(1);
+    expect(session.currentScoreA + session.currentScoreB).toBe(1);
+
+    session = applyDirective(session, "A", "push_pace");
+    expect(session.feed.at(-1)?.kind).toBe("directive");
+
+    session = simulateNextPoint(session);
+    expect(session.feed.some((entry) => entry.kind === "point")).toBe(true);
+
+    while (!session.complete && !session.intermission) {
+      session = simulateNextPoint(session);
+    }
 
     expect(session.setSummaries).toHaveLength(1);
-    expect(session.complete).toBe(false);
 
-    session = applyTeamTalk(session, "A", "encourage");
-    session = simulateNextSet(session);
+    if (!session.complete) {
+      session = applyTeamTalk(session, "A", "encourage");
+      session = simulateNextPoint(session);
 
-    expect(session.setSummaries.length).toBeGreaterThanOrEqual(2);
-    expect(session.competitorA.composureShift).toBeGreaterThanOrEqual(6);
+      expect(session.currentSetNumber).toBe(2);
+      expect(session.competitorA.composureShift).toBeGreaterThanOrEqual(6);
+      expect(session.intermission).toBe(false);
+    }
   });
 });

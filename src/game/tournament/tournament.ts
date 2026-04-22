@@ -1,7 +1,7 @@
 import { tacticLibrary } from "../content/tactics";
 import { simulateMatch } from "../core/match";
 import { SeededRng } from "../core/rng";
-import type { MatchInput, MatchResult, Player } from "../core/models";
+import type { MatchInput, MatchResult, MatchStats, Player } from "../core/models";
 import type { SeededPlayer } from "../content/players";
 
 export type RoundName = "R16" | "QF" | "SF" | "F";
@@ -22,14 +22,34 @@ export interface TournamentRound {
   matches: TournamentMatch[];
 }
 
+export interface ManagedRunMatch {
+  round: RoundName;
+  opponentId: string;
+  opponentName: string;
+  scoreline: string;
+  won: boolean;
+  stats: {
+    winners: number;
+    unforcedErrors: number;
+    totalSmashes: number;
+    peakSmashSpeed: number;
+    longestRally: number;
+    totalPoints: number;
+    staminaDrain: number;
+  };
+}
+
 export interface TournamentState {
   id: string;
   name: string;
+  tier: string;
+  prizePoolUsd: number;
   managedPlayerId: string;
   rounds: TournamentRound[];
   currentRoundIndex: number;
   rngState: number;
   eliminated: boolean;
+  managedResults: ManagedRunMatch[];
   championId?: string;
 }
 
@@ -64,18 +84,42 @@ function chooseAutoplayTactic(player: Player, rng: SeededRng) {
   const { technical, mental, physical } = player.ratings;
 
   if (technical.smash > 84 && mental.aggression > 78) {
-    return tacticLibrary.allOutAttack;
+    return tacticLibrary.aggressiveSmash;
   }
 
   if (technical.netPlay > 83 || technical.serveReturn > 84) {
-    return rng.chance(0.65) ? tacticLibrary.balancedControl : tacticLibrary.backhandPress;
+    return rng.chance(0.65) ? tacticLibrary.balancedControl : tacticLibrary.spreadCourt;
   }
 
   if (physical.stamina > 84 || technical.clearLob > 83) {
-    return tacticLibrary.grindingLength;
+    return rng.chance(0.55) ? tacticLibrary.spreadCourt : tacticLibrary.defensiveWall;
   }
 
-  return rng.chance(0.5) ? tacticLibrary.balancedControl : tacticLibrary.backhandPress;
+  return rng.chance(0.5) ? tacticLibrary.balancedControl : tacticLibrary.defensiveWall;
+}
+
+function summarizeManagedStats(stats: MatchStats, managedSide: "A" | "B") {
+  if (managedSide === "A") {
+    return {
+      winners: stats.winnersA,
+      unforcedErrors: stats.unforcedErrorsA,
+      totalSmashes: stats.totalSmashesA,
+      peakSmashSpeed: stats.peakSmashSpeedA,
+      longestRally: stats.longestRally,
+      totalPoints: stats.totalPoints,
+      staminaDrain: stats.staminaDrainA
+    };
+  }
+
+  return {
+    winners: stats.winnersB,
+    unforcedErrors: stats.unforcedErrorsB,
+    totalSmashes: stats.totalSmashesB,
+    peakSmashSpeed: stats.peakSmashSpeedB,
+    longestRally: stats.longestRally,
+    totalPoints: stats.totalPoints,
+    staminaDrain: stats.staminaDrainB
+  };
 }
 
 function createRound(args: {
@@ -137,11 +181,14 @@ export function createTournament(seededEntries: SeededPlayer[], managedPlayerId:
 
   return {
     id: "badminton-manager-open",
-    name: "Badminton Manager Open",
+    name: "Singapore Open",
+    tier: "Super 750",
+    prizePoolUsd: 850_000,
     managedPlayerId,
     rounds: [round],
     currentRoundIndex: 0,
     rngState: rng.snapshot(),
+    managedResults: [],
     eliminated: false
   } satisfies TournamentState;
 }
@@ -223,11 +270,29 @@ export function advanceTournament(args: {
   );
   const winners = matches.map((match) => match.winnerId!).filter(Boolean);
   const managedStillAlive = winners.includes(args.tournament.managedPlayerId);
+  const managedMatch = currentRound.matches.find((match) => match.id === args.managedMatchId);
+  const managedSide = managedMatch?.sideAId === args.tournament.managedPlayerId ? "A" : "B";
+  const opponentId =
+    managedSide === "A" ? managedMatch?.sideBId : managedMatch?.sideAId;
+  const managedResults = managedMatch && opponentId
+    ? [
+        ...args.tournament.managedResults,
+        {
+          round: managedMatch.round,
+          opponentId,
+          opponentName: playerMap[opponentId].name,
+          scoreline: args.managedResult.scoreline,
+          won: args.managedResult.winner === managedSide,
+          stats: summarizeManagedStats(args.managedResult.stats, managedSide)
+        }
+      ]
+    : args.tournament.managedResults;
 
   if (winners.length === 1) {
     return {
       ...args.tournament,
       rounds: updatedRounds,
+      managedResults,
       championId: winners[0],
       eliminated: winners[0] !== args.tournament.managedPlayerId
     };
@@ -237,6 +302,7 @@ export function advanceTournament(args: {
     return {
       ...args.tournament,
       rounds: updatedRounds,
+      managedResults,
       eliminated: true
     };
   }
@@ -254,6 +320,7 @@ export function advanceTournament(args: {
     ...args.tournament,
     rounds: [...updatedRounds, nextRound],
     currentRoundIndex: args.tournament.currentRoundIndex + 1,
+    managedResults,
     rngState: rng.snapshot()
   };
 }
