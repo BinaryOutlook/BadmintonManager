@@ -45,15 +45,21 @@ Each entrant should include:
 
 ## Seeding Rule
 
-The first version should use a fixed seed order.
+The tournament keeps a 16-player knockout bracket, but the content pool may be larger than
+16 athletes.
 
-That gives the project:
+At run creation:
 
-- predictable test fixtures
-- easier bracket QA
-- less noise while the engine is still being tuned
+- include the managed athlete
+- randomly draw the remaining entrants from `src/game/content/players.ts`
+- stop at exactly 16 tournament entrants
+- reseed the drawn field by content seed order before applying the bracket order
 
-Random draw logic can come later if it adds real value.
+This keeps the bracket shape stable while allowing the player list to feel fresh between runs:
+
+```text
+player pool -> draw 16 entrants -> reseed field -> R16 bracket
+```
 
 ## Match Flow
 

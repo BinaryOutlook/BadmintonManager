@@ -30,7 +30,7 @@ docs/README.md
 | Fast session entry | `AGENTS.md` | Routing or required commands change |
 | Product direction | `docs/product/PRD.md` | The product thesis, scope, or non-goals change |
 | Milestone sequence | `docs/product/ROADMAP.md` | Version order, goals, or exit criteria change |
-| Current release work | `docs/product/versions/v0.2.1/v0.2.1.md` | The active version scope changes |
+| Current release work | `docs/product/versions/v0.2.2/v0.2.2.md` | The active version scope changes |
 | Current project state | `docs/plans/active/project-status.md` | Work completes, next work changes, blockers appear |
 | Architecture boundaries | `docs/architecture/overview.md` | Module ownership or runtime boundaries change |
 | Subsystem rules | `docs/reference/*.md` | Engine, tactics, player, or tournament contracts change |
@@ -57,7 +57,7 @@ For most coding tasks, read in this order:
 For product or architecture tasks, start with:
 
 1. `docs/product/PRD.md`
-2. `docs/product/versions/v0.2.1/v0.2.1.md`
+2. `docs/product/versions/v0.2.2/v0.2.2.md`
 3. `docs/architecture/overview.md`
 4. Related ADRs in `docs/decisions/`
 

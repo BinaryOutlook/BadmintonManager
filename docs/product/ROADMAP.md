@@ -49,7 +49,7 @@ Exit criteria:
 
 ## `v0.2.1` Command-Center Patch and UI Rearrangement
 
-Status: In Progress
+Status: Completed / Superseded by `v0.2.2`
 
 Goal:
 
@@ -69,28 +69,26 @@ Exit criteria:
 - `npm run typecheck`, `npm run test`, `npm run build`, and `npm run test:e2e` pass
 - the next update can focus on small, innovative, identity-shaping features instead of cleanup
 
-## `v0.2.2` Small Innovative Feature Probe
+## `v0.2.2` Roster Draw Expansion
 
-Status: Planned
+Status: Active
 
 Goal:
 
-- add a small feature that changes how the existing tournament loop feels rather than expanding scope broadly
-- make tactical intelligence, opponent reads, or post-match insight feel more original and coach-driven
-- keep the feature compact enough to preserve the local-first tournament loop
-
-Candidate directions:
-
-- contextual tactical intel that explains one real engine state clearly
-- a sharper directive with a memorable trade-off
-- opponent pattern reads that emerge after a few points
-- a post-match turning-point card that explains why one stretch decided the match
+- expand the local roster beyond the tournament field size
+- add fictional high-identity athletes with distinct stat profiles and playstyle hooks
+- keep each tournament as a 16-player knockout
+- draw exactly 16 event entrants from the larger pool while always including the managed athlete
+- preserve deterministic tournament fields for identical run seeds
 
 Exit criteria:
 
-- the feature is small enough to test and explain
-- the feature strengthens the coach fantasy
-- the feature uses real simulation state rather than decorative copy
+- the content pool contains 32 fictional athletes
+- tournament creation draws exactly 16 unique entrants from the larger pool
+- the managed athlete is always included in the event field
+- the same seed creates the same event field
+- different seeds can create different event fields
+- headline legend-inspired OVR targets are covered by tests
 - the command-center layout from `v0.2.1` remains readable
 
 ## `v0.3` Manager Loop Expansion
