@@ -1,6 +1,6 @@
 # Project Status
 
-Status date: 2026-04-22
+Status date: 2026-04-28
 Current version target: `v0.2`
 Overall phase: Command-center super build
 Chosen stack: Option A local-first SPA
@@ -15,7 +15,7 @@ What is now stable:
 - the player fantasy is coach and manager, not athlete control
 - the MVP is singles-first and tournament-first
 - the technical direction is a local-first React, TypeScript, and Vite stack
-- the documentation hierarchy has been established
+- the documentation hierarchy has been converted into an agent-first harness
 - the deterministic match engine is implemented
 - the 16-player knockout flow is implemented
 - local persistence is implemented
@@ -41,6 +41,8 @@ What is now stable:
 - [x] `v0.2` setup, bracket, live match, and recap screens implemented
 - [x] point-by-point live managed match flow implemented
 - [x] live directives, between-set talks, scouting, and recap telemetry implemented
+- [x] README-centered docs converted into `AGENTS.md` plus structured `docs/` source-of-truth lanes
+- [x] agent-first documentation harness recorded in `docs/decisions/ADR-002-agent-first-documentation-harness.md`
 
 ## In Progress
 
@@ -61,9 +63,9 @@ There are no hard technical blockers right now.
 
 Current design questions that could affect scope:
 
-- whether `v0.1` manages one athlete or a tiny squad
-- how many raw stats the first engine pass should use directly
-- how much between-set intervention should exist beyond the current single-talk layer
+- how aggressively to tune upset frequency before expanding the manager loop
+- how much tactical explanation belongs in the persistent `TACTICAL_INTEL` surface versus local screen copy
+- how much save migration coverage is needed before future `v0.2.x` changes become risky
 
 ## Risks
 
@@ -88,11 +90,13 @@ If the browser shell is built before the engine contract is stable, the project 
 
 Future sessions should read these files first:
 
-- `docs/PRD.md`
-- `docs/TECHNICAL_BRIEF.md`
-- `docs/ROADMAP.md`
+- `AGENTS.md`
+- `docs/README.md`
+- `docs/product/PRD.md`
+- `docs/product/ROADMAP.md`
+- `docs/plans/active/project-status.md`
 - `docs/reference/match-engine.md`
-- `PRDs/v0.1/v0.1.md`
+- `docs/product/versions/v0.2/v0.2.md`
 
 ## Update Rule
 

@@ -1,9 +1,9 @@
 # Badminton Manager PRD
 
-Status: Foundation draft
+Status: Living product baseline
 Owner: binaryoutlook
-Last updated: 2026-04-22
-Project phase: Headless simulation foundation
+Last updated: 2026-04-28
+Project phase: Command-center super build
 
 ## 1. Purpose
 
@@ -21,10 +21,10 @@ This document is intentionally written before implementation.
 
 It does not replace:
 
-- `docs/TECHNICAL_BRIEF.md` for architecture and implementation direction
-- `docs/STATUS.md` for the current project snapshot
+- `docs/architecture/overview.md` for architecture and implementation direction
+- `docs/plans/active/project-status.md` for the current project snapshot
 - `docs/reference/` for subsystem definitions
-- `PRDs/vX.Y/` for iteration-specific delivery packets
+- `docs/product/versions/vX.Y/` for iteration-specific delivery packets
 
 ## 2. Product Summary
 
@@ -248,16 +248,19 @@ The early product depends on five systems:
 
 Each system should have a dedicated reference document in `docs/reference/`.
 
-## 12. Documentation Layers
+## 12. Documentation Harness
 
-This project should keep a deliberate document hierarchy:
+This project should keep a deliberate, agent-legible document hierarchy:
 
-- `docs/PRD.md`: stable product truth
-- `docs/TECHNICAL_BRIEF.md`: architecture and implementation direction
-- `docs/STATUS.md`: current state of the project
-- `docs/ROADMAP.md`: milestone path across versions
+- `AGENTS.md`: compact agent entrypoint and routing table
+- `docs/README.md`: full documentation map and update contract
+- `docs/product/PRD.md`: stable product truth
+- `docs/product/ROADMAP.md`: milestone path across versions
+- `docs/product/versions/vX.Y/`: versioned iteration packets and release references
+- `docs/architecture/overview.md`: architecture and implementation direction
+- `docs/plans/active/project-status.md`: current state of the project
 - `docs/reference/*.md`: subsystem references
-- `PRDs/vX.Y/`: versioned iteration packets
+- `docs/decisions/ADR-*.md`: architecture decision records
 
 ## 13. Success Criteria
 

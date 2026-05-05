@@ -13,7 +13,7 @@ The game should be built from the inside out:
 
 ## `v0.1` Foundation and Tournament MVP
 
-Status: In Progress
+Status: Completed
 
 Goal:
 
@@ -31,7 +31,7 @@ Exit criteria:
 
 ## `v0.2` Super Build: Command Center and Tactical Operations
 
-Status: Planned
+Status: In Progress
 
 Goal:
 

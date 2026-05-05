@@ -1,4 +1,4 @@
-# Technical Brief: Badminton Manager
+# Architecture Overview: Badminton Manager
 
 ## High Concept
 
@@ -30,7 +30,7 @@ Selected stack:
 - `Vitest`
 - `Playwright`
 
-Planned persistence approach:
+Persistence approach:
 
 - small settings in browser storage
 - tournament and run saves in browser storage first
@@ -67,14 +67,19 @@ The correct first architecture is the one that makes it easiest to:
 
 The browser app should remain the shell around a pure simulation boundary.
 
-## Planned Project Shape
+## Project Shape
 
 ```text
+AGENTS.md
 docs/
+  README.md
+  architecture/
   decisions/
+  plans/
+    active/
+  product/
+    versions/
   reference/
-PRDs/
-  v0.1/
 src/
   app/
   components/
@@ -264,13 +269,14 @@ Use `Playwright` for:
 - starting a match
 - progressing through a completed match and bracket state
 
-## Planned Commands
+## Commands
 
-These are the intended project commands once the app scaffold exists:
+Use these commands for local development and verification:
 
 - `npm install`
 - `npm run dev`
 - `npm run build`
+- `npm run typecheck`
 - `npm run test`
 - `npm run test:e2e`
 
