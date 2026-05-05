@@ -4,8 +4,10 @@ import {
   applyDirective,
   applyTeamTalk,
   createMatchSession,
+  simulateMatchByFidelity,
   simulateMatch,
-  simulateNextPoint
+  simulateNextPoint,
+  simulateQuickMatch
 } from "../../src/game/core/match";
 import { playerSchema, type Player } from "../../src/game/core/models";
 
@@ -63,6 +65,46 @@ describe("match simulation", () => {
     });
 
     expect(left).toEqual(right);
+    expect(left.fidelity).toBe("detailed");
+  });
+
+  it("produces deterministic quick results that obey badminton scoring", () => {
+    const playerA = createPlayer({ id: "a", name: "Quick A" });
+    const playerB = createPlayer({ id: "b", name: "Quick B" });
+
+    const left = simulateQuickMatch({
+      seed: 1224,
+      playerA,
+      playerB,
+      tacticA: tacticLibrary.balancedControl,
+      tacticB: tacticLibrary.defensiveWall
+    });
+    const right = simulateQuickMatch({
+      seed: 1224,
+      playerA,
+      playerB,
+      tacticA: tacticLibrary.balancedControl,
+      tacticB: tacticLibrary.defensiveWall
+    });
+
+    expect(left).toEqual(right);
+    expect(left.fidelity).toBe("quick");
+    expect(left.setsWonA === 2 || left.setsWonB === 2).toBe(true);
+    expect(left.stats.totalPoints).toBe(
+      left.setSummaries.reduce((sum, set) => sum + set.points.length, 0)
+    );
+    expect(left.summaryEvents?.length).toBeGreaterThan(0);
+
+    for (const set of left.setSummaries) {
+      const reachedCap = set.scoreA === 30 || set.scoreB === 30;
+      const reachedGamePoint = set.scoreA >= 21 || set.scoreB >= 21;
+      const twoPointMargin = Math.abs(set.scoreA - set.scoreB) >= 2;
+
+      expect(Math.max(set.scoreA, set.scoreB)).toBeLessThanOrEqual(30);
+      expect(reachedCap || (reachedGamePoint && twoPointMargin)).toBe(true);
+      expect(set.points.at(-1)?.scoreboard).toBe(`${set.scoreA}-${set.scoreB}`);
+      expect(set.points.every((point) => point.shots.length === 0)).toBe(true);
+    }
   });
 
   it("lets the stronger player win most of the time across a seed batch", () => {
@@ -129,6 +171,82 @@ describe("match simulation", () => {
         tacticA: tacticLibrary.balancedControl,
         tacticB: tacticLibrary.balancedControl
       });
+
+      if (result.winner === "A") {
+        eliteWins += 1;
+      }
+    }
+
+    expect(eliteWins).toBeGreaterThanOrEqual(28);
+  });
+
+  it("lets the stronger player win most quick simulations across a seed batch", () => {
+    const elite = createPlayer({
+      id: "elite",
+      name: "Elite",
+      ratings: {
+        technical: {
+          smash: 89,
+          netPlay: 84,
+          clearLob: 86,
+          dropShot: 85,
+          defenseRetrieval: 87,
+          serveReturn: 85
+        },
+        physical: {
+          stamina: 86,
+          footworkSpeed: 88,
+          explosivenessJump: 85,
+          agilityBalance: 86
+        },
+        mental: {
+          anticipation: 87,
+          composure: 85,
+          focus: 86,
+          aggression: 79
+        }
+      }
+    });
+    const weaker = createPlayer({
+      id: "weaker",
+      name: "Weaker",
+      ratings: {
+        technical: {
+          smash: 69,
+          netPlay: 67,
+          clearLob: 68,
+          dropShot: 66,
+          defenseRetrieval: 70,
+          serveReturn: 68
+        },
+        physical: {
+          stamina: 70,
+          footworkSpeed: 69,
+          explosivenessJump: 68,
+          agilityBalance: 70
+        },
+        mental: {
+          anticipation: 68,
+          composure: 67,
+          focus: 66,
+          aggression: 61
+        }
+      }
+    });
+
+    let eliteWins = 0;
+
+    for (let seed = 1; seed <= 40; seed += 1) {
+      const result = simulateMatchByFidelity(
+        {
+          seed,
+          playerA: elite,
+          playerB: weaker,
+          tacticA: tacticLibrary.balancedControl,
+          tacticB: tacticLibrary.balancedControl
+        },
+        "quick"
+      );
 
       if (result.winner === "A") {
         eliteWins += 1;

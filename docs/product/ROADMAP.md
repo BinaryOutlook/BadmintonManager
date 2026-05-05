@@ -71,7 +71,7 @@ Exit criteria:
 
 ## `v0.2.2` Roster Draw Expansion
 
-Status: Active
+Status: Completed / Superseded by `v0.2.3`
 
 Goal:
 
@@ -99,6 +99,31 @@ Exit criteria:
 - setup roster cards display OVR rank instead of content seed position
 - setup roster names sit next to nationality-code identifiers instead of drifting toward rank text
 - the command-center layout from `v0.2.1` remains readable
+
+## `v0.2.3` Game-algorithm
+
+Status: Active
+
+Goal:
+
+- introduce an explicit detailed/quick simulation fidelity boundary
+- keep managed matches on the high-fidelity point and rally simulator
+- move non-managed tournament matches to a calibrated quick simulator
+- preserve compatible tournament results across both simulator paths
+- deepen the active-match algorithm toward richer real-life badminton dynamics
+- keep commentary and telemetry tied to real engine events
+
+Exit criteria:
+
+- managed matches use detailed simulation
+- background matches use quick simulation
+- both simulator modes are deterministic
+- quick mode obeys best-of-three scoring, `21` by `2`, and the `30` point cap
+- quick mode returns tournament-compatible match results and plausible aggregate stats
+- detailed mode continues to support directives, team talks, point feed, and recap stats
+- seeded batch checks compare quick and detailed win-rate bands
+- `docs/reference/match-simulation-fidelity.md` stays aligned with implementation
+- `npm run typecheck`, `npm run test`, `npm run build`, and `npm run test:e2e` pass
 
 ## `v0.3` Manager Loop Expansion
 

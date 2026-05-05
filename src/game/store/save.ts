@@ -4,8 +4,23 @@ import {
   matchTacticSchema,
   playerSchema,
   sideSchema,
+  simulationFidelitySchema,
   teamTalkSchema
 } from "../core/models";
+
+const matchSummaryEventSchema = z.object({
+  kind: z.enum([
+    "upset",
+    "straight_games",
+    "decider",
+    "stamina_battle",
+    "attack_pressure",
+    "error_collapse"
+  ]),
+  side: sideSchema.optional(),
+  title: z.string(),
+  detail: z.string()
+});
 
 const tournamentMatchSchema = z.object({
   id: z.string(),
@@ -14,6 +29,8 @@ const tournamentMatchSchema = z.object({
   sideBId: z.string(),
   winnerId: z.string().optional(),
   scoreline: z.string().optional(),
+  simulationFidelity: simulationFidelitySchema.optional(),
+  summaryEvents: z.array(matchSummaryEventSchema).optional(),
   managed: z.boolean(),
   completed: z.boolean()
 });

@@ -508,7 +508,7 @@ export const seededPlayers: SeededPlayer[] = [
     }
   }),
   createSeededPlayer(40, {
-    name: "Lion Sprint",
+    name: "Vibrant Lion",
     nationality: "SGP",
     age: 27,
     handedness: "right",
@@ -586,7 +586,7 @@ export const seededPlayers: SeededPlayer[] = [
     }
   }),
   createSeededPlayer(46, {
-    name: "Paris Panther",
+    name: "Marseille Panther",
     nationality: "FRA",
     age: 23,
     handedness: "right",
@@ -594,7 +594,7 @@ export const seededPlayers: SeededPlayer[] = [
     traits: ["homeCourtSurge", "arenaEnergy", "emotionalPace"],
     ratings: {
       technical: { smash: 86, netPlay: 82, clearLob: 83, dropShot: 85, defenseRetrieval: 83, serveReturn: 85 },
-      physical: { stamina: 84, footworkSpeed: 90, explosivenessJump: 89, agilityBalance: 88 },
+      physical: { stamina: 94, footworkSpeed: 93, explosivenessJump: 89, agilityBalance: 88 },
       mental: { anticipation: 84, composure: 83, focus: 84, aggression: 86 }
     }
   }),

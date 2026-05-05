@@ -1,8 +1,8 @@
 # Project Status
 
 Status date: 2026-05-05
-Current version target: `v0.2.2`
-Overall phase: Roster draw expansion and tournament variety
+Current version target: `v0.2.3 Game-algorithm`
+Overall phase: Match simulation fidelity and game-algorithm upgrade
 Chosen stack: Option A local-first SPA
 
 ## Snapshot
@@ -22,7 +22,10 @@ What is now stable:
 - the command-center app shell is implemented
 - the setup, overview, live match, and recap screens have been rebuilt for `v0.2`
 - `v0.2.1` completed the command-center patch and UI rearrangement work
-- `v0.2.2` is the active feature target for expanded roster content and deterministic event draws
+- `v0.2.2` completed expanded roster content and deterministic event draws
+- `v0.2.3 Game-algorithm` is the active feature target for detailed active-match simulation and quick background-match simulation
+- the detailed/quick simulation fidelity boundary is implemented
+- non-managed tournament matches now use quick simulation while managed matches remain detailed
 - live managed matches now progress point by point instead of set by set
 - scouting, telemetry, directives, and recap aggregation are implemented
 - between-set talks visibly queue during intermissions before applying at the next set
@@ -63,10 +66,17 @@ What is now stable:
 - [x] sorted setup roster selection by OVR descending and replaced seed labels with OVR rank labels
 - [x] changed setup athlete identifiers from name initials to nationality codes and grouped names beside them
 - [x] documented the proposed high-fidelity active-match algorithm and quick background-match simulation plan
+- [x] created the `v0.2.3 Game-algorithm` release packet and updated active documentation pointers
+- [x] implemented `SimulationFidelity`, detailed/quick dispatch, and the quick point simulator
+- [x] routed non-managed tournament matches through quick mode while preserving detailed managed matches
+- [x] persisted tournament match fidelity and background summary events
+- [x] surfaced compact background match summary events in the knockout bracket
+- [x] added unit coverage for quick determinism, scoring rules, stronger-player batch behavior, and tournament fidelity routing
 
 ## In Progress
 
 - [ ] tune balance and upset frequency
+- [ ] calibrate quick mode against detailed mode across wider seeded matchup bands
 - [ ] tune expanded-roster special-archetype balance against the ordinary fictional field
 - [ ] improve commentary variety and phrasing
 - [ ] expand post-match stats and scouting reads
@@ -74,7 +84,7 @@ What is now stable:
 
 ## Next
 
-- [ ] implement the detailed/quick simulation fidelity boundary for managed and background matches
+- [ ] add seeded batch calibration checks for quick versus detailed simulation parity
 - [ ] deepen the tactical intel layer with richer contextual explanations
 - [ ] add more differentiated live directives and opponent pattern reads
 - [ ] tighten save migration coverage for future `v0.2.x` changes
@@ -89,7 +99,7 @@ Current design questions that could affect scope:
 - what calibration bands should align quick background outcomes with detailed match outcomes
 - how much tactical explanation belongs in the persistent `TACTICAL_INTEL` surface versus local screen copy
 - how much save migration coverage is needed before future `v0.2.x` changes become risky
-- whether expanded-roster novelty is enough for `v0.2.2` or needs a small scouting UI companion
+- how much of the richer active-match algorithm should ship before quick simulation calibration is considered good enough
 
 ## Risks
 
@@ -121,7 +131,7 @@ Future sessions should read these files first:
 - `docs/plans/active/project-status.md`
 - `docs/reference/match-engine.md`
 - `docs/reference/match-simulation-fidelity.md`
-- `docs/product/versions/v0.2.2/v0.2.2.md`
+- `docs/product/versions/v0.2.3/v0.2.3.md`
 
 ## Update Rule
 

@@ -35,6 +35,16 @@ describe("tournament progression", () => {
     expect(getCurrentRound(tournament).matches).toHaveLength(8);
     expect(getCurrentRound(tournament).matches.filter((match) => !match.completed)).toHaveLength(1);
     expect(getManagedMatchContext(tournament)?.playerAId).toBe(managedPlayerId);
+    expect(
+      getCurrentRound(tournament)
+        .matches.filter((match) => !match.managed)
+        .every((match) => match.completed && match.simulationFidelity === "quick")
+    ).toBe(true);
+    expect(
+      getCurrentRound(tournament)
+        .matches.filter((match) => match.managed)
+        .every((match) => !match.completed && match.simulationFidelity === "detailed")
+    ).toBe(true);
   });
 
   it("advances to the next round after a completed managed match", () => {
@@ -58,6 +68,10 @@ describe("tournament progression", () => {
 
     expect(advanced.managedResults).toHaveLength(1);
     expect(advanced.managedResults[0]?.round).toBe(managed!.context.roundName);
+    expect(
+      advanced.rounds[0].matches.find((match) => match.id === managed!.context.matchId)
+        ?.simulationFidelity
+    ).toBe("detailed");
 
     const currentRound = getCurrentRound(advanced);
 
@@ -66,6 +80,16 @@ describe("tournament progression", () => {
     } else {
       expect(currentRound.name).toBe("QF");
       expect(currentRound.matches).toHaveLength(4);
+      expect(
+        currentRound.matches
+          .filter((match) => !match.managed)
+          .every((match) => match.completed && match.simulationFidelity === "quick")
+      ).toBe(true);
+      expect(
+        currentRound.matches
+          .filter((match) => match.managed)
+          .every((match) => !match.completed && match.simulationFidelity === "detailed")
+      ).toBe(true);
     }
   });
 });

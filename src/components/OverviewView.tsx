@@ -297,6 +297,7 @@ export function OverviewView(props: OverviewViewProps) {
                       const sideB = playerMap[match.sideBId];
                       const pendingManaged = match.managed && !match.completed;
                       const finalChampion = roundSlot.name === "F" && match.completed;
+                      const backgroundSummary = !match.managed ? match.summaryEvents?.[0] : undefined;
 
                       return (
                         <div
@@ -333,13 +334,18 @@ export function OverviewView(props: OverviewViewProps) {
                                       : ""}
                               </span>
                             </div>
-                            <small>
+                            <small className="bracket-scoreline">
                               {match.completed
                                 ? finalChampion
                                   ? `Champion decided - ${match.scoreline}`
                                   : match.scoreline
                                 : "Managed match pending"}
                             </small>
+                            {match.completed && backgroundSummary ? (
+                              <small className="bracket-context-line" title={backgroundSummary.detail}>
+                                {backgroundSummary.title}
+                              </small>
+                            ) : null}
                           </article>
                         </div>
                       );

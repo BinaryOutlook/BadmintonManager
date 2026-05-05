@@ -22,11 +22,13 @@ import type {
   MatchFeedEvent,
   MatchInput,
   MatchResult,
+  MatchSummaryEvent,
   MatchStats,
   PointSummary,
   SetSummary,
   ShotEvent,
   ShotType,
+  SimulationFidelity,
   Side,
   TeamTalk
 } from "./models";
@@ -50,6 +52,10 @@ function opposite(side: Side): Side {
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
+}
+
+function logistic(value: number) {
+  return 1 / (1 + Math.exp(-value));
 }
 
 function formatClock(totalSeconds: number) {
@@ -187,6 +193,139 @@ function zoneWeights(input: {
 
 function fatiguePenalty(stamina: number) {
   return Math.max(0, (72 - stamina) * 0.55);
+}
+
+function quickRating(player: MatchInput["playerA"]) {
+  const profile = deriveProfile(player);
+
+  return (
+    profile.attackPressure * 0.24 +
+    profile.recoveryQuality * 0.2 +
+    profile.frontCourtControl * 0.16 +
+    profile.rallyTolerance * 0.14 +
+    profile.pressureResistance * 0.14 +
+    profile.judgment * 0.12
+  );
+}
+
+function tacticFit(
+  player: MatchInput["playerA"],
+  opponent: MatchInput["playerA"],
+  tactic: MatchInput["tacticA"]
+) {
+  const own = player.ratings;
+  const answer = opponent.ratings;
+  let tools = 0;
+  let counters = 0;
+
+  switch (tactic.pressurePattern) {
+    case "all_out_attack":
+      tools =
+        own.technical.smash * 0.45 +
+        own.physical.explosivenessJump * 0.25 +
+        own.mental.aggression * 0.2 +
+        own.technical.dropShot * 0.1;
+      counters =
+        answer.technical.defenseRetrieval * 0.45 +
+        answer.physical.agilityBalance * 0.3 +
+        answer.mental.anticipation * 0.25;
+      break;
+    case "front_court_control":
+      tools =
+        own.technical.netPlay * 0.45 +
+        own.technical.serveReturn * 0.3 +
+        own.mental.anticipation * 0.25;
+      counters =
+        answer.technical.netPlay * 0.35 +
+        answer.technical.serveReturn * 0.2 +
+        answer.mental.anticipation * 0.25 +
+        answer.physical.footworkSpeed * 0.2;
+      break;
+    case "rear_court_grind":
+      tools =
+        own.physical.stamina * 0.35 +
+        own.technical.clearLob * 0.3 +
+        own.mental.focus * 0.2 +
+        own.technical.defenseRetrieval * 0.15;
+      counters =
+        answer.physical.stamina * 0.35 +
+        answer.technical.clearLob * 0.25 +
+        answer.mental.focus * 0.2 +
+        answer.mental.composure * 0.2;
+      break;
+    case "backhand_pressure": {
+      const backhandTargetBonus = opponent.handedness === player.handedness ? 1.5 : 0.5;
+      tools =
+        own.technical.smash * 0.3 +
+        own.technical.dropShot * 0.25 +
+        own.technical.serveReturn * 0.25 +
+        own.mental.anticipation * 0.2 +
+        backhandTargetBonus * 8;
+      counters =
+        answer.technical.defenseRetrieval * 0.35 +
+        answer.physical.agilityBalance * 0.2 +
+        answer.mental.anticipation * 0.25 +
+        answer.mental.focus * 0.2;
+      break;
+    }
+    case "wide_pressure":
+      tools =
+        own.physical.footworkSpeed * 0.3 +
+        own.technical.dropShot * 0.25 +
+        own.technical.serveReturn * 0.2 +
+        own.mental.anticipation * 0.15 +
+        own.physical.stamina * 0.1;
+      counters =
+        answer.physical.agilityBalance * 0.35 +
+        answer.physical.stamina * 0.25 +
+        answer.physical.footworkSpeed * 0.25 +
+        answer.technical.defenseRetrieval * 0.15;
+      break;
+    case "defensive_absorb":
+      tools =
+        own.technical.defenseRetrieval * 0.35 +
+        own.physical.stamina * 0.25 +
+        own.mental.focus * 0.2 +
+        own.mental.composure * 0.2;
+      counters =
+        answer.mental.aggression * 0.3 +
+        answer.technical.smash * 0.3 +
+        answer.mental.focus * 0.2 +
+        answer.physical.explosivenessJump * 0.2;
+      break;
+  }
+
+  const riskAdjustment =
+    tactic.riskProfile === "high_risk"
+      ? (own.mental.focus + own.mental.composure - 150) / 18
+      : tactic.riskProfile === "patient"
+        ? (own.mental.focus + own.physical.stamina - 145) / 24
+        : 0;
+
+  return clamp((tools - counters) / 8 + riskAdjustment, -6, 6);
+}
+
+function quickExpectedRallyLoad(input: MatchInput) {
+  const profileA = deriveProfile(input.playerA);
+  const profileB = deriveProfile(input.playerB);
+  const defensiveTilt =
+    (profileA.recoveryQuality + profileB.recoveryQuality + profileA.rallyTolerance + profileB.rallyTolerance) / 80;
+  const attackMismatch =
+    Math.abs(profileA.attackPressure - profileB.recoveryQuality) +
+    Math.abs(profileB.attackPressure - profileA.recoveryQuality);
+  const tacticLoad =
+    (input.tacticA.pressurePattern === "rear_court_grind" || input.tacticA.pressurePattern === "defensive_absorb" ? 1 : 0) +
+    (input.tacticB.pressurePattern === "rear_court_grind" || input.tacticB.pressurePattern === "defensive_absorb" ? 1 : 0) -
+    (input.tacticA.pressurePattern === "all_out_attack" ? 0.5 : 0) -
+    (input.tacticB.pressurePattern === "all_out_attack" ? 0.5 : 0);
+
+  return clamp(4.5 + defensiveTilt + tacticLoad - attackMismatch / 80, 3.5, 10.5);
+}
+
+function quickStaminaBurn(player: MatchInput["playerA"], tactic: MatchInput["tacticA"], rallyLength: number) {
+  const staminaFactor = 1 - (player.ratings.physical.stamina - 50) / 170;
+  const burn = (0.55 + rallyLength * 0.08) * tempoModifiers(tactic).staminaBurn * staminaFactor;
+  return clamp(burn, 0.35, 1.8);
 }
 
 function createScoreboard(scoreA: number, scoreB: number) {
@@ -684,6 +823,197 @@ function createStatsFromSets(
   }, empty);
 }
 
+function createQuickPointSummary(input: {
+  winner: Side;
+  rallyLength: number;
+  scoreA: number;
+  scoreB: number;
+  reason: PointSummary["reason"];
+  matchInput: MatchInput;
+}): PointSummary {
+  const winnerName = input.winner === "A" ? input.matchInput.playerA.name : input.matchInput.playerB.name;
+  const loserName = input.winner === "A" ? input.matchInput.playerB.name : input.matchInput.playerA.name;
+  const scoreboard = createScoreboard(input.scoreA, input.scoreB);
+  const summary =
+    input.reason === "winner"
+      ? `${winnerName} converts the pressure pattern in ${input.rallyLength} shots.`
+      : input.reason === "forced_error"
+        ? `${winnerName} squeezes a rushed reply from ${loserName}.`
+        : input.reason === "unforced_error"
+          ? `${loserName} leaks a loose point under the scoreboard load.`
+          : input.reason === "left_long"
+            ? `${winnerName} judges the baseline correctly.`
+            : input.reason === "net"
+              ? `${loserName} catches the tape while trying to stay in the exchange.`
+              : `${loserName} misses the target lane by a margin.`;
+
+  return {
+    winner: input.winner,
+    rallyLength: input.rallyLength,
+    shots: [],
+    summary,
+    scoreboard,
+    reason: input.reason
+  };
+}
+
+function pickQuickReason(input: {
+  winner: Side;
+  matchInput: MatchInput;
+  staminaA: number;
+  staminaB: number;
+  rng: SeededRng;
+}) {
+  const player = input.winner === "A" ? input.matchInput.playerA : input.matchInput.playerB;
+  const opponent = input.winner === "A" ? input.matchInput.playerB : input.matchInput.playerA;
+  const tactic = input.winner === "A" ? input.matchInput.tacticA : input.matchInput.tacticB;
+  const opponentStamina = input.winner === "A" ? input.staminaB : input.staminaA;
+  const attack = deriveProfile(player).attackPressure;
+  const opponentFatigue = fatiguePenalty(opponentStamina);
+  const risk = tactic.riskProfile === "high_risk" ? 3 : tactic.riskProfile === "patient" ? -2 : 0;
+
+  return input.rng.weightedPick<PointSummary["reason"]>([
+    { item: "winner", weight: 4 + attack / 18 + tacticShotModifier(tactic, "smash") * 0.4 },
+    { item: "forced_error", weight: 7 + attack / 22 + opponentFatigue * 0.25 },
+    { item: "unforced_error", weight: 3 + (100 - opponent.ratings.mental.focus) / 18 + opponentFatigue * 0.3 },
+    { item: "net", weight: 2 + (100 - opponent.ratings.technical.netPlay) / 28 - risk * 0.2 },
+    { item: "out", weight: 2 + risk + (100 - opponent.ratings.mental.composure) / 32 },
+    { item: "left_long", weight: 1 + deriveProfile(player).judgment / 60 }
+  ]);
+}
+
+function createQuickStats(args: {
+  input: MatchInput;
+  sets: SetSummary[];
+  staminaA: number;
+  staminaB: number;
+}) {
+  const totalPoints = args.sets.reduce((sum, set) => sum + set.points.length, 0);
+  const profileA = deriveProfile(args.input.playerA);
+  const profileB = deriveProfile(args.input.playerB);
+  const stats: MatchStats = {
+    winnersA: 0,
+    winnersB: 0,
+    unforcedErrorsA: 0,
+    unforcedErrorsB: 0,
+    totalSmashesA: Math.round(
+      totalPoints *
+        clamp(
+          0.16 +
+            (profileA.attackPressure - profileB.recoveryQuality) / 260 +
+            tacticShotModifier(args.input.tacticA, "smash") / 60,
+          0.08,
+          0.4
+        )
+    ),
+    totalSmashesB: Math.round(
+      totalPoints *
+        clamp(
+          0.16 +
+            (profileB.attackPressure - profileA.recoveryQuality) / 260 +
+            tacticShotModifier(args.input.tacticB, "smash") / 60,
+          0.08,
+          0.4
+        )
+    ),
+    peakSmashSpeedA: estimateSmashSpeed(args.input.playerA, Math.max(0, profileA.attackPressure - 70)),
+    peakSmashSpeedB: estimateSmashSpeed(args.input.playerB, Math.max(0, profileB.attackPressure - 70)),
+    staminaDrainA: Math.max(0, Math.round(args.input.playerA.ratings.physical.stamina - args.staminaA)),
+    staminaDrainB: Math.max(0, Math.round(args.input.playerB.ratings.physical.stamina - args.staminaB)),
+    longestRally: 0,
+    totalPoints
+  };
+
+  for (const set of args.sets) {
+    for (const point of set.points) {
+      stats.longestRally = Math.max(stats.longestRally, point.rallyLength);
+
+      if (point.reason === "winner" || point.reason === "forced_error") {
+        if (point.winner === "A") {
+          stats.winnersA += 1;
+        } else {
+          stats.winnersB += 1;
+        }
+      }
+
+      if (
+        point.reason === "unforced_error" ||
+        point.reason === "net" ||
+        point.reason === "out" ||
+        point.reason === "left_long"
+      ) {
+        const loser = point.winner === "A" ? "B" : "A";
+
+        if (loser === "A") {
+          stats.unforcedErrorsA += 1;
+        } else {
+          stats.unforcedErrorsB += 1;
+        }
+      }
+    }
+  }
+
+  return stats;
+}
+
+function createQuickSummaryEvents(input: MatchInput, result: MatchResult, ratingA: number, ratingB: number): MatchSummaryEvent[] {
+  const events: MatchSummaryEvent[] = [];
+  const winnerName = result.winner === "A" ? input.playerA.name : input.playerB.name;
+  const loserName = result.winner === "A" ? input.playerB.name : input.playerA.name;
+  const winnerRating = result.winner === "A" ? ratingA : ratingB;
+  const loserRating = result.winner === "A" ? ratingB : ratingA;
+
+  if (winnerRating + 4 < loserRating) {
+    events.push({
+      kind: "upset",
+      side: result.winner,
+      title: `${winnerName} springs a bracket upset.`,
+      detail: `${loserName} had the stronger profile, but the quick sim found enough tactical and pressure variance to flip the match.`
+    });
+  }
+
+  if (result.setsWonA + result.setsWonB === 2) {
+    events.push({
+      kind: "straight_games",
+      side: result.winner,
+      title: `${winnerName} wins in straight games.`,
+      detail: `The scoreline ${result.scoreline} never reached a deciding set.`
+    });
+  } else {
+    events.push({
+      kind: "decider",
+      side: result.winner,
+      title: `${winnerName} survives a deciding game.`,
+      detail: `The match needed all three games before finishing ${result.scoreline}.`
+    });
+  }
+
+  const staminaGap = Math.abs(result.stats.staminaDrainA - result.stats.staminaDrainB);
+
+  if (staminaGap >= 5 || result.stats.longestRally >= 14) {
+    events.push({
+      kind: "stamina_battle",
+      title: "The match carried a visible stamina tax.",
+      detail: `Longest rally: ${result.stats.longestRally} shots. Stamina drain: ${result.stats.staminaDrainA}-${result.stats.staminaDrainB}.`
+    });
+  }
+
+  const winnerStats = result.winner === "A"
+    ? { winners: result.stats.winnersA, errors: result.stats.unforcedErrorsA }
+    : { winners: result.stats.winnersB, errors: result.stats.unforcedErrorsB };
+
+  if (winnerStats.winners >= winnerStats.errors + 8) {
+    events.push({
+      kind: "attack_pressure",
+      side: result.winner,
+      title: `${winnerName} wins through cleaner pressure.`,
+      detail: `The winner generated ${winnerStats.winners} pressure points against ${winnerStats.errors} recorded errors.`
+    });
+  }
+
+  return events.slice(0, 3);
+}
+
 export function createMatchSession(input: MatchInput): LiveMatchSession {
   return {
     input,
@@ -878,11 +1208,12 @@ export function getMatchResultFromSession(session: LiveMatchSession): MatchResul
     setsWonB: session.setsWonB,
     setSummaries: session.setSummaries,
     stats,
-    scoreline: session.setSummaries.map((set) => `${set.scoreA}-${set.scoreB}`).join(", ")
+    scoreline: session.setSummaries.map((set) => `${set.scoreA}-${set.scoreB}`).join(", "),
+    fidelity: "detailed"
   };
 }
 
-export function simulateMatch(input: MatchInput): MatchResult {
+export function simulateDetailedMatch(input: MatchInput): MatchResult {
   let session = createMatchSession(input);
 
   while (!session.complete) {
@@ -890,4 +1221,135 @@ export function simulateMatch(input: MatchInput): MatchResult {
   }
 
   return getMatchResultFromSession(session);
+}
+
+export function simulateQuickMatch(input: MatchInput): MatchResult {
+  const rng = new SeededRng(input.seed);
+  const ratingA = quickRating(input.playerA);
+  const ratingB = quickRating(input.playerB);
+  const tacticFitA = tacticFit(input.playerA, input.playerB, input.tacticA);
+  const tacticFitB = tacticFit(input.playerB, input.playerA, input.tacticB);
+  const rallyLoad = quickExpectedRallyLoad(input);
+  const sets: SetSummary[] = [];
+  let setsWonA = 0;
+  let setsWonB = 0;
+  let staminaA = input.playerA.ratings.physical.stamina;
+  let staminaB = input.playerB.ratings.physical.stamina;
+  let server: Side = (input.seed & 1) === 0 ? "A" : "B";
+
+  while (setsWonA < 2 && setsWonB < 2) {
+    let scoreA = 0;
+    let scoreB = 0;
+    const points: PointSummary[] = [];
+
+    while (true) {
+      const profileA = deriveProfile(input.playerA);
+      const profileB = deriveProfile(input.playerB);
+      const fatigueEdge = fatiguePenalty(staminaB) - fatiguePenalty(staminaA);
+      const pressurePenaltyA =
+        scorePressure(scoreA, scoreB) * (100 - profileA.pressureResistance) / 70;
+      const pressurePenaltyB =
+        scorePressure(scoreB, scoreA) * (100 - profileB.pressureResistance) / 70;
+      const serverEdge = server === "A" ? 0.55 : -0.55;
+      const tempoEdge = tempoModifiers(input.tacticA).attack - tempoModifiers(input.tacticB).attack;
+      const pointNoise = rng.nextNumber(-1.2, 1.2);
+      const edge =
+        ratingA -
+        ratingB +
+        tacticFitA -
+        tacticFitB +
+        fatigueEdge +
+        pressurePenaltyB -
+        pressurePenaltyA +
+        tempoEdge * 0.35 +
+        serverEdge +
+        pointNoise;
+      const pointProbabilityA = clamp(logistic(edge / 10.5), 0.14, 0.86);
+      const winner: Side = rng.chance(pointProbabilityA) ? "A" : "B";
+      const rallyLength = clamp(Math.round(rallyLoad + rng.nextNumber(-2.5, 4.5) - Math.abs(edge) / 12), 1, 18);
+
+      if (winner === "A") {
+        scoreA += 1;
+        server = "A";
+      } else {
+        scoreB += 1;
+        server = "B";
+      }
+
+      points.push(
+        createQuickPointSummary({
+          winner,
+          rallyLength,
+          scoreA,
+          scoreB,
+          reason: pickQuickReason({
+            winner,
+            matchInput: input,
+            staminaA,
+            staminaB,
+            rng
+          }),
+          matchInput: input
+        })
+      );
+
+      staminaA = Math.max(38, staminaA - quickStaminaBurn(input.playerA, input.tacticA, rallyLength));
+      staminaB = Math.max(38, staminaB - quickStaminaBurn(input.playerB, input.tacticB, rallyLength));
+
+      const reachedCap = scoreA === 30 || scoreB === 30;
+      const twoPointMargin = Math.abs(scoreA - scoreB) >= 2;
+      const reachedGamePoint = scoreA >= 21 || scoreB >= 21;
+
+      if (reachedCap || (reachedGamePoint && twoPointMargin)) {
+        const setWinner: Side = scoreA > scoreB ? "A" : "B";
+        sets.push({
+          winner: setWinner,
+          scoreA,
+          scoreB,
+          points
+        });
+
+        if (setWinner === "A") {
+          setsWonA += 1;
+        } else {
+          setsWonB += 1;
+        }
+
+        staminaA = Math.min(100, staminaA + 5.5);
+        staminaB = Math.min(100, staminaB + 5.5);
+        break;
+      }
+    }
+  }
+
+  const result: MatchResult = {
+    winner: setsWonA > setsWonB ? "A" : "B",
+    setsWonA,
+    setsWonB,
+    setSummaries: sets,
+    stats: createQuickStats({
+      input,
+      sets,
+      staminaA,
+      staminaB
+    }),
+    scoreline: sets.map((set) => `${set.scoreA}-${set.scoreB}`).join(", "),
+    fidelity: "quick"
+  };
+
+  return {
+    ...result,
+    summaryEvents: createQuickSummaryEvents(input, result, ratingA, ratingB)
+  };
+}
+
+export function simulateMatchByFidelity(
+  input: MatchInput,
+  fidelity: SimulationFidelity
+): MatchResult {
+  return fidelity === "quick" ? simulateQuickMatch(input) : simulateDetailedMatch(input);
+}
+
+export function simulateMatch(input: MatchInput): MatchResult {
+  return simulateDetailedMatch(input);
 }

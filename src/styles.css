@@ -973,7 +973,7 @@ button {
   position: relative;
   display: grid;
   align-content: center;
-  height: 6.7rem;
+  height: 7.4rem;
   min-height: 0;
   z-index: 1;
 }
@@ -1005,6 +1005,14 @@ button {
 .bracket-card small {
   display: block;
   margin-top: 0.75rem;
+}
+
+.bracket-context-line {
+  margin-top: 0.35rem;
+  color: var(--muted-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .match-command-layout {

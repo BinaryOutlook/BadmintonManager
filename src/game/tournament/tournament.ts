@@ -1,7 +1,14 @@
 import { tacticLibrary } from "../content/tactics";
-import { simulateMatch } from "../core/match";
+import { simulateMatchByFidelity } from "../core/match";
 import { SeededRng } from "../core/rng";
-import type { MatchInput, MatchResult, MatchStats, Player } from "../core/models";
+import type {
+  MatchInput,
+  MatchResult,
+  MatchStats,
+  MatchSummaryEvent,
+  Player,
+  SimulationFidelity
+} from "../core/models";
 import type { SeededPlayer } from "../content/players";
 
 export type RoundName = "R16" | "QF" | "SF" | "F";
@@ -14,6 +21,8 @@ export interface TournamentMatch {
   sideBId: string;
   winnerId?: string;
   scoreline?: string;
+  simulationFidelity?: SimulationFidelity;
+  summaryEvents?: MatchSummaryEvent[];
   managed: boolean;
   completed: boolean;
 }
@@ -174,21 +183,27 @@ function createRound(args: {
       round: roundName,
       sideAId,
       sideBId,
+      simulationFidelity: managed ? "detailed" : "quick",
       managed,
       completed: false
     };
 
     if (!managed) {
       const matchSeed = rng.nextInt(1, 2_147_483_000);
-      const result = simulateMatch({
-        seed: matchSeed,
-        playerA: playerMap[sideAId],
-        playerB: playerMap[sideBId],
-        tacticA: chooseAutoplayTactic(playerMap[sideAId], rng),
-        tacticB: chooseAutoplayTactic(playerMap[sideBId], rng)
-      });
+      const result = simulateMatchByFidelity(
+        {
+          seed: matchSeed,
+          playerA: playerMap[sideAId],
+          playerB: playerMap[sideBId],
+          tacticA: chooseAutoplayTactic(playerMap[sideAId], rng),
+          tacticB: chooseAutoplayTactic(playerMap[sideBId], rng)
+        },
+        "quick"
+      );
       match.winnerId = result.winner === "A" ? sideAId : sideBId;
       match.scoreline = result.scoreline;
+      match.simulationFidelity = result.fidelity;
+      match.summaryEvents = result.summaryEvents;
       match.completed = true;
     }
 
@@ -296,7 +311,9 @@ export function advanceTournament(args: {
       ...match,
       completed: true,
       winnerId,
-      scoreline: args.managedResult.scoreline
+      scoreline: args.managedResult.scoreline,
+      simulationFidelity: args.managedResult.fidelity ?? "detailed",
+      summaryEvents: args.managedResult.summaryEvents
     };
   });
 

@@ -27,6 +27,14 @@ The engine uses a **seeded risk and reward event model**.
 For the proposed high-fidelity active-match algorithm and quick background-match simulator, see
 `docs/reference/match-simulation-fidelity.md`.
 
+Current implementation has two fidelity paths:
+
+- `detailed`: the point-by-point rally simulator used by managed live matches
+- `quick`: a calibrated point simulator used by non-managed tournament matches
+
+`simulateMatch()` remains detailed for compatibility. New code should use an explicit fidelity
+dispatcher when choosing between active and background match resolution.
+
 It does not simulate:
 
 - shuttle trajectory in 3D space

@@ -59,13 +59,13 @@ $$
 
 ## Current Version
 
-Current target: `v0.2.2`
+Current target: `v0.2.3 Game-algorithm`
 
-`v0.2.2` expands the roster draw system. The local athlete pool now has 47 fictional players, while
-each tournament still draws exactly 16 entrants for the compact knockout bracket.
+`v0.2.3` is the game-algorithm release. It promotes the high-fidelity active-match simulator and
+quick background-match simulator into the active implementation target.
 
-The managed athlete is always included, and the remaining event field is drawn from the larger pool
-with deterministic run-seed behavior.
+The goal is richer real-match feel for managed matches while keeping unseen tournament matches fast,
+deterministic, and tournament-compatible.
 
 ## Documentation
 
@@ -75,7 +75,7 @@ This repo now uses an agent-first documentation harness:
 - `docs/README.md` - documentation map and update rules
 - `docs/product/PRD.md` - stable product direction
 - `docs/product/versions/` - versioned release packets and UI references
-- `docs/product/versions/v0.2.2/v0.2.2.md` - active release packet
+- `docs/product/versions/v0.2.3/v0.2.3.md` - active release packet
 - `docs/architecture/overview.md` - architecture and implementation boundaries
 - `docs/reference/` - subsystem contracts
 - `docs/plans/active/project-status.md` - current state and next work

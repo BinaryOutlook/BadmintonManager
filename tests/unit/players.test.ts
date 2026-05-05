@@ -30,13 +30,13 @@ describe("player content", () => {
     "Ceremony Blade",
     "Storm Tiger",
     "Siam Sage",
-    "Lion Sprint",
+    "Vibrant Lion",
     "Delhi Falcon",
     "Iron Uncle",
     "Silent Maze",
     "Imperial Spear",
     "Kerala Counterhawk",
-    "Paris Panther",
+    "Marseille Panther",
     "Blue Comet"
   ];
   const specialAliasNames = [...trophyTitanNames, ...honorableMentionNames];

@@ -37,6 +37,9 @@ export const liveDirectiveSchema = z.enum([
 ]);
 export type LiveDirective = z.infer<typeof liveDirectiveSchema>;
 
+export const simulationFidelitySchema = z.enum(["detailed", "quick"]);
+export type SimulationFidelity = z.infer<typeof simulationFidelitySchema>;
+
 export const shotTypeSchema = z.enum([
   "serve",
   "clear",
@@ -160,6 +163,19 @@ export interface MatchStats {
   totalPoints: number;
 }
 
+export interface MatchSummaryEvent {
+  kind:
+    | "upset"
+    | "straight_games"
+    | "decider"
+    | "stamina_battle"
+    | "attack_pressure"
+    | "error_collapse";
+  side?: Side;
+  title: string;
+  detail: string;
+}
+
 export interface MatchResult {
   winner: Side;
   setsWonA: number;
@@ -167,6 +183,8 @@ export interface MatchResult {
   setSummaries: SetSummary[];
   stats: MatchStats;
   scoreline: string;
+  fidelity?: SimulationFidelity;
+  summaryEvents?: MatchSummaryEvent[];
 }
 
 export interface MatchInput {
