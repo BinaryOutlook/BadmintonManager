@@ -11,14 +11,6 @@ interface SetupViewProps {
   onStartTournament: () => void;
 }
 
-function initials(name: string) {
-  return name
-    .split(" ")
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? "")
-    .join("");
-}
-
 function overallFromDossier(dossier: ReturnType<typeof deriveAthleteDossier>) {
   return Math.round((dossier.power + dossier.speed + dossier.stamina + dossier.control) / 4);
 }
@@ -81,11 +73,11 @@ export function SetupView(props: SetupViewProps) {
                   onClick={() => props.onSelectPlayer(item.entry.player.id)}
                 >
                   <div className="athlete-card-header">
-                    <span className="athlete-avatar">{initials(item.entry.player.name)}</span>
-                    <div>
+                    <div className="athlete-card-identity">
+                      <span className="athlete-avatar">{item.entry.player.nationality}</span>
                       <strong>{item.entry.player.name}</strong>
-                      <span>OVR Rank #{item.rank}</span>
                     </div>
+                    <span className="athlete-card-rank">OVR Rank #{item.rank}</span>
                   </div>
                   <div className="metric-track">
                     <div className="metric-track-fill" style={{ width: `${item.overall}%` }} />
@@ -112,7 +104,7 @@ export function SetupView(props: SetupViewProps) {
               <h3>{selected.entry.player.name}</h3>
               <p>{selected.entry.player.styleLabel}</p>
             </div>
-            <div className="dossier-avatar">{initials(selected.entry.player.name)}</div>
+            <div className="dossier-avatar">{selected.entry.player.nationality}</div>
           </div>
 
           <div className="dossier-metrics">

@@ -203,9 +203,9 @@ export const seededPlayers: SeededPlayer[] = [
     handedness: "left",
     styleLabel: "Developing all-rounder",
     ratings: {
-      technical: { smash: 71, netPlay: 74, clearLob: 72, dropShot: 73, defenseRetrieval: 73, serveReturn: 75 },
-      physical: { stamina: 76, footworkSpeed: 75, explosivenessJump: 72, agilityBalance: 74 },
-      mental: { anticipation: 74, composure: 71, focus: 72, aggression: 67 }
+      technical: { smash: 77, netPlay: 74, clearLob: 72, dropShot: 73, defenseRetrieval: 73, serveReturn: 75 },
+      physical: { stamina: 84, footworkSpeed: 81, explosivenessJump: 72, agilityBalance: 78 },
+      mental: { anticipation: 72, composure: 78, focus: 74, aggression: 67 }
     }
   }),
   createSeededPlayer(17, {
@@ -281,8 +281,8 @@ export const seededPlayers: SeededPlayer[] = [
     styleLabel: "Ghost wrist artist",
     traits: ["ghostWrist", "backhandMirage", "disguiseMaker"],
     ratings: {
-      technical: { smash: 88, netPlay: 91, clearLob: 84, dropShot: 96, defenseRetrieval: 82, serveReturn: 90 },
-      physical: { stamina: 83, footworkSpeed: 88, explosivenessJump: 89, agilityBalance: 91 },
+      technical: { smash: 88, netPlay: 93, clearLob: 84, dropShot: 96, defenseRetrieval: 82, serveReturn: 90 },
+      physical: { stamina: 88, footworkSpeed: 88, explosivenessJump: 89, agilityBalance: 91 },
       mental: { anticipation: 93, composure: 88, focus: 84, aggression: 86 }
     }
   }),
@@ -294,9 +294,9 @@ export const seededPlayers: SeededPlayer[] = [
     styleLabel: "Errorless tempo freezer",
     traits: ["tempoFreeze", "lowErrorTempo", "deepReset"],
     ratings: {
-      technical: { smash: 81, netPlay: 88, clearLob: 93, dropShot: 87, defenseRetrieval: 89, serveReturn: 90 },
-      physical: { stamina: 90, footworkSpeed: 87, explosivenessJump: 80, agilityBalance: 89 },
-      mental: { anticipation: 92, composure: 91, focus: 94, aggression: 66 }
+      technical: { smash: 81, netPlay: 86, clearLob: 91, dropShot: 85, defenseRetrieval: 88, serveReturn: 88 },
+      physical: { stamina: 87, footworkSpeed: 86, explosivenessJump: 80, agilityBalance: 88 },
+      mental: { anticipation: 90, composure: 88, focus: 91, aggression: 66 }
     }
   }),
   createSeededPlayer(24, {
@@ -307,9 +307,9 @@ export const seededPlayers: SeededPlayer[] = [
     styleLabel: "Flat-drive storm",
     traits: ["driveStorm", "wideTempo", "rapidTransitions"],
     ratings: {
-      technical: { smash: 87, netPlay: 84, clearLob: 82, dropShot: 86, defenseRetrieval: 84, serveReturn: 88 },
-      physical: { stamina: 88, footworkSpeed: 94, explosivenessJump: 88, agilityBalance: 92 },
-      mental: { anticipation: 87, composure: 84, focus: 86, aggression: 82 }
+      technical: { smash: 85, netPlay: 82, clearLob: 81, dropShot: 84, defenseRetrieval: 82, serveReturn: 86 },
+      physical: { stamina: 85, footworkSpeed: 91, explosivenessJump: 86, agilityBalance: 89 },
+      mental: { anticipation: 85, composure: 82, focus: 84, aggression: 80 }
     }
   }),
   createSeededPlayer(25, {
@@ -320,9 +320,9 @@ export const seededPlayers: SeededPlayer[] = [
     styleLabel: "Aerial finisher",
     traits: ["jumpSmashPredator", "earlyStrike", "shortRallyBias"],
     ratings: {
-      technical: { smash: 93, netPlay: 80, clearLob: 84, dropShot: 82, defenseRetrieval: 83, serveReturn: 83 },
-      physical: { stamina: 86, footworkSpeed: 87, explosivenessJump: 94, agilityBalance: 85 },
-      mental: { anticipation: 84, composure: 86, focus: 84, aggression: 90 }
+      technical: { smash: 91, netPlay: 79, clearLob: 83, dropShot: 81, defenseRetrieval: 82, serveReturn: 82 },
+      physical: { stamina: 85, footworkSpeed: 86, explosivenessJump: 92, agilityBalance: 84 },
+      mental: { anticipation: 83, composure: 85, focus: 83, aggression: 88 }
     }
   }),
   createSeededPlayer(26, {
@@ -333,9 +333,9 @@ export const seededPlayers: SeededPlayer[] = [
     styleLabel: "Front-court illusionist",
     traits: ["netBlade", "serveReturnTrap", "softHands"],
     ratings: {
-      technical: { smash: 80, netPlay: 94, clearLob: 83, dropShot: 92, defenseRetrieval: 84, serveReturn: 93 },
-      physical: { stamina: 85, footworkSpeed: 89, explosivenessJump: 81, agilityBalance: 92 },
-      mental: { anticipation: 91, composure: 88, focus: 88, aggression: 72 }
+      technical: { smash: 80, netPlay: 92, clearLob: 82, dropShot: 90, defenseRetrieval: 83, serveReturn: 91 },
+      physical: { stamina: 84, footworkSpeed: 88, explosivenessJump: 81, agilityBalance: 90 },
+      mental: { anticipation: 90, composure: 87, focus: 86, aggression: 72 }
     }
   }),
   createSeededPlayer(27, {
@@ -346,9 +346,9 @@ export const seededPlayers: SeededPlayer[] = [
     styleLabel: "Defensive volume wall",
     traits: ["retrievalWall", "liftReset", "staminaTax"],
     ratings: {
-      technical: { smash: 81, netPlay: 83, clearLob: 91, dropShot: 84, defenseRetrieval: 95, serveReturn: 87 },
-      physical: { stamina: 94, footworkSpeed: 88, explosivenessJump: 80, agilityBalance: 93 },
-      mental: { anticipation: 90, composure: 90, focus: 92, aggression: 66 }
+      technical: { smash: 80, netPlay: 82, clearLob: 89, dropShot: 83, defenseRetrieval: 93, serveReturn: 85 },
+      physical: { stamina: 91, footworkSpeed: 87, explosivenessJump: 79, agilityBalance: 91 },
+      mental: { anticipation: 88, composure: 88, focus: 90, aggression: 65 }
     }
   }),
   createSeededPlayer(28, {
@@ -359,9 +359,9 @@ export const seededPlayers: SeededPlayer[] = [
     styleLabel: "Vertical power striker",
     traits: ["arcLightSmash", "jumpInterception", "paceSpike"],
     ratings: {
-      technical: { smash: 92, netPlay: 82, clearLob: 82, dropShot: 84, defenseRetrieval: 82, serveReturn: 84 },
-      physical: { stamina: 84, footworkSpeed: 89, explosivenessJump: 96, agilityBalance: 86 },
-      mental: { anticipation: 85, composure: 84, focus: 84, aggression: 91 }
+      technical: { smash: 90, netPlay: 82, clearLob: 82, dropShot: 84, defenseRetrieval: 82, serveReturn: 84 },
+      physical: { stamina: 84, footworkSpeed: 89, explosivenessJump: 96, agilityBalance: 85 },
+      mental: { anticipation: 85, composure: 82, focus: 84, aggression: 89 }
     }
   }),
   createSeededPlayer(29, {
@@ -372,8 +372,8 @@ export const seededPlayers: SeededPlayer[] = [
     styleLabel: "Pattern-reading controller",
     traits: ["patternScholar", "angleMemory", "calmLockdown"],
     ratings: {
-      technical: { smash: 82, netPlay: 89, clearLob: 90, dropShot: 90, defenseRetrieval: 86, serveReturn: 90 },
-      physical: { stamina: 87, footworkSpeed: 85, explosivenessJump: 80, agilityBalance: 88 },
+      technical: { smash: 82, netPlay: 89, clearLob: 88, dropShot: 88, defenseRetrieval: 86, serveReturn: 90 },
+      physical: { stamina: 85, footworkSpeed: 85, explosivenessJump: 80, agilityBalance: 88 },
       mental: { anticipation: 94, composure: 91, focus: 92, aggression: 68 }
     }
   }),
@@ -385,9 +385,9 @@ export const seededPlayers: SeededPlayer[] = [
     styleLabel: "Counterpunch balance",
     traits: ["counterLine", "bodyDefense", "neutralToAttack"],
     ratings: {
-      technical: { smash: 84, netPlay: 85, clearLob: 88, dropShot: 85, defenseRetrieval: 92, serveReturn: 87 },
-      physical: { stamina: 89, footworkSpeed: 88, explosivenessJump: 84, agilityBalance: 90 },
-      mental: { anticipation: 90, composure: 88, focus: 89, aggression: 70 }
+      technical: { smash: 83, netPlay: 82, clearLob: 87, dropShot: 84, defenseRetrieval: 91, serveReturn: 86 },
+      physical: { stamina: 88, footworkSpeed: 86, explosivenessJump: 83, agilityBalance: 89 },
+      mental: { anticipation: 89, composure: 86, focus: 88, aggression: 70 }
     }
   }),
   createSeededPlayer(31, {
@@ -398,9 +398,9 @@ export const seededPlayers: SeededPlayer[] = [
     styleLabel: "High-tempo attacker",
     traits: ["cycloneTempo", "forecourtBurst", "attackWave"],
     ratings: {
-      technical: { smash: 89, netPlay: 83, clearLob: 82, dropShot: 85, defenseRetrieval: 84, serveReturn: 86 },
-      physical: { stamina: 87, footworkSpeed: 93, explosivenessJump: 91, agilityBalance: 90 },
-      mental: { anticipation: 86, composure: 83, focus: 85, aggression: 88 }
+      technical: { smash: 86, netPlay: 80, clearLob: 80, dropShot: 84, defenseRetrieval: 82, serveReturn: 84 },
+      physical: { stamina: 85, footworkSpeed: 90, explosivenessJump: 88, agilityBalance: 88 },
+      mental: { anticipation: 84, composure: 82, focus: 83, aggression: 86 }
     }
   }),
   createSeededPlayer(32, {
@@ -411,9 +411,204 @@ export const seededPlayers: SeededPlayer[] = [
     styleLabel: "Deceptive angle maker",
     traits: ["angleTrickshot", "delayedDrop", "crossCourtDisguise"],
     ratings: {
-      technical: { smash: 85, netPlay: 88, clearLob: 85, dropShot: 93, defenseRetrieval: 83, serveReturn: 89 },
-      physical: { stamina: 85, footworkSpeed: 89, explosivenessJump: 85, agilityBalance: 91 },
-      mental: { anticipation: 91, composure: 87, focus: 86, aggression: 80 }
+      technical: { smash: 84, netPlay: 87, clearLob: 84, dropShot: 90, defenseRetrieval: 82, serveReturn: 88 },
+      physical: { stamina: 84, footworkSpeed: 88, explosivenessJump: 84, agilityBalance: 88 },
+      mental: { anticipation: 89, composure: 86, focus: 85, aggression: 78 }
+    }
+  }),
+  createSeededPlayer(33, {
+    name: "Shadow Phoenix",
+    nationality: "JPN",
+    age: 27,
+    handedness: "left",
+    styleLabel: "Phoenix tempo controller",
+    traits: ["phoenixTempo", "longRallyControl", "momentumRebuild"],
+    ratings: {
+      technical: { smash: 80, netPlay: 90, clearLob: 91, dropShot: 90, defenseRetrieval: 90, serveReturn: 91 },
+      physical: { stamina: 88, footworkSpeed: 87, explosivenessJump: 78, agilityBalance: 90 },
+      mental: { anticipation: 93, composure: 90, focus: 92, aggression: 65 }
+    }
+  }),
+  createSeededPlayer(34, {
+    name: "Jade Commander",
+    nationality: "CHN",
+    age: 28,
+    handedness: "right",
+    styleLabel: "Command-chain tactician",
+    traits: ["commandChain", "neutralShotStack", "calculatedPressure"],
+    ratings: {
+      technical: { smash: 88, netPlay: 87, clearLob: 88, dropShot: 90, defenseRetrieval: 86, serveReturn: 89 },
+      physical: { stamina: 86, footworkSpeed: 89, explosivenessJump: 87, agilityBalance: 88 },
+      mental: { anticipation: 91, composure: 88, focus: 89, aggression: 80 }
+    }
+  }),
+  createSeededPlayer(35, {
+    name: "Danish Trickster",
+    nationality: "DEN",
+    age: 28,
+    handedness: "right",
+    styleLabel: "Mind-games creator",
+    traits: ["mindGames", "paceChange", "tiltPressure"],
+    ratings: {
+      technical: { smash: 84, netPlay: 87, clearLob: 87, dropShot: 90, defenseRetrieval: 88, serveReturn: 88 },
+      physical: { stamina: 87, footworkSpeed: 88, explosivenessJump: 84, agilityBalance: 90 },
+      mental: { anticipation: 90, composure: 86, focus: 87, aggression: 77 }
+    }
+  }),
+  createSeededPlayer(36, {
+    name: "Electric Garuda",
+    nationality: "INA",
+    age: 27,
+    handedness: "right",
+    styleLabel: "Flash-raid attacker",
+    traits: ["flashRaid", "explosiveFootwork", "volatileCeiling"],
+    ratings: {
+      technical: { smash: 90, netPlay: 84, clearLob: 80, dropShot: 84, defenseRetrieval: 82, serveReturn: 87 },
+      physical: { stamina: 83, footworkSpeed: 94, explosivenessJump: 92, agilityBalance: 91 },
+      mental: { anticipation: 85, composure: 82, focus: 82, aggression: 90 }
+    }
+  }),
+  createSeededPlayer(37, {
+    name: "Ceremony Blade",
+    nationality: "INA",
+    age: 28,
+    handedness: "right",
+    styleLabel: "Victory-ritual all-rounder",
+    traits: ["victoryRitual", "clutchAura", "streakComposure"],
+    ratings: {
+      technical: { smash: 88, netPlay: 85, clearLob: 85, dropShot: 86, defenseRetrieval: 85, serveReturn: 86 },
+      physical: { stamina: 86, footworkSpeed: 88, explosivenessJump: 88, agilityBalance: 87 },
+      mental: { anticipation: 86, composure: 91, focus: 87, aggression: 84 }
+    }
+  }),
+  createSeededPlayer(38, {
+    name: "Storm Tiger",
+    nationality: "MAS",
+    age: 27,
+    handedness: "right",
+    styleLabel: "Thunderclap power carry",
+    traits: ["thunderclapSmash", "confidenceSwing", "rearCourtBreak"],
+    ratings: {
+      technical: { smash: 94, netPlay: 80, clearLob: 83, dropShot: 82, defenseRetrieval: 82, serveReturn: 84 },
+      physical: { stamina: 84, footworkSpeed: 87, explosivenessJump: 94, agilityBalance: 85 },
+      mental: { anticipation: 83, composure: 82, focus: 82, aggression: 92 }
+    }
+  }),
+  createSeededPlayer(39, {
+    name: "Siam Sage",
+    nationality: "THA",
+    age: 24,
+    handedness: "right",
+    styleLabel: "Monk-defense trapper",
+    traits: ["monkDefense", "elasticCoverage", "counterAccuracy"],
+    ratings: {
+      technical: { smash: 79, netPlay: 86, clearLob: 91, dropShot: 88, defenseRetrieval: 94, serveReturn: 88 },
+      physical: { stamina: 91, footworkSpeed: 88, explosivenessJump: 80, agilityBalance: 93 },
+      mental: { anticipation: 92, composure: 90, focus: 93, aggression: 62 }
+    }
+  }),
+  createSeededPlayer(40, {
+    name: "Lion Sprint",
+    nationality: "SGP",
+    age: 27,
+    handedness: "right",
+    styleLabel: "Roaring first-step striker",
+    traits: ["roaringFirstStep", "earlyRallyBurst", "underdogWorldChampion"],
+    ratings: {
+      technical: { smash: 88, netPlay: 82, clearLob: 80, dropShot: 83, defenseRetrieval: 82, serveReturn: 86 },
+      physical: { stamina: 84, footworkSpeed: 93, explosivenessJump: 91, agilityBalance: 89 },
+      mental: { anticipation: 84, composure: 84, focus: 83, aggression: 89 }
+    }
+  }),
+  createSeededPlayer(41, {
+    name: "Delhi Falcon",
+    nationality: "IND",
+    age: 24,
+    handedness: "right",
+    styleLabel: "Rising-hunt all-court fighter",
+    traits: ["risingHunt", "upsetCurve", "tournamentGrowth"],
+    ratings: {
+      technical: { smash: 85, netPlay: 86, clearLob: 84, dropShot: 87, defenseRetrieval: 84, serveReturn: 86 },
+      physical: { stamina: 85, footworkSpeed: 90, explosivenessJump: 86, agilityBalance: 89 },
+      mental: { anticipation: 87, composure: 84, focus: 85, aggression: 82 }
+    }
+  }),
+  createSeededPlayer(42, {
+    name: "Iron Uncle",
+    nationality: "TPE",
+    age: 34,
+    handedness: "right",
+    styleLabel: "Old-warrior grinder",
+    traits: ["oldWarriorGrind", "gameThreeEngine", "longevityGrit"],
+    ratings: {
+      technical: { smash: 82, netPlay: 84, clearLob: 88, dropShot: 84, defenseRetrieval: 91, serveReturn: 86 },
+      physical: { stamina: 92, footworkSpeed: 84, explosivenessJump: 80, agilityBalance: 88 },
+      mental: { anticipation: 88, composure: 91, focus: 90, aggression: 68 }
+    }
+  }),
+  createSeededPlayer(43, {
+    name: "Silent Maze",
+    nationality: "JPN",
+    age: 24,
+    handedness: "right",
+    styleLabel: "Maze-rally defender",
+    traits: ["mazeRally", "antiSmashLabyrinth", "extraStepTax"],
+    ratings: {
+      technical: { smash: 78, netPlay: 85, clearLob: 91, dropShot: 86, defenseRetrieval: 93, serveReturn: 87 },
+      physical: { stamina: 90, footworkSpeed: 87, explosivenessJump: 78, agilityBalance: 91 },
+      mental: { anticipation: 91, composure: 88, focus: 92, aggression: 60 }
+    }
+  }),
+  createSeededPlayer(44, {
+    name: "Imperial Spear",
+    nationality: "CHN",
+    age: 25,
+    handedness: "right",
+    styleLabel: "Straight-line pressure attacker",
+    traits: ["straightLinePressure", "frontFootAttack", "liftQualityBreak"],
+    ratings: {
+      technical: { smash: 90, netPlay: 84, clearLob: 87, dropShot: 84, defenseRetrieval: 84, serveReturn: 86 },
+      physical: { stamina: 86, footworkSpeed: 88, explosivenessJump: 91, agilityBalance: 86 },
+      mental: { anticipation: 86, composure: 86, focus: 86, aggression: 88 }
+    }
+  }),
+  createSeededPlayer(45, {
+    name: "Kerala Counterhawk",
+    nationality: "IND",
+    age: 33,
+    handedness: "right",
+    styleLabel: "Upset-radar counterpuncher",
+    traits: ["upsetRadar", "giantKillerRead", "braveDefense"],
+    ratings: {
+      technical: { smash: 84, netPlay: 83, clearLob: 87, dropShot: 85, defenseRetrieval: 90, serveReturn: 86 },
+      physical: { stamina: 88, footworkSpeed: 85, explosivenessJump: 83, agilityBalance: 88 },
+      mental: { anticipation: 89, composure: 88, focus: 88, aggression: 73 }
+    }
+  }),
+  createSeededPlayer(46, {
+    name: "Paris Panther",
+    nationality: "FRA",
+    age: 23,
+    handedness: "right",
+    styleLabel: "Home-court surge athlete",
+    traits: ["homeCourtSurge", "arenaEnergy", "emotionalPace"],
+    ratings: {
+      technical: { smash: 86, netPlay: 82, clearLob: 83, dropShot: 85, defenseRetrieval: 83, serveReturn: 85 },
+      physical: { stamina: 84, footworkSpeed: 90, explosivenessJump: 89, agilityBalance: 88 },
+      mental: { anticipation: 84, composure: 83, focus: 84, aggression: 86 }
+    }
+  }),
+  createSeededPlayer(47, {
+    name: "Blue Comet",
+    nationality: "FRA",
+    age: 21,
+    handedness: "left",
+    styleLabel: "Prodigy-breakthrough striker",
+    traits: ["prodigyBreakthrough", "surviveThenSurge", "futureUpside"],
+    ratings: {
+      technical: { smash: 87, netPlay: 82, clearLob: 82, dropShot: 84, defenseRetrieval: 82, serveReturn: 84 },
+      physical: { stamina: 83, footworkSpeed: 91, explosivenessJump: 90, agilityBalance: 88 },
+      mental: { anticipation: 84, composure: 82, focus: 83, aggression: 88 }
     }
   })
 ];

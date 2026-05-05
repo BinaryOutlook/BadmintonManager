@@ -23,7 +23,9 @@ describe("SetupView", () => {
     const topRanked = rankRosterByOverall()[0];
 
     expect(within(athleteButtons[0]).getByText(topRanked.entry.player.name)).toBeInTheDocument();
+    expect(within(athleteButtons[0]).getByText(topRanked.entry.player.nationality)).toBeInTheDocument();
     expect(within(athleteButtons[0]).getByText("OVR Rank #1")).toBeInTheDocument();
+    expect(within(athleteButtons[0]).queryByText("GS")).not.toBeInTheDocument();
     expect(within(rosterPanel!).queryByText(/Seed #/)).not.toBeInTheDocument();
   });
 });

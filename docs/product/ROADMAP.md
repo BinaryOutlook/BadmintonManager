@@ -77,22 +77,27 @@ Goal:
 
 - expand the local roster beyond the tournament field size
 - add six Trophy Titans with distinct title-style names, stat profiles, and playstyle hooks
-- keep non-Trophy-Titan additions on plausible fictional real-name constructions
+- add 15 Honorable Mentions with title-style names and 85-88 OVR profiles
+- keep ordinary fictional depth players on plausible real-name constructions and capped at 86 OVR
 - keep each tournament as a 16-player knockout
 - draw exactly 16 event entrants from the larger pool while always including the managed athlete
 - sort setup roster selection by OVR so the strongest available athletes are easy to scan
+- use nationality-code identifiers beside athlete names in setup selection
 - preserve deterministic tournament fields for identical run seeds
 
 Exit criteria:
 
-- the content pool contains 32 fictional athletes
+- the content pool contains 47 fictional athletes
 - tournament creation draws exactly 16 unique entrants from the larger pool
 - the managed athlete is always included in the event field
 - the same seed creates the same event field
 - different seeds can create different event fields
 - headline legend-inspired OVR targets are covered by tests
-- Trophy Titan naming remains reserved for the six legacy archetypes
+- Honorable Mention OVR ratings stay inside the 85-88 band
+- ordinary fictional depth players stay capped at 86 OVR
+- title-style naming remains reserved for Trophy Titans and Honorable Mentions
 - setup roster cards display OVR rank instead of content seed position
+- setup roster names sit next to nationality-code identifiers instead of drifting toward rank text
 - the command-center layout from `v0.2.1` remains readable
 
 ## `v0.3` Manager Loop Expansion

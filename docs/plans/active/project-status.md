@@ -29,7 +29,7 @@ What is now stable:
 - the command center renders the full 16-player binary knockout path through the final
 - top navigation and sidebar console options are clickable, including compact tactic and event controls
 - the overview command center uses a head-to-head next-opponent comparison with tactic lock-in beside it
-- the local roster now contains 32 fictional athletes, including six Trophy Titans, with setup selection sorted by OVR and each tournament drawing exactly 16 entrants for novelty
+- the local roster now contains 47 fictional athletes, including six Trophy Titans and 15 Honorable Mentions, with setup selection sorted by OVR, nationality-code identifiers beside names, and each tournament drawing exactly 16 entrants for novelty
 
 ## Completed
 
@@ -58,19 +58,23 @@ What is now stable:
 - [x] agent-first documentation harness recorded in `docs/decisions/ADR-002-agent-first-documentation-harness.md`
 - [x] `v0.2.2` roster draw expansion packet created
 - [x] active documentation pointers updated to `v0.2.2`
-- [x] expanded the player pool to 32 athletes, reserved title-style names for six Trophy Titans, and added deterministic 16-player tournament draws from the larger pool
+- [x] expanded the player pool to 47 athletes, reserved title-style names for Trophy Titans and Honorable Mentions, and added deterministic 16-player tournament draws from the larger pool
+- [x] capped ordinary fictional depth players at 86 OVR while keeping Honorable Mentions in the 85-88 band
 - [x] sorted setup roster selection by OVR descending and replaced seed labels with OVR rank labels
+- [x] changed setup athlete identifiers from name initials to nationality codes and grouped names beside them
+- [x] documented the proposed high-fidelity active-match algorithm and quick background-match simulation plan
 
 ## In Progress
 
 - [ ] tune balance and upset frequency
-- [ ] tune expanded-roster legend balance against the original 16-player field
+- [ ] tune expanded-roster special-archetype balance against the ordinary fictional field
 - [ ] improve commentary variety and phrasing
 - [ ] expand post-match stats and scouting reads
 - [ ] polish responsive behavior and visual details across the new shell
 
 ## Next
 
+- [ ] implement the detailed/quick simulation fidelity boundary for managed and background matches
 - [ ] deepen the tactical intel layer with richer contextual explanations
 - [ ] add more differentiated live directives and opponent pattern reads
 - [ ] tighten save migration coverage for future `v0.2.x` changes
@@ -82,6 +86,7 @@ There are no hard technical blockers right now.
 Current design questions that could affect scope:
 
 - how aggressively to tune upset frequency before expanding the manager loop
+- what calibration bands should align quick background outcomes with detailed match outcomes
 - how much tactical explanation belongs in the persistent `TACTICAL_INTEL` surface versus local screen copy
 - how much save migration coverage is needed before future `v0.2.x` changes become risky
 - whether expanded-roster novelty is enough for `v0.2.2` or needs a small scouting UI companion
@@ -115,6 +120,7 @@ Future sessions should read these files first:
 - `docs/product/ROADMAP.md`
 - `docs/plans/active/project-status.md`
 - `docs/reference/match-engine.md`
+- `docs/reference/match-simulation-fidelity.md`
 - `docs/product/versions/v0.2.2/v0.2.2.md`
 
 ## Update Rule

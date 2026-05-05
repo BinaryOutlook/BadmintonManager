@@ -61,7 +61,7 @@ $$
 
 Current target: `v0.2.2`
 
-`v0.2.2` expands the roster draw system. The local athlete pool now has 32 fictional players, while
+`v0.2.2` expands the roster draw system. The local athlete pool now has 47 fictional players, while
 each tournament still draws exactly 16 entrants for the compact knockout bracket.
 
 The managed athlete is always included, and the remaining event field is drawn from the larger pool
