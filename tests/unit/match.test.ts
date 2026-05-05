@@ -160,6 +160,9 @@ describe("match simulation", () => {
     session = simulateNextPoint(session);
     expect(session.feed.some((entry) => entry.kind === "point")).toBe(true);
 
+    const liveTalkAttempt = applyTeamTalk(session, "A", "encourage");
+    expect(liveTalkAttempt.pendingTalkA).toBeUndefined();
+
     while (!session.complete && !session.intermission) {
       session = simulateNextPoint(session);
     }
@@ -168,6 +171,9 @@ describe("match simulation", () => {
 
     if (!session.complete) {
       session = applyTeamTalk(session, "A", "encourage");
+      expect(session.pendingTalkA).toBe("encourage");
+      expect(session.feed.at(-1)?.title).toContain("queues Encourage");
+
       session = simulateNextPoint(session);
 
       expect(session.currentSetNumber).toBe(2);

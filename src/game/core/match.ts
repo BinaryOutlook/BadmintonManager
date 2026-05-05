@@ -742,11 +742,36 @@ export function applyDirective(
 }
 
 export function applyTeamTalk(session: LiveMatchSession, side: Side, teamTalk: TeamTalk): LiveMatchSession {
-  return {
+  if (session.complete || !session.intermission) {
+    return session;
+  }
+
+  const nextSession: LiveMatchSession = {
     ...session,
+    feed: [...session.feed],
     pendingTalkA: side === "A" ? teamTalk : session.pendingTalkA,
     pendingTalkB: side === "B" ? teamTalk : session.pendingTalkB
   };
+
+  const playerName = side === "A" ? nextSession.input.playerA.name : nextSession.input.playerB.name;
+  const talkLabel =
+    teamTalk === "encourage"
+      ? "Encourage"
+      : teamTalk === "demand_focus"
+        ? "Demand Focus"
+        : teamTalk === "increase_tempo"
+          ? "Increase Tempo"
+          : "Calm Down";
+
+  pushFeed(
+    nextSession,
+    "directive",
+    "positive",
+    `${playerName} queues ${talkLabel} for the set break.`,
+    "The adjustment will apply as the next set opens."
+  );
+
+  return nextSession;
 }
 
 export function simulateNextPoint(session: LiveMatchSession): LiveMatchSession {

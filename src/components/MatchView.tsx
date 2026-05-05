@@ -40,6 +40,8 @@ export function MatchView(props: MatchViewProps) {
     props.managedSide === "A"
       ? props.session.competitorA.directive
       : props.session.competitorB.directive;
+  const pendingTeamTalk =
+    props.managedSide === "A" ? props.session.pendingTalkA : props.session.pendingTalkB;
 
   return (
     <section className="screen-shell">
@@ -237,7 +239,13 @@ export function MatchView(props: MatchViewProps) {
 
             <div className="panel-header panel-header-inline">
               <h2>Between-Set Team Talk</h2>
-              <span>{props.session.intermission && !props.session.complete ? "Live" : "Locked"}</span>
+              <span>
+                {props.session.intermission && !props.session.complete
+                  ? pendingTeamTalk
+                    ? "Talk queued"
+                    : "Live"
+                  : "Locked"}
+              </span>
             </div>
 
             {props.session.intermission && !props.session.complete ? (
@@ -246,7 +254,10 @@ export function MatchView(props: MatchViewProps) {
                   <button
                     key={talk.id}
                     type="button"
-                    className="directive-card directive-card-talk"
+                    className={`directive-card directive-card-talk ${
+                      pendingTeamTalk === talk.id ? "directive-card-active" : ""
+                    }`}
+                    aria-pressed={pendingTeamTalk === talk.id}
                     onClick={() => props.onApplyTalk(talk.id)}
                   >
                     <strong>{talk.label}</strong>
@@ -263,7 +274,11 @@ export function MatchView(props: MatchViewProps) {
             <div className="directive-actions">
               {!props.session.complete ? (
                 <button className="command-button command-button-primary" onClick={props.onSimulateNextPoint}>
-                  {props.session.intermission ? "Open Next Set" : "Simulate Next Point"}
+                  {props.session.intermission && pendingTeamTalk
+                    ? "Apply Talk + Open Next Set"
+                    : props.session.intermission
+                      ? "Open Next Set"
+                      : "Simulate Next Point"}
                 </button>
               ) : (
                 <button className="command-button command-button-primary" onClick={props.onAdvanceAfterMatch}>

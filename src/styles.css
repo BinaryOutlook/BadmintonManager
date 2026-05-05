@@ -99,10 +99,24 @@ button {
 
 .nav-pill,
 .sidenav-item {
+  border: 0;
+  background: transparent;
   color: var(--muted-soft);
   letter-spacing: 0.14em;
   font-size: 0.8rem;
   font-weight: 700;
+  text-transform: uppercase;
+}
+
+.nav-pill {
+  padding: 0.48rem 0.7rem;
+  border: 1px solid transparent;
+  border-radius: 0.22rem;
+}
+
+.nav-pill:hover {
+  border-color: var(--border);
+  background: rgba(35, 39, 44, 0.66);
 }
 
 .nav-pill-active,
@@ -213,9 +227,15 @@ button {
 }
 
 .sidenav-item {
+  width: 100%;
   padding: 0.85rem 0.9rem;
   border-left: 0.25rem solid transparent;
   background: transparent;
+  text-align: left;
+}
+
+.sidenav-item:hover {
+  background: rgba(35, 39, 44, 0.46);
 }
 
 .sidenav-item-active {
@@ -223,8 +243,57 @@ button {
   background: rgba(35, 39, 44, 0.76);
 }
 
+.sidebar-options {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.35rem;
+  background: rgba(22, 25, 29, 0.96);
+}
+
+.sidebar-option-stack,
+.sidebar-option-list {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.sidebar-option-stack strong {
+  color: var(--text);
+}
+
+.sidebar-option-stack span {
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.sidebar-mini-button {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 0.28rem;
+  padding: 0.62rem 0.7rem;
+  background: rgba(35, 39, 44, 0.9);
+  color: var(--text);
+  text-align: left;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.sidebar-mini-button:hover {
+  border-color: var(--border-strong);
+}
+
+.sidebar-mini-button-active {
+  border-color: rgba(57, 255, 20, 0.38);
+  color: var(--lime);
+  background: rgba(57, 255, 20, 0.08);
+}
+
 .sidebar-athlete {
-  margin-top: 2rem;
+  margin-top: 1.25rem;
   padding: 1rem;
   border: 1px solid var(--border);
   border-radius: 0.35rem;
@@ -335,12 +404,16 @@ button {
 .complete-grid,
 .match-columns {
   display: grid;
-  gap: 1rem;
+  gap: 0.9rem;
 }
 
-.deployment-grid,
-.overview-grid-v2 {
+.deployment-grid {
   grid-template-columns: minmax(0, 2fr) minmax(20rem, 1fr);
+}
+
+.overview-grid-v2 {
+  grid-template-columns: minmax(0, 1.55fr) minmax(21rem, 0.85fr);
+  align-items: start;
 }
 
 .complete-grid {
@@ -533,6 +606,147 @@ button {
   margin-top: 1.15rem;
 }
 
+.matchup-panel {
+  align-self: start;
+}
+
+.matchup-grid {
+  display: grid;
+  grid-template-columns: minmax(9rem, 0.85fr) minmax(13rem, 1fr) minmax(9rem, 0.85fr);
+  gap: 0.85rem;
+  align-items: stretch;
+}
+
+.matchup-competitor,
+.matchup-metrics,
+.matchup-key-card {
+  border: 1px solid var(--border);
+  border-radius: 0.35rem;
+  background: rgba(17, 19, 22, 0.9);
+}
+
+.matchup-competitor {
+  display: grid;
+  gap: 0.7rem;
+  padding: 0.95rem;
+}
+
+.matchup-competitor-opponent {
+  text-align: right;
+  justify-items: end;
+}
+
+.matchup-side-label,
+.matchup-key-card span {
+  color: var(--muted-soft);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.matchup-competitor h3 {
+  margin: 0.15rem 0 0.2rem;
+  color: var(--text);
+  font-size: 1.45rem;
+  letter-spacing: -0.04em;
+}
+
+.matchup-competitor p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.matchup-overall {
+  align-self: end;
+  color: var(--lime);
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+}
+
+.matchup-metrics {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.85rem;
+}
+
+.matchup-metric {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.matchup-metric-top {
+  display: grid;
+  grid-template-columns: 2.2rem minmax(0, 1fr) 2.2rem;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.matchup-metric-top span {
+  color: var(--muted-soft);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.matchup-metric-top strong {
+  color: var(--text);
+  font-size: 0.86rem;
+}
+
+.matchup-metric-top strong:last-child {
+  text-align: right;
+}
+
+.matchup-bars {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.3rem;
+}
+
+.matchup-bar {
+  height: 0.35rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(48, 54, 61, 0.86);
+}
+
+.matchup-bar-managed span,
+.matchup-bar-opponent span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.matchup-bar-managed span {
+  margin-left: auto;
+  background: linear-gradient(90deg, var(--cyan), var(--lime));
+}
+
+.matchup-bar-opponent span {
+  background: linear-gradient(90deg, var(--rose), #ffd1a1);
+}
+
+.matchup-key-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.7rem;
+  margin: 0.85rem 0;
+}
+
+.matchup-key-card {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.7rem;
+}
+
+.matchup-key-card strong {
+  color: var(--text);
+}
+
 .dossier-note {
   margin-top: 1rem;
   padding: 1rem;
@@ -555,6 +769,32 @@ button {
 
 .tactic-option-grid-wide {
   grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.tactic-lock-panel {
+  align-self: start;
+}
+
+.tactic-lock-panel .panel-header {
+  margin-bottom: 0.75rem;
+}
+
+.tactic-lock-panel .tactic-option-grid-wide {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.tactic-lock-panel .tactic-option-card {
+  padding: 0.82rem;
+}
+
+.tactic-lock-panel .tactic-option-top {
+  margin-bottom: 0.45rem;
+}
+
+.tactic-lock-panel .tactic-option-card p {
+  font-size: 0.84rem;
+  line-height: 1.35;
 }
 
 .tactic-option-top {
@@ -597,6 +837,17 @@ button {
   gap: 0.75rem;
 }
 
+.tactic-lock-panel .match-launch-row {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.tactic-lock-panel .match-launch-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+}
+
 .bracket-columns {
   display: grid;
   grid-template-columns: repeat(4, minmax(12rem, 1fr));
@@ -604,7 +855,24 @@ button {
   overflow-x: auto;
 }
 
-.bracket-round h3 {
+.bracket-tree {
+  overflow-x: auto;
+  padding: 0.25rem 0.25rem 1rem;
+}
+
+.bracket-round-labels,
+.bracket-match-grid {
+  min-width: 68rem;
+}
+
+.bracket-round-labels {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(14rem, 1fr));
+  column-gap: 2rem;
+  margin-bottom: 0.8rem;
+}
+
+.bracket-round-labels h3 {
   margin: 0 0 0.8rem;
   font-size: 1rem;
   letter-spacing: 0.08em;
@@ -612,9 +880,61 @@ button {
   color: var(--muted-soft);
 }
 
-.bracket-stack {
+.bracket-match-grid {
+  --bracket-row: 3.8rem;
   display: grid;
-  gap: 0.85rem;
+  grid-template-columns: repeat(4, minmax(14rem, 1fr));
+  grid-template-rows: repeat(16, var(--bracket-row));
+  column-gap: 2rem;
+  align-items: center;
+  position: relative;
+}
+
+.bracket-node {
+  position: relative;
+  min-width: 0;
+  align-self: center;
+}
+
+.bracket-node-col-1 {
+  --connector-height: calc(var(--bracket-row) * 2);
+}
+
+.bracket-node-col-2 {
+  --connector-height: calc(var(--bracket-row) * 4);
+}
+
+.bracket-node-col-3 {
+  --connector-height: calc(var(--bracket-row) * 8);
+}
+
+.bracket-node:not(.bracket-node-opening)::before,
+.bracket-node:not(.bracket-node-final)::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 1rem;
+  height: 1px;
+  background: rgba(64, 73, 83, 0.9);
+}
+
+.bracket-node:not(.bracket-node-opening)::before {
+  left: -1rem;
+}
+
+.bracket-node:not(.bracket-node-final)::after {
+  right: -1rem;
+}
+
+.bracket-node:not(.bracket-node-opening) .bracket-card-tree::before {
+  content: "";
+  position: absolute;
+  left: -1rem;
+  top: 50%;
+  width: 1px;
+  height: var(--connector-height);
+  background: rgba(64, 73, 83, 0.9);
+  transform: translateY(-50%);
 }
 
 .bracket-card {
@@ -624,9 +944,33 @@ button {
   background: rgba(17, 19, 22, 0.96);
 }
 
+.bracket-card-tree {
+  position: relative;
+  display: grid;
+  align-content: center;
+  height: 6.7rem;
+  min-height: 0;
+  z-index: 1;
+}
+
 .bracket-card-managed {
   border-color: rgba(57, 255, 20, 0.36);
   background: rgba(26, 37, 24, 0.48);
+}
+
+.bracket-card-complete {
+  border-color: rgba(192, 200, 211, 0.28);
+}
+
+.bracket-card-placeholder {
+  border-style: dashed;
+  color: var(--muted-soft);
+  background: rgba(17, 19, 22, 0.58);
+}
+
+.bracket-card-champion {
+  border-color: rgba(57, 255, 20, 0.5);
+  box-shadow: 0 0 0 1px rgba(57, 255, 20, 0.12) inset;
 }
 
 .bracket-row + .bracket-row {
