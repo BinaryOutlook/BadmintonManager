@@ -19,7 +19,7 @@ Use progressive disclosure. Read only what the task needs.
 1. `docs/README.md` - documentation map and update rules
 2. `docs/plans/active/project-status.md` - current phase, completed work, next work
 3. `docs/product/PRD.md` - stable product truth
-4. `docs/product/versions/v0.2/v0.2.md` - active release packet
+4. `docs/product/versions/v0.2.1/v0.2.1.md` - active release packet
 5. `docs/architecture/overview.md` - architecture boundaries and commands
 6. `docs/reference/` - subsystem contracts for match engine, player model, tactics, and tournament flow
 
@@ -53,7 +53,7 @@ $$
 - Architecture boundary change: update `docs/architecture/overview.md`; add an ADR in `docs/decisions/` when the decision is expensive to reverse.
 - Subsystem rule change: update the matching file in `docs/reference/`.
 - Project state change: update `docs/plans/active/project-status.md`.
-- New release target: create `docs/product/versions/vX.Y/`.
+- New release target: create `docs/product/versions/vX.Y/` or `docs/product/versions/vX.Y.Z/`.
 
 Do not let `AGENTS.md` become a large manual. Its job is fast routing.
 

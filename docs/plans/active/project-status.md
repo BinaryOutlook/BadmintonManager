@@ -1,8 +1,8 @@
 # Project Status
 
-Status date: 2026-04-28
-Current version target: `v0.2`
-Overall phase: Command-center super build
+Status date: 2026-05-05
+Current version target: `v0.2.1`
+Overall phase: Command-center patch, UI rearrangement, and pre-feature cleanup
 Chosen stack: Option A local-first SPA
 
 ## Snapshot
@@ -21,8 +21,14 @@ What is now stable:
 - local persistence is implemented
 - the command-center app shell is implemented
 - the setup, overview, live match, and recap screens have been rebuilt for `v0.2`
+- `v0.2.1` is the active patch target for bug fixes, UI rearrangement, and next-feature preparation
 - live managed matches now progress point by point instead of set by set
 - scouting, telemetry, directives, and recap aggregation are implemented
+- between-set talks visibly queue during intermissions before applying at the next set
+- the command center renders the full 16-player binary knockout path through the final
+- top navigation and sidebar console options are clickable, including compact tactic and event controls
+- the overview command center uses a head-to-head next-opponent comparison with tactic lock-in beside it
+- the current UI structure is being tightened before the next update adds small, innovative, identity-shaping features
 
 ## Completed
 
@@ -39,8 +45,14 @@ What is now stable:
 - [x] unit tests, build verification, and browser smoke test passing
 - [x] `v0.2` command-center shell implemented
 - [x] `v0.2` setup, bracket, live match, and recap screens implemented
+- [x] `v0.2.1` patch packet created
+- [x] active documentation pointers updated to `v0.2.1`
 - [x] point-by-point live managed match flow implemented
 - [x] live directives, between-set talks, scouting, and recap telemetry implemented
+- [x] between-set team-talk selection feedback and interval-only engine guard implemented
+- [x] full binary knockout tree with future-round placeholders implemented
+- [x] clickable top navigation and sidebar console option controls implemented
+- [x] overview layout revised with head-to-head comparison and right-side tactic lock-in
 - [x] README-centered docs converted into `AGENTS.md` plus structured `docs/` source-of-truth lanes
 - [x] agent-first documentation harness recorded in `docs/decisions/ADR-002-agent-first-documentation-harness.md`
 
@@ -53,6 +65,7 @@ What is now stable:
 
 ## Next
 
+- [ ] define the `v0.2.2` small innovative feature update after `v0.2.1`
 - [ ] deepen the tactical intel layer with richer contextual explanations
 - [ ] add more differentiated live directives and opponent pattern reads
 - [ ] tighten save migration coverage for future `v0.2.x` changes
@@ -66,6 +79,7 @@ Current design questions that could affect scope:
 - how aggressively to tune upset frequency before expanding the manager loop
 - how much tactical explanation belongs in the persistent `TACTICAL_INTEL` surface versus local screen copy
 - how much save migration coverage is needed before future `v0.2.x` changes become risky
+- which small, innovative feature should become the first post-`v0.2.1` identity upgrade
 
 ## Risks
 
@@ -96,7 +110,7 @@ Future sessions should read these files first:
 - `docs/product/ROADMAP.md`
 - `docs/plans/active/project-status.md`
 - `docs/reference/match-engine.md`
-- `docs/product/versions/v0.2/v0.2.md`
+- `docs/product/versions/v0.2.1/v0.2.1.md`
 
 ## Update Rule
 

@@ -80,6 +80,9 @@ Suggested initial options:
 - `increase_tempo`
 - `calm_down`
 
+Team talks are interval decisions. The UI may queue or swap the pending talk while the match is
+between sets; the engine applies the selected talk when the next set opens.
+
 Expected effects:
 
 - `encourage` improves composure slightly

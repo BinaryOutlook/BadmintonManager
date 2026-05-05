@@ -89,6 +89,16 @@ The player should be able to read:
 - path to the title
 - completed results
 
+For the 16-player knockout, the command-center bracket should render the full binary path even
+before later rounds have concrete competitors:
+
+```text
+R16: 8 matches -> QF: 4 matches -> SF: 2 matches -> F: 1 match
+```
+
+Future matches can appear as placeholders such as `Winner R16-1` until the tournament model
+creates the real round.
+
 The first version does not require:
 
 - animated bracket transitions

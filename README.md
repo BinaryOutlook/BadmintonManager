@@ -57,6 +57,18 @@ $$
 \text{UI} = \text{presentation} + \text{intent}; \quad \text{engine} = \text{outcomes}
 $$
 
+## Current Version
+
+Current target: `v0.2.1`
+
+`v0.2.1` is a patch and cleanup release for the command-center build. It fixes several interaction
+and rendering bugs, rearranges the pre-match overview into a clearer head-to-head comparison, and
+puts tactic lock-in beside matchup reading instead of underneath it.
+
+This release also prepares the project for the next update, likely `v0.2.2`: smaller, more
+innovative features that can redefine the coaching fantasy without expanding the game into a heavy
+career system too early.
+
 ## Documentation
 
 This repo now uses an agent-first documentation harness:
@@ -65,6 +77,7 @@ This repo now uses an agent-first documentation harness:
 - `docs/README.md` - documentation map and update rules
 - `docs/product/PRD.md` - stable product direction
 - `docs/product/versions/` - versioned release packets and UI references
+- `docs/product/versions/v0.2.1/v0.2.1.md` - active patch packet
 - `docs/architecture/overview.md` - architecture and implementation boundaries
 - `docs/reference/` - subsystem contracts
 - `docs/plans/active/project-status.md` - current state and next work
