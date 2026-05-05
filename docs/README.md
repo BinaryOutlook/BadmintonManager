@@ -34,6 +34,7 @@ docs/README.md
 | Current project state | `docs/plans/active/project-status.md` | Work completes, next work changes, blockers appear |
 | Architecture boundaries | `docs/architecture/overview.md` | Module ownership or runtime boundaries change |
 | Subsystem rules | `docs/reference/*.md` | Engine, tactics, player, or tournament contracts change |
+| Simulation fidelity design | `docs/reference/match-simulation-fidelity.md` | Detailed/quick match algorithm design or calibration strategy changes |
 | Big technical decisions | `docs/decisions/ADR-*.md` | A costly-to-reverse decision is accepted or superseded |
 
 ## Versioning Rules

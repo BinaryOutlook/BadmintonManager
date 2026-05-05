@@ -24,6 +24,9 @@ It should still leave room for:
 
 The engine uses a **seeded risk and reward event model**.
 
+For the proposed high-fidelity active-match algorithm and quick background-match simulator, see
+`docs/reference/match-simulation-fidelity.md`.
+
 It does not simulate:
 
 - shuttle trajectory in 3D space
