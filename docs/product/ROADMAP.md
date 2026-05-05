@@ -76,7 +76,8 @@ Status: Active
 Goal:
 
 - expand the local roster beyond the tournament field size
-- add fictional high-identity athletes with distinct stat profiles and playstyle hooks
+- add six Trophy Titans with distinct title-style names, stat profiles, and playstyle hooks
+- keep non-Trophy-Titan additions on plausible fictional real-name constructions
 - keep each tournament as a 16-player knockout
 - draw exactly 16 event entrants from the larger pool while always including the managed athlete
 - preserve deterministic tournament fields for identical run seeds
@@ -89,6 +90,7 @@ Exit criteria:
 - the same seed creates the same event field
 - different seeds can create different event fields
 - headline legend-inspired OVR targets are covered by tests
+- Trophy Titan naming remains reserved for the six legacy archetypes
 - the command-center layout from `v0.2.1` remains readable
 
 ## `v0.3` Manager Loop Expansion

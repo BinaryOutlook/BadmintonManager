@@ -29,7 +29,7 @@ What is now stable:
 - the command center renders the full 16-player binary knockout path through the final
 - top navigation and sidebar console options are clickable, including compact tactic and event controls
 - the overview command center uses a head-to-head next-opponent comparison with tactic lock-in beside it
-- the local roster now contains 32 fictional athletes, with each tournament drawing exactly 16 entrants for novelty
+- the local roster now contains 32 fictional athletes, including six Trophy Titans, with each tournament drawing exactly 16 entrants for novelty
 
 ## Completed
 
@@ -58,7 +58,7 @@ What is now stable:
 - [x] agent-first documentation harness recorded in `docs/decisions/ADR-002-agent-first-documentation-harness.md`
 - [x] `v0.2.2` roster draw expansion packet created
 - [x] active documentation pointers updated to `v0.2.2`
-- [x] expanded the player pool to 32 athletes and added deterministic 16-player tournament draws from the larger pool
+- [x] expanded the player pool to 32 athletes, reserved title-style names for six Trophy Titans, and added deterministic 16-player tournament draws from the larger pool
 
 ## In Progress
 

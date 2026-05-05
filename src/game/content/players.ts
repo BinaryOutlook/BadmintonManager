@@ -207,6 +207,214 @@ export const seededPlayers: SeededPlayer[] = [
       physical: { stamina: 76, footworkSpeed: 75, explosivenessJump: 72, agilityBalance: 74 },
       mental: { anticipation: 74, composure: 71, focus: 72, aggression: 67 }
     }
+  }),
+  createSeededPlayer(17, {
+    name: "Grand-Slam Southpaw",
+    nationality: "CHN",
+    age: 29,
+    handedness: "left",
+    styleLabel: "Final-boss hybrid",
+    traits: ["finalBossMode", "southpawPressure", "clutchTerminator"],
+    ratings: {
+      technical: { smash: 95, netPlay: 90, clearLob: 90, dropShot: 92, defenseRetrieval: 91, serveReturn: 90 },
+      physical: { stamina: 91, footworkSpeed: 93, explosivenessJump: 95, agilityBalance: 91 },
+      mental: { anticipation: 91, composure: 96, focus: 93, aggression: 92 }
+    }
+  }),
+  createSeededPlayer(18, {
+    name: "Three-Lung Dynamo",
+    nationality: "MAS",
+    age: 28,
+    handedness: "right",
+    styleLabel: "Endless rally engine",
+    traits: ["endlessRallyEngine", "rapidRecovery", "latePointCounter"],
+    ratings: {
+      technical: { smash: 82, netPlay: 87, clearLob: 90, dropShot: 87, defenseRetrieval: 93, serveReturn: 89 },
+      physical: { stamina: 96, footworkSpeed: 96, explosivenessJump: 86, agilityBalance: 95 },
+      mental: { anticipation: 91, composure: 89, focus: 94, aggression: 78 }
+    }
+  }),
+  createSeededPlayer(19, {
+    name: "Eight-Crown Monarch",
+    nationality: "INA",
+    age: 30,
+    handedness: "right",
+    styleLabel: "Classic supremacy",
+    traits: ["classicSupremacy", "basePositioning", "lowErrorTempo"],
+    ratings: {
+      technical: { smash: 84, netPlay: 92, clearLob: 95, dropShot: 89, defenseRetrieval: 89, serveReturn: 93 },
+      physical: { stamina: 89, footworkSpeed: 88, explosivenessJump: 82, agilityBalance: 90 },
+      mental: { anticipation: 94, composure: 93, focus: 96, aggression: 74 }
+    }
+  }),
+  createSeededPlayer(20, {
+    name: "Nordic Tower",
+    nationality: "DEN",
+    age: 27,
+    handedness: "right",
+    styleLabel: "Skyline smash",
+    traits: ["skylineSmash", "rearCourtStructure", "shortLiftPunisher"],
+    ratings: {
+      technical: { smash: 97, netPlay: 84, clearLob: 91, dropShot: 87, defenseRetrieval: 88, serveReturn: 87 },
+      physical: { stamina: 90, footworkSpeed: 90, explosivenessJump: 97, agilityBalance: 88 },
+      mental: { anticipation: 89, composure: 91, focus: 92, aggression: 92 }
+    }
+  }),
+  createSeededPlayer(21, {
+    name: "Greatwall Dragon",
+    nationality: "CHN",
+    age: 28,
+    handedness: "right",
+    styleLabel: "Counter-fortress",
+    traits: ["counterFortress", "pressureAbsorber", "patientCoverage"],
+    ratings: {
+      technical: { smash: 86, netPlay: 87, clearLob: 94, dropShot: 86, defenseRetrieval: 97, serveReturn: 88 },
+      physical: { stamina: 95, footworkSpeed: 91, explosivenessJump: 86, agilityBalance: 94 },
+      mental: { anticipation: 94, composure: 93, focus: 95, aggression: 75 }
+    }
+  }),
+  createSeededPlayer(22, {
+    name: "Backhand Mirage",
+    nationality: "INA",
+    age: 26,
+    handedness: "right",
+    styleLabel: "Ghost wrist artist",
+    traits: ["ghostWrist", "backhandMirage", "disguiseMaker"],
+    ratings: {
+      technical: { smash: 88, netPlay: 91, clearLob: 84, dropShot: 96, defenseRetrieval: 82, serveReturn: 90 },
+      physical: { stamina: 83, footworkSpeed: 88, explosivenessJump: 89, agilityBalance: 91 },
+      mental: { anticipation: 93, composure: 88, focus: 84, aggression: 86 }
+    }
+  }),
+  createSeededPlayer(23, {
+    name: "Renji Mori",
+    nationality: "JPN",
+    age: 25,
+    handedness: "right",
+    styleLabel: "Errorless tempo freezer",
+    traits: ["tempoFreeze", "lowErrorTempo", "deepReset"],
+    ratings: {
+      technical: { smash: 81, netPlay: 88, clearLob: 93, dropShot: 87, defenseRetrieval: 89, serveReturn: 90 },
+      physical: { stamina: 90, footworkSpeed: 87, explosivenessJump: 80, agilityBalance: 89 },
+      mental: { anticipation: 92, composure: 91, focus: 94, aggression: 66 }
+    }
+  }),
+  createSeededPlayer(24, {
+    name: "Krit Suriya",
+    nationality: "THA",
+    age: 23,
+    handedness: "left",
+    styleLabel: "Flat-drive storm",
+    traits: ["driveStorm", "wideTempo", "rapidTransitions"],
+    ratings: {
+      technical: { smash: 87, netPlay: 84, clearLob: 82, dropShot: 86, defenseRetrieval: 84, serveReturn: 88 },
+      physical: { stamina: 88, footworkSpeed: 94, explosivenessJump: 88, agilityBalance: 92 },
+      mental: { anticipation: 87, composure: 84, focus: 86, aggression: 82 }
+    }
+  }),
+  createSeededPlayer(25, {
+    name: "Omar Nasser",
+    nationality: "EGY",
+    age: 24,
+    handedness: "right",
+    styleLabel: "Aerial finisher",
+    traits: ["jumpSmashPredator", "earlyStrike", "shortRallyBias"],
+    ratings: {
+      technical: { smash: 93, netPlay: 80, clearLob: 84, dropShot: 82, defenseRetrieval: 83, serveReturn: 83 },
+      physical: { stamina: 86, footworkSpeed: 87, explosivenessJump: 94, agilityBalance: 85 },
+      mental: { anticipation: 84, composure: 86, focus: 84, aggression: 90 }
+    }
+  }),
+  createSeededPlayer(26, {
+    name: "Wen Jie Hsu",
+    nationality: "TPE",
+    age: 25,
+    handedness: "left",
+    styleLabel: "Front-court illusionist",
+    traits: ["netBlade", "serveReturnTrap", "softHands"],
+    ratings: {
+      technical: { smash: 80, netPlay: 94, clearLob: 83, dropShot: 92, defenseRetrieval: 84, serveReturn: 93 },
+      physical: { stamina: 85, footworkSpeed: 89, explosivenessJump: 81, agilityBalance: 92 },
+      mental: { anticipation: 91, composure: 88, focus: 88, aggression: 72 }
+    }
+  }),
+  createSeededPlayer(27, {
+    name: "Min Jae Seo",
+    nationality: "KOR",
+    age: 27,
+    handedness: "right",
+    styleLabel: "Defensive volume wall",
+    traits: ["retrievalWall", "liftReset", "staminaTax"],
+    ratings: {
+      technical: { smash: 81, netPlay: 83, clearLob: 91, dropShot: 84, defenseRetrieval: 95, serveReturn: 87 },
+      physical: { stamina: 94, footworkSpeed: 88, explosivenessJump: 80, agilityBalance: 93 },
+      mental: { anticipation: 90, composure: 90, focus: 92, aggression: 66 }
+    }
+  }),
+  createSeededPlayer(28, {
+    name: "Theo Mercer",
+    nationality: "CAN",
+    age: 22,
+    handedness: "right",
+    styleLabel: "Vertical power striker",
+    traits: ["arcLightSmash", "jumpInterception", "paceSpike"],
+    ratings: {
+      technical: { smash: 92, netPlay: 82, clearLob: 82, dropShot: 84, defenseRetrieval: 82, serveReturn: 84 },
+      physical: { stamina: 84, footworkSpeed: 89, explosivenessJump: 96, agilityBalance: 86 },
+      mental: { anticipation: 85, composure: 84, focus: 84, aggression: 91 }
+    }
+  }),
+  createSeededPlayer(29, {
+    name: "Elliot Ward",
+    nationality: "ENG",
+    age: 29,
+    handedness: "left",
+    styleLabel: "Pattern-reading controller",
+    traits: ["patternScholar", "angleMemory", "calmLockdown"],
+    ratings: {
+      technical: { smash: 82, netPlay: 89, clearLob: 90, dropShot: 90, defenseRetrieval: 86, serveReturn: 90 },
+      physical: { stamina: 87, footworkSpeed: 85, explosivenessJump: 80, agilityBalance: 88 },
+      mental: { anticipation: 94, composure: 91, focus: 92, aggression: 68 }
+    }
+  }),
+  createSeededPlayer(30, {
+    name: "Mateo Vidal",
+    nationality: "ESP",
+    age: 26,
+    handedness: "right",
+    styleLabel: "Counterpunch balance",
+    traits: ["counterLine", "bodyDefense", "neutralToAttack"],
+    ratings: {
+      technical: { smash: 84, netPlay: 85, clearLob: 88, dropShot: 85, defenseRetrieval: 92, serveReturn: 87 },
+      physical: { stamina: 89, footworkSpeed: 88, explosivenessJump: 84, agilityBalance: 90 },
+      mental: { anticipation: 90, composure: 88, focus: 89, aggression: 70 }
+    }
+  }),
+  createSeededPlayer(31, {
+    name: "Arjun Sen",
+    nationality: "IND",
+    age: 23,
+    handedness: "right",
+    styleLabel: "High-tempo attacker",
+    traits: ["cycloneTempo", "forecourtBurst", "attackWave"],
+    ratings: {
+      technical: { smash: 89, netPlay: 83, clearLob: 82, dropShot: 85, defenseRetrieval: 84, serveReturn: 86 },
+      physical: { stamina: 87, footworkSpeed: 93, explosivenessJump: 91, agilityBalance: 90 },
+      mental: { anticipation: 86, composure: 83, focus: 85, aggression: 88 }
+    }
+  }),
+  createSeededPlayer(32, {
+    name: "Diego Quispe",
+    nationality: "PER",
+    age: 24,
+    handedness: "left",
+    styleLabel: "Deceptive angle maker",
+    traits: ["angleTrickshot", "delayedDrop", "crossCourtDisguise"],
+    ratings: {
+      technical: { smash: 85, netPlay: 88, clearLob: 85, dropShot: 93, defenseRetrieval: 83, serveReturn: 89 },
+      physical: { stamina: 85, footworkSpeed: 89, explosivenessJump: 85, agilityBalance: 91 },
+      mental: { anticipation: 91, composure: 87, focus: 86, aggression: 80 }
+    }
   })
 ];
 

@@ -11,6 +11,22 @@ import {
 } from "../../src/game/tournament/tournament";
 
 describe("tournament progression", () => {
+  it("draws a deterministic 16-player tournament field from the expanded pool", () => {
+    const managedPlayerId = seededPlayers[20].player.id;
+    const first = createTournament(seededPlayers, managedPlayerId, 303);
+    const second = createTournament(seededPlayers, managedPlayerId, 303);
+    const alternate = createTournament(seededPlayers, managedPlayerId, 304);
+    const entrantIds = first.rounds[0].matches.flatMap((match) => [match.sideAId, match.sideBId]);
+    const repeatedIds = second.rounds[0].matches.flatMap((match) => [match.sideAId, match.sideBId]);
+    const alternateIds = alternate.rounds[0].matches.flatMap((match) => [match.sideAId, match.sideBId]);
+
+    expect(entrantIds).toHaveLength(16);
+    expect(new Set(entrantIds)).toHaveLength(16);
+    expect(entrantIds).toContain(managedPlayerId);
+    expect(entrantIds).toEqual(repeatedIds);
+    expect(entrantIds).not.toEqual(alternateIds);
+  });
+
   it("creates an opening round with one pending managed match", () => {
     const managedPlayerId = seededPlayers[0].player.id;
     const tournament = createTournament(seededPlayers, managedPlayerId, 101);

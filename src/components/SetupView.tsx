@@ -19,11 +19,15 @@ function initials(name: string) {
     .join("");
 }
 
+function overallFromDossier(dossier: ReturnType<typeof deriveAthleteDossier>) {
+  return Math.round((dossier.power + dossier.speed + dossier.stamina + dossier.control) / 4);
+}
+
 export function SetupView(props: SetupViewProps) {
   const selected =
     seededPlayers.find((entry) => entry.player.id === props.selectedPlayerId) ?? seededPlayers[0];
   const dossier = deriveAthleteDossier(selected.player);
-  const overall = Math.round((dossier.power + dossier.speed + dossier.stamina + dossier.control) / 4);
+  const overall = overallFromDossier(dossier);
 
   return (
     <section className="screen-shell">
@@ -49,9 +53,7 @@ export function SetupView(props: SetupViewProps) {
           <div className="roster-grid">
             {seededPlayers.map((entry) => {
               const entryDossier = deriveAthleteDossier(entry.player);
-              const entryOverall = Math.round(
-                (entryDossier.power + entryDossier.speed + entryDossier.stamina) / 3
-              );
+              const entryOverall = overallFromDossier(entryDossier);
 
               return (
                 <button

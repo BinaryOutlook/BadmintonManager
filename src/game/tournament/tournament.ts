@@ -5,6 +5,7 @@ import type { MatchInput, MatchResult, MatchStats, Player } from "../core/models
 import type { SeededPlayer } from "../content/players";
 
 export type RoundName = "R16" | "QF" | "SF" | "F";
+const TOURNAMENT_FIELD_SIZE = 16;
 
 export interface TournamentMatch {
   id: string;
@@ -71,6 +72,38 @@ function roundNameForSize(size: number): RoundName {
     default:
       return "F";
   }
+}
+
+export function selectTournamentEntrants(
+  seededEntries: SeededPlayer[],
+  managedPlayerId: string,
+  rng: SeededRng
+) {
+  if (seededEntries.length < TOURNAMENT_FIELD_SIZE) {
+    throw new Error(`Tournament needs at least ${TOURNAMENT_FIELD_SIZE} players.`);
+  }
+
+  const managedEntry = seededEntries.find((entry) => entry.player.id === managedPlayerId);
+
+  if (!managedEntry) {
+    throw new Error(`Managed player ${managedPlayerId} is not in the player pool.`);
+  }
+
+  const candidates = seededEntries.filter((entry) => entry.player.id !== managedPlayerId);
+  const selectedEntries = [managedEntry];
+
+  while (selectedEntries.length < TOURNAMENT_FIELD_SIZE) {
+    const index = rng.nextInt(0, candidates.length - 1);
+    const [entry] = candidates.splice(index, 1);
+    selectedEntries.push(entry);
+  }
+
+  return selectedEntries
+    .sort((left, right) => left.seed - right.seed)
+    .map((entry, index) => ({
+      seed: index + 1,
+      player: entry.player
+    }));
 }
 
 function orderedBracket(seededEntries: SeededPlayer[]) {
@@ -170,11 +203,13 @@ function createRound(args: {
 
 export function createTournament(seededEntries: SeededPlayer[], managedPlayerId: string, seed: number) {
   const rng = new SeededRng(seed);
-  const playerIds = orderedBracket(seededEntries);
+  const entrants = selectTournamentEntrants(seededEntries, managedPlayerId, rng);
+  const playerIds = orderedBracket(entrants);
+  const playerMap = Object.fromEntries(entrants.map((entry) => [entry.player.id, entry.player]));
   const round = createRound({
     playerIds,
     managedPlayerId,
-    playerMap: Object.fromEntries(seededEntries.map((entry) => [entry.player.id, entry.player])),
+    playerMap,
     roundName: "R16",
     rng
   });
