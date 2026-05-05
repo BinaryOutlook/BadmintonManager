@@ -23,11 +23,29 @@ function overallFromDossier(dossier: ReturnType<typeof deriveAthleteDossier>) {
   return Math.round((dossier.power + dossier.speed + dossier.stamina + dossier.control) / 4);
 }
 
+export function rankRosterByOverall(entries = seededPlayers) {
+  const scoredEntries = entries.map((entry) => {
+    const dossier = deriveAthleteDossier(entry.player);
+
+    return {
+      entry,
+      dossier,
+      overall: overallFromDossier(dossier)
+    };
+  });
+
+  return scoredEntries
+    .sort((left, right) => right.overall - left.overall || left.entry.seed - right.entry.seed)
+    .map((item, index) => ({
+      ...item,
+      rank: index + 1
+    }));
+}
+
 export function SetupView(props: SetupViewProps) {
+  const rankedRoster = rankRosterByOverall();
   const selected =
-    seededPlayers.find((entry) => entry.player.id === props.selectedPlayerId) ?? seededPlayers[0];
-  const dossier = deriveAthleteDossier(selected.player);
-  const overall = overallFromDossier(dossier);
+    rankedRoster.find((item) => item.entry.player.id === props.selectedPlayerId) ?? rankedRoster[0];
 
   return (
     <section className="screen-shell">
@@ -48,36 +66,33 @@ export function SetupView(props: SetupViewProps) {
         <section className="command-panel command-panel-wide">
           <div className="panel-header">
             <h2>Active Roster</h2>
-            <span>{seededPlayers.length} athletes loaded</span>
+            <span>{rankedRoster.length} athletes - sorted by OVR</span>
           </div>
           <div className="roster-grid">
-            {seededPlayers.map((entry) => {
-              const entryDossier = deriveAthleteDossier(entry.player);
-              const entryOverall = overallFromDossier(entryDossier);
-
+            {rankedRoster.map((item) => {
               return (
                 <button
-                  key={entry.player.id}
+                  key={item.entry.player.id}
                   type="button"
                   className={`athlete-card ${
-                    entry.player.id === props.selectedPlayerId ? "athlete-card-active" : ""
+                    item.entry.player.id === props.selectedPlayerId ? "athlete-card-active" : ""
                   }`}
-                  aria-pressed={entry.player.id === props.selectedPlayerId}
-                  onClick={() => props.onSelectPlayer(entry.player.id)}
+                  aria-pressed={item.entry.player.id === props.selectedPlayerId}
+                  onClick={() => props.onSelectPlayer(item.entry.player.id)}
                 >
                   <div className="athlete-card-header">
-                    <span className="athlete-avatar">{initials(entry.player.name)}</span>
+                    <span className="athlete-avatar">{initials(item.entry.player.name)}</span>
                     <div>
-                      <strong>{entry.player.name}</strong>
-                      <span>Seed #{entry.seed}</span>
+                      <strong>{item.entry.player.name}</strong>
+                      <span>OVR Rank #{item.rank}</span>
                     </div>
                   </div>
                   <div className="metric-track">
-                    <div className="metric-track-fill" style={{ width: `${entryOverall}%` }} />
+                    <div className="metric-track-fill" style={{ width: `${item.overall}%` }} />
                   </div>
                   <div className="athlete-card-footer">
-                    <span>{entry.player.styleLabel}</span>
-                    <span>OVR {entryOverall}</span>
+                    <span>{item.entry.player.styleLabel}</span>
+                    <span>OVR {item.overall}</span>
                   </div>
                 </button>
               );
@@ -88,61 +103,61 @@ export function SetupView(props: SetupViewProps) {
         <aside className="command-panel dossier-panel">
           <div className="panel-header">
             <h2>Selected Operative</h2>
-            <span>World #{selected.seed}</span>
+            <span>OVR Rank #{selected.rank}</span>
           </div>
 
           <div className="dossier-identity">
             <div>
-              <p className="dossier-overline">{selected.player.nationality}</p>
-              <h3>{selected.player.name}</h3>
-              <p>{selected.player.styleLabel}</p>
+              <p className="dossier-overline">{selected.entry.player.nationality}</p>
+              <h3>{selected.entry.player.name}</h3>
+              <p>{selected.entry.player.styleLabel}</p>
             </div>
-            <div className="dossier-avatar">{initials(selected.player.name)}</div>
+            <div className="dossier-avatar">{initials(selected.entry.player.name)}</div>
           </div>
 
           <div className="dossier-metrics">
             <div>
               <div className="metric-row">
                 <span>Power</span>
-                <strong>{dossier.power}</strong>
+                <strong>{selected.dossier.power}</strong>
               </div>
               <div className="metric-track">
-                <div className="metric-track-fill metric-track-fill-neutral" style={{ width: `${dossier.power}%` }} />
+                <div className="metric-track-fill metric-track-fill-neutral" style={{ width: `${selected.dossier.power}%` }} />
               </div>
             </div>
             <div>
               <div className="metric-row">
                 <span>Speed</span>
-                <strong>{dossier.speed}</strong>
+                <strong>{selected.dossier.speed}</strong>
               </div>
               <div className="metric-track">
-                <div className="metric-track-fill metric-track-fill-cyan" style={{ width: `${dossier.speed}%` }} />
+                <div className="metric-track-fill metric-track-fill-cyan" style={{ width: `${selected.dossier.speed}%` }} />
               </div>
             </div>
             <div>
               <div className="metric-row">
                 <span>Stamina</span>
-                <strong>{dossier.stamina}</strong>
+                <strong>{selected.dossier.stamina}</strong>
               </div>
               <div className="metric-track">
-                <div className="metric-track-fill" style={{ width: `${dossier.stamina}%` }} />
+                <div className="metric-track-fill" style={{ width: `${selected.dossier.stamina}%` }} />
               </div>
             </div>
             <div>
               <div className="metric-row">
                 <span>Control</span>
-                <strong>{dossier.control}</strong>
+                <strong>{selected.dossier.control}</strong>
               </div>
               <div className="metric-track">
-                <div className="metric-track-fill metric-track-fill-soft" style={{ width: `${dossier.control}%` }} />
+                <div className="metric-track-fill metric-track-fill-soft" style={{ width: `${selected.dossier.control}%` }} />
               </div>
             </div>
           </div>
 
           <div className="dossier-note">
-            <span className="chip chip-primary">OVR {overall}</span>
-            <p className="dossier-note-title">{dossier.formHeadline}</p>
-            <p>{dossier.formSummary}</p>
+            <span className="chip chip-primary">OVR {selected.overall}</span>
+            <p className="dossier-note-title">{selected.dossier.formHeadline}</p>
+            <p>{selected.dossier.formSummary}</p>
           </div>
         </aside>
 

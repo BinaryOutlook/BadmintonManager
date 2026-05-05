@@ -80,6 +80,7 @@ Goal:
 - keep non-Trophy-Titan additions on plausible fictional real-name constructions
 - keep each tournament as a 16-player knockout
 - draw exactly 16 event entrants from the larger pool while always including the managed athlete
+- sort setup roster selection by OVR so the strongest available athletes are easy to scan
 - preserve deterministic tournament fields for identical run seeds
 
 Exit criteria:
@@ -91,6 +92,7 @@ Exit criteria:
 - different seeds can create different event fields
 - headline legend-inspired OVR targets are covered by tests
 - Trophy Titan naming remains reserved for the six legacy archetypes
+- setup roster cards display OVR rank instead of content seed position
 - the command-center layout from `v0.2.1` remains readable
 
 ## `v0.3` Manager Loop Expansion
