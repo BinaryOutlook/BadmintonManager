@@ -45,6 +45,19 @@ const COURT_ZONES: CourtZone[] = [
   "back_center",
   "back_right"
 ];
+const LONG_RALLY_WARNING_THRESHOLD = 18;
+const DETAILED_RALLY_CAP = 32;
+const RALLY_STRESS_START_SHOT = 12;
+const RALLY_STRESS_BASE = 1.45;
+const RALLY_STRESS_TEMPO_WEIGHT = 0.22;
+const QUICK_RALLY_SOFT_CAP = 32;
+const QUICK_RALLY_EXTREME_CAP = 70;
+const QUICK_EXTREME_RALLY_TAIL_CHANCE = 0.015;
+const QUICK_RATING_EDGE_WEIGHT = 0.65;
+const QUICK_LOGISTIC_SCALE = 16;
+const QUICK_POINT_PROBABILITY_MIN = 0.18;
+const QUICK_POINT_PROBABILITY_MAX = 0.82;
+const QUICK_MATCH_FORM_RANGE = 3.5;
 
 function opposite(side: Side): Side {
   return side === "A" ? "B" : "A";
@@ -328,6 +341,49 @@ function quickStaminaBurn(player: MatchInput["playerA"], tactic: MatchInput["tac
   return clamp(burn, 0.35, 1.8);
 }
 
+function rallyContinuationStress(shotIndex: number, tactic: MatchInput["tacticA"]) {
+  const tempoLoad = tactic.tempo === "fast" ? 1 : tactic.tempo === "conserve" ? -0.4 : 0;
+  return (
+    Math.max(0, shotIndex + 1 - RALLY_STRESS_START_SHOT) *
+    (RALLY_STRESS_BASE + RALLY_STRESS_TEMPO_WEIGHT * tempoLoad)
+  );
+}
+
+function pressureQualityMultiplier(shotType: ShotType) {
+  switch (shotType) {
+    case "smash":
+      return 1;
+    case "drop":
+    case "net":
+      return 0.86;
+    case "drive":
+      return 0.78;
+    case "clear":
+    case "lift":
+    case "block":
+    case "serve":
+      return 0.62;
+  }
+}
+
+function sampleQuickRallyLength(input: {
+  expectedLoad: number;
+  edge: number;
+  rng: SeededRng;
+}) {
+  const base = input.expectedLoad + input.rng.nextNumber(-2.5, 5.5) - Math.abs(input.edge) / 16;
+  const tailChance = clamp((input.expectedLoad - 5) / 12, 0.02, 0.14);
+  const hasLongTail = input.rng.chance(tailChance);
+  const longTail = hasLongTail
+    ? input.rng.nextInt(
+        8,
+        input.rng.chance(QUICK_EXTREME_RALLY_TAIL_CHANCE) ? QUICK_RALLY_EXTREME_CAP : QUICK_RALLY_SOFT_CAP
+      )
+    : 0;
+
+  return clamp(Math.round(base + longTail), 1, QUICK_RALLY_EXTREME_CAP);
+}
+
 function createScoreboard(scoreA: number, scoreB: number) {
   return `${scoreA}-${scoreB}`;
 }
@@ -373,6 +429,30 @@ function pushFeed(
   });
 }
 
+function resolveCappedRallyWinner(args: {
+  input: MatchInput;
+  competitorA: LiveCompetitorState;
+  competitorB: LiveCompetitorState;
+  scoreA: number;
+  scoreB: number;
+  rng: SeededRng;
+}): Side {
+  const profileA = deriveProfile(args.input.playerA);
+  const profileB = deriveProfile(args.input.playerB);
+  const pressureA = scorePressure(args.scoreA, args.scoreB) * (100 - profileA.pressureResistance) / 70;
+  const pressureB = scorePressure(args.scoreB, args.scoreA) * (100 - profileB.pressureResistance) / 70;
+  const edge =
+    (profileA.rallyTolerance - profileB.rallyTolerance) * 0.38 +
+    (profileA.recoveryQuality - profileB.recoveryQuality) * 0.16 +
+    fatiguePenalty(args.competitorB.stamina) -
+    fatiguePenalty(args.competitorA.stamina) +
+    pressureB -
+    pressureA +
+    args.rng.nextNumber(-5, 5);
+
+  return args.rng.chance(clamp(logistic(edge / 15), 0.34, 0.66)) ? "A" : "B";
+}
+
 function resolveRally(args: {
   input: MatchInput;
   competitorA: LiveCompetitorState;
@@ -390,7 +470,7 @@ function resolveRally(args: {
   let incomingBonus = 0;
   const shots: ShotEvent[] = [];
 
-  for (let shotIndex = 0; shotIndex < 18; shotIndex += 1) {
+  for (let shotIndex = 0; shotIndex < DETAILED_RALLY_CAP; shotIndex += 1) {
     const actor = activeSide === "A" ? input.playerA : input.playerB;
     const actorProfile = activeSide === "A" ? profileA : profileB;
     const actorState = activeSide === "A" ? competitorA : competitorB;
@@ -398,6 +478,7 @@ function resolveRally(args: {
     const defenderProfile = activeSide === "A" ? profileB : profileA;
     const defenderState = activeSide === "A" ? competitorB : competitorA;
     const directive = getActiveDirective(actorState);
+    const rallyStress = rallyContinuationStress(shotIndex, actorState.tactic);
     const shotType =
       shotIndex === 0
         ? ("serve" as const)
@@ -438,7 +519,8 @@ function resolveRally(args: {
       skill +
       incomingBonus -
       fatiguePenalty(actorState.stamina) -
-      actorPressure * (100 - actorProfile.pressureResistance) * 0.03 +
+      actorPressure * (100 - actorProfile.pressureResistance) * 0.03 -
+      rallyStress * 0.3 +
       rng.nextInt(-14, 14);
     const quality = Math.round(execution - difficulty);
 
@@ -509,7 +591,7 @@ function resolveRally(args: {
     }
 
     const incomingPressure =
-      quality +
+      quality * pressureQualityMultiplier(shotType) +
       (shotType === "smash" ? 12 : 0) +
       (shotType === "net" || shotType === "drop" ? 6 : 0) +
       tempoModifiers(actorState.tactic).attack +
@@ -521,9 +603,10 @@ function resolveRally(args: {
       defender.ratings.mental.anticipation * 0.16 +
       defenderState.focusShift * 0.25 +
       rng.nextInt(-14, 14) -
-      fatiguePenalty(defenderState.stamina);
+      fatiguePenalty(defenderState.stamina) -
+      rallyStress * 0.4;
 
-    if (retrievalScore + 8 < incomingPressure) {
+    if (retrievalScore + 8 < incomingPressure + rallyStress * 0.5) {
       shots.push({
         actor: activeSide,
         shotType,
@@ -546,7 +629,7 @@ function resolveRally(args: {
       );
     }
 
-    if (retrievalScore < incomingPressure + 6) {
+    if (retrievalScore < incomingPressure + 6 + rallyStress * 0.3) {
       shots.push({
         actor: activeSide,
         shotType,
@@ -563,10 +646,11 @@ function resolveRally(args: {
     const focusScore =
       defender.ratings.mental.focus +
       defenderState.focusShift -
-      fatiguePenalty(defenderState.stamina) * 0.45 +
+      fatiguePenalty(defenderState.stamina) * 0.45 -
+      rallyStress * 0.35 +
       rng.nextInt(-14, 14);
 
-    if (focusScore < 34) {
+    if (focusScore < 34 + rallyStress * 0.95) {
       shots.push({
         actor: activeSide,
         shotType,
@@ -604,7 +688,14 @@ function resolveRally(args: {
 
   return createPointSummary(
     {
-      winner: rng.chance(0.5) ? "A" : "B",
+      winner: resolveCappedRallyWinner({
+        input,
+        competitorA,
+        competitorB,
+        scoreA,
+        scoreB,
+        rng
+      }),
       rallyLength: shots.length,
       shots,
       scoreboard: createScoreboard(scoreA, scoreB),
@@ -714,7 +805,7 @@ function createPointFeed(session: LiveMatchSession, point: PointSummary) {
 
   pushFeed(session, "point", managedPressure, point.summary, detailParts.join(" • "));
 
-  if (point.rallyLength >= 18) {
+  if (point.rallyLength >= LONG_RALLY_WARNING_THRESHOLD) {
     pushFeed(
       session,
       "warning",
@@ -1230,6 +1321,7 @@ export function simulateQuickMatch(input: MatchInput): MatchResult {
   const tacticFitA = tacticFit(input.playerA, input.playerB, input.tacticA);
   const tacticFitB = tacticFit(input.playerB, input.playerA, input.tacticB);
   const rallyLoad = quickExpectedRallyLoad(input);
+  const matchFormEdge = rng.nextNumber(-QUICK_MATCH_FORM_RANGE, QUICK_MATCH_FORM_RANGE);
   const sets: SetSummary[] = [];
   let setsWonA = 0;
   let setsWonB = 0;
@@ -1252,10 +1344,9 @@ export function simulateQuickMatch(input: MatchInput): MatchResult {
         scorePressure(scoreB, scoreA) * (100 - profileB.pressureResistance) / 70;
       const serverEdge = server === "A" ? 0.55 : -0.55;
       const tempoEdge = tempoModifiers(input.tacticA).attack - tempoModifiers(input.tacticB).attack;
-      const pointNoise = rng.nextNumber(-1.2, 1.2);
+      const pointNoise = rng.nextNumber(-1.5, 1.5);
       const edge =
-        ratingA -
-        ratingB +
+        (ratingA - ratingB) * QUICK_RATING_EDGE_WEIGHT +
         tacticFitA -
         tacticFitB +
         fatigueEdge +
@@ -1263,10 +1354,19 @@ export function simulateQuickMatch(input: MatchInput): MatchResult {
         pressurePenaltyA +
         tempoEdge * 0.35 +
         serverEdge +
+        matchFormEdge +
         pointNoise;
-      const pointProbabilityA = clamp(logistic(edge / 10.5), 0.14, 0.86);
+      const pointProbabilityA = clamp(
+        logistic(edge / QUICK_LOGISTIC_SCALE),
+        QUICK_POINT_PROBABILITY_MIN,
+        QUICK_POINT_PROBABILITY_MAX
+      );
       const winner: Side = rng.chance(pointProbabilityA) ? "A" : "B";
-      const rallyLength = clamp(Math.round(rallyLoad + rng.nextNumber(-2.5, 4.5) - Math.abs(edge) / 12), 1, 18);
+      const rallyLength = sampleQuickRallyLength({
+        expectedLoad: rallyLoad,
+        edge,
+        rng
+      });
 
       if (winner === "A") {
         scoreA += 1;

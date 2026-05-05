@@ -90,6 +90,8 @@ describe("match simulation", () => {
     expect(left).toEqual(right);
     expect(left.fidelity).toBe("quick");
     expect(left.setsWonA === 2 || left.setsWonB === 2).toBe(true);
+    expect(left.stats.longestRally).toBeGreaterThan(0);
+    expect(left.stats.longestRally).toBeLessThanOrEqual(70);
     expect(left.stats.totalPoints).toBe(
       left.setSummaries.reduce((sum, set) => sum + set.points.length, 0)
     );
@@ -105,6 +107,49 @@ describe("match simulation", () => {
       expect(set.points.at(-1)?.scoreboard).toBe(`${set.scoreA}-${set.scoreB}`);
       expect(set.points.every((point) => point.shots.length === 0)).toBe(true);
     }
+  });
+
+  it("allows detailed neutral rallies beyond the old 18-shot guardrail", () => {
+    const rallyRatings = {
+      technical: {
+        smash: 58,
+        netPlay: 84,
+        clearLob: 94,
+        dropShot: 76,
+        defenseRetrieval: 96,
+        serveReturn: 90
+      },
+      physical: {
+        stamina: 98,
+        footworkSpeed: 92,
+        explosivenessJump: 64,
+        agilityBalance: 95
+      },
+      mental: {
+        anticipation: 94,
+        composure: 92,
+        focus: 98,
+        aggression: 42
+      }
+    };
+    const playerA = createPlayer({ id: "grinder-a", name: "Grinder A", ratings: rallyRatings });
+    const playerB = createPlayer({ id: "grinder-b", name: "Grinder B", ratings: rallyRatings });
+    let longestRally = 0;
+
+    for (let seed = 1; seed <= 20 && longestRally <= 18; seed += 1) {
+      const result = simulateMatch({
+        seed,
+        playerA,
+        playerB,
+        tacticA: tacticLibrary.defensiveWall,
+        tacticB: tacticLibrary.defensiveWall
+      });
+
+      longestRally = Math.max(longestRally, result.stats.longestRally);
+      expect(result.stats.longestRally).toBeLessThanOrEqual(32);
+    }
+
+    expect(longestRally).toBeGreaterThan(18);
   });
 
   it("lets the stronger player win most of the time across a seed batch", () => {

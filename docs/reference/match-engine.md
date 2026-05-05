@@ -35,6 +35,16 @@ Current implementation has two fidelity paths:
 `simulateMatch()` remains detailed for compatibility. New code should use an explicit fidelity
 dispatcher when choosing between active and background match resolution.
 
+Current `v0.2.3` rally tuning:
+
+- `18` shots is a live long-rally warning threshold, not the detailed hard cap.
+- `32` shots is the staged detailed-simulation cap.
+- neutral shots such as clears, lifts, blocks, and serves convert execution quality into less
+  pressure than smashes, drops, net shots, and drives.
+- capped detailed rallies resolve from fatigue, pressure, rally tolerance, recovery, and bounded
+  variance rather than a flat coin flip.
+- quick mode can report aggregate rally lengths up to `70`, but it does not fabricate shot events.
+
 It does not simulate:
 
 - shuttle trajectory in 3D space

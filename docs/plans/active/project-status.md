@@ -26,6 +26,9 @@ What is now stable:
 - `v0.2.3 Game-algorithm` is the active feature target for detailed active-match simulation and quick background-match simulation
 - the detailed/quick simulation fidelity boundary is implemented
 - non-managed tournament matches now use quick simulation while managed matches remain detailed
+- detailed rallies now use a staged `32`-shot cap with `18` as a warning threshold rather than a hard stop
+- neutral detailed exchanges now damp safe-shot pressure so clears, lifts, blocks, and serves stabilize rallies more than attacking shots do
+- quick simulation now has first-pass OVR softening plus long-tail aggregate rally sampling
 - live managed matches now progress point by point instead of set by set
 - scouting, telemetry, directives, and recap aggregation are implemented
 - between-set talks visibly queue during intermissions before applying at the next set
@@ -72,6 +75,9 @@ What is now stable:
 - [x] persisted tournament match fidelity and background summary events
 - [x] surfaced compact background match summary events in the knockout bracket
 - [x] added unit coverage for quick determinism, scoring rules, stronger-player batch behavior, and tournament fidelity routing
+- [x] replaced the detailed rally `18`-shot hard cap with named tuning constants and a staged `32`-shot cap
+- [x] implemented neutral-shot pressure dampening, late-rally continuation stress, and fatigue/pressure-based capped-rally resolution
+- [x] tuned the first quick-mode OVR softening pass and long-tail rally-length sampler
 
 ## In Progress
 
@@ -85,6 +91,8 @@ What is now stable:
 ## Next
 
 - [ ] add seeded batch calibration checks for quick versus detailed simulation parity
+- [ ] tune quick and detailed three-game rates, average points, and rally-length distributions toward closer parity
+- [ ] stage detailed rally cap testing through `48`, and then `70`
 - [ ] deepen the tactical intel layer with richer contextual explanations
 - [ ] add more differentiated live directives and opponent pattern reads
 - [ ] tighten save migration coverage for future `v0.2.x` changes
