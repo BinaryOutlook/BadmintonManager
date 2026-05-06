@@ -213,7 +213,7 @@ export const seededPlayers: SeededPlayer[] = [
     nationality: "CHN",
     age: 29,
     handedness: "left",
-    styleLabel: "Final-boss hybrid",
+    styleLabel: "Fearless Net Assassin",
     traits: ["finalBossMode", "southpawPressure", "clutchTerminator"],
     ratings: {
       technical: { smash: 95, netPlay: 90, clearLob: 90, dropShot: 92, defenseRetrieval: 91, serveReturn: 90 },
@@ -252,7 +252,7 @@ export const seededPlayers: SeededPlayer[] = [
     nationality: "DEN",
     age: 27,
     handedness: "right",
-    styleLabel: "Skyline smash",
+    styleLabel: "Efficient Court Dominator",
     traits: ["skylineSmash", "rearCourtStructure", "shortLiftPunisher"],
     ratings: {
       technical: { smash: 97, netPlay: 84, clearLob: 91, dropShot: 87, defenseRetrieval: 88, serveReturn: 87 },
@@ -265,7 +265,7 @@ export const seededPlayers: SeededPlayer[] = [
     nationality: "CHN",
     age: 28,
     handedness: "right",
-    styleLabel: "Counter-fortress",
+    styleLabel: "Patient Counterattack Specialist",
     traits: ["counterFortress", "pressureAbsorber", "patientCoverage"],
     ratings: {
       technical: { smash: 86, netPlay: 87, clearLob: 94, dropShot: 86, defenseRetrieval: 97, serveReturn: 88 },
