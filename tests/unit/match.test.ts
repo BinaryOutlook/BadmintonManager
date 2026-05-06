@@ -333,6 +333,7 @@ describe("match simulation", () => {
     expect(session.setSummaries).toHaveLength(1);
 
     if (!session.complete) {
+      const composureBeforeTalk = session.competitorA.composureShift;
       session = applyTeamTalk(session, "A", "encourage");
       expect(session.pendingTalkA).toBe("encourage");
       expect(session.feed.at(-1)?.title).toContain("queues Encourage");
@@ -340,7 +341,7 @@ describe("match simulation", () => {
       session = simulateNextPoint(session);
 
       expect(session.currentSetNumber).toBe(2);
-      expect(session.competitorA.composureShift).toBeGreaterThanOrEqual(6);
+      expect(session.competitorA.composureShift).toBeGreaterThanOrEqual(composureBeforeTalk + 6);
       expect(session.intermission).toBe(false);
     }
   });

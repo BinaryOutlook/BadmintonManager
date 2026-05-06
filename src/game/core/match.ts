@@ -47,17 +47,18 @@ const COURT_ZONES: CourtZone[] = [
 ];
 const LONG_RALLY_WARNING_THRESHOLD = 18;
 const DETAILED_RALLY_CAP = 32;
-const RALLY_STRESS_START_SHOT = 12;
-const RALLY_STRESS_BASE = 1.45;
-const RALLY_STRESS_TEMPO_WEIGHT = 0.22;
+const RALLY_STRESS_START_SHOT = 6;
+const RALLY_STRESS_BASE = 3;
+const RALLY_STRESS_TEMPO_WEIGHT = 0.45;
+const DETAILED_MATCH_FORM_RANGE = 7.5;
 const QUICK_RALLY_SOFT_CAP = 32;
 const QUICK_RALLY_EXTREME_CAP = 70;
 const QUICK_EXTREME_RALLY_TAIL_CHANCE = 0.015;
-const QUICK_RATING_EDGE_WEIGHT = 0.65;
-const QUICK_LOGISTIC_SCALE = 16;
-const QUICK_POINT_PROBABILITY_MIN = 0.18;
-const QUICK_POINT_PROBABILITY_MAX = 0.82;
-const QUICK_MATCH_FORM_RANGE = 3.5;
+const QUICK_RATING_EDGE_WEIGHT = 0.58;
+const QUICK_LOGISTIC_SCALE = 18;
+const QUICK_POINT_PROBABILITY_MIN = 0.2;
+const QUICK_POINT_PROBABILITY_MAX = 0.8;
+const QUICK_MATCH_FORM_RANGE = 5.5;
 
 function opposite(side: Side): Side {
   return side === "A" ? "B" : "A";
@@ -110,6 +111,15 @@ function defaultCompetitorState(tactic: MatchInput["tacticA"], stamina: number):
     smashPeakKph: 0,
     directivePointsRemaining: 0,
     initialStamina: stamina
+  };
+}
+
+function applyInitialMatchForm(state: LiveCompetitorState, form: number): LiveCompetitorState {
+  return {
+    ...state,
+    focusShift: state.focusShift + form * 0.7,
+    composureShift: state.composureShift + form * 0.55,
+    aggressionShift: state.aggressionShift + form * 0.25
   };
 }
 
@@ -355,14 +365,14 @@ function pressureQualityMultiplier(shotType: ShotType) {
       return 1;
     case "drop":
     case "net":
-      return 0.86;
+      return 0.95;
     case "drive":
-      return 0.78;
+      return 0.9;
     case "clear":
     case "lift":
     case "block":
     case "serve":
-      return 0.62;
+      return 0.82;
   }
 }
 
@@ -520,7 +530,7 @@ function resolveRally(args: {
       incomingBonus -
       fatiguePenalty(actorState.stamina) -
       actorPressure * (100 - actorProfile.pressureResistance) * 0.03 -
-      rallyStress * 0.3 +
+      rallyStress * 0.45 +
       rng.nextInt(-14, 14);
     const quality = Math.round(execution - difficulty);
 
@@ -604,9 +614,9 @@ function resolveRally(args: {
       defenderState.focusShift * 0.25 +
       rng.nextInt(-14, 14) -
       fatiguePenalty(defenderState.stamina) -
-      rallyStress * 0.4;
+      rallyStress * 0.55;
 
-    if (retrievalScore + 8 < incomingPressure + rallyStress * 0.5) {
+    if (retrievalScore + 8 < incomingPressure + rallyStress * 0.7) {
       shots.push({
         actor: activeSide,
         shotType,
@@ -629,7 +639,7 @@ function resolveRally(args: {
       );
     }
 
-    if (retrievalScore < incomingPressure + 6 + rallyStress * 0.3) {
+    if (retrievalScore < incomingPressure + 6 + rallyStress * 0.45) {
       shots.push({
         actor: activeSide,
         shotType,
@@ -647,10 +657,10 @@ function resolveRally(args: {
       defender.ratings.mental.focus +
       defenderState.focusShift -
       fatiguePenalty(defenderState.stamina) * 0.45 -
-      rallyStress * 0.35 +
+      rallyStress * 0.55 +
       rng.nextInt(-14, 14);
 
-    if (focusScore < 34 + rallyStress * 0.95) {
+    if (focusScore < 34 + rallyStress * 1.1) {
       shots.push({
         actor: activeSide,
         shotType,
@@ -1106,6 +1116,10 @@ function createQuickSummaryEvents(input: MatchInput, result: MatchResult, rating
 }
 
 export function createMatchSession(input: MatchInput): LiveMatchSession {
+  const formRng = new SeededRng(input.seed ^ 0x51f15e);
+  const formA = formRng.nextNumber(-DETAILED_MATCH_FORM_RANGE, DETAILED_MATCH_FORM_RANGE);
+  const formB = formRng.nextNumber(-DETAILED_MATCH_FORM_RANGE, DETAILED_MATCH_FORM_RANGE);
+
   return {
     input,
     rngState: input.seed >>> 0,
@@ -1117,8 +1131,14 @@ export function createMatchSession(input: MatchInput): LiveMatchSession {
     currentScoreB: 0,
     currentSetPoints: [],
     currentServer: (input.seed & 1) === 0 ? "A" : "B",
-    competitorA: defaultCompetitorState(input.tacticA, input.playerA.ratings.physical.stamina),
-    competitorB: defaultCompetitorState(input.tacticB, input.playerB.ratings.physical.stamina),
+    competitorA: applyInitialMatchForm(
+      defaultCompetitorState(input.tacticA, input.playerA.ratings.physical.stamina),
+      formA
+    ),
+    competitorB: applyInitialMatchForm(
+      defaultCompetitorState(input.tacticB, input.playerB.ratings.physical.stamina),
+      formB
+    ),
     intermission: false,
     feed: [],
     clockSeconds: 0,

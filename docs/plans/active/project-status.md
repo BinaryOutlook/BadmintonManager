@@ -29,6 +29,7 @@ What is now stable:
 - detailed rallies now use a staged `32`-shot cap with `18` as a warning threshold rather than a hard stop
 - neutral detailed exchanges now damp safe-shot pressure so clears, lifts, blocks, and serves stabilize rallies more than attacking shots do
 - quick simulation now has first-pass OVR softening plus long-tail aggregate rally sampling
+- match balance now has a repeatable calibration command and reference report for OVR-gap fairness
 - live managed matches now progress point by point instead of set by set
 - scouting, telemetry, directives, and recap aggregation are implemented
 - between-set talks visibly queue during intermissions before applying at the next set
@@ -78,11 +79,13 @@ What is now stable:
 - [x] replaced the detailed rally `18`-shot hard cap with named tuning constants and a staged `32`-shot cap
 - [x] implemented neutral-shot pressure dampening, late-rally continuation stress, and fatigue/pressure-based capped-rally resolution
 - [x] tuned the first quick-mode OVR softening pass and long-tail rally-length sampler
+- [x] added `npm run calibrate:match` and documented a 21,620-match balance sweep in `docs/reference/match-balance-calibration.md`
 
 ## In Progress
 
 - [ ] tune balance and upset frequency
 - [ ] calibrate quick mode against detailed mode across wider seeded matchup bands
+- [ ] reduce detailed-mode certainty in `5+` OVR buckets without flattening elite player identity
 - [ ] tune expanded-roster special-archetype balance against the ordinary fictional field
 - [ ] improve commentary variety and phrasing
 - [ ] expand post-match stats and scouting reads
@@ -93,6 +96,7 @@ What is now stable:
 - [ ] add seeded batch calibration checks for quick versus detailed simulation parity
 - [ ] tune quick and detailed three-game rates, average points, and rally-length distributions toward closer parity
 - [ ] stage detailed rally cap testing through `48`, and then `70`
+- [ ] add optional calibration assertions behind `MATCH_BALANCE_ASSERT=1`
 - [ ] deepen the tactical intel layer with richer contextual explanations
 - [ ] add more differentiated live directives and opponent pattern reads
 - [ ] tighten save migration coverage for future `v0.2.x` changes
