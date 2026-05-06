@@ -36,6 +36,7 @@ docs/README.md
 | Subsystem rules | `docs/reference/*.md` | Engine, tactics, player, or tournament contracts change |
 | Simulation fidelity design | `docs/reference/match-simulation-fidelity.md` | Detailed/quick match algorithm design or calibration strategy changes |
 | Match balance calibration | `docs/reference/match-balance-calibration.md` | OVR fairness, upset probability, or rally-shape tuning changes |
+| Stat composition calibration | `docs/reference/stat-composition-calibration.md` | Rating-field influence, archetype balance, or displayed OVR formulas change |
 | Big technical decisions | `docs/decisions/ADR-*.md` | A costly-to-reverse decision is accepted or superseded |
 
 ## Versioning Rules

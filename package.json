@@ -8,6 +8,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "calibrate:match": "MATCH_BALANCE_CALIBRATION=1 vitest run tests/calibration/match-balance.calibration.test.ts --reporter=verbose --testTimeout=120000",
+    "calibrate:stats": "STAT_COMPOSITION_CALIBRATION=1 vitest run tests/calibration/stat-composition.calibration.test.ts --reporter=verbose --testTimeout=120000",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",

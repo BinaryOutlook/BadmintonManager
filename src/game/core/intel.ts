@@ -16,23 +16,27 @@ export interface AthleteDossier {
 export function deriveAthleteDossier(player: Player): AthleteDossier {
   const profile = deriveProfile(player);
   const power = Math.round(
-    player.ratings.technical.smash * 0.58 +
-      player.ratings.physical.explosivenessJump * 0.24 +
-      player.ratings.mental.aggression * 0.18
+    profile.attackPressure * 0.62 +
+      player.ratings.technical.smash * 0.2 +
+      player.ratings.physical.explosivenessJump * 0.12 +
+      player.ratings.mental.aggression * 0.06
   );
   const speed = Math.round(
-    player.ratings.physical.footworkSpeed * 0.55 +
-      player.ratings.physical.agilityBalance * 0.25 +
-      player.ratings.mental.anticipation * 0.2
+    player.ratings.physical.footworkSpeed * 0.35 +
+      player.ratings.physical.agilityBalance * 0.22 +
+      profile.recoveryQuality * 0.25 +
+      player.ratings.mental.anticipation * 0.18
   );
   const stamina = Math.round(
-    player.ratings.physical.stamina * 0.72 + profile.rallyTolerance * 0.28
+    player.ratings.physical.stamina * 0.45 +
+      profile.rallyTolerance * 0.35 +
+      profile.pressureResistance * 0.2
   );
   const control = Math.round(
-    profile.frontCourtControl * 0.45 +
+    profile.frontCourtControl * 0.35 +
       profile.pressureResistance * 0.25 +
-      player.ratings.technical.dropShot * 0.15 +
-      player.ratings.technical.serveReturn * 0.15
+      profile.judgment * 0.25 +
+      player.ratings.technical.dropShot * 0.15
   );
 
   let formHeadline = "Ready for structured tournament play.";

@@ -48,9 +48,9 @@ const COURT_ZONES: CourtZone[] = [
 const LONG_RALLY_WARNING_THRESHOLD = 18;
 const DETAILED_RALLY_CAP = 32;
 const RALLY_STRESS_START_SHOT = 6;
-const RALLY_STRESS_BASE = 3;
-const RALLY_STRESS_TEMPO_WEIGHT = 0.45;
-const DETAILED_MATCH_FORM_RANGE = 10.5;
+const RALLY_STRESS_BASE = 3.4;
+const RALLY_STRESS_TEMPO_WEIGHT = 0.5;
+const DETAILED_MATCH_FORM_RANGE = 13;
 const QUICK_RALLY_SOFT_CAP = 32;
 const QUICK_RALLY_EXTREME_CAP = 70;
 const QUICK_EXTREME_RALLY_TAIL_CHANCE = 0.015;
@@ -293,16 +293,17 @@ function tacticFit(
     }
     case "wide_pressure":
       tools =
-        own.physical.footworkSpeed * 0.3 +
+        own.physical.footworkSpeed * 0.35 +
         own.technical.dropShot * 0.25 +
         own.technical.serveReturn * 0.2 +
         own.mental.anticipation * 0.15 +
-        own.physical.stamina * 0.1;
+        own.physical.agilityBalance * 0.15;
       counters =
-        answer.physical.agilityBalance * 0.35 +
-        answer.physical.stamina * 0.25 +
-        answer.physical.footworkSpeed * 0.25 +
-        answer.technical.defenseRetrieval * 0.15;
+        answer.physical.agilityBalance * 0.25 +
+        answer.physical.stamina * 0.15 +
+        answer.physical.footworkSpeed * 0.2 +
+        answer.technical.defenseRetrieval * 0.15 +
+        answer.mental.anticipation * 0.15;
       break;
     case "defensive_absorb":
       tools =
@@ -322,7 +323,7 @@ function tacticFit(
     tactic.riskProfile === "high_risk"
       ? (own.mental.focus + own.mental.composure - 150) / 18
       : tactic.riskProfile === "patient"
-        ? (own.mental.focus + own.physical.stamina - 145) / 24
+        ? (own.mental.focus + own.physical.stamina - 145) / 36
         : 0;
 
   return clamp((tools - counters) / 8 + riskAdjustment, -6, 6);
@@ -339,10 +340,10 @@ function quickExpectedRallyLoad(input: MatchInput) {
   const tacticLoad =
     (input.tacticA.pressurePattern === "rear_court_grind" || input.tacticA.pressurePattern === "defensive_absorb" ? 1 : 0) +
     (input.tacticB.pressurePattern === "rear_court_grind" || input.tacticB.pressurePattern === "defensive_absorb" ? 1 : 0) -
-    (input.tacticA.pressurePattern === "all_out_attack" ? 0.5 : 0) -
-    (input.tacticB.pressurePattern === "all_out_attack" ? 0.5 : 0);
+    (input.tacticA.pressurePattern === "all_out_attack" ? 1 : 0) -
+    (input.tacticB.pressurePattern === "all_out_attack" ? 1 : 0);
 
-  return clamp(4.5 + defensiveTilt + tacticLoad - attackMismatch / 80, 3.5, 10.5);
+  return clamp(4.5 + defensiveTilt + tacticLoad - attackMismatch / 45, 3.5, 10.5);
 }
 
 function quickStaminaBurn(player: MatchInput["playerA"], tactic: MatchInput["tacticA"], rallyLength: number) {
@@ -374,6 +375,22 @@ function pressureQualityMultiplier(shotType: ShotType) {
     case "serve":
       return 0.82;
   }
+}
+
+function targetZonePressureModifier(zone: CourtZone) {
+  const widthPressure = zone.endsWith("left") || zone.endsWith("right") ? 3 : 0;
+  const depthPressure = zone.startsWith("front") || zone.startsWith("back") ? 1 : 0;
+  const centerRelief = zone.endsWith("center") ? -1 : 0;
+
+  return widthPressure + depthPressure + centerRelief;
+}
+
+function tacticPlacementPressure(tactic: MatchInput["tacticA"], zone: CourtZone) {
+  if (tactic.pressurePattern !== "wide_pressure") {
+    return 0;
+  }
+
+  return zone.endsWith("left") || zone.endsWith("right") ? 4 : 0;
 }
 
 function sampleQuickRallyLength(input: {
@@ -604,6 +621,8 @@ function resolveRally(args: {
       quality * pressureQualityMultiplier(shotType) +
       (shotType === "smash" ? 12 : 0) +
       (shotType === "net" || shotType === "drop" ? 6 : 0) +
+      targetZonePressureModifier(targetZone) +
+      tacticPlacementPressure(actorState.tactic, targetZone) +
       tempoModifiers(actorState.tactic).attack +
       (directive === "push_pace" ? 4 : 0);
     const retrievalScore =
@@ -658,6 +677,7 @@ function resolveRally(args: {
       defenderState.focusShift -
       fatiguePenalty(defenderState.stamina) * 0.45 -
       rallyStress * 0.55 +
+      (defender.ratings.physical.footworkSpeed + defender.ratings.physical.agilityBalance - 160) * 0.1 +
       rng.nextInt(-14, 14);
 
     if (focusScore < 34 + rallyStress * 1.1) {

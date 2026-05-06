@@ -59,11 +59,11 @@ export function getRelevantShotSkill(player: Player, shotType: ShotType) {
 export function riskModifier(riskProfile: RiskProfile) {
   switch (riskProfile) {
     case "patient":
-      return -6;
+      return -3;
     case "standard":
       return 0;
     case "high_risk":
-      return 8;
+      return 6;
   }
 }
 
@@ -86,7 +86,7 @@ export function tacticShotModifier(tactic: MatchTactic, shotType: ShotType) {
     case "front_court_control":
       return shotType === "net" || shotType === "drop" ? 6 : -1;
     case "rear_court_grind":
-      return shotType === "clear" || shotType === "lift" ? 5 : -1;
+      return shotType === "clear" || shotType === "lift" ? 2 : -1;
     case "all_out_attack":
       return shotType === "smash" ? 8 : shotType === "drop" ? 2 : -2;
     case "wide_pressure":
@@ -103,7 +103,7 @@ export function tempoModifiers(tactic: MatchTactic) {
     case "balanced":
       return { attack: 0, staminaBurn: 1 };
     case "conserve":
-      return { attack: -4, staminaBurn: 0.88 };
+      return { attack: -3, staminaBurn: 0.94 };
   }
 }
 

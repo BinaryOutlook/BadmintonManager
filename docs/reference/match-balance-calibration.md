@@ -120,46 +120,46 @@ MATCH_BALANCE_SEEDS=10 npm run calibrate:match
 
 | Gap | Detailed high win | Detailed weak win | Detailed 3G | Detailed avg rally | Quick high win | Quick weak win | Quick 3G | Quick avg rally |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| `0` | 47.4% | 52.6% | 12.2% | 14.4 | 49.1% | 50.9% | 36.3% | 12.8 |
-| `1-2` | 54.2% | 45.8% | 11.5% | 14.4 | 56.6% | 43.4% | 37.1% | 12.8 |
-| `3-4` | 80.3% | 19.7% | 8.1% | 14.1 | 79.2% | 20.8% | 28.5% | 12.7 |
-| `5-6` | 87.4% | 12.6% | 7.9% | 13.9 | 85.8% | 14.2% | 24.8% | 12.5 |
-| `7-9` | 96.3% | 3.7% | 3.4% | 12.8 | 95.3% | 4.7% | 13.2% | 12.2 |
-| `10+` | 100.0% | 0.0% | 0.3% | 11.2 | 99.3% | 0.7% | 3.0% | 11.8 |
+| `0` | 50.1% | 49.9% | 10.7% | 13.8 | 52.2% | 47.8% | 40.4% | 12.8 |
+| `1-2` | 60.3% | 39.7% | 10.8% | 13.7 | 60.4% | 39.6% | 36.8% | 12.7 |
+| `3-4` | 79.0% | 21.0% | 8.4% | 13.2 | 77.4% | 22.6% | 30.6% | 12.6 |
+| `5-6` | 86.3% | 13.7% | 7.7% | 13.3 | 85.5% | 14.5% | 25.1% | 12.4 |
+| `7-9` | 96.2% | 3.8% | 3.7% | 12.2 | 95.1% | 4.9% | 14.2% | 12.1 |
+| `10+` | 99.7% | 0.3% | 0.5% | 10.4 | 99.1% | 0.9% | 2.7% | 11.6 |
 
 ### Autoplay Tactics
 
 | Gap | Detailed high win | Detailed weak win | Detailed 3G | Detailed avg rally | Quick high win | Quick weak win | Quick 3G | Quick avg rally |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| `0` | 50.3% | 49.7% | 12.1% | 14.3 | 49.5% | 50.5% | 37.8% | 13.1 |
-| `1-2` | 56.8% | 43.2% | 12.0% | 14.4 | 56.9% | 43.1% | 36.9% | 13.3 |
-| `3-4` | 81.6% | 18.4% | 8.7% | 14.0 | 79.1% | 20.9% | 28.0% | 13.1 |
-| `5-6` | 90.7% | 9.3% | 6.4% | 13.7 | 87.4% | 12.6% | 22.1% | 12.9 |
-| `7-9` | 97.2% | 2.8% | 2.2% | 12.7 | 96.1% | 3.9% | 13.5% | 12.8 |
-| `10+` | 99.8% | 0.2% | 0.1% | 10.6 | 99.6% | 0.4% | 2.7% | 12.0 |
+| `0` | 50.1% | 49.9% | 12.5% | 13.6 | 50.2% | 49.8% | 41.4% | 12.8 |
+| `1-2` | 59.7% | 40.3% | 11.9% | 13.4 | 58.7% | 41.3% | 39.0% | 12.7 |
+| `3-4` | 79.8% | 20.2% | 9.7% | 12.9 | 75.9% | 24.1% | 33.3% | 12.5 |
+| `5-6` | 89.3% | 10.7% | 6.4% | 13.1 | 87.6% | 12.4% | 23.3% | 12.6 |
+| `7-9` | 97.4% | 2.6% | 2.4% | 11.8 | 96.3% | 3.7% | 13.4% | 12.1 |
+| `10+` | 99.8% | 0.2% | 0.3% | 9.9 | 99.6% | 0.4% | 2.1% | 11.2 |
 
 ## Quick Vs Detailed Parity
 
 Winner-rate parity is now good. Quick and detailed should not produce identical scores or rally
 histories, but they should agree on macro outcome odds. The current larger sweep is within about
-`0-3.3` percentage points for every OVR bucket.
+`0-3.9` percentage points for every OVR bucket.
 
 | Gap | Balanced quick minus detailed | Autoplay quick minus detailed |
 | --- | ---: | ---: |
-| `0` | `+1.7` | `-0.8` |
-| `1-2` | `+2.4` | `+0.1` |
-| `3-4` | `-1.1` | `-2.5` |
-| `5-6` | `-1.6` | `-3.3` |
-| `7-9` | `-1.0` | `-1.1` |
-| `10+` | `-0.7` | `-0.2` |
+| `0` | `+2.1` | `+0.1` |
+| `1-2` | `+0.1` | `-1.0` |
+| `3-4` | `-1.6` | `-3.9` |
+| `5-6` | `-0.8` | `-1.7` |
+| `7-9` | `-1.1` | `-1.1` |
+| `10+` | `-0.6` | `-0.2` |
 
 Match-shape parity is not good yet. Quick mode has many more three-game matches and more total
 points than detailed mode:
 
-- equal-OVR balanced detailed three-game rate: `12.2%`
-- equal-OVR balanced quick three-game rate: `36.3%`
-- equal-OVR autoplay detailed three-game rate: `12.1%`
-- equal-OVR autoplay quick three-game rate: `37.8%`
+- equal-OVR balanced detailed three-game rate: `10.7%`
+- equal-OVR balanced quick three-game rate: `40.4%`
+- equal-OVR autoplay detailed three-game rate: `12.5%`
+- equal-OVR autoplay quick three-game rate: `41.4%`
 
 That means the two engines now agree on "who is likely to win", but not yet on "what kind of match
 shape gets them there".
@@ -170,36 +170,36 @@ shape gets them there".
 
 Equivalent players are now healthy:
 
-- balanced detailed: `47.4%`
-- balanced quick: `49.1%`
-- autoplay detailed: `50.3%`
-- autoplay quick: `49.5%`
+- balanced detailed: `50.1%`
+- balanced quick: `52.2%`
+- autoplay detailed: `50.1%`
+- autoplay quick: `50.2%`
 
-Small gaps are also healthy. A `1-2` OVR advantage wins about `55-59%`, leaving the weaker player
-with roughly `41-45%`. That is exactly the feel we want: a visible edge, not destiny.
+Small gaps are also healthy. A `1-2` OVR advantage wins about `59-60%`, leaving the weaker player
+with roughly `40-41%`. That is exactly the feel we want: a visible edge, not destiny.
 
 Quick and detailed now broadly agree on macro-probability. In the `3-4` and `5-6` buckets, both
 paths keep underdogs live while clearly favoring the stronger player.
 
 Rally shape improved after the neutral-rally pass:
 
-- detailed average rallies are now about `10.6-14.4`, depending on gap and tactic mode
-- quick average rallies are about `11.8-13.3`
-- detailed longest rallies in this sweep are `20-23`, meaning the `32` cap is no longer the normal
+- detailed average rallies are now about `9.9-13.8`, depending on gap and tactic mode
+- quick average rallies are about `11.2-12.8`
+- detailed longest rallies in this sweep are `20-22`, meaning the `32` cap is no longer the normal
   endpoint
 
 ### What Is Still Too Chalky
 
 The `10+` bucket remains close to certain:
 
-- balanced detailed `10+`: `100.0%`
-- balanced quick `10+`: `99.3%`
+- balanced detailed `10+`: `99.7%`
+- balanced quick `10+`: `99.1%`
 - autoplay detailed `10+`: `99.8%`
 - autoplay quick `10+`: `99.6%`
 
-That may be acceptable if `10+` means a true legend against a much weaker field player, but it
-should not stay literally impossible forever. A larger `20+` seed sweep should occasionally show
-one upset in this bucket.
+That may be acceptable if `10+` means a true legend against a much weaker field player, and this
+run still shows a tiny upset path. A larger sweep should continue to confirm that the bucket is
+heavily tilted without becoming literally impossible.
 
 Detailed mode also produces fewer three-game matches than quick mode. That suggests active-match
 fatigue, momentum, and set-to-set tactical variance are not yet strong enough.
@@ -237,7 +237,7 @@ Tests:
 
 3. Increase detailed three-game rate for close matchups.
    - Current detailed equal-OVR three-game rate is only about `12%`.
-   - Quick mode sits around `36-38%`, which may be high but gives a better "close match" feel.
+   - Quick mode sits around `40-41%`, which may be high but gives a better "close match" feel.
 
 4. Add rare detailed long-rally tails without increasing the average.
    - Real elite badminton has many regular rallies and a smaller long-rally cluster.
