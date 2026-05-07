@@ -1,6 +1,6 @@
 # Project Status
 
-Status date: 2026-05-05
+Status date: 2026-05-06
 Current version target: `v0.2.3 Game-algorithm`
 Overall phase: Match simulation fidelity and game-algorithm upgrade
 Chosen stack: Option A local-first SPA
@@ -38,6 +38,7 @@ What is now stable:
 - top navigation and sidebar console options are clickable, including compact tactic and event controls
 - the overview command center uses a head-to-head next-opponent comparison with tactic lock-in beside it
 - the local roster now contains 47 fictional athletes, including six Trophy Titans and 15 Honorable Mentions, with setup selection sorted by OVR, nationality-code identifiers beside names, and each tournament drawing exactly 16 entrants for novelty
+- `v0.2.4 UI Framework and Season-Ready Layout` is drafted as the planned bridge release after `v0.2.3`, focused on page-level feature separation, pop-up windows, and UI preparation for larger event selection, seasons, and calendars
 
 ## Completed
 
@@ -84,6 +85,8 @@ What is now stable:
 - [x] added `npm run calibrate:stats` and documented same-OVR stat composition balance in `docs/reference/stat-composition-calibration.md`
 - [x] retuned displayed OVR to count recovery, pressure resistance, judgment, and rally tolerance more honestly
 - [x] reduced long-rally safety, improved wide-placement pressure, and gave movement stats late-rally stability value
+- [x] created the planned `v0.2.4 UI Framework and Season-Ready Layout` release packet
+- [x] added `v0.2.4` to the roadmap as the UI framework bridge before `v0.3`
 
 ## In Progress
 
@@ -103,6 +106,9 @@ What is now stable:
 - [ ] stage detailed rally cap testing through `48`, and then `70`
 - [ ] add optional calibration assertions behind `MATCH_BALANCE_ASSERT=1`
 - [ ] add optional stat-composition assertions behind `STAT_COMPOSITION_ASSERT=1`
+- [ ] use `docs/product/versions/v0.2.4/v0.2.4.md` as the next release packet once `v0.2.3` exits active algorithm tuning
+- [ ] decide whether `v0.2.4` should keep internal SPA page state or introduce URL routes
+- [ ] confirm whether the future `32` selectable items should be called games, events, competitions, or tournaments in player-facing UI
 - [ ] deepen the tactical intel layer with richer contextual explanations
 - [ ] add more differentiated live directives and opponent pattern reads
 - [ ] tighten save migration coverage for future `v0.2.x` changes
@@ -118,6 +124,8 @@ Current design questions that could affect scope:
 - how much tactical explanation belongs in the persistent `TACTICAL_INTEL` surface versus local screen copy
 - how much save migration coverage is needed before future `v0.2.x` changes become risky
 - how much of the richer active-match algorithm should ship before quick simulation calibration is considered good enough
+- whether `v0.2.4` should adopt URL routes or keep a typed internal page registry inside the current SPA shell
+- whether the first calendar should use fixed fictional dates or seed-generated dates
 
 ## Risks
 
@@ -150,6 +158,7 @@ Future sessions should read these files first:
 - `docs/reference/match-engine.md`
 - `docs/reference/match-simulation-fidelity.md`
 - `docs/product/versions/v0.2.3/v0.2.3.md`
+- `docs/product/versions/v0.2.4/v0.2.4.md`
 
 ## Update Rule
 

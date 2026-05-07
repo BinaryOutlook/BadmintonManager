@@ -125,6 +125,29 @@ Exit criteria:
 - `docs/reference/match-simulation-fidelity.md` stays aligned with implementation
 - `npm run typecheck`, `npm run test`, `npm run build`, and `npm run test:e2e` pass
 
+## `v0.2.4` UI Framework and Season-Ready Layout
+
+Status: Planned
+
+Goal:
+
+- introduce a stronger internal UI framework inside the existing local-first React app
+- separate major features into purposeful page-level workspaces
+- add a typed pop-up and overlay system for detail-heavy surfaces
+- prepare the interface for around `32` available games or events
+- add season and calendar page scaffolds that can later support multi-game progression
+- keep the existing 16-player tournament loop playable while future systems take shape
+
+Exit criteria:
+
+- major feature areas have clear page homes instead of competing inside one crowded command center
+- every page has an explicit player decision, primary context, primary action, and feedback path
+- tactical intel and future detail surfaces render through a shared overlay or pop-up contract
+- Games, Season, and Calendar pages exist as future-ready UI surfaces without pretending full season simulation is complete
+- the existing setup, bracket, live match, and recap flow works through the new page framework
+- no backend, auth, state-library replacement, or material persistence change is introduced by default
+- `npm run typecheck`, `npm run test`, `npm run build`, and `npm run test:e2e` pass
+
 ## `v0.3` Manager Loop Expansion
 
 Status: Planned

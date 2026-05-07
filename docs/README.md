@@ -31,6 +31,7 @@ docs/README.md
 | Product direction | `docs/product/PRD.md` | The product thesis, scope, or non-goals change |
 | Milestone sequence | `docs/product/ROADMAP.md` | Version order, goals, or exit criteria change |
 | Current release work | `docs/product/versions/v0.2.3/v0.2.3.md` | The active version scope changes |
+| Planned release work | `docs/product/versions/v0.2.4/v0.2.4.md` | The next version scope changes |
 | Current project state | `docs/plans/active/project-status.md` | Work completes, next work changes, blockers appear |
 | Architecture boundaries | `docs/architecture/overview.md` | Module ownership or runtime boundaries change |
 | Subsystem rules | `docs/reference/*.md` | Engine, tactics, player, or tournament contracts change |
