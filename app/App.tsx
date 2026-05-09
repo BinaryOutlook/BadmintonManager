@@ -1,5 +1,12 @@
 import { useEffect, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { CompleteView } from "../components/CompleteView";
+import {
+  CareerCalendarPage,
+  CareerHomePage,
+  CareerPostMatchHubPage,
+  CareerPreMatchHubPage,
+  CareerTrainingPage
+} from "../components/CareerWorkbench";
 import { ConfirmOverlay } from "../components/ConfirmOverlay";
 import { MatchView } from "../components/MatchView";
 import { OverviewView } from "../components/OverviewView";
@@ -95,33 +102,6 @@ function topModeForPage(page: AppPage, fallback: TopMode): TopMode {
   }
 }
 
-function FeaturePlaceholder(props: { title: string; kicker: string; copy: string; onBack: () => void }) {
-  return (
-    <section className="screen-shell">
-      <div className="screen-header">
-        <div>
-          <p className="screen-kicker">{props.kicker}</p>
-          <h1 className="screen-title">{props.title}</h1>
-          <p className="screen-copy">{props.copy}</p>
-        </div>
-        <button className="command-button command-button-secondary" type="button" onClick={props.onBack}>
-          Back To Current Run
-        </button>
-      </div>
-      <section className="command-panel">
-        <div className="panel-header">
-          <h2>Scaffold</h2>
-          <span>v0.2.4 framework</span>
-        </div>
-        <p className="panel-summary">
-          This workspace now has a page home. The season and event simulation underneath it will be
-          filled in after the UI framework stops everything from competing in one console.
-        </p>
-      </section>
-    </section>
-  );
-}
-
 export function App() {
   const {
     phase,
@@ -129,6 +109,12 @@ export function App() {
     plannedTacticKey,
     tournament,
     liveMatch,
+    career,
+    startCareer,
+    applyCareerTraining,
+    enterCareerEvent,
+    advanceCareerDay,
+    continueCareerAfterPostMatch,
     selectPlayer,
     chooseTactic,
     startTournament,
@@ -159,13 +145,21 @@ export function App() {
 
   useEffect(() => {
     setActivePage((currentPage) => {
+      if (career?.stage === "post_match" && currentPage.id === "review") {
+        return currentPage;
+      }
+
+      if (career?.stage === "pre_match" && currentPage.id === "bracket") {
+        return currentPage;
+      }
+
       if (!isPhaseBoundPage(currentPage)) {
         return currentPage;
       }
 
       return pageForPhase(phase);
     });
-  }, [phase]);
+  }, [career?.stage, phase]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -210,6 +204,25 @@ export function App() {
     setSidebarPanel("events");
   }
 
+  function handleStartCareer() {
+    startCareer();
+    setActivePage({ id: "home" });
+    setSidebarPanel("command");
+  }
+
+  function handleAdvanceCareerDay() {
+    advanceCareerDay();
+    const next = useTournamentStore.getState();
+    setActivePage(next.career?.stage === "pre_match" ? { id: "bracket" } : { id: "calendar" });
+    setSidebarPanel("events");
+  }
+
+  function handleContinueCareerAfterPostMatch() {
+    continueCareerAfterPostMatch();
+    setActivePage({ id: "home" });
+    setSidebarPanel("command");
+  }
+
   function handleStartManagedMatch() {
     startManagedMatch();
     setActivePage({ id: "liveMatch" });
@@ -218,7 +231,8 @@ export function App() {
 
   function handleAdvanceAfterMatch() {
     advanceAfterMatch();
-    setActivePage(pageForPhase(useTournamentStore.getState().phase));
+    const next = useTournamentStore.getState();
+    setActivePage(next.career?.stage === "post_match" ? { id: "review" } : pageForPhase(next.phase));
   }
 
   function activateTopMode(mode: TopMode) {
@@ -234,7 +248,7 @@ export function App() {
       return;
     }
 
-    setActivePage(pageForPhase(phase));
+    setActivePage(career ? { id: "home" } : pageForPhase(phase));
     setSidebarPanel("events");
   }
 
@@ -243,16 +257,16 @@ export function App() {
 
     switch (panel) {
       case "command":
-        setActivePage(pageForPhase(phase));
+        setActivePage(career && phase !== "match" ? { id: "home" } : pageForPhase(phase));
         break;
       case "tactics":
-        setActivePage(phase === "setup" ? { id: "setup" } : pageForPhase(phase));
+        setActivePage(career && phase !== "match" ? { id: "season" } : phase === "setup" ? { id: "setup" } : pageForPhase(phase));
         break;
       case "athletes":
         setActivePage({ id: "squad" });
         break;
       case "events":
-        setActivePage(tournament ? { id: "bracket" } : { id: "games" });
+        setActivePage(career ? { id: "calendar" } : tournament ? { id: "bracket" } : { id: "games" });
         break;
       case "settings":
         setSettingsOpen(true);
@@ -289,6 +303,23 @@ export function App() {
   }
 
   function renderPage() {
+    const careerPageProps = {
+      career,
+      onStartCareer: handleStartCareer,
+      onOpenTraining: () => setActivePage({ id: "season" }),
+      onOpenCalendar: () => setActivePage({ id: "calendar" }),
+      onOpenHome: () => setActivePage({ id: "home" }),
+      onApplyTraining: applyCareerTraining,
+      onEnterEvent: enterCareerEvent,
+      onAdvanceDay: handleAdvanceCareerDay,
+      onStartManagedMatch: handleStartManagedMatch,
+      onContinueAfterPostMatch: handleContinueCareerAfterPostMatch
+    };
+
+    if (activePage.id === "home") {
+      return <CareerHomePage {...careerPageProps} />;
+    }
+
     if (activePage.id === "playerProfile") {
       return (
         <PlayerProfilePage
@@ -317,36 +348,15 @@ export function App() {
     }
 
     if (activePage.id === "games") {
-      return (
-        <FeaturePlaceholder
-          kicker="Events"
-          title="Games Workspace"
-          copy="Event selection is getting its own page home before the season model grows larger."
-          onBack={() => setActivePage(pageForPhase(phase))}
-        />
-      );
+      return <CareerCalendarPage {...careerPageProps} />;
     }
 
     if (activePage.id === "season") {
-      return (
-        <FeaturePlaceholder
-          kicker="Season"
-          title="Season Hub"
-          copy="The season page is reserved for multi-event progression, records, and event queues."
-          onBack={() => setActivePage(pageForPhase(phase))}
-        />
-      );
+      return <CareerTrainingPage {...careerPageProps} />;
     }
 
     if (activePage.id === "calendar") {
-      return (
-        <FeaturePlaceholder
-          kicker="Calendar"
-          title="Calendar"
-          copy="Calendar structure will share event definitions with Games and Season once event data lands."
-          onBack={() => setActivePage(pageForPhase(phase))}
-        />
-      );
+      return <CareerCalendarPage {...careerPageProps} />;
     }
 
     if (phase === "setup") {
@@ -363,6 +373,10 @@ export function App() {
     }
 
     if (phase === "overview" && tournament) {
+      if (career?.stage === "pre_match") {
+        return <CareerPreMatchHubPage {...careerPageProps} />;
+      }
+
       return (
         <OverviewView
           tournament={tournament}
@@ -390,6 +404,10 @@ export function App() {
           onOpenPlayerProfile={openPlayerProfile}
         />
       );
+    }
+
+    if (career?.stage === "post_match") {
+      return <CareerPostMatchHubPage {...careerPageProps} />;
     }
 
     if (phase === "complete" && tournament) {
