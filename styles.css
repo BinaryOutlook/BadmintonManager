@@ -611,6 +611,21 @@ button {
   grid-column: 1 / -1;
 }
 
+.recommendation-panel .panel-header {
+  align-items: flex-start;
+}
+
+.panel-summary-tight {
+  max-width: 48rem;
+  margin-top: 0.4rem;
+  line-height: 1.45;
+}
+
+.browse-roster-button {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
 .panel-header,
 .intel-drawer-header {
   display: flex;
@@ -637,6 +652,157 @@ button {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.9rem;
+}
+
+.recommendation-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.recommendation-group {
+  display: grid;
+  gap: 0.8rem;
+  min-width: 0;
+  border: 1px solid rgba(48, 54, 61, 0.92);
+  border-radius: 0.35rem;
+  padding: 0.95rem;
+  background:
+    linear-gradient(135deg, rgba(57, 255, 20, 0.055), transparent 42%),
+    rgba(12, 14, 17, 0.72);
+}
+
+.recommendation-group:first-child {
+  grid-column: 1 / -1;
+}
+
+.recommendation-group-header {
+  display: grid;
+  grid-template-columns: minmax(10rem, 0.82fr) minmax(0, 1.18fr);
+  gap: 0.8rem;
+  align-items: start;
+}
+
+.recommendation-group-header span,
+.recommendation-pick-top span,
+.selection-chip {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.recommendation-group-header h3 {
+  margin: 0.18rem 0 0;
+  color: var(--text);
+  font-size: 1.2rem;
+  letter-spacing: 0;
+}
+
+.recommendation-group-header p,
+.recommendation-pick p,
+.modal-subcopy {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.recommendation-picks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.recommendation-group:first-child .recommendation-picks {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.recommendation-pick {
+  display: grid;
+  min-width: 0;
+  gap: 0.58rem;
+  border: 1px solid var(--border);
+  border-radius: 0.32rem;
+  padding: 0.78rem;
+  background: rgba(17, 19, 22, 0.9);
+}
+
+.recommendation-pick-active {
+  border-color: rgba(57, 255, 20, 0.45);
+  background: rgba(35, 39, 44, 0.98);
+  box-shadow: 0 0 0 1px rgba(57, 255, 20, 0.14) inset;
+}
+
+.recommendation-pick-top,
+.recommendation-pick-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.recommendation-pick .athlete-profile-button-block {
+  margin: 0;
+}
+
+.recommendation-pick-actions > span:not(.selection-chip) {
+  color: var(--muted);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.recommendation-pick-actions .sidebar-mini-button {
+  flex: 0 0 6.25rem;
+  overflow: visible;
+  padding-right: 0.45rem;
+  padding-left: 0.45rem;
+  text-align: center;
+  text-overflow: clip;
+  letter-spacing: 0;
+}
+
+.selection-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.2rem;
+  border: 1px solid rgba(57, 255, 20, 0.24);
+  border-radius: 0.25rem;
+  padding: 0.4rem 0.65rem;
+  color: var(--lime-soft);
+  background: rgba(27, 78, 20, 0.22);
+}
+
+.roster-modal {
+  width: min(74rem, 100%);
+  max-height: min(48rem, calc(100vh - 2rem));
+  overflow: auto;
+  border: 1px solid var(--border-strong);
+  border-radius: 0.45rem;
+  padding: 1.2rem;
+  background: rgba(17, 19, 22, 0.99);
+  box-shadow: var(--shadow);
+}
+
+.panel-header-compact {
+  padding-bottom: 0.65rem;
+  margin-bottom: 0.75rem;
+}
+
+.panel-header-compact h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: 1.25rem;
+}
+
+.roster-grid-modal {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.athlete-card-compact {
+  padding: 0.82rem;
 }
 
 .squad-directory-grid {
@@ -2532,6 +2698,7 @@ button {
   }
 
   .roster-grid,
+  .roster-grid-modal,
   .tactic-option-grid,
   .tactic-option-grid-wide,
   .squad-directory-grid,
@@ -2545,6 +2712,18 @@ button {
     grid-template-columns: repeat(2, minmax(12rem, 1fr));
   }
 
+}
+
+@media (max-width: 980px) {
+  .recommendation-grid,
+  .recommendation-group-header,
+  .recommendation-group:first-child .recommendation-picks {
+    grid-template-columns: 1fr;
+  }
+
+  .recommendation-group:first-child {
+    grid-column: auto;
+  }
 }
 
 @media (max-height: 800px) and (min-width: 1101px) {
@@ -2749,6 +2928,10 @@ button {
   }
 
   .roster-grid,
+  .roster-grid-modal,
+  .recommendation-grid,
+  .recommendation-picks,
+  .recommendation-group:first-child .recommendation-picks,
   .tactic-option-grid,
   .tactic-option-grid-wide,
   .squad-directory-grid,

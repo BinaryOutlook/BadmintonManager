@@ -1,10 +1,10 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { seededPlayers } from "../../game/content/players";
 import { SetupView, rankRosterByOverall } from "../../components/SetupView";
 
 describe("SetupView", () => {
-  it("renders athlete selection in OVR descending order", () => {
+  it("shows recommendations first and keeps the full roster as a fallback", () => {
     render(
       <SetupView
         selectedPlayerId={seededPlayers[0].player.id}
@@ -16,8 +16,17 @@ describe("SetupView", () => {
       />
     );
 
-    const rosterPanel = screen.getByRole("heading", { name: "Active Roster" }).closest("section");
+    expect(screen.getByRole("heading", { name: "Command Recommendations" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Trophy Titans" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Honorable Mentions" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Attacking" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Versatile" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Defensive" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Active Roster" })).not.toBeInTheDocument();
 
+    fireEvent.click(screen.getByRole("button", { name: "Browse All Athletes" }));
+
+    const rosterPanel = screen.getByRole("heading", { name: "Active Roster" }).closest("section");
     expect(rosterPanel).toBeInTheDocument();
 
     const athleteCards = rosterPanel!.querySelectorAll(".athlete-card");
