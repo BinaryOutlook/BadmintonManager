@@ -42,6 +42,7 @@ What is now stable:
 - the first `v0.2.4` UI code slice now adds generated player profiles, a squad directory, player-name navigation, consolidated settings, theme accent choices, and reset confirmation while keeping simulation outcomes untouched
 - the player profile overview now behaves more like a scout dossier, with radar metrics, archetype, strengths, weaknesses, tactical fit drivers, readiness, and smart player-name links inside prose
 - the player profile overview now fits as a compact one-screen desktop dashboard, fixes radar label clipping, and supports a resizable/collapsible persistent sidebar
+- the tournament setup athlete picker now leads with playstyle/strength recommendation modes and moves country, search, tier, style, and sort controls into the Browse All Athletes fallback
 
 ## Completed
 
@@ -94,6 +95,7 @@ What is now stable:
 - [x] implemented the first `v0.2.4` code slice for runtime-generated player profiles, squad directory navigation, consolidated settings, theme accent choices, and reset confirmation
 - [x] upgraded the player profile overview into a Football Manager-style scout report with radar metrics, archetype, strengths, weaknesses, risk flags, readiness, and smart player-name linking in profile prose
 - [x] compressed the player profile Overview into a one-screen dashboard at `1440 x 900`, added short-viewport compact mode for `1366 x 768`, fixed the radar safe drawing area, and made the sidebar resizable, collapsible, and locally persistent
+- [x] refined setup player selection into a playstyle-first recommendation flow with full-roster search, country, tier, style, and stat sort controls
 
 ## In Progress
 

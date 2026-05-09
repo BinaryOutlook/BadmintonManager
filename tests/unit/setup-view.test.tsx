@@ -16,18 +16,28 @@ describe("SetupView", () => {
       />
     );
 
-    expect(screen.getByRole("heading", { name: "Command Recommendations" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Trophy Titans" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Honorable Mentions" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Attacking" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Versatile" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Defensive" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Pick Your Playstyle" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Best Overall/ })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: /Attack First/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Control Artist/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Rally Engine/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Underdog/ })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Active Roster" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Attack First/ }));
+
+    expect(screen.getByRole("button", { name: /Attack First/ })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getAllByText(/aggression/i).length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole("button", { name: "Browse All Athletes" }));
 
     const rosterPanel = screen.getByRole("heading", { name: "Active Roster" }).closest("section");
     expect(rosterPanel).toBeInTheDocument();
+    expect(screen.getByLabelText("Search")).toBeInTheDocument();
+    expect(screen.getByLabelText("Country")).toBeInTheDocument();
+    expect(screen.getByLabelText("Tier")).toBeInTheDocument();
+    expect(screen.getByLabelText("Style")).toBeInTheDocument();
+    expect(screen.getByLabelText("Sort")).toBeInTheDocument();
 
     const athleteCards = rosterPanel!.querySelectorAll(".athlete-card");
     const topRanked = rankRosterByOverall()[0];
@@ -37,5 +47,36 @@ describe("SetupView", () => {
     expect(within(athleteCards[0] as HTMLElement).getByText("OVR Rank #1")).toBeInTheDocument();
     expect(within(athleteCards[0] as HTMLElement).queryByText("GS")).not.toBeInTheDocument();
     expect(within(rosterPanel!).queryByText(/Seed #/)).not.toBeInTheDocument();
+  });
+
+  it("filters the full roster by country and resets browse state", () => {
+    render(
+      <SetupView
+        selectedPlayerId={seededPlayers[0].player.id}
+        plannedTacticKey="balancedControl"
+        onSelectPlayer={vi.fn()}
+        onOpenPlayerProfile={vi.fn()}
+        onChooseTactic={vi.fn()}
+        onStartTournament={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Browse All Athletes" }));
+    fireEvent.change(screen.getByLabelText("Country"), { target: { value: "CHN" } });
+
+    expect(screen.getByText("Country: CHN")).toBeInTheDocument();
+
+    const rosterPanel = screen.getByRole("heading", { name: "Active Roster" }).closest("section");
+    const athleteCards = rosterPanel!.querySelectorAll(".athlete-card");
+
+    expect(athleteCards.length).toBeGreaterThan(0);
+    athleteCards.forEach((card) => {
+      expect(within(card as HTMLElement).getByText("CHN")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear Filters" }));
+
+    expect(screen.queryByText("Country: CHN")).not.toBeInTheDocument();
+    expect(screen.getByText("All athletes")).toBeInTheDocument();
   });
 });

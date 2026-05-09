@@ -626,6 +626,66 @@ button {
   white-space: nowrap;
 }
 
+.recommendation-mode-strip {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin-bottom: 0.9rem;
+}
+
+.recommendation-mode-button {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+  min-height: 4.4rem;
+  border: 1px solid var(--border);
+  border-radius: 0.35rem;
+  padding: 0.72rem;
+  background: rgba(17, 19, 22, 0.9);
+  color: var(--text);
+  text-align: left;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    background 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.recommendation-mode-button:hover {
+  transform: translateY(-1px);
+  border-color: var(--border-strong);
+}
+
+.recommendation-mode-button-active {
+  border-color: rgba(57, 255, 20, 0.44);
+  background:
+    linear-gradient(135deg, rgba(57, 255, 20, 0.12), transparent 54%),
+    rgba(35, 39, 44, 0.98);
+  box-shadow: 0 0 0 1px rgba(57, 255, 20, 0.12) inset;
+}
+
+.recommendation-mode-button span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted-soft);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.recommendation-mode-button strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 0.95rem;
+  line-height: 1.12;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .panel-header,
 .intel-drawer-header {
   display: flex;
@@ -661,6 +721,18 @@ button {
 }
 
 .recommendation-group {
+  display: grid;
+  gap: 0.8rem;
+  min-width: 0;
+  border: 1px solid rgba(48, 54, 61, 0.92);
+  border-radius: 0.35rem;
+  padding: 0.95rem;
+  background:
+    linear-gradient(135deg, rgba(57, 255, 20, 0.055), transparent 42%),
+    rgba(12, 14, 17, 0.72);
+}
+
+.recommendation-mode-stage {
   display: grid;
   gap: 0.8rem;
   min-width: 0;
@@ -714,6 +786,10 @@ button {
   gap: 0.65rem;
 }
 
+.recommendation-picks-featured {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .recommendation-group:first-child .recommendation-picks {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
@@ -753,6 +829,36 @@ button {
   white-space: nowrap;
 }
 
+.recommendation-pick-actions {
+  flex-wrap: wrap;
+}
+
+.recommendation-pick-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.recommendation-pick-tags span,
+.active-filter-list span {
+  display: inline-flex;
+  min-height: 1.55rem;
+  align-items: center;
+  border: 1px solid rgba(48, 54, 61, 0.95);
+  border-radius: 0.22rem;
+  padding: 0.22rem 0.45rem;
+  color: var(--muted);
+  background: rgba(35, 39, 44, 0.82);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.athlete-card-tags {
+  margin-top: 0.75rem;
+}
+
 .recommendation-pick-actions .sidebar-mini-button {
   flex: 0 0 6.25rem;
   overflow: visible;
@@ -784,6 +890,102 @@ button {
   padding: 1.2rem;
   background: rgba(17, 19, 22, 0.99);
   box-shadow: var(--shadow);
+}
+
+.browse-controls {
+  display: grid;
+  grid-template-columns: minmax(13rem, 1.2fr) repeat(4, minmax(8.5rem, 1fr));
+  gap: 0.65rem;
+  margin-bottom: 0.8rem;
+}
+
+.browse-field {
+  display: grid;
+  gap: 0.32rem;
+  min-width: 0;
+}
+
+.browse-field span {
+  color: var(--muted-soft);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.browse-field input,
+.browse-field select {
+  width: 100%;
+  min-width: 0;
+  min-height: 2.6rem;
+  border: 1px solid var(--border);
+  border-radius: 0.28rem;
+  padding: 0.48rem 0.6rem;
+  background: rgba(12, 14, 17, 0.96);
+  color: var(--text);
+}
+
+.browse-field input:focus,
+.browse-field select:focus,
+.recommendation-mode-button:focus-visible {
+  outline: 2px solid rgba(57, 255, 20, 0.55);
+  outline-offset: 2px;
+}
+
+.browse-results-bar {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.7rem;
+  align-items: center;
+  margin-bottom: 0.9rem;
+  border: 1px solid rgba(48, 54, 61, 0.85);
+  border-radius: 0.35rem;
+  padding: 0.65rem;
+  background: rgba(12, 14, 17, 0.72);
+}
+
+.browse-results-bar strong {
+  color: var(--lime-soft);
+  font-size: 1.2rem;
+}
+
+.browse-results-bar span {
+  color: var(--muted);
+}
+
+.active-filter-list {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.browse-reset-button {
+  min-width: 8.5rem;
+}
+
+.browse-reset-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.roster-empty-state {
+  display: grid;
+  justify-items: start;
+  gap: 0.65rem;
+  border: 1px dashed rgba(64, 73, 83, 0.9);
+  border-radius: 0.35rem;
+  padding: 1.25rem;
+  background: rgba(12, 14, 17, 0.7);
+}
+
+.roster-empty-state h3,
+.roster-empty-state p {
+  margin: 0;
+}
+
+.roster-empty-state p {
+  color: var(--muted);
 }
 
 .panel-header-compact {
@@ -2699,6 +2901,7 @@ button {
 
   .roster-grid,
   .roster-grid-modal,
+  .recommendation-picks-featured,
   .tactic-option-grid,
   .tactic-option-grid-wide,
   .squad-directory-grid,
@@ -2723,6 +2926,16 @@ button {
 
   .recommendation-group:first-child {
     grid-column: auto;
+  }
+
+  .recommendation-mode-strip,
+  .browse-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .browse-results-bar {
+    grid-template-columns: 1fr;
+    align-items: start;
   }
 }
 
@@ -2930,8 +3143,11 @@ button {
   .roster-grid,
   .roster-grid-modal,
   .recommendation-grid,
+  .recommendation-mode-strip,
   .recommendation-picks,
+  .recommendation-picks-featured,
   .recommendation-group:first-child .recommendation-picks,
+  .browse-controls,
   .tactic-option-grid,
   .tactic-option-grid-wide,
   .squad-directory-grid,

@@ -6,7 +6,7 @@ test("can start a tournament run and play through a managed match", async ({ pag
 
   await expect(page.getByRole("heading", { name: "Tournament Deployment" })).toBeVisible();
 
-  await page.getByRole("button", { name: "Grand-Slam Southpaw" }).click();
+  await page.getByRole("button", { name: "Grand-Slam Southpaw", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Grand-Slam Southpaw" })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Attributes" })).toBeVisible();
   await expect(page.getByText("Endurance").first()).toBeVisible();

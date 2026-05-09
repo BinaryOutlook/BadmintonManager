@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { seededPlayers } from "../game/content/players";
 import { tacticOptions } from "../game/content/tactics";
 import { deriveAthleteDossier } from "../game/core/intel";
@@ -19,6 +19,44 @@ function overallFromDossier(dossier: ReturnType<typeof deriveAthleteDossier>) {
 
 type RankedAthlete = ReturnType<typeof rankRosterByOverall>[number];
 
+type RecommendationModeKey = "best" | "attack" | "control" | "rally" | "underdog";
+type ArchetypeKey = "attack" | "control" | "rally" | "balanced";
+type ArchetypeFilter = "all" | ArchetypeKey;
+type TierKey = "elite" | "contender" | "underdog";
+type TierFilter = "all" | TierKey;
+type BrowseSortKey = "overall" | "rank" | "power" | "speed" | "stamina" | "control";
+
+interface RecommendationMode {
+  key: RecommendationModeKey;
+  label: string;
+  cue: string;
+  summary: string;
+  picks: RankedAthlete[];
+  reasonFor: (item: RankedAthlete) => string;
+}
+
+const archetypeLabels: Record<ArchetypeKey, string> = {
+  attack: "Attack First",
+  control: "Control Artist",
+  rally: "Rally Engine",
+  balanced: "All-Rounder"
+};
+
+const tierLabels: Record<TierKey, string> = {
+  elite: "Elite",
+  contender: "Contender",
+  underdog: "Underdog"
+};
+
+const sortLabels: Record<BrowseSortKey, string> = {
+  overall: "OVR",
+  rank: "Rank",
+  power: "Power",
+  speed: "Speed",
+  stamina: "Stamina",
+  control: "Control"
+};
+
 export function rankRosterByOverall(entries = seededPlayers) {
   const scoredEntries = entries.map((entry) => {
     const dossier = deriveAthleteDossier(entry.player);
@@ -38,125 +76,212 @@ export function rankRosterByOverall(entries = seededPlayers) {
     }));
 }
 
-interface RecommendationGroup {
-  key: string;
-  title: string;
-  cue: string;
-  summary: string;
-  picks: RankedAthlete[];
-  reasonFor: (item: RankedAthlete) => string;
+function attackScore(item: RankedAthlete) {
+  return (
+    item.dossier.power +
+    item.dossier.speed +
+    item.entry.player.ratings.technical.smash +
+    item.entry.player.ratings.mental.aggression
+  );
 }
 
-function takeUnique(
-  entries: RankedAthlete[],
-  usedIds: Set<string>,
-  count: number
-) {
-  const selected: RankedAthlete[] = [];
+function controlScore(item: RankedAthlete) {
+  return (
+    item.dossier.control +
+    item.entry.player.ratings.technical.netPlay +
+    item.entry.player.ratings.technical.dropShot +
+    item.entry.player.ratings.technical.serveReturn +
+    item.entry.player.ratings.mental.anticipation
+  );
+}
 
-  for (const item of entries) {
-    if (usedIds.has(item.entry.player.id)) {
-      continue;
-    }
+function rallyScore(item: RankedAthlete) {
+  return (
+    item.dossier.stamina +
+    item.entry.player.ratings.physical.footworkSpeed +
+    item.entry.player.ratings.technical.defenseRetrieval +
+    item.entry.player.ratings.mental.focus +
+    item.entry.player.ratings.mental.composure
+  );
+}
 
-    selected.push(item);
-    usedIds.add(item.entry.player.id);
+function getArchetype(item: RankedAthlete): ArchetypeKey {
+  const values = [item.dossier.power, item.dossier.speed, item.dossier.stamina, item.dossier.control];
+  const spread = Math.max(...values) - Math.min(...values);
 
-    if (selected.length === count) {
-      break;
-    }
+  if (spread <= 5 && item.overall >= 82) {
+    return "balanced";
   }
 
-  return selected;
+  const scores: Array<{ key: ArchetypeKey; value: number }> = [
+    { key: "attack", value: attackScore(item) },
+    { key: "control", value: controlScore(item) },
+    { key: "rally", value: rallyScore(item) }
+  ];
+
+  return scores.sort((left, right) => right.value - left.value)[0].key;
 }
 
-function buildRecommendationGroups(rankedRoster: RankedAthlete[]): RecommendationGroup[] {
-  const usedIds = new Set<string>();
+function getTier(item: RankedAthlete): TierKey {
+  if (item.overall >= 88) {
+    return "elite";
+  }
+
+  if (item.overall >= 84) {
+    return "contender";
+  }
+
+  return "underdog";
+}
+
+function topPicks(entries: RankedAthlete[], count = 5) {
+  return entries.slice(0, count);
+}
+
+function buildRecommendationModes(rankedRoster: RankedAthlete[]): RecommendationMode[] {
   const byAttack = [...rankedRoster].sort(
-    (left, right) =>
-      right.dossier.power + right.dossier.speed - (left.dossier.power + left.dossier.speed) ||
-      left.rank - right.rank
+    (left, right) => attackScore(right) - attackScore(left) || left.rank - right.rank
   );
-  const byVersatility = [...rankedRoster].sort((left, right) => {
-    const leftValues = [left.dossier.power, left.dossier.speed, left.dossier.stamina, left.dossier.control];
-    const rightValues = [right.dossier.power, right.dossier.speed, right.dossier.stamina, right.dossier.control];
-    const leftSpread = Math.max(...leftValues) - Math.min(...leftValues);
-    const rightSpread = Math.max(...rightValues) - Math.min(...rightValues);
+  const byControl = [...rankedRoster].sort(
+    (left, right) => controlScore(right) - controlScore(left) || left.rank - right.rank
+  );
+  const byRally = [...rankedRoster].sort(
+    (left, right) => rallyScore(right) - rallyScore(left) || left.rank - right.rank
+  );
+  const byUnderdogUpside = [...rankedRoster]
+    .filter((item) => item.overall <= 86)
+    .sort((left, right) => {
+      const leftUpside = Math.max(attackScore(left), controlScore(left), rallyScore(left));
+      const rightUpside = Math.max(attackScore(right), controlScore(right), rallyScore(right));
 
-    return leftSpread - rightSpread || right.overall - left.overall || left.rank - right.rank;
-  });
-  const byDefense = [...rankedRoster].sort((left, right) => {
-    const leftDefense =
-      left.dossier.stamina +
-      left.dossier.control +
-      left.entry.player.ratings.technical.defenseRetrieval +
-      left.entry.player.ratings.mental.composure;
-    const rightDefense =
-      right.dossier.stamina +
-      right.dossier.control +
-      right.entry.player.ratings.technical.defenseRetrieval +
-      right.entry.player.ratings.mental.composure;
-
-    return rightDefense - leftDefense || left.rank - right.rank;
-  });
-
-  const trophyTitans = takeUnique(rankedRoster, usedIds, 3);
-  const honorableMentions = takeUnique(rankedRoster.slice(3), usedIds, 2);
-  const attacking = takeUnique(byAttack, usedIds, 1);
-  const versatile = takeUnique(byVersatility, usedIds, 1);
-  const defensive = takeUnique(byDefense, usedIds, 1);
+      return rightUpside - leftUpside || right.overall - left.overall || left.rank - right.rank;
+    });
 
   return [
     {
-      key: "trophy-titans",
-      title: "Trophy Titans",
-      cue: "Safest title ceiling",
-      summary: "Start here when you want the strongest opening command recommendation.",
-      picks: trophyTitans,
-      reasonFor: (item) => `Rank #${item.rank}, OVR ${item.overall}, title-ready baseline.`
+      key: "best",
+      label: "Best Overall",
+      cue: "Safest title",
+      summary: "Strongest opening picks when you want a confident first run.",
+      picks: topPicks(rankedRoster),
+      reasonFor: (item) => `Rank #${item.rank}, OVR ${item.overall}, ${tierLabels[getTier(item)].toLowerCase()} baseline.`
     },
     {
-      key: "honorable-mentions",
-      title: "Honorable Mentions",
-      cue: "Strong alternate reads",
-      summary: "Near-elite choices when the top lane feels too obvious.",
-      picks: honorableMentions,
-      reasonFor: (item) => `OVR ${item.overall} with a distinct ${item.entry.player.styleLabel.toLowerCase()} profile.`
+      key: "attack",
+      label: "Attack First",
+      cue: "Pressure",
+      summary: "Power, speed, and aggression-forward athletes for short-rally initiative.",
+      picks: topPicks(byAttack),
+      reasonFor: (item) => `Power ${item.dossier.power}, speed ${item.dossier.speed}, aggression ${item.entry.player.ratings.mental.aggression}.`
     },
     {
-      key: "attacking",
-      title: "Attacking",
-      cue: "Pressure first",
-      summary: "Power and speed picks for coaches who want short-rally initiative.",
-      picks: attacking,
-      reasonFor: (item) => `Power ${item.dossier.power} and speed ${item.dossier.speed} support early pressure.`
+      key: "control",
+      label: "Control Artist",
+      cue: "Court craft",
+      summary: "Net skill, anticipation, and precision profiles for tactical command.",
+      picks: topPicks(byControl),
+      reasonFor: (item) => `Control ${item.dossier.control}, net ${item.entry.player.ratings.technical.netPlay}, anticipation ${item.entry.player.ratings.mental.anticipation}.`
     },
     {
-      key: "versatile",
-      title: "Versatile",
-      cue: "Plan-flexible",
-      summary: "Balanced operators who can survive tactical changes mid-run.",
-      picks: versatile,
-      reasonFor: (item) =>
-        `Balanced line: ${item.dossier.power}/${item.dossier.speed}/${item.dossier.stamina}/${item.dossier.control}.`
+      key: "rally",
+      label: "Rally Engine",
+      cue: "Endurance",
+      summary: "Stamina, retrieval, and focus picks for long-rally reliability.",
+      picks: topPicks(byRally),
+      reasonFor: (item) => `Stamina ${item.dossier.stamina}, retrieval ${item.entry.player.ratings.technical.defenseRetrieval}, focus ${item.entry.player.ratings.mental.focus}.`
     },
     {
-      key: "defensive",
-      title: "Defensive",
-      cue: "Absorb and reset",
-      summary: "Control, stamina, and retrieval profiles for lower-volatility openings.",
-      picks: defensive,
-      reasonFor: (item) => `Stamina ${item.dossier.stamina} and control ${item.dossier.control} stabilize long rallies.`
+      key: "underdog",
+      label: "Underdog",
+      cue: "Challenge",
+      summary: "Lower-OVR athletes with one clear weapon for a sharper campaign.",
+      picks: topPicks(byUnderdogUpside),
+      reasonFor: (item) => `${archetypeLabels[getArchetype(item)]} upside at OVR ${item.overall}.`
     }
   ];
 }
 
+function filterAndSortRoster(
+  rankedRoster: RankedAthlete[],
+  query: string,
+  countryFilter: string,
+  tierFilter: TierFilter,
+  archetypeFilter: ArchetypeFilter,
+  sortKey: BrowseSortKey
+) {
+  const normalizedQuery = query.trim().toLowerCase();
+
+  return rankedRoster
+    .filter((item) => {
+      const haystack = [
+        item.entry.player.name,
+        item.entry.player.nationality,
+        item.entry.player.styleLabel,
+        archetypeLabels[getArchetype(item)],
+        tierLabels[getTier(item)]
+      ]
+        .join(" ")
+        .toLowerCase();
+
+      return (
+        (!normalizedQuery || haystack.includes(normalizedQuery)) &&
+        (countryFilter === "all" || item.entry.player.nationality === countryFilter) &&
+        (tierFilter === "all" || getTier(item) === tierFilter) &&
+        (archetypeFilter === "all" || getArchetype(item) === archetypeFilter)
+      );
+    })
+    .sort((left, right) => {
+      if (sortKey === "rank" || sortKey === "overall") {
+        return left.rank - right.rank;
+      }
+
+      return right.dossier[sortKey] - left.dossier[sortKey] || left.rank - right.rank;
+    });
+}
+
 export function SetupView(props: SetupViewProps) {
   const [rosterModalOpen, setRosterModalOpen] = useState(false);
-  const rankedRoster = rankRosterByOverall();
+  const [activeModeKey, setActiveModeKey] = useState<RecommendationModeKey>("best");
+  const [browseQuery, setBrowseQuery] = useState("");
+  const [countryFilter, setCountryFilter] = useState("all");
+  const [tierFilter, setTierFilter] = useState<TierFilter>("all");
+  const [archetypeFilter, setArchetypeFilter] = useState<ArchetypeFilter>("all");
+  const [browseSortKey, setBrowseSortKey] = useState<BrowseSortKey>("overall");
+  const rankedRoster = useMemo(() => rankRosterByOverall(), []);
+  const recommendationModes = useMemo(() => buildRecommendationModes(rankedRoster), [rankedRoster]);
+  const countryOptions = useMemo(
+    () => [...new Set(rankedRoster.map((item) => item.entry.player.nationality))].sort(),
+    [rankedRoster]
+  );
+  const filteredRoster = useMemo(
+    () =>
+      filterAndSortRoster(
+        rankedRoster,
+        browseQuery,
+        countryFilter,
+        tierFilter,
+        archetypeFilter,
+        browseSortKey
+      ),
+    [archetypeFilter, browseQuery, browseSortKey, countryFilter, rankedRoster, tierFilter]
+  );
+  const activeMode =
+    recommendationModes.find((mode) => mode.key === activeModeKey) ?? recommendationModes[0];
   const selected =
     rankedRoster.find((item) => item.entry.player.id === props.selectedPlayerId) ?? rankedRoster[0];
-  const recommendationGroups = buildRecommendationGroups(rankedRoster);
+  const hasBrowseFilters =
+    browseQuery.trim() !== "" ||
+    countryFilter !== "all" ||
+    tierFilter !== "all" ||
+    archetypeFilter !== "all" ||
+    browseSortKey !== "overall";
+  const activeFilterLabels = [
+    browseQuery.trim() ? `Search: "${browseQuery.trim()}"` : "",
+    countryFilter !== "all" ? `Country: ${countryFilter}` : "",
+    tierFilter !== "all" ? `Tier: ${tierLabels[tierFilter]}` : "",
+    archetypeFilter !== "all" ? `Style: ${archetypeLabels[archetypeFilter]}` : "",
+    browseSortKey !== "overall" ? `Sort: ${sortLabels[browseSortKey]}` : ""
+  ].filter(Boolean);
 
   useEffect(() => {
     if (!rosterModalOpen) {
@@ -177,6 +302,14 @@ export function SetupView(props: SetupViewProps) {
   function selectPlayer(playerId: string) {
     props.onSelectPlayer(playerId);
     setRosterModalOpen(false);
+  }
+
+  function resetBrowseFilters() {
+    setBrowseQuery("");
+    setCountryFilter("all");
+    setTierFilter("all");
+    setArchetypeFilter("all");
+    setBrowseSortKey("overall");
   }
 
   function renderAthleteCard(item: RankedAthlete, compact = false) {
@@ -201,6 +334,10 @@ export function SetupView(props: SetupViewProps) {
         <div className="metric-track">
           <div className="metric-track-fill" style={{ width: `${item.overall}%` }} />
         </div>
+        <div className="recommendation-pick-tags athlete-card-tags">
+          <span>{archetypeLabels[getArchetype(item)]}</span>
+          <span>{tierLabels[getTier(item)]}</span>
+        </div>
         <div className="athlete-card-footer">
           <span>{item.entry.player.styleLabel}</span>
           <span>OVR {item.overall}</span>
@@ -209,6 +346,7 @@ export function SetupView(props: SetupViewProps) {
           <button
             className="sidebar-mini-button athlete-select-button"
             type="button"
+            aria-label={`Select ${item.entry.player.name}`}
             onClick={() => selectPlayer(item.entry.player.id)}
           >
             Select Athlete
@@ -239,10 +377,10 @@ export function SetupView(props: SetupViewProps) {
         <section className="command-panel command-panel-wide recommendation-panel">
           <div className="panel-header">
             <div>
-              <h2>Command Recommendations</h2>
+              <h2>Pick Your Playstyle</h2>
               <p className="panel-summary panel-summary-tight">
-                Pick from a coached shortlist first. The full roster is still available when the
-                recommendation lanes miss the plan.
+                Start with how you want to win. Country stays visible, but the first choice is
+                strength and badminton style.
               </p>
             </div>
             <button
@@ -254,58 +392,76 @@ export function SetupView(props: SetupViewProps) {
             </button>
           </div>
 
-          <div className="recommendation-grid">
-            {recommendationGroups.map((group) => (
-              <section className="recommendation-group" key={group.key}>
-                <div className="recommendation-group-header">
-                  <div>
-                    <span>{group.cue}</span>
-                    <h3>{group.title}</h3>
-                  </div>
-                  <p>{group.summary}</p>
-                </div>
-                <div className="recommendation-picks">
-                  {group.picks.map((item) => (
-                    <article
-                      className={
-                        item.entry.player.id === props.selectedPlayerId
-                          ? "recommendation-pick recommendation-pick-active"
-                          : "recommendation-pick"
-                      }
-                      key={`${group.key}-${item.entry.player.id}`}
-                    >
-                      <div className="recommendation-pick-top">
-                        <span className="athlete-avatar">{item.entry.player.nationality}</span>
-                        <span>Rank #{item.rank}</span>
-                      </div>
-                      <button
-                        className="athlete-profile-button athlete-profile-button-block"
-                        type="button"
-                        onClick={() => props.onOpenPlayerProfile(item.entry.player.id)}
-                      >
-                        {item.entry.player.name}
-                      </button>
-                      <p>{group.reasonFor(item)}</p>
-                      <div className="recommendation-pick-actions">
-                        {item.entry.player.id !== props.selectedPlayerId ? (
-                          <button
-                            className="sidebar-mini-button"
-                            type="button"
-                            onClick={() => selectPlayer(item.entry.player.id)}
-                          >
-                            Select
-                          </button>
-                        ) : (
-                          <span className="selection-chip">Selected</span>
-                        )}
-                        <span>OVR {item.overall}</span>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              </section>
+          <div className="recommendation-mode-strip" aria-label="Recommendation modes">
+            {recommendationModes.map((mode) => (
+              <button
+                key={mode.key}
+                className={`recommendation-mode-button ${
+                  mode.key === activeMode.key ? "recommendation-mode-button-active" : ""
+                }`}
+                type="button"
+                aria-pressed={mode.key === activeMode.key}
+                onClick={() => setActiveModeKey(mode.key)}
+              >
+                <span>{mode.cue}</span>
+                <strong>{mode.label}</strong>
+              </button>
             ))}
           </div>
+
+          <section className="recommendation-mode-stage" aria-labelledby="active-recommendation-title">
+            <div className="recommendation-group-header">
+              <div>
+                <span>{activeMode.cue}</span>
+                <h3 id="active-recommendation-title">{activeMode.label}</h3>
+              </div>
+              <p>{activeMode.summary}</p>
+            </div>
+            <div className="recommendation-picks recommendation-picks-featured">
+              {activeMode.picks.map((item) => (
+                <article
+                  className={
+                    item.entry.player.id === props.selectedPlayerId
+                      ? "recommendation-pick recommendation-pick-active"
+                      : "recommendation-pick"
+                  }
+                  key={`${activeMode.key}-${item.entry.player.id}`}
+                >
+                  <div className="recommendation-pick-top">
+                    <span className="athlete-avatar">{item.entry.player.nationality}</span>
+                    <span>Rank #{item.rank}</span>
+                  </div>
+                  <button
+                    className="athlete-profile-button athlete-profile-button-block"
+                    type="button"
+                    onClick={() => props.onOpenPlayerProfile(item.entry.player.id)}
+                  >
+                    {item.entry.player.name}
+                  </button>
+                  <p>{activeMode.reasonFor(item)}</p>
+                  <div className="recommendation-pick-tags">
+                    <span>{archetypeLabels[getArchetype(item)]}</span>
+                    <span>{tierLabels[getTier(item)]}</span>
+                  </div>
+                  <div className="recommendation-pick-actions">
+                    {item.entry.player.id !== props.selectedPlayerId ? (
+                      <button
+                        className="sidebar-mini-button"
+                        type="button"
+                        aria-label={`Select ${item.entry.player.name}`}
+                        onClick={() => selectPlayer(item.entry.player.id)}
+                      >
+                        Select
+                      </button>
+                    ) : (
+                      <span className="selection-chip">Selected</span>
+                    )}
+                    <span>OVR {item.overall}</span>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
         </section>
 
         <aside className="command-panel dossier-panel">
@@ -417,8 +573,7 @@ export function SetupView(props: SetupViewProps) {
                 <p className="screen-kicker">Fallback Selection</p>
                 <h2 id="full-roster-title">Browse All Athletes</h2>
                 <p className="modal-subcopy">
-                  The recommendation lanes are the default command route. Use the full board when
-                  you need a specific style, nation, or rank.
+                  Use the full board when you need a specific athlete, nation, tier, or stat shape.
                 </p>
               </div>
               <button
@@ -431,13 +586,114 @@ export function SetupView(props: SetupViewProps) {
               </button>
             </div>
 
+            <div className="browse-controls" aria-label="Browse athlete filters">
+              <label className="browse-field">
+                <span>Search</span>
+                <input
+                  type="search"
+                  value={browseQuery}
+                  onChange={(event) => setBrowseQuery(event.target.value)}
+                  placeholder="Name, style, country"
+                />
+              </label>
+
+              <label className="browse-field">
+                <span>Country</span>
+                <select
+                  value={countryFilter}
+                  onChange={(event) => setCountryFilter(event.target.value)}
+                >
+                  <option value="all">All countries</option>
+                  {countryOptions.map((country) => (
+                    <option value={country} key={country}>
+                      {country}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="browse-field">
+                <span>Tier</span>
+                <select
+                  value={tierFilter}
+                  onChange={(event) => setTierFilter(event.target.value as TierFilter)}
+                >
+                  <option value="all">All tiers</option>
+                  <option value="elite">Elite</option>
+                  <option value="contender">Contender</option>
+                  <option value="underdog">Underdog</option>
+                </select>
+              </label>
+
+              <label className="browse-field">
+                <span>Style</span>
+                <select
+                  value={archetypeFilter}
+                  onChange={(event) => setArchetypeFilter(event.target.value as ArchetypeFilter)}
+                >
+                  <option value="all">All styles</option>
+                  <option value="attack">Attack First</option>
+                  <option value="control">Control Artist</option>
+                  <option value="rally">Rally Engine</option>
+                  <option value="balanced">All-Rounder</option>
+                </select>
+              </label>
+
+              <label className="browse-field">
+                <span>Sort</span>
+                <select
+                  value={browseSortKey}
+                  onChange={(event) => setBrowseSortKey(event.target.value as BrowseSortKey)}
+                >
+                  <option value="overall">OVR</option>
+                  <option value="rank">Rank</option>
+                  <option value="power">Power</option>
+                  <option value="speed">Speed</option>
+                  <option value="stamina">Stamina</option>
+                  <option value="control">Control</option>
+                </select>
+              </label>
+            </div>
+
+            <div className="browse-results-bar">
+              <div>
+                <strong>{filteredRoster.length}</strong>
+                <span> of {rankedRoster.length} athletes</span>
+              </div>
+              <div className="active-filter-list" aria-label="Active filters">
+                {activeFilterLabels.length > 0 ? (
+                  activeFilterLabels.map((label) => <span key={label}>{label}</span>)
+                ) : (
+                  <span>All athletes</span>
+                )}
+              </div>
+              <button
+                className="sidebar-mini-button browse-reset-button"
+                type="button"
+                onClick={resetBrowseFilters}
+                disabled={!hasBrowseFilters}
+              >
+                Clear Filters
+              </button>
+            </div>
+
             <div className="panel-header panel-header-compact">
               <h3>Active Roster</h3>
-              <span>{rankedRoster.length} athletes - sorted by OVR</span>
+              <span>Sorted by {sortLabels[browseSortKey]}</span>
             </div>
-            <div className="roster-grid roster-grid-modal">
-              {rankedRoster.map((item) => renderAthleteCard(item, true))}
-            </div>
+            {filteredRoster.length > 0 ? (
+              <div className="roster-grid roster-grid-modal">
+                {filteredRoster.map((item) => renderAthleteCard(item, true))}
+              </div>
+            ) : (
+              <div className="roster-empty-state">
+                <h3>No athletes match those filters.</h3>
+                <p>Clear the board and widen the search before committing your tournament pick.</p>
+                <button className="command-button command-button-secondary" type="button" onClick={resetBrowseFilters}>
+                  Clear Filters
+                </button>
+              </div>
+            )}
           </section>
         </div>
       )}
