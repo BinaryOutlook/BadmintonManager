@@ -7,6 +7,7 @@ interface SetupViewProps {
   selectedPlayerId: string;
   plannedTacticKey: TacticKey;
   onSelectPlayer: (playerId: string) => void;
+  onOpenPlayerProfile: (playerId: string) => void;
   onChooseTactic: (tacticKey: TacticKey) => void;
   onStartTournament: () => void;
 }
@@ -63,22 +64,23 @@ export function SetupView(props: SetupViewProps) {
           <div className="roster-grid">
             {rankedRoster.map((item) => {
               return (
-                <button
+                <article
                   key={item.entry.player.id}
-                  type="button"
                   className={`athlete-card ${
                     item.entry.player.id === props.selectedPlayerId ? "athlete-card-active" : ""
                   }`}
-                  aria-pressed={item.entry.player.id === props.selectedPlayerId}
-                  onClick={() => props.onSelectPlayer(item.entry.player.id)}
                 >
                   <div className="athlete-card-header">
-                    <div className="athlete-card-identity">
-                      <span className="athlete-avatar">{item.entry.player.nationality}</span>
-                      <strong>{item.entry.player.name}</strong>
-                    </div>
+                    <span className="athlete-avatar">{item.entry.player.nationality}</span>
                     <span className="athlete-card-rank">OVR Rank #{item.rank}</span>
                   </div>
+                  <button
+                    className="athlete-profile-button athlete-profile-button-block"
+                    type="button"
+                    onClick={() => props.onOpenPlayerProfile(item.entry.player.id)}
+                  >
+                    {item.entry.player.name}
+                  </button>
                   <div className="metric-track">
                     <div className="metric-track-fill" style={{ width: `${item.overall}%` }} />
                   </div>
@@ -86,7 +88,16 @@ export function SetupView(props: SetupViewProps) {
                     <span>{item.entry.player.styleLabel}</span>
                     <span>OVR {item.overall}</span>
                   </div>
-                </button>
+                  {item.entry.player.id !== props.selectedPlayerId && (
+                    <button
+                      className="sidebar-mini-button athlete-select-button"
+                      type="button"
+                      onClick={() => props.onSelectPlayer(item.entry.player.id)}
+                    >
+                      Select Athlete
+                    </button>
+                  )}
+                </article>
               );
             })}
           </div>
@@ -150,6 +161,13 @@ export function SetupView(props: SetupViewProps) {
             <span className="chip chip-primary">OVR {selected.overall}</span>
             <p className="dossier-note-title">{selected.dossier.formHeadline}</p>
             <p>{selected.dossier.formSummary}</p>
+            <button
+              className="sidebar-mini-button profile-open-button"
+              type="button"
+              onClick={() => props.onOpenPlayerProfile(selected.entry.player.id)}
+            >
+              Open Profile
+            </button>
           </div>
         </aside>
 

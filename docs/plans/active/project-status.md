@@ -39,6 +39,7 @@ What is now stable:
 - the overview command center uses a head-to-head next-opponent comparison with tactic lock-in beside it
 - the local roster now contains 47 fictional athletes, including six Trophy Titans and 15 Honorable Mentions, with setup selection sorted by OVR, nationality-code identifiers beside names, and each tournament drawing exactly 16 entrants for novelty
 - `v0.2.4 UI Framework and Season-Ready Layout` is drafted as the planned bridge release after `v0.2.3`, focused on page-level feature separation, runtime-generated player profiles, consolidated settings, pop-up windows, and UI preparation for larger event selection, seasons, and calendars
+- the first `v0.2.4` UI code slice now adds generated player profiles, a squad directory, player-name navigation, consolidated settings, theme accent choices, and reset confirmation while keeping simulation outcomes untouched
 
 ## Completed
 
@@ -88,6 +89,7 @@ What is now stable:
 - [x] created the planned `v0.2.4 UI Framework and Season-Ready Layout` release packet
 - [x] added `v0.2.4` to the roadmap as the UI framework bridge before `v0.3`
 - [x] amended the `v0.2.4` documentation with the FM-inspired badminton player profile page, runtime player-page generation decision, player-name navigation rules, and consolidated settings pop-up direction
+- [x] implemented the first `v0.2.4` code slice for runtime-generated player profiles, squad directory navigation, consolidated settings, theme accent choices, and reset confirmation
 
 ## In Progress
 

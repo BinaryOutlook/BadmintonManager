@@ -5,6 +5,7 @@ import type { TournamentState } from "../game/tournament/tournament";
 interface CompleteViewProps {
   tournament: TournamentState;
   selectedPlayerId: string;
+  onOpenPlayerProfile: (playerId: string) => void;
   onReset: () => void;
 }
 
@@ -36,7 +37,13 @@ export function CompleteView(props: CompleteViewProps) {
             {props.tournament.managedResults.map((result) => (
               <article key={`${result.round}-${result.opponentId}`} className="path-card">
                 <span>{result.round}</span>
-                <strong>{result.opponentName}</strong>
+                <button
+                  className="profile-name-button"
+                  type="button"
+                  onClick={() => props.onOpenPlayerProfile(result.opponentId)}
+                >
+                  {result.opponentName}
+                </button>
                 <small>{result.scoreline}</small>
                 <em>{result.won ? "Won" : "Eliminated"}</em>
               </article>
@@ -47,7 +54,13 @@ export function CompleteView(props: CompleteViewProps) {
         <section className="command-panel">
           <div className="panel-header">
             <h2>Run Telemetry</h2>
-            <span>{selectedPlayer.name}</span>
+            <button
+              className="profile-name-button"
+              type="button"
+              onClick={() => props.onOpenPlayerProfile(selectedPlayer.id)}
+            >
+              {selectedPlayer.name}
+            </button>
           </div>
 
           <div className="recap-stat-list">

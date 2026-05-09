@@ -5,6 +5,20 @@ test("can start a tournament run and play through a managed match", async ({ pag
 
   await expect(page.getByRole("heading", { name: "Tournament Deployment" })).toBeVisible();
 
+  await page.getByRole("button", { name: "Grand-Slam Southpaw" }).click();
+  await expect(page.getByRole("heading", { name: "Grand-Slam Southpaw" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Attributes" })).toBeVisible();
+
+  await page.getByRole("banner").getByRole("button", { name: "SETTINGS" }).click();
+  await expect(page.getByRole("heading", { name: "Console Preferences" })).toBeVisible();
+  await page.getByRole("button", { name: "Cyan Cool tactical display accent." }).click();
+  await expect(page.getByRole("button", { name: "Cyan Cool tactical display accent." })).toHaveAttribute(
+    "aria-pressed",
+    "true"
+  );
+  await page.getByRole("button", { name: "Close settings" }).click();
+  await page.getByRole("button", { name: "Back" }).click();
+
   await page.getByRole("button", { name: "Start Tournament" }).click();
   await expect(page.getByRole("button", { name: "Enter Match" })).toBeVisible();
 

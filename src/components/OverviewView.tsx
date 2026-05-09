@@ -9,6 +9,7 @@ interface OverviewViewProps {
   selectedPlayerId: string;
   plannedTacticKey: TacticKey;
   onChooseTactic: (tacticKey: TacticKey) => void;
+  onOpenPlayerProfile: (playerId: string) => void;
   onStartManagedMatch?: () => void;
   onReset: () => void;
 }
@@ -127,7 +128,15 @@ export function OverviewView(props: OverviewViewProps) {
                   <div className="dossier-avatar dossier-avatar-small">{initials(selected.player.name)}</div>
                   <div>
                     <span className="matchup-side-label">Your Athlete</span>
-                    <h3>{selected.player.name}</h3>
+                    <h3>
+                      <button
+                        className="profile-name-button profile-name-button-large"
+                        type="button"
+                        onClick={() => props.onOpenPlayerProfile(selected.player.id)}
+                      >
+                        {selected.player.name}
+                      </button>
+                    </h3>
                     <p>
                       {selected.player.nationality} · {selected.player.styleLabel}
                     </p>
@@ -164,7 +173,15 @@ export function OverviewView(props: OverviewViewProps) {
                   <div className="dossier-avatar dossier-avatar-small">{initials(opponent.name)}</div>
                   <div>
                     <span className="matchup-side-label">Opponent</span>
-                    <h3>{opponent.name}</h3>
+                    <h3>
+                      <button
+                        className="profile-name-button profile-name-button-large"
+                        type="button"
+                        onClick={() => props.onOpenPlayerProfile(opponent.id)}
+                      >
+                        {opponent.name}
+                      </button>
+                    </h3>
                     <p>
                       {opponent.nationality} · {opponent.styleLabel}
                     </p>
@@ -227,7 +244,13 @@ export function OverviewView(props: OverviewViewProps) {
               <span className="dossier-avatar dossier-avatar-tiny">{initials(selected.player.name)}</span>
               <div>
                 <small>Your Athlete</small>
-                <strong>{selected.player.name}</strong>
+                <button
+                  className="profile-name-button"
+                  type="button"
+                  onClick={() => props.onOpenPlayerProfile(selected.player.id)}
+                >
+                  {selected.player.name}
+                </button>
               </div>
             </div>
 
@@ -313,7 +336,15 @@ export function OverviewView(props: OverviewViewProps) {
                             }`}
                           >
                             <div className="bracket-row">
-                              <span>{sideA.name}</span>
+                              <span>
+                                <button
+                                  className="profile-name-button bracket-profile-button"
+                                  type="button"
+                                  onClick={() => props.onOpenPlayerProfile(sideA.id)}
+                                >
+                                  {sideA.name}
+                                </button>
+                              </span>
                               <span>
                                 {match.completed && match.winnerId === sideA.id
                                   ? "W"
@@ -323,7 +354,15 @@ export function OverviewView(props: OverviewViewProps) {
                               </span>
                             </div>
                             <div className="bracket-row">
-                              <span>{sideB.name}</span>
+                              <span>
+                                <button
+                                  className="profile-name-button bracket-profile-button"
+                                  type="button"
+                                  onClick={() => props.onOpenPlayerProfile(sideB.id)}
+                                >
+                                  {sideB.name}
+                                </button>
+                              </span>
                               <span>
                                 {match.completed && match.winnerId === sideB.id
                                   ? "W"

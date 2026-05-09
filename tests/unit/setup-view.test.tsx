@@ -10,6 +10,7 @@ describe("SetupView", () => {
         selectedPlayerId={seededPlayers[0].player.id}
         plannedTacticKey="balancedControl"
         onSelectPlayer={vi.fn()}
+        onOpenPlayerProfile={vi.fn()}
         onChooseTactic={vi.fn()}
         onStartTournament={vi.fn()}
       />
@@ -19,13 +20,13 @@ describe("SetupView", () => {
 
     expect(rosterPanel).toBeInTheDocument();
 
-    const athleteButtons = within(rosterPanel!).getAllByRole("button");
+    const athleteCards = rosterPanel!.querySelectorAll(".athlete-card");
     const topRanked = rankRosterByOverall()[0];
 
-    expect(within(athleteButtons[0]).getByText(topRanked.entry.player.name)).toBeInTheDocument();
-    expect(within(athleteButtons[0]).getByText(topRanked.entry.player.nationality)).toBeInTheDocument();
-    expect(within(athleteButtons[0]).getByText("OVR Rank #1")).toBeInTheDocument();
-    expect(within(athleteButtons[0]).queryByText("GS")).not.toBeInTheDocument();
+    expect(within(athleteCards[0] as HTMLElement).getByRole("button", { name: topRanked.entry.player.name })).toBeInTheDocument();
+    expect(within(athleteCards[0] as HTMLElement).getByText(topRanked.entry.player.nationality)).toBeInTheDocument();
+    expect(within(athleteCards[0] as HTMLElement).getByText("OVR Rank #1")).toBeInTheDocument();
+    expect(within(athleteCards[0] as HTMLElement).queryByText("GS")).not.toBeInTheDocument();
     expect(within(rosterPanel!).queryByText(/Seed #/)).not.toBeInTheDocument();
   });
 });

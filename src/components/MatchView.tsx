@@ -11,6 +11,7 @@ interface MatchViewProps {
   onApplyTalk: (teamTalk: TeamTalk) => void;
   onSimulateNextPoint: () => void;
   onAdvanceAfterMatch: () => void;
+  onOpenPlayerProfile: (playerId: string) => void;
 }
 
 const teamTalks: Array<{ id: TeamTalk; label: string; copy: string }> = [
@@ -72,7 +73,13 @@ export function MatchView(props: MatchViewProps) {
 
           <div className="scoreboard-main">
             <div className="scoreboard-athlete">
-              <strong>{props.session.input.playerA.name}</strong>
+              <button
+                className="profile-name-button profile-name-button-large"
+                type="button"
+                onClick={() => props.onOpenPlayerProfile(props.session.input.playerA.id)}
+              >
+                {props.session.input.playerA.name}
+              </button>
               <span>{props.session.currentServer === "A" ? "Serving" : "Receiving"}</span>
             </div>
 
@@ -83,7 +90,13 @@ export function MatchView(props: MatchViewProps) {
             </div>
 
             <div className="scoreboard-athlete scoreboard-athlete-right">
-              <strong>{props.session.input.playerB.name}</strong>
+              <button
+                className="profile-name-button profile-name-button-large"
+                type="button"
+                onClick={() => props.onOpenPlayerProfile(props.session.input.playerB.id)}
+              >
+                {props.session.input.playerB.name}
+              </button>
               <span>{props.session.currentServer === "B" ? "Serving" : "Receiving"}</span>
             </div>
           </div>
