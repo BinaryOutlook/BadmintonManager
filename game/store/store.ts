@@ -9,6 +9,7 @@ import {
   simulateNextPoint as runNextPoint
 } from "../core/match";
 import type { LiveDirective, LiveMatchSession, MatchTactic, Side, TeamTalk } from "../core/models";
+import type { CareerState } from "../career/models";
 import {
   advanceTournament,
   createManagedMatchInput,
@@ -16,7 +17,7 @@ import {
   type ManagedMatchContext,
   type TournamentState
 } from "../tournament/tournament";
-import { persistedSaveSchema, type PersistedSave } from "./save";
+import { migratePersistedSave, persistedSavePayloadSchema, type PersistedSave } from "./save";
 
 const STORAGE_KEY = "badminton-manager-save";
 
@@ -39,6 +40,7 @@ interface TournamentStoreState {
   seed: number;
   tournament: TournamentState | null;
   liveMatch: LiveManagedMatch | null;
+  career: CareerState | null;
   selectPlayer: (playerId: string) => void;
   chooseTactic: (tacticKey: TacticKey) => void;
   startTournament: () => void;
@@ -76,12 +78,13 @@ function persist(state: TournamentStoreState) {
   }
 
   const payload: PersistedSave = {
-    version: 2,
+    version: 3,
     selectedPlayerId: state.selectedPlayerId,
     plannedTacticKey: state.plannedTacticKey,
     seed: state.seed,
     tournament: state.tournament,
-    liveMatch: state.liveMatch
+    liveMatch: state.liveMatch,
+    career: state.career
   };
 
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
@@ -90,6 +93,7 @@ function persist(state: TournamentStoreState) {
 function loadPersisted(): Pick<
   TournamentStoreState,
   "selectedPlayerId" | "plannedTacticKey" | "seed" | "tournament" | "liveMatch" | "phase"
+  | "career"
 > {
   const defaultState = {
     selectedPlayerId: seededPlayers[0].player.id,
@@ -97,6 +101,7 @@ function loadPersisted(): Pick<
     seed: randomSeed(),
     tournament: null,
     liveMatch: null,
+    career: null,
     phase: "setup" as AppPhase
   };
 
@@ -119,20 +124,23 @@ function loadPersisted(): Pick<
     return defaultState;
   }
 
-  const parsed = persistedSaveSchema.safeParse(json);
+  const parsed = persistedSavePayloadSchema.safeParse(json);
 
   if (!parsed.success) {
     window.localStorage.removeItem(STORAGE_KEY);
     return defaultState;
   }
 
+  const migrated = migratePersistedSave(parsed.data);
+
   return {
-    selectedPlayerId: parsed.data.selectedPlayerId,
-    plannedTacticKey: parsed.data.plannedTacticKey,
-    seed: parsed.data.seed,
-    tournament: parsed.data.tournament,
-    liveMatch: parsed.data.liveMatch,
-    phase: inferPhase(parsed.data.tournament, parsed.data.liveMatch)
+    selectedPlayerId: migrated.selectedPlayerId,
+    plannedTacticKey: migrated.plannedTacticKey,
+    seed: migrated.seed,
+    tournament: migrated.tournament,
+    liveMatch: migrated.liveMatch,
+    career: migrated.career,
+    phase: inferPhase(migrated.tournament, migrated.liveMatch)
   };
 }
 

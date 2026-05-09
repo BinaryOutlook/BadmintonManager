@@ -7,6 +7,7 @@ import {
   simulationFidelitySchema,
   teamTalkSchema
 } from "../core/models";
+import { careerStateSchema } from "../career/models";
 
 const matchSummaryEventSchema = z.object({
   kind: z.enum([
@@ -167,7 +168,7 @@ const liveMatchSessionSchema = z.object({
   winner: sideSchema.optional()
 });
 
-export const persistedSaveSchema = z.object({
+export const legacyPersistedSaveSchema = z.object({
   version: z.literal(2),
   selectedPlayerId: z.string(),
   plannedTacticKey: z.enum([
@@ -190,4 +191,24 @@ export const persistedSaveSchema = z.object({
     .nullable()
 });
 
+export const persistedSaveSchema = legacyPersistedSaveSchema.extend({
+  version: z.literal(3),
+  career: careerStateSchema.nullable()
+});
+
+export const persistedSavePayloadSchema = z.union([persistedSaveSchema, legacyPersistedSaveSchema]);
+
 export type PersistedSave = z.infer<typeof persistedSaveSchema>;
+export type PersistedSavePayload = z.infer<typeof persistedSavePayloadSchema>;
+
+export function migratePersistedSave(payload: PersistedSavePayload): PersistedSave {
+  if (payload.version === 3) {
+    return payload;
+  }
+
+  return {
+    ...payload,
+    version: 3,
+    career: null
+  };
+}

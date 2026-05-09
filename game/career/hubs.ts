@@ -1,0 +1,129 @@
+import { playerMap } from "../content/players";
+import type { MatchResult } from "../core/models";
+import type { ManagedRunMatch } from "../tournament/tournament";
+import { getCareerEvent, roundKeyForPlacement } from "./events";
+import { applyMatchLoad } from "./health";
+import type { CareerState, PostMatchReport, PreMatchBrief } from "./models";
+import { awardRankingPoints } from "./rankings";
+import { managedAthlete, syncManagedAthleteFromRankings } from "./state";
+import { recordPrizeMoney } from "./economy";
+
+export function buildPreMatchBrief(args: {
+  state: CareerState;
+  opponentId: string;
+}): PreMatchBrief | null {
+  const event = args.state.activeEventId ? getCareerEvent(args.state.events, args.state.activeEventId) : undefined;
+  const athlete = managedAthlete(args.state);
+  const opponent = playerMap[args.opponentId];
+
+  if (!event || !opponent) {
+    return null;
+  }
+
+  const fatigueWarning =
+    athlete.fatigue >= 58
+      ? "Fatigue is the main risk; protect rally length early."
+      : athlete.injuryRisk >= 0.18
+        ? "Medical risk is elevated; recovery margin is thin."
+        : "Readiness is stable enough to chase points.";
+  const opponentBrief = `${opponent.name} is a ${opponent.styleLabel.toLowerCase()} with ${opponent.nationality} tempo habits.`;
+  const recommendation =
+    athlete.readiness >= 82
+      ? "Open assertively, bank the tier points, and keep pressure on the back court."
+      : "Start controlled, avoid cheap jump-smash volume, and let the first interval decide risk.";
+
+  return {
+    eventId: event.id,
+    opponentId: args.opponentId,
+    readiness: athlete.readiness,
+    riskNote: fatigueWarning,
+    tierStakes: `${event.tier}: ${event.rankingPoints.R16} points for entry, ${event.rankingPoints.champion} for the title.`,
+    recommendation,
+    opponentBrief
+  };
+}
+
+function evidenceFromResult(result: MatchResult, managedSide: "A" | "B") {
+  const stats = result.stats;
+  const winners = managedSide === "A" ? stats.winnersA : stats.winnersB;
+  const errors = managedSide === "A" ? stats.unforcedErrorsA : stats.unforcedErrorsB;
+  const staminaDrain = managedSide === "A" ? stats.staminaDrainA : stats.staminaDrainB;
+  const opponentErrors = managedSide === "A" ? stats.unforcedErrorsB : stats.unforcedErrorsA;
+
+  return [
+    `${winners} winners against ${errors} unforced errors`,
+    `${staminaDrain}% stamina drain across ${stats.totalPoints} points`,
+    opponentErrors > errors ? "Pressure created more opponent errors than it leaked" : "Error control needs the next training block",
+    result.summaryEvents?.[0]?.title ?? "Match evidence captured from the detailed engine"
+  ];
+}
+
+export function settleCareerMatch(args: {
+  state: CareerState;
+  matchId: string;
+  opponentId: string;
+  managedSide: "A" | "B";
+  managedRunMatch: ManagedRunMatch;
+  result: MatchResult;
+}) {
+  const event = args.state.activeEventId ? getCareerEvent(args.state.events, args.state.activeEventId) : undefined;
+
+  if (!event) {
+    return args.state;
+  }
+
+  const won = args.result.winner === args.managedSide;
+  const placementKey = roundKeyForPlacement(args.managedRunMatch.round, won);
+  const pointsDelta = event.rankingPoints[placementKey] ?? event.rankingPoints.R16;
+  const cashDelta = event.prizeMoney[placementKey] ?? event.prizeMoney.R16;
+  const staminaDrain =
+    args.managedSide === "A" ? args.result.stats.staminaDrainA : args.result.stats.staminaDrainB;
+  const athleteAfterMatch = applyMatchLoad(managedAthlete(args.state), staminaDrain);
+  const rankings = awardRankingPoints({
+    rankings: args.state.rankings,
+    playerId: args.state.program.managedPlayerId,
+    eventId: event.id,
+    round: placementKey,
+    points: pointsDelta
+  });
+  const economy = recordPrizeMoney({
+    economy: args.state.economy,
+    date: args.state.date,
+    label: `${event.name} ${won ? "win" : "placement"} prize`,
+    amount: cashDelta
+  });
+  const report: PostMatchReport = {
+    eventId: event.id,
+    matchId: args.matchId,
+    opponentId: args.opponentId,
+    result: won ? "win" : "loss",
+    scoreline: args.result.scoreline,
+    round: args.managedRunMatch.round,
+    pointsDelta,
+    cashDelta,
+    fatigueDelta: athleteAfterMatch.fatigue - managedAthlete(args.state).fatigue,
+    evidence: evidenceFromResult(args.result, args.managedSide),
+    recommendations:
+      athleteAfterMatch.recoveryStatus === "red_zone" || athleteAfterMatch.recoveryStatus === "injured"
+        ? ["Book physio recovery before the next event", "Reduce smash volume until readiness returns above 78"]
+        : won
+          ? ["Maintain rally-base work and enter the next tier if cash permits", "Add pressure-pattern reps to protect leads"]
+          : ["Schedule pressure-patterns training", "Use the pre-match briefing to lower early error rate"]
+  };
+  const next = syncManagedAthleteFromRankings({
+    ...args.state,
+    stage: "post_match",
+    rankings,
+    economy,
+    completedEventIds: args.state.completedEventIds.includes(event.id)
+      ? args.state.completedEventIds
+      : [...args.state.completedEventIds, event.id],
+    athletes: args.state.athletes.map((athlete) =>
+      athlete.playerId === args.state.program.managedPlayerId ? athleteAfterMatch : athlete
+    ),
+    lastMatchReport: report,
+    notes: [`${event.name} settled: ${pointsDelta} points, $${cashDelta}`, ...args.state.notes].slice(0, 6)
+  });
+
+  return next;
+}
