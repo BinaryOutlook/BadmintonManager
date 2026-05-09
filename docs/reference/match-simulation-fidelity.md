@@ -872,7 +872,7 @@ Tuning constants should live in one module, not scattered across match code.
 Suggested file:
 
 ```text
-src/game/core/simulationTuning.ts
+game/core/simulationTuning.ts
 ```
 
 It can hold:

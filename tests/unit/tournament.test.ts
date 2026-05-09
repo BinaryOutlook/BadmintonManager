@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { seededPlayers } from "../../src/game/content/players";
-import { tacticLibrary } from "../../src/game/content/tactics";
-import { simulateMatch } from "../../src/game/core/match";
+import { seededPlayers } from "../../game/content/players";
+import { tacticLibrary } from "../../game/content/tactics";
+import { simulateMatch } from "../../game/core/match";
 import {
   advanceTournament,
   createManagedMatchInput,
   createTournament,
   getCurrentRound,
   getManagedMatchContext
-} from "../../src/game/tournament/tournament";
+} from "../../game/tournament/tournament";
 
 describe("tournament progression", () => {
   it("draws a deterministic 16-player tournament field from the expanded pool", () => {

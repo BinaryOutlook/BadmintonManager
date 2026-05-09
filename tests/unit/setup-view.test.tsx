@@ -1,7 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { seededPlayers } from "../../src/game/content/players";
-import { SetupView, rankRosterByOverall } from "../../src/components/SetupView";
+import { seededPlayers } from "../../game/content/players";
+import { SetupView, rankRosterByOverall } from "../../components/SetupView";
 
 describe("SetupView", () => {
   it("renders athlete selection in OVR descending order", () => {

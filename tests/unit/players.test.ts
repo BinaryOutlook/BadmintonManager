@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { seededPlayers } from "../../src/game/content/players";
-import { deriveAthleteDossier } from "../../src/game/core/intel";
+import { seededPlayers } from "../../game/content/players";
+import { deriveAthleteDossier } from "../../game/core/intel";
 
 function overallFor(playerName: string) {
   const entry = seededPlayers.find((candidate) => candidate.player.name === playerName);

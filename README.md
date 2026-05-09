@@ -37,15 +37,14 @@ Then open the local Vite URL shown in the terminal.
 ## Project Shape
 
 ```text
-src/
-  app/            top-level app composition
-  components/     UI screens and reusable surfaces
-  game/
-    core/         deterministic match engine
-    tournament/   bracket, scouting, and recap flow
-    store/        Zustand state and local persistence
-    content/      seeded players, tactics, and labels
-    commentary/   readable feed text from engine events
+app/              top-level app composition
+components/       UI screens and reusable surfaces
+game/
+  core/           deterministic match engine
+  tournament/     bracket, scouting, and recap flow
+  store/          Zustand state and local persistence
+  content/        seeded players, tactics, and labels
+  commentary/     readable feed text from engine events
 docs/             product, architecture, plans, references
 tests/            Vitest coverage
 e2e/              Playwright coverage

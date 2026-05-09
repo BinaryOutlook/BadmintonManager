@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { tacticLibrary } from "../../src/game/content/tactics";
+import { tacticLibrary } from "../../game/content/tactics";
 import {
   applyDirective,
   applyTeamTalk,
@@ -8,8 +8,8 @@ import {
   simulateMatch,
   simulateNextPoint,
   simulateQuickMatch
-} from "../../src/game/core/match";
-import { playerSchema, type Player } from "../../src/game/core/models";
+} from "../../game/core/match";
+import { playerSchema, type Player } from "../../game/core/models";
 
 function createPlayer(overrides: Partial<Player> = {}): Player {
   return playerSchema.parse({

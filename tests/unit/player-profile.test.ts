@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { seededPlayers } from "../../src/game/content/players";
-import { createPlayerProfileViewModel } from "../../src/game/selectors/player";
+import { seededPlayers } from "../../game/content/players";
+import { createPlayerProfileViewModel } from "../../game/selectors/player";
 
 describe("player profile view model", () => {
   it("generates a profile for every local player", () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SeededRng } from "../../src/game/core/rng";
+import { SeededRng } from "../../game/core/rng";
 
 describe("SeededRng", () => {
   it("produces deterministic sequences for the same seed", () => {

@@ -51,7 +51,7 @@ The tournament keeps a 16-player knockout bracket, but the content pool may be l
 At run creation:
 
 - include the managed athlete
-- randomly draw the remaining entrants from `src/game/content/players.ts`
+- randomly draw the remaining entrants from `game/content/players.ts`
 - stop at exactly 16 tournament entrants
 - reseed the drawn field by content seed order before applying the bracket order
 

@@ -80,16 +80,15 @@ docs/
   product/
     versions/
   reference/
-src/
-  app/
-  components/
-  game/
-    content/
-    core/
-    store/
-    commentary/
-    tournament/
-  lib/
+app/
+components/
+game/
+  content/
+  core/
+  store/
+  commentary/
+  tournament/
+lib/
 tests/
   unit/
   integration/
@@ -98,14 +97,14 @@ e2e/
 
 ### Directory intent
 
-- `src/app/`: route-level screens and top-level composition
-- `src/components/`: reusable UI surfaces
-- `src/game/core/`: pure simulation logic with no React imports
-- `src/game/content/`: player seeds, tactic presets, commentary templates
-- `src/game/store/`: Zustand state and UI-facing actions
-- `src/game/commentary/`: transforming engine events into readable match text
-- `src/game/tournament/`: bracket setup and advancement helpers
-- `src/lib/`: small shared utilities such as RNG helpers or schema helpers
+- `app/`: route-level screens and top-level composition
+- `components/`: reusable UI surfaces
+- `game/core/`: pure simulation logic with no React imports
+- `game/content/`: player seeds, tactic presets, commentary templates
+- `game/store/`: Zustand state and UI-facing actions
+- `game/commentary/`: transforming engine events into readable match text
+- `game/tournament/`: bracket setup and advancement helpers
+- `lib/`: small shared utilities such as RNG helpers or schema helpers
 - `tests/unit/`: pure logic tests
 - `tests/integration/`: state and feature-path tests
 - `e2e/`: browser tests

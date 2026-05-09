@@ -33,6 +33,24 @@ const derivedAxisLabels: Record<string, string> = {
   judgment: "Judgment"
 };
 
+const radarLabelAbbreviations: Record<string, string> = {
+  Attack: "ATK",
+  Defense: "DEF",
+  Movement: "MOV",
+  Control: "CTRL",
+  Mentality: "MENT",
+  Endurance: "END"
+};
+
+const radarLabelPositions = [
+  { x: 210, y: 44, anchor: "middle" },
+  { x: 342, y: 126, anchor: "middle" },
+  { x: 342, y: 294, anchor: "middle" },
+  { x: 210, y: 376, anchor: "middle" },
+  { x: 78, y: 294, anchor: "middle" },
+  { x: 78, y: 126, anchor: "middle" }
+] as const;
+
 function AttributeRows(props: {
   title: string;
   rows: Array<{ label: string; value: number }>;
@@ -83,29 +101,31 @@ function attributeBenchmark(value: number) {
   return "Weak";
 }
 
+function ProfileEmptyState(props: { title: string; copy: string }) {
+  return (
+    <div className="profile-empty-state" role="status">
+      <strong>{props.title}</strong>
+      <p>{props.copy}</p>
+    </div>
+  );
+}
+
 function RadarChart(props: { metrics: Array<{ label: string; value: number }> }) {
   const center = 210;
-  const radius = 122;
-  const labelPositions = [
-    { x: 210, y: 42, anchor: "middle" },
-    { x: 350, y: 122, anchor: "middle" },
-    { x: 350, y: 300, anchor: "middle" },
-    { x: 210, y: 382, anchor: "middle" },
-    { x: 70, y: 300, anchor: "middle" },
-    { x: 70, y: 122, anchor: "middle" }
-  ] as const;
+  const radius = 118;
   const points = props.metrics.map((metric, index) => {
     const angle = -Math.PI / 2 + (index * Math.PI * 2) / props.metrics.length;
     const scaledRadius = radius * (metric.value / 100);
-    const labelPosition = labelPositions[index] ?? {
-      x: center + Math.cos(angle) * (radius + 52),
-      y: center + Math.sin(angle) * (radius + 52),
+    const labelPosition = radarLabelPositions[index] ?? {
+      x: center + Math.cos(angle) * (radius + 58),
+      y: center + Math.sin(angle) * (radius + 58),
       anchor: "middle" as const
     };
 
     return {
       label: metric.label,
       value: metric.value,
+      shortLabel: radarLabelAbbreviations[metric.label] ?? metric.label.slice(0, 3).toUpperCase(),
       x: center + Math.cos(angle) * scaledRadius,
       y: center + Math.sin(angle) * scaledRadius,
       labelX: labelPosition.x,
@@ -154,20 +174,31 @@ function RadarChart(props: { metrics: Array<{ label: string; value: number }> })
           <g key={point.label}>
             <circle className="profile-radar-point" cx={point.x} cy={point.y} r="3" />
             <text
-              className="profile-radar-label"
+              className="profile-radar-label profile-radar-label-full"
               x={point.labelX}
               y={point.labelY}
               textAnchor={point.labelAnchor}
               dominantBaseline="middle"
+              aria-hidden="true"
             >
               {point.label}
+            </text>
+            <text
+              className="profile-radar-label profile-radar-label-short"
+              x={point.labelX}
+              y={point.labelY}
+              textAnchor={point.labelAnchor}
+              dominantBaseline="middle"
+              aria-hidden="true"
+            >
+              {point.shortLabel}
             </text>
           </g>
         ))}
       </svg>
       <div className="profile-radar-values">
         {props.metrics.map((metric) => (
-          <div key={metric.label}>
+          <div key={metric.label} title={`${metric.label}: ${metric.value}`}>
             <span>{metric.label}</span>
             <strong>{metric.value}</strong>
           </div>
@@ -203,7 +234,7 @@ export function PlayerProfilePage(props: PlayerProfilePageProps) {
     );
   }
 
-  const { player, dossier, derived } = model;
+  const { player, derived } = model;
   const canSelect = props.phase === "setup" && player.id !== props.selectedPlayerId;
   const technicalRows = [
     { label: "Smash", value: player.ratings.technical.smash },
@@ -388,7 +419,7 @@ export function PlayerProfilePage(props: PlayerProfilePageProps) {
       )}
 
       {activeTab === "performance" && (
-        <div className="complete-grid">
+        <div className="profile-performance-grid">
           <section className="command-panel command-panel-wide">
             <div className="panel-header">
               <h2>Current-Run Evidence</h2>
@@ -408,7 +439,7 @@ export function PlayerProfilePage(props: PlayerProfilePageProps) {
                   ))}
                 </div>
               ) : (
-                <p>{model.performance.emptyState}</p>
+                <p>No current-run form line.</p>
               )}
             </div>
             {model.performance.entries.length > 0 ? (
@@ -424,7 +455,10 @@ export function PlayerProfilePage(props: PlayerProfilePageProps) {
                 ))}
               </div>
             ) : (
-              <p className="panel-summary">{model.performance.emptyState}</p>
+              <ProfileEmptyState
+                title="No match evidence yet."
+                copy="Select this athlete for a managed match to unlock performance telemetry, form trends, and opponent-specific analysis."
+              />
             )}
           </section>
 
@@ -443,7 +477,10 @@ export function PlayerProfilePage(props: PlayerProfilePageProps) {
                 ))}
               </div>
             ) : (
-              <p className="panel-summary">Detailed telemetry appears after managed matches create real evidence.</p>
+              <ProfileEmptyState
+                title="Telemetry locked."
+                copy="Managed match stats will appear here after this athlete creates real winners, errors, stamina, and rally evidence."
+              />
             )}
           </section>
         </div>
@@ -457,21 +494,27 @@ export function PlayerProfilePage(props: PlayerProfilePageProps) {
           </div>
           <div className="profile-career-state">
             <p>{model.career.narrative}</p>
-            <div className="profile-career-facts">
-              {model.career.recordCards.map((card) => (
-                <span key={card.label}>
-                  {card.label}: {card.value}
-                </span>
-              ))}
-            </div>
-            <div className="profile-career-milestones">
-              <h3>Milestones</h3>
-              <ul>
-                {model.career.milestones.map((milestone) => (
-                  <li key={milestone}>{milestone}</li>
+            <div className="profile-career-grid">
+              <div className="profile-career-facts">
+                {model.career.recordCards.map((card) => (
+                  <span key={card.label} title={`${card.label}: ${card.value}`}>
+                    {card.label}: {card.value}
+                  </span>
                 ))}
-              </ul>
+              </div>
+              <div className="profile-career-milestones">
+                <h3>Milestones</h3>
+                <ul>
+                  {model.career.milestones.map((milestone) => (
+                    <li key={milestone}>{milestone}</li>
+                  ))}
+                </ul>
+              </div>
             </div>
+            <ProfileEmptyState
+              title="Season history pending."
+              copy="Long-term titles, rankings, and progression will stay empty until the future season model records them."
+            />
           </div>
         </section>
       )}

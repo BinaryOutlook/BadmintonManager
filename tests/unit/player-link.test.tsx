@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { PlayerNavigationProvider } from "../../src/app/playerNavigation";
-import { SmartPlayerText } from "../../src/components/PlayerLink";
+import { PlayerNavigationProvider } from "../../app/playerNavigation";
+import { SmartPlayerText } from "../../components/PlayerLink";
 
 describe("SmartPlayerText", () => {
   it("turns known player names into profile links inside prose", () => {

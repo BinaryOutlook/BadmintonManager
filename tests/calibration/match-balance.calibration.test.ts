@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { seededPlayers } from "../../src/game/content/players";
-import { tacticLibrary } from "../../src/game/content/tactics";
-import { deriveAthleteDossier } from "../../src/game/core/intel";
-import { simulateMatchByFidelity } from "../../src/game/core/match";
-import type { MatchResult, MatchTactic, Player, SimulationFidelity } from "../../src/game/core/models";
+import { seededPlayers } from "../../game/content/players";
+import { tacticLibrary } from "../../game/content/tactics";
+import { deriveAthleteDossier } from "../../game/core/intel";
+import { simulateMatchByFidelity } from "../../game/core/match";
+import type { MatchResult, MatchTactic, Player, SimulationFidelity } from "../../game/core/models";
 
 type BucketLabel = "0" | "1-2" | "3-4" | "5-6" | "7-9" | "10+";
 type CalibrationMode = "balanced" | "autoplay";

@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { tacticLibrary } from "../../src/game/content/tactics";
-import { deriveAthleteDossier } from "../../src/game/core/intel";
-import { deriveProfile } from "../../src/game/core/ratings";
-import { simulateMatchByFidelity } from "../../src/game/core/match";
-import { playerSchema, type MatchTactic, type Player, type SimulationFidelity } from "../../src/game/core/models";
+import { tacticLibrary } from "../../game/content/tactics";
+import { deriveAthleteDossier } from "../../game/core/intel";
+import { deriveProfile } from "../../game/core/ratings";
+import { simulateMatchByFidelity } from "../../game/core/match";
+import { playerSchema, type MatchTactic, type Player, type SimulationFidelity } from "../../game/core/models";
 
 type ArchetypeKey =
   | "balanced"

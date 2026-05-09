@@ -27,7 +27,7 @@ Use progressive disclosure. Read only what the task needs.
 
 - Keep simulation logic outside React components.
 - Preserve deterministic outputs for identical seeds, players, tactics, and choices.
-- Treat UI as presentation plus player intent; outcome resolution belongs in `src/game/core/`.
+- Treat UI as presentation plus player intent; outcome resolution belongs in `game/core/`.
 - Keep local persistence versioned and validated.
 - Make telemetry and commentary explain real engine state, not decorative fiction.
 
