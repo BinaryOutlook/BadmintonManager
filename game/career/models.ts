@@ -27,9 +27,177 @@ export const ledgerCategorySchema = z.enum([
   "entry",
   "prize",
   "sponsor",
-  "system"
+  "system",
+  "scouting",
+  "staff",
+  "recruitment",
+  "academy"
 ]);
 export type LedgerCategory = z.infer<typeof ledgerCategorySchema>;
+
+export const knowledgeStateSchema = z.enum(["unknown", "estimated", "verified"]);
+export type KnowledgeState = z.infer<typeof knowledgeStateSchema>;
+
+export const staffRoleSchema = z.enum(["assistant_coach", "physio", "analyst", "scout", "mental_coach"]);
+export type StaffRole = z.infer<typeof staffRoleSchema>;
+
+export const promiseStatusSchema = z.enum(["active", "kept", "missed", "failed", "withdrawn"]);
+export type PromiseStatus = z.infer<typeof promiseStatusSchema>;
+
+export const scoutAssignmentSchema = z.object({
+  id: z.string(),
+  subjectId: z.string(),
+  subjectType: z.enum(["candidate", "prospect", "opponent"]),
+  assignedScoutId: z.string(),
+  cost: z.number().int().nonnegative(),
+  startedAt: z.string(),
+  dueAt: z.string(),
+  status: z.enum(["pending", "ready", "expired", "cancelled"]),
+  scope: z.enum(["profile", "potential", "fit"])
+});
+export type ScoutAssignment = z.infer<typeof scoutAssignmentSchema>;
+
+export const scoutReportSchema = z.object({
+  id: z.string(),
+  assignmentId: z.string(),
+  subjectId: z.string(),
+  knownFields: z.array(z.string()),
+  estimatedFields: z.record(z.string(), z.string()),
+  verifiedFields: z.record(z.string(), z.string()),
+  confidence: z.number().min(0).max(100),
+  accuracy: z.number().min(0).max(100),
+  createdAt: z.string(),
+  expiresAt: z.string(),
+  state: z.enum(["fresh", "verified", "expired"]),
+  recommendation: z.string()
+});
+export type ScoutReport = z.infer<typeof scoutReportSchema>;
+
+export const recruitmentCandidateSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  age: z.number().int().min(16).max(38),
+  country: z.string(),
+  source: z.string(),
+  interest: z.number().min(0).max(100),
+  fit: z.number().min(0).max(100),
+  risk: z.number().min(0).max(100),
+  knowledge: z.record(z.string(), knowledgeStateSchema),
+  estimatedCost: z.number().int().nonnegative(),
+  verifiedCost: z.number().int().nonnegative(),
+  offerState: z.enum(["none", "drafted", "accepted", "rejected", "blocked"]),
+  rosterImpact: z.enum(["senior", "rotation", "academy_bridge"]),
+  promiseRequested: z.string().nullable()
+});
+export type RecruitmentCandidate = z.infer<typeof recruitmentCandidateSchema>;
+
+export const programRosterSlotSchema = z.object({
+  athleteId: z.string(),
+  name: z.string(),
+  role: z.enum(["lead", "senior", "academy"]),
+  contractCost: z.number().int().nonnegative(),
+  status: z.enum(["active", "prospect", "offered"]),
+  joinedAt: z.string(),
+  source: z.string()
+});
+export type ProgramRosterSlot = z.infer<typeof programRosterSlotSchema>;
+
+export const youthProspectSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  age: z.literal(16),
+  potentialRange: z.tuple([z.number().int(), z.number().int()]),
+  readiness: z.number().min(0).max(100),
+  developmentPlan: z.enum(["foundation", "technical", "competition"]),
+  developmentTraits: z.array(z.string()),
+  mentorOrStaffModifier: z.number(),
+  lowerEventEligibility: z.boolean(),
+  morale: z.number().min(0).max(100)
+});
+export type YouthProspect = z.infer<typeof youthProspectSchema>;
+
+export const staffMemberSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  role: staffRoleSchema,
+  level: z.number().int().min(1).max(5),
+  salary: z.number().int().nonnegative(),
+  modifiers: z.object({
+    training: z.number(),
+    recovery: z.number(),
+    scouting: z.number(),
+    analysis: z.number(),
+    morale: z.number()
+  }),
+  capacity: z.number().int().positive(),
+  adviceBias: z.string(),
+  hiredAt: z.string().nullable()
+});
+export type StaffMember = z.infer<typeof staffMemberSchema>;
+
+export const athletePsychologySchema = z.object({
+  athleteId: z.string(),
+  form: z.number().min(0).max(100),
+  morale: z.number().min(0).max(100),
+  confidence: z.number().min(0).max(100),
+  personalityTraits: z.array(z.enum(["ambitious", "patient", "volatile", "loyal", "analytical"])),
+  recentDrivers: z.array(z.string())
+});
+export type AthletePsychology = z.infer<typeof athletePsychologySchema>;
+
+export const playerPromiseSchema = z.object({
+  id: z.string(),
+  athleteId: z.string(),
+  targetType: z.enum(["reach_qf", "improve_stamina", "beat_top8", "lower_event_entry"]),
+  targetValue: z.string(),
+  deadline: z.string(),
+  createdAt: z.string(),
+  status: promiseStatusSchema,
+  reward: z.object({
+    morale: z.number(),
+    confidence: z.number()
+  }),
+  penalty: z.object({
+    morale: z.number(),
+    confidence: z.number()
+  }),
+  resolutionLog: z.array(z.string())
+});
+export type PlayerPromise = z.infer<typeof playerPromiseSchema>;
+
+export const programEventLogSchema = z.object({
+  id: z.string(),
+  date: z.string(),
+  source: z.enum(["scouting", "recruitment", "academy", "staff", "psychology", "promise", "system"]),
+  message: z.string(),
+  stateDelta: z.string(),
+  relatedIds: z.array(z.string())
+});
+export type ProgramEventLog = z.infer<typeof programEventLogSchema>;
+
+export const programEcosystemStateSchema = z.object({
+  scouting: z.object({
+    assignments: z.array(scoutAssignmentSchema),
+    reports: z.array(scoutReportSchema),
+    capacityUsed: z.number().int().nonnegative()
+  }),
+  recruitment: z.object({
+    candidates: z.array(recruitmentCandidateSchema),
+    roster: z.array(programRosterSlotSchema),
+    rosterLimit: z.number().int().positive()
+  }),
+  academy: z.object({
+    prospects: z.array(youthProspectSchema)
+  }),
+  staff: z.object({
+    hired: z.array(staffMemberSchema),
+    candidates: z.array(staffMemberSchema)
+  }),
+  psychology: z.array(athletePsychologySchema),
+  promises: z.array(playerPromiseSchema),
+  programLog: z.array(programEventLogSchema)
+});
+export type ProgramEcosystemState = z.infer<typeof programEcosystemStateSchema>;
 
 export const careerEventDefinitionSchema = z.object({
   id: z.string(),
@@ -141,7 +309,7 @@ export const postMatchReportSchema = z.object({
 });
 export type PostMatchReport = z.infer<typeof postMatchReportSchema>;
 
-export const careerStateSchema = z.object({
+export const careerStateV1Schema = z.object({
   version: z.literal(1),
   seed: z.number().int(),
   date: z.string(),
@@ -163,6 +331,13 @@ export const careerStateSchema = z.object({
   lastPreMatchBrief: preMatchBriefSchema.nullable(),
   lastMatchReport: postMatchReportSchema.nullable(),
   notes: z.array(z.string())
+});
+
+export type CareerStateV1 = z.infer<typeof careerStateV1Schema>;
+
+export const careerStateSchema = careerStateV1Schema.extend({
+  version: z.literal(2),
+  ecosystem: programEcosystemStateSchema
 });
 export type CareerState = z.infer<typeof careerStateSchema>;
 

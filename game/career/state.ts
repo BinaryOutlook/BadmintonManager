@@ -1,6 +1,7 @@
 import { seededPlayers } from "../content/players";
 import { careerEventCatalog } from "./events";
 import { createInitialEconomy } from "./economy";
+import { createInitialEcosystem } from "./ecosystem";
 import type { AthleteCareerState, CareerState } from "./models";
 import { createInitialRankings, rankingFor } from "./rankings";
 import { refreshAthleteReadiness } from "./health";
@@ -52,7 +53,7 @@ export function createInitialCareerState(selectedPlayerId: string, seed: number)
   const ranking = rankingFor(rankings, selectedPlayerId) ?? rankings[0];
 
   return {
-    version: 1,
+    version: 2,
     seed,
     date: "2026-06-01",
     seasonId: "2026",
@@ -72,6 +73,7 @@ export function createInitialCareerState(selectedPlayerId: string, seed: number)
     selectedTrainingPlanId: null,
     lastPreMatchBrief: null,
     lastMatchReport: null,
+    ecosystem: createInitialEcosystem(selectedPlayerId),
     notes: ["Career save initialized"]
   };
 }

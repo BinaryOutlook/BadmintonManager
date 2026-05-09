@@ -3,6 +3,7 @@ import type { MatchResult } from "../core/models";
 import type { ManagedRunMatch } from "../tournament/tournament";
 import { getCareerEvent, roundKeyForPlacement } from "./events";
 import { applyMatchLoad } from "./health";
+import { psychologyReadinessModifier } from "./ecosystem";
 import type { CareerState, PostMatchReport, PreMatchBrief } from "./models";
 import { awardRankingPoints } from "./rankings";
 import { managedAthlete, syncManagedAthleteFromRankings } from "./state";
@@ -15,6 +16,8 @@ export function buildPreMatchBrief(args: {
   const event = args.state.activeEventId ? getCareerEvent(args.state.events, args.state.activeEventId) : undefined;
   const athlete = managedAthlete(args.state);
   const opponent = playerMap[args.opponentId];
+  const psychModifier = psychologyReadinessModifier(args.state, args.state.program.managedPlayerId);
+  const latestReport = args.state.ecosystem.scouting.reports.find((report) => report.subjectId === args.opponentId);
 
   if (!event || !opponent) {
     return null;
@@ -26,21 +29,27 @@ export function buildPreMatchBrief(args: {
       : athlete.injuryRisk >= 0.18
         ? "Medical risk is elevated; recovery margin is thin."
         : "Readiness is stable enough to chase points.";
-  const opponentBrief = `${opponent.name} is a ${opponent.styleLabel.toLowerCase()} with ${opponent.nationality} tempo habits.`;
+  const opponentBrief = latestReport
+    ? `${opponent.name} report is ${latestReport.state} at ${latestReport.confidence}% confidence: ${latestReport.recommendation}`
+    : `${opponent.name} is a ${opponent.styleLabel.toLowerCase()} with ${opponent.nationality} tempo habits.`;
   const recommendation =
-    athlete.readiness >= 82
+    athlete.readiness + psychModifier >= 82
       ? "Open assertively, bank the tier points, and keep pressure on the back court."
-      : "Start controlled, avoid cheap jump-smash volume, and let the first interval decide risk.";
+      : "Start controlled, protect morale pressure, and let the first interval decide risk.";
 
   return {
     eventId: event.id,
     opponentId: args.opponentId,
-    readiness: athlete.readiness,
+    readiness: clampReadiness(athlete.readiness + psychModifier),
     riskNote: fatigueWarning,
     tierStakes: `${event.tier}: ${event.rankingPoints.R16} points for entry, ${event.rankingPoints.champion} for the title.`,
     recommendation,
     opponentBrief
   };
+}
+
+function clampReadiness(value: number) {
+  return Math.max(0, Math.min(100, value));
 }
 
 function evidenceFromResult(result: MatchResult, managedSide: "A" | "B") {

@@ -3,6 +3,18 @@ import { seededPlayers, playerMap } from "../content/players";
 import { tacticLibrary } from "../content/tactics";
 import { advanceCareerCalendar } from "../career/calendar";
 import { canAffordEventEntry, chargeEventEntry } from "../career/economy";
+import {
+  applyMatchPsychology,
+  applyStaffToTraining,
+  commissionScoutReport,
+  developYouthProspect,
+  hireStaffMember,
+  makeRecruitmentOffer,
+  resolveDueScoutReports,
+  resolvePromises,
+  setManagedAthletePromise,
+  withdrawPromise
+} from "../career/ecosystem";
 import { getCareerEvent } from "../career/events";
 import { buildPreMatchBrief, settleCareerMatch } from "../career/hubs";
 import {
@@ -14,6 +26,7 @@ import {
 } from "../core/match";
 import type { LiveDirective, LiveMatchSession, MatchTactic, Side, TeamTalk } from "../core/models";
 import type { CareerState } from "../career/models";
+import type { PlayerPromise } from "../career/models";
 import { createInitialCareerState } from "../career/state";
 import { applyTrainingPlan, getTrainingPlan } from "../career/training";
 import {
@@ -60,6 +73,12 @@ export interface TournamentStoreState {
   enterCareerEvent: (eventId: string) => void;
   advanceCareerDay: () => void;
   continueCareerAfterPostMatch: () => void;
+  commissionScoutReport: (subjectId: string, subjectType: "candidate" | "prospect" | "opponent") => void;
+  makeRecruitmentOffer: (candidateId: string) => void;
+  developYouthProspect: (prospectId: string) => void;
+  hireStaffMember: (staffId: string) => void;
+  setManagedAthletePromise: (targetType: PlayerPromise["targetType"]) => void;
+  withdrawPromise: (promiseId: string) => void;
   selectPlayer: (playerId: string) => void;
   chooseTactic: (tacticKey: TacticKey) => void;
   startTournament: () => void;
@@ -110,7 +129,7 @@ function persist(state: TournamentStoreState) {
   }
 
   const payload: PersistedSave = {
-    version: 3,
+    version: 4,
     selectedPlayerId: state.selectedPlayerId,
     plannedTacticKey: state.plannedTacticKey,
     seed: state.seed,
@@ -310,14 +329,15 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
         plan,
         date: state.career.date
       });
+      const athleteWithStaff = applyStaffToTraining(result.athlete, state.career.ecosystem);
       const career = {
         ...state.career,
         selectedTrainingPlanId: plan.id,
         athletes: state.career.athletes.map((entry) =>
-          entry.playerId === athlete.playerId ? result.athlete : entry
+          entry.playerId === athlete.playerId ? athleteWithStaff : entry
         ),
         economy: result.economy,
-        notes: [`${plan.label} completed`, ...state.career.notes].slice(0, 6)
+        notes: [`${plan.label} completed with staff modifiers`, ...state.career.notes].slice(0, 6)
       };
       const next = {
         ...state,
@@ -392,7 +412,7 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
         return state;
       }
 
-      const career = advanceCareerCalendar(state.career);
+      const career = resolvePromises(resolveDueScoutReports(advanceCareerCalendar(state.career)));
       const withTournament = addCareerTournamentIfReady(state, career);
       const next = {
         ...state,
@@ -420,6 +440,90 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
           stage: "event_complete" as const,
           activeEventId: null
         }
+      };
+      persist(next);
+      return next;
+    });
+  },
+  commissionScoutReport: (subjectId, subjectType) => {
+    set((state) => {
+      if (!state.career) {
+        return state;
+      }
+
+      const next = {
+        ...state,
+        career: commissionScoutReport(state.career, subjectId, subjectType)
+      };
+      persist(next);
+      return next;
+    });
+  },
+  makeRecruitmentOffer: (candidateId) => {
+    set((state) => {
+      if (!state.career) {
+        return state;
+      }
+
+      const next = {
+        ...state,
+        career: makeRecruitmentOffer(state.career, candidateId)
+      };
+      persist(next);
+      return next;
+    });
+  },
+  developYouthProspect: (prospectId) => {
+    set((state) => {
+      if (!state.career) {
+        return state;
+      }
+
+      const next = {
+        ...state,
+        career: developYouthProspect(state.career, prospectId)
+      };
+      persist(next);
+      return next;
+    });
+  },
+  hireStaffMember: (staffId) => {
+    set((state) => {
+      if (!state.career) {
+        return state;
+      }
+
+      const next = {
+        ...state,
+        career: hireStaffMember(state.career, staffId)
+      };
+      persist(next);
+      return next;
+    });
+  },
+  setManagedAthletePromise: (targetType) => {
+    set((state) => {
+      if (!state.career) {
+        return state;
+      }
+
+      const next = {
+        ...state,
+        career: setManagedAthletePromise(state.career, targetType)
+      };
+      persist(next);
+      return next;
+    });
+  },
+  withdrawPromise: (promiseId) => {
+    set((state) => {
+      if (!state.career) {
+        return state;
+      }
+
+      const next = {
+        ...state,
+        career: withdrawPromise(state.career, promiseId)
       };
       persist(next);
       return next;
@@ -591,12 +695,15 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
               result: managedResult
             })
           : state.career;
+      const careerWithPsychology = career
+        ? resolvePromises(applyMatchPsychology(career, managedResult.winner === state.liveMatch.managedSide))
+        : career;
 
       const next = {
         ...state,
         tournament,
         liveMatch: null,
-        career,
+        career: careerWithPsychology,
         phase: inferPhase(tournament, null)
       };
       persist(next);
