@@ -261,6 +261,9 @@ export function CareerProgramHubPage(props: CareerPageProps) {
           <span>Cash {money(props.career.economy.cash)}</span>
           <span>Roster {props.career.ecosystem.recruitment.roster.length}/{props.career.ecosystem.recruitment.rosterLimit}</span>
           <span>Scout capacity {pendingAssignments.length}/{modifiers.scoutCapacity}</span>
+          <button className="command-button command-button-secondary" type="button" onClick={props.onOpenHome}>
+            Career Home
+          </button>
         </div>
       </div>
 
