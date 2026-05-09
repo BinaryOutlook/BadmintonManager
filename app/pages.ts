@@ -8,6 +8,12 @@ export type AppPage =
   | { id: "games" }
   | { id: "season" }
   | { id: "calendar" }
+  | { id: "program" }
+  | { id: "scouting" }
+  | { id: "recruitment" }
+  | { id: "youth" }
+  | { id: "staff" }
+  | { id: "promises" }
   | { id: "bracket" }
   | { id: "liveMatch" }
   | { id: "review" };

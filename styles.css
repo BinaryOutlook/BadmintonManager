@@ -798,6 +798,142 @@ button {
   font-size: 1rem;
 }
 
+.program-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(20rem, 0.42fr);
+  gap: 0.9rem;
+  align-items: start;
+}
+
+.career-ecosystem-strip,
+.program-card-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.career-ecosystem-strip-large {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.program-card-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.career-system-tile,
+.program-decision-card,
+.program-log-row {
+  min-width: 0;
+  border: 1px solid rgba(48, 54, 61, 0.92);
+  border-radius: 0.35rem;
+  background: rgba(12, 14, 17, 0.72);
+}
+
+.career-system-tile {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.72rem;
+  color: var(--text);
+  text-align: left;
+}
+
+.career-system-tile:hover {
+  border-color: var(--border-strong);
+}
+
+.career-system-tile span,
+.program-decision-card span,
+.program-log-row span,
+.knowledge-chip,
+.danger-zone span {
+  color: var(--muted-soft);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.career-system-tile strong,
+.program-decision-card strong,
+.program-log-row strong {
+  min-width: 0;
+  color: var(--text);
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.career-system-tile small,
+.program-decision-card p,
+.program-log-row p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.38;
+}
+
+.program-decision-card {
+  display: grid;
+  gap: 0.7rem;
+  padding: 0.9rem;
+}
+
+.program-decision-card .command-button {
+  width: 100%;
+}
+
+.program-log-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.program-log-row {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.72rem;
+}
+
+.knowledge-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.knowledge-chip {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 0.25rem;
+  padding: 0.25rem 0.42rem;
+  background: rgba(35, 39, 44, 0.72);
+}
+
+.knowledge-chip-unknown {
+  color: #ffb0b0;
+}
+
+.knowledge-chip-estimated {
+  color: #f2c14e;
+}
+
+.knowledge-chip-verified {
+  color: var(--lime-soft);
+}
+
+.career-button-spaced {
+  margin-top: 0.9rem;
+}
+
+.career-action-row-left {
+  justify-content: flex-start;
+}
+
+.danger-zone {
+  display: grid;
+  gap: 0.5rem;
+  border: 1px solid rgba(255, 140, 140, 0.24);
+  border-radius: 0.35rem;
+  padding: 0.7rem;
+  background: rgba(82, 22, 22, 0.25);
+}
+
 .command-panel,
 .scoreboard-panel {
   min-width: 0;
@@ -3487,6 +3623,10 @@ button {
   .roster-grid,
   .roster-grid-modal,
   .recommendation-grid,
+  .program-grid,
+  .program-card-grid,
+  .career-ecosystem-strip,
+  .career-ecosystem-strip-large,
   .career-dashboard-grid,
   .career-training-grid,
   .career-calendar-grid,

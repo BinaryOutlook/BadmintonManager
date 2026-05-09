@@ -1,11 +1,17 @@
 import { useEffect, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { CompleteView } from "../components/CompleteView";
 import {
+  CareerAthletePromisesPage,
   CareerCalendarPage,
   CareerHomePage,
   CareerPostMatchHubPage,
   CareerPreMatchHubPage,
-  CareerTrainingPage
+  CareerProgramHubPage,
+  CareerRecruitmentDeskPage,
+  CareerScoutingNetworkPage,
+  CareerStaffRoomPage,
+  CareerTrainingPage,
+  CareerYouthAcademyPage
 } from "../components/CareerWorkbench";
 import { ConfirmOverlay } from "../components/ConfirmOverlay";
 import { MatchView } from "../components/MatchView";
@@ -96,6 +102,12 @@ function topModeForPage(page: AppPage, fallback: TopMode): TopMode {
     case "season":
     case "calendar":
     case "home":
+    case "program":
+    case "scouting":
+    case "recruitment":
+    case "youth":
+    case "staff":
+    case "promises":
       return "BRACKETS";
     default:
       return fallback;
@@ -116,6 +128,12 @@ export function App() {
     enterCareerEvent,
     advanceCareerDay,
     continueCareerAfterPostMatch,
+    commissionScoutReport,
+    makeRecruitmentOffer,
+    developYouthProspect,
+    hireStaffMember,
+    setManagedAthletePromise,
+    withdrawPromise,
     selectPlayer,
     chooseTactic,
     startTournament,
@@ -319,15 +337,51 @@ export function App() {
       onOpenTraining: () => setActivePage({ id: "season" }),
       onOpenCalendar: () => setActivePage({ id: "calendar" }),
       onOpenHome: () => setActivePage({ id: "home" }),
+      onOpenProgram: () => setActivePage({ id: "program" }),
+      onOpenScouting: () => setActivePage({ id: "scouting" }),
+      onOpenRecruitment: () => setActivePage({ id: "recruitment" }),
+      onOpenYouth: () => setActivePage({ id: "youth" }),
+      onOpenStaff: () => setActivePage({ id: "staff" }),
+      onOpenPromises: () => setActivePage({ id: "promises" }),
       onApplyTraining: applyCareerTraining,
       onEnterEvent: enterCareerEvent,
       onAdvanceDay: handleAdvanceCareerDay,
       onStartManagedMatch: handleStartManagedMatch,
-      onContinueAfterPostMatch: handleContinueCareerAfterPostMatch
+      onContinueAfterPostMatch: handleContinueCareerAfterPostMatch,
+      onCommissionScoutReport: commissionScoutReport,
+      onMakeRecruitmentOffer: makeRecruitmentOffer,
+      onDevelopYouthProspect: developYouthProspect,
+      onHireStaffMember: hireStaffMember,
+      onSetManagedAthletePromise: setManagedAthletePromise,
+      onWithdrawPromise: withdrawPromise
     };
 
     if (activePage.id === "home") {
       return <CareerHomePage {...careerPageProps} />;
+    }
+
+    if (activePage.id === "program") {
+      return <CareerProgramHubPage {...careerPageProps} />;
+    }
+
+    if (activePage.id === "scouting") {
+      return <CareerScoutingNetworkPage {...careerPageProps} />;
+    }
+
+    if (activePage.id === "recruitment") {
+      return <CareerRecruitmentDeskPage {...careerPageProps} />;
+    }
+
+    if (activePage.id === "youth") {
+      return <CareerYouthAcademyPage {...careerPageProps} />;
+    }
+
+    if (activePage.id === "staff") {
+      return <CareerStaffRoomPage {...careerPageProps} />;
+    }
+
+    if (activePage.id === "promises") {
+      return <CareerAthletePromisesPage {...careerPageProps} />;
     }
 
     if (activePage.id === "playerProfile") {

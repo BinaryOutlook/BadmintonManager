@@ -1,8 +1,9 @@
 import { playerMap } from "../game/content/players";
 import { buildWeek, daysBetween } from "../game/career/calendar";
 import { canAffordEventEntry, eventEntryCost } from "../game/career/economy";
+import { canCommissionScoutReport, roleLabel, staffModifiers } from "../game/career/ecosystem";
 import { getCareerEvent, getNextEvent } from "../game/career/events";
-import type { CareerState } from "../game/career/models";
+import type { CareerState, PlayerPromise } from "../game/career/models";
 import { managedAthlete } from "../game/career/state";
 import { trainingPlans } from "../game/career/training";
 import type { SaveRecoveryNotice } from "../game/store/store";
@@ -14,11 +15,23 @@ interface CareerPageProps {
   onOpenTraining: () => void;
   onOpenCalendar: () => void;
   onOpenHome: () => void;
+  onOpenProgram: () => void;
+  onOpenScouting: () => void;
+  onOpenRecruitment: () => void;
+  onOpenYouth: () => void;
+  onOpenStaff: () => void;
+  onOpenPromises: () => void;
   onApplyTraining: (planId: string) => void;
   onEnterEvent: (eventId: string) => void;
   onAdvanceDay: () => void;
   onStartManagedMatch: () => void;
   onContinueAfterPostMatch: () => void;
+  onCommissionScoutReport: (subjectId: string, subjectType: "candidate" | "prospect" | "opponent") => void;
+  onMakeRecruitmentOffer: (candidateId: string) => void;
+  onDevelopYouthProspect: (prospectId: string) => void;
+  onHireStaffMember: (staffId: string) => void;
+  onSetManagedAthletePromise: (targetType: PlayerPromise["targetType"]) => void;
+  onWithdrawPromise: (promiseId: string) => void;
 }
 
 function money(value: number) {
@@ -125,6 +138,9 @@ export function CareerHomePage(props: CareerPageProps) {
               <button className="command-button command-button-secondary" type="button" onClick={props.onOpenTraining}>
                 Training Desk
               </button>
+              <button className="command-button command-button-secondary" type="button" onClick={props.onOpenProgram}>
+                Program Hub
+              </button>
             </div>
           </div>
         </section>
@@ -176,6 +192,151 @@ export function CareerHomePage(props: CareerPageProps) {
             ))}
           </div>
         </section>
+
+        <section className="command-panel command-panel-full">
+          <div className="panel-header">
+            <h2>Program Ecosystem</h2>
+            <span>Scouting / recruitment / youth / staff / promises</span>
+          </div>
+          <div className="career-ecosystem-strip">
+            <button className="career-system-tile" type="button" onClick={props.onOpenScouting}>
+              <span>Reports</span>
+              <strong>{props.career.ecosystem.scouting.reports.length}</strong>
+              <small>{props.career.ecosystem.scouting.assignments.length} assignments</small>
+            </button>
+            <button className="career-system-tile" type="button" onClick={props.onOpenRecruitment}>
+              <span>Roster</span>
+              <strong>
+                {props.career.ecosystem.recruitment.roster.length}/{props.career.ecosystem.recruitment.rosterLimit}
+              </strong>
+              <small>{props.career.ecosystem.recruitment.candidates.length} candidates</small>
+            </button>
+            <button className="career-system-tile" type="button" onClick={props.onOpenYouth}>
+              <span>Youth</span>
+              <strong>{props.career.ecosystem.academy.prospects.length}</strong>
+              <small>{props.career.ecosystem.academy.prospects.filter((prospect) => prospect.lowerEventEligibility).length} eligible</small>
+            </button>
+            <button className="career-system-tile" type="button" onClick={props.onOpenStaff}>
+              <span>Staff</span>
+              <strong>{props.career.ecosystem.staff.hired.length}/5</strong>
+              <small>{money(staffModifiers(props.career.ecosystem).salary)} committed</small>
+            </button>
+            <button className="career-system-tile" type="button" onClick={props.onOpenPromises}>
+              <span>Promises</span>
+              <strong>{props.career.ecosystem.promises.filter((promise) => promise.status === "active").length}</strong>
+              <small>{props.career.ecosystem.promises.filter((promise) => promise.status !== "active").length} resolved</small>
+            </button>
+          </div>
+        </section>
+      </div>
+    </section>
+  );
+}
+
+export function CareerProgramHubPage(props: CareerPageProps) {
+  if (!props.career) {
+    return <CareerEmpty onStartCareer={props.onStartCareer} saveRecovery={props.saveRecovery} />;
+  }
+
+  const modifiers = staffModifiers(props.career.ecosystem);
+  const psychology = props.career.ecosystem.psychology.find(
+    (entry) => entry.athleteId === props.career?.program.managedPlayerId
+  );
+  const activePromises = props.career.ecosystem.promises.filter((promise) => promise.status === "active");
+  const pendingAssignments = props.career.ecosystem.scouting.assignments.filter(
+    (assignment) => assignment.status === "pending"
+  );
+
+  return (
+    <section className="screen-shell career-page">
+      <div className="screen-header">
+        <div>
+          <p className="screen-kicker">Program Hub</p>
+          <h1 className="screen-title">Program Ecosystem</h1>
+          <p className="screen-copy">
+            Decide what the program knows, who it signs, who it develops, and what it has promised before the next event.
+          </p>
+        </div>
+        <div className="screen-meta">
+          <span>Cash {money(props.career.economy.cash)}</span>
+          <span>Roster {props.career.ecosystem.recruitment.roster.length}/{props.career.ecosystem.recruitment.rosterLimit}</span>
+          <span>Scout capacity {pendingAssignments.length}/{modifiers.scoutCapacity}</span>
+        </div>
+      </div>
+
+      <div className="program-grid">
+        <section className="command-panel command-panel-wide">
+          <div className="panel-header">
+            <h2>Next Program Decisions</h2>
+            <span>Live pressure</span>
+          </div>
+          <div className="career-ecosystem-strip career-ecosystem-strip-large">
+            <button className="career-system-tile" type="button" onClick={props.onOpenScouting}>
+              <span>Scouting Network</span>
+              <strong>{pendingAssignments.length} pending</strong>
+              <small>{props.career.ecosystem.scouting.reports.length} verified reports</small>
+            </button>
+            <button className="career-system-tile" type="button" onClick={props.onOpenRecruitment}>
+              <span>Recruitment Desk</span>
+              <strong>{props.career.ecosystem.recruitment.candidates.filter((candidate) => candidate.offerState === "none").length} undecided</strong>
+              <small>Budget, roster, fit, and promises</small>
+            </button>
+            <button className="career-system-tile" type="button" onClick={props.onOpenYouth}>
+              <span>Youth Academy</span>
+              <strong>{props.career.ecosystem.academy.prospects[0]?.readiness ?? 0}% ready</strong>
+              <small>16-year-old prospect pipeline</small>
+            </button>
+            <button className="career-system-tile" type="button" onClick={props.onOpenStaff}>
+              <span>Staff Room</span>
+              <strong>{props.career.ecosystem.staff.hired.length} hired</strong>
+              <small>Training +{Math.round(modifiers.training * 100)}%, recovery +{Math.round(modifiers.recovery * 100)}%</small>
+            </button>
+          </div>
+        </section>
+
+        <section className="command-panel">
+          <div className="panel-header">
+            <h2>Morale / Promise Alerts</h2>
+            <span>{activePromises.length} active</span>
+          </div>
+          <div className="career-stat-grid">
+            <div>
+              <span>Form</span>
+              <strong>{psychology?.form ?? 0}</strong>
+            </div>
+            <div>
+              <span>Morale</span>
+              <strong>{psychology?.morale ?? 0}</strong>
+            </div>
+            <div>
+              <span>Confidence</span>
+              <strong>{psychology?.confidence ?? 0}</strong>
+            </div>
+            <div>
+              <span>Traits</span>
+              <strong>{psychology?.personalityTraits.join(", ") ?? "unknown"}</strong>
+            </div>
+          </div>
+          <button className="command-button command-button-secondary career-button-spaced" type="button" onClick={props.onOpenPromises}>
+            Athlete State + Promises
+          </button>
+        </section>
+
+        <section className="command-panel command-panel-full">
+          <div className="panel-header">
+            <h2>Program Log</h2>
+            <span>Persistent consequences</span>
+          </div>
+          <div className="program-log-list">
+            {props.career.ecosystem.programLog.slice(0, 6).map((entry) => (
+              <div key={entry.id} className="program-log-row">
+                <span>{entry.date} / {entry.source}</span>
+                <strong>{entry.message}</strong>
+                <p>{entry.stateDelta}</p>
+              </div>
+            ))}
+          </div>
+        </section>
       </div>
     </section>
   );
@@ -195,6 +356,459 @@ function CareerMeter(props: { label: string; value: number; danger?: boolean }) 
         />
       </div>
     </div>
+  );
+}
+
+export function CareerScoutingNetworkPage(props: CareerPageProps) {
+  if (!props.career) {
+    return <CareerEmpty onStartCareer={props.onStartCareer} saveRecovery={props.saveRecovery} />;
+  }
+
+  const modifiers = staffModifiers(props.career.ecosystem);
+  const scoutSubjects = [
+    ...props.career.ecosystem.recruitment.candidates.map((candidate) => ({
+      id: candidate.id,
+      name: candidate.name,
+      type: "candidate" as const,
+      detail: `${candidate.country} / ${candidate.source}`,
+      knowledge: Object.entries(candidate.knowledge)
+        .map(([key, value]) => `${key}: ${value}`)
+        .join(", ")
+    })),
+    ...props.career.ecosystem.academy.prospects.map((prospect) => ({
+      id: prospect.id,
+      name: prospect.name,
+      type: "prospect" as const,
+      detail: `Age ${prospect.age} / readiness ${prospect.readiness}`,
+      knowledge: `potential: estimated ${prospect.potentialRange[0]}-${prospect.potentialRange[1]}, eligibility: ${
+        prospect.lowerEventEligibility ? "verified" : "unknown"
+      }`
+    }))
+  ];
+
+  return (
+    <section className="screen-shell career-page">
+      <div className="screen-header">
+        <div>
+          <p className="screen-kicker">Scouting Network</p>
+          <h1 className="screen-title">Reduce Uncertainty</h1>
+          <p className="screen-copy">
+            Assign scout capacity, pay report costs, and move candidate knowledge from unknown to estimated to verified.
+          </p>
+        </div>
+        <div className="career-action-row">
+          <button className="command-button command-button-secondary" type="button" onClick={props.onOpenProgram}>
+            Program Hub
+          </button>
+          <button className="command-button command-button-primary" type="button" onClick={props.onAdvanceDay}>
+            Advance Day
+          </button>
+        </div>
+      </div>
+
+      <div className="program-grid">
+        <section className="command-panel command-panel-wide">
+          <div className="panel-header">
+            <h2>Assignment Board</h2>
+            <span>Capacity {props.career.ecosystem.scouting.capacityUsed}/{modifiers.scoutCapacity}</span>
+          </div>
+          <div className="program-card-grid">
+            {scoutSubjects.map((subject) => {
+              const gate = canCommissionScoutReport(props.career!, subject.id);
+              const report = props.career?.ecosystem.scouting.reports.find((entry) => entry.subjectId === subject.id);
+              const assignment = props.career?.ecosystem.scouting.assignments.find(
+                (entry) => entry.subjectId === subject.id && entry.status === "pending"
+              );
+
+              return (
+                <article key={subject.id} className="program-decision-card">
+                  <span>{subject.type}</span>
+                  <strong>{subject.name}</strong>
+                  <p>{subject.detail}</p>
+                  <p>{subject.knowledge}</p>
+                  <div className="knowledge-chip-row">
+                    <span className="knowledge-chip knowledge-chip-unknown">unknown</span>
+                    <span className="knowledge-chip knowledge-chip-estimated">estimated</span>
+                    <span className="knowledge-chip knowledge-chip-verified">verified</span>
+                  </div>
+                  <p>
+                    {report
+                      ? `Report ${report.state}: ${report.confidence}% confidence, ${report.accuracy}% accuracy, expires ${report.expiresAt}.`
+                      : assignment
+                        ? `Assignment pending until ${assignment.dueAt}.`
+                        : `Cost ${money(3200)} / ${modifiers.scouting >= 0.18 ? "1" : "2"} day(s).`}
+                  </p>
+                  <button
+                    className="command-button command-button-primary"
+                    type="button"
+                    disabled={!gate.allowed}
+                    onClick={() => props.onCommissionScoutReport(subject.id, subject.type)}
+                  >
+                    {gate.allowed ? "Commission Report" : gate.reason}
+                  </button>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="command-panel">
+          <div className="panel-header">
+            <h2>Report Queue</h2>
+            <span>{props.career.ecosystem.scouting.reports.length} reports</span>
+          </div>
+          <div className="program-log-list">
+            {props.career.ecosystem.scouting.assignments.map((assignment) => (
+              <div key={assignment.id} className="program-log-row">
+                <span>{assignment.status} / due {assignment.dueAt}</span>
+                <strong>{assignment.subjectId}</strong>
+                <p>{assignment.scope} scope, cost {money(assignment.cost)}</p>
+              </div>
+            ))}
+            {props.career.ecosystem.scouting.reports.map((report) => (
+              <div key={report.id} className="program-log-row">
+                <span>{report.state} / {report.confidence}% confidence</span>
+                <strong>{report.subjectId}</strong>
+                <p>{report.recommendation}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+    </section>
+  );
+}
+
+export function CareerRecruitmentDeskPage(props: CareerPageProps) {
+  if (!props.career) {
+    return <CareerEmpty onStartCareer={props.onStartCareer} saveRecovery={props.saveRecovery} />;
+  }
+
+  return (
+    <section className="screen-shell career-page">
+      <div className="screen-header">
+        <div>
+          <p className="screen-kicker">Recruitment Desk</p>
+          <h1 className="screen-title">Offer Flow</h1>
+          <p className="screen-copy">
+            Evaluate fit, interest, report confidence, budget pressure, and roster slots before signing athletes.
+          </p>
+        </div>
+        <button className="command-button command-button-secondary" type="button" onClick={props.onOpenProgram}>
+          Program Hub
+        </button>
+      </div>
+
+      <div className="program-grid">
+        <section className="command-panel command-panel-wide">
+          <div className="panel-header">
+            <h2>Candidate Evaluation</h2>
+            <span>Cash {money(props.career.economy.cash)}</span>
+          </div>
+          <div className="program-card-grid">
+            {props.career.ecosystem.recruitment.candidates.map((candidate) => {
+              const report = props.career?.ecosystem.scouting.reports.find((entry) => entry.subjectId === candidate.id);
+              const offerCost = candidate.knowledge.cost === "verified" ? candidate.verifiedCost : candidate.estimatedCost;
+              const rosterFull =
+                props.career!.ecosystem.recruitment.roster.length >= props.career!.ecosystem.recruitment.rosterLimit;
+
+              return (
+                <article key={candidate.id} className="program-decision-card">
+                  <span>{candidate.country} / {candidate.rosterImpact}</span>
+                  <strong>{candidate.name}</strong>
+                  <p>{candidate.source}</p>
+                  <div className="career-stat-grid">
+                    <div>
+                      <span>Interest</span>
+                      <strong>{candidate.interest}</strong>
+                    </div>
+                    <div>
+                      <span>Fit</span>
+                      <strong>{candidate.fit}</strong>
+                    </div>
+                    <div>
+                      <span>Risk</span>
+                      <strong>{candidate.risk}</strong>
+                    </div>
+                    <div>
+                      <span>Cost</span>
+                      <strong>{money(offerCost)}</strong>
+                    </div>
+                  </div>
+                  <p>
+                    Report: {report ? `${report.confidence}% confidence, ${report.state}` : "not commissioned; cost remains estimated"}.
+                    Promise request: {candidate.promiseRequested ?? "none"}.
+                  </p>
+                  <button
+                    className="command-button command-button-primary"
+                    type="button"
+                    disabled={candidate.offerState !== "none" || rosterFull || props.career!.economy.cash < offerCost}
+                    onClick={() => props.onMakeRecruitmentOffer(candidate.id)}
+                  >
+                    {candidate.offerState === "none"
+                      ? rosterFull
+                        ? "Roster Full"
+                        : props.career!.economy.cash < offerCost
+                          ? "Unaffordable"
+                          : "Make Offer"
+                      : `Offer ${candidate.offerState}`}
+                  </button>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="command-panel">
+          <div className="panel-header">
+            <h2>Program Roster</h2>
+            <span>{props.career.ecosystem.recruitment.roster.length}/{props.career.ecosystem.recruitment.rosterLimit}</span>
+          </div>
+          <div className="program-log-list">
+            {props.career.ecosystem.recruitment.roster.map((slot) => (
+              <div key={slot.athleteId} className="program-log-row">
+                <span>{slot.role} / {slot.status}</span>
+                <strong>{slot.name}</strong>
+                <p>{money(slot.contractCost)} weekly contract, joined {slot.joinedAt}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+    </section>
+  );
+}
+
+export function CareerYouthAcademyPage(props: CareerPageProps) {
+  if (!props.career) {
+    return <CareerEmpty onStartCareer={props.onStartCareer} saveRecovery={props.saveRecovery} />;
+  }
+
+  return (
+    <section className="screen-shell career-page">
+      <div className="screen-header">
+        <div>
+          <p className="screen-kicker">Youth Academy</p>
+          <h1 className="screen-title">Prospect Pipeline</h1>
+          <p className="screen-copy">
+            Develop 16-year-old prospects toward readiness and lower-event eligibility without treating them as senior players.
+          </p>
+        </div>
+        <button className="command-button command-button-secondary" type="button" onClick={props.onOpenProgram}>
+          Program Hub
+        </button>
+      </div>
+
+      <div className="program-card-grid">
+        {props.career.ecosystem.academy.prospects.map((prospect) => (
+          <article key={prospect.id} className="command-panel program-decision-card">
+            <span>Age {prospect.age} / {prospect.developmentPlan}</span>
+            <strong>{prospect.name}</strong>
+            <p>
+              Potential {prospect.potentialRange[0]}-{prospect.potentialRange[1]} / traits{" "}
+              {prospect.developmentTraits.join(", ")}
+            </p>
+            <div className="career-stat-grid">
+              <div>
+                <span>Readiness</span>
+                <strong>{Math.round(prospect.readiness)}</strong>
+              </div>
+              <div>
+                <span>Morale</span>
+                <strong>{Math.round(prospect.morale)}</strong>
+              </div>
+              <div>
+                <span>Staff Modifier</span>
+                <strong>{prospect.mentorOrStaffModifier}</strong>
+              </div>
+              <div>
+                <span>Lower Event</span>
+                <strong>{prospect.lowerEventEligibility ? "Eligible" : "Not ready"}</strong>
+              </div>
+            </div>
+            <button className="command-button command-button-primary" type="button" onClick={() => props.onDevelopYouthProspect(prospect.id)}>
+              Run Development Block
+            </button>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+export function CareerStaffRoomPage(props: CareerPageProps) {
+  if (!props.career) {
+    return <CareerEmpty onStartCareer={props.onStartCareer} saveRecovery={props.saveRecovery} />;
+  }
+
+  const modifiers = staffModifiers(props.career.ecosystem);
+
+  return (
+    <section className="screen-shell career-page">
+      <div className="screen-header">
+        <div>
+          <p className="screen-kicker">Staff Room</p>
+          <h1 className="screen-title">Hire Modifiers</h1>
+          <p className="screen-copy">
+            Assistant coach, physio, analyst, scout, and mental coach salaries create visible downstream modifiers.
+          </p>
+        </div>
+        <div className="screen-meta">
+          <span>Salary {money(modifiers.salary)}</span>
+          <span>Scout cap {modifiers.scoutCapacity}</span>
+        </div>
+      </div>
+
+      <div className="program-grid">
+        <section className="command-panel command-panel-wide">
+          <div className="panel-header">
+            <h2>Available Roles</h2>
+            <span>Cash {money(props.career.economy.cash)}</span>
+          </div>
+          <div className="program-card-grid">
+            {props.career.ecosystem.staff.candidates.map((staff) => (
+              <article key={staff.id} className="program-decision-card">
+                <span>{roleLabel(staff.role)} / level {staff.level}</span>
+                <strong>{staff.name}</strong>
+                <p>{staff.adviceBias}</p>
+                <p>
+                  Salary {money(staff.salary)} / training +{Math.round(staff.modifiers.training * 100)}%, recovery +
+                  {Math.round(staff.modifiers.recovery * 100)}%, scouting +{Math.round(staff.modifiers.scouting * 100)}%,
+                  morale +{Math.round(staff.modifiers.morale * 100)}%.
+                </p>
+                <button
+                  className="command-button command-button-primary"
+                  type="button"
+                  disabled={props.career!.economy.cash < staff.salary}
+                  onClick={() => props.onHireStaffMember(staff.id)}
+                >
+                  {props.career!.economy.cash < staff.salary ? "Unaffordable" : "Hire Staff"}
+                </button>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="command-panel">
+          <div className="panel-header">
+            <h2>Active Modifiers</h2>
+            <span>{props.career.ecosystem.staff.hired.length} hired</span>
+          </div>
+          <div className="career-stat-grid">
+            <div>
+              <span>Training</span>
+              <strong>+{Math.round(modifiers.training * 100)}%</strong>
+            </div>
+            <div>
+              <span>Recovery</span>
+              <strong>+{Math.round(modifiers.recovery * 100)}%</strong>
+            </div>
+            <div>
+              <span>Scouting</span>
+              <strong>+{Math.round(modifiers.scouting * 100)}%</strong>
+            </div>
+            <div>
+              <span>Morale</span>
+              <strong>+{Math.round(modifiers.morale * 100)}%</strong>
+            </div>
+          </div>
+          <div className="program-log-list career-button-spaced">
+            {props.career.ecosystem.staff.hired.map((staff) => (
+              <div key={staff.id} className="program-log-row">
+                <span>{roleLabel(staff.role)}</span>
+                <strong>{staff.name}</strong>
+                <p>{staff.adviceBias}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+    </section>
+  );
+}
+
+export function CareerAthletePromisesPage(props: CareerPageProps) {
+  if (!props.career) {
+    return <CareerEmpty onStartCareer={props.onStartCareer} saveRecovery={props.saveRecovery} />;
+  }
+
+  const psychology = props.career.ecosystem.psychology.find(
+    (entry) => entry.athleteId === props.career?.program.managedPlayerId
+  );
+
+  return (
+    <section className="screen-shell career-page">
+      <div className="screen-header">
+        <div>
+          <p className="screen-kicker">Athlete State + Promises</p>
+          <h1 className="screen-title">Psychology Desk</h1>
+          <p className="screen-copy">
+            Form, morale, confidence, personality, and targets now carry deadlines and consequence logs.
+          </p>
+        </div>
+        <button className="command-button command-button-secondary" type="button" onClick={props.onOpenProgram}>
+          Program Hub
+        </button>
+      </div>
+
+      <div className="program-grid">
+        <section className="command-panel">
+          <div className="panel-header">
+            <h2>Managed Athlete State</h2>
+            <span>{psychology?.personalityTraits.join(", ") ?? "none"}</span>
+          </div>
+          <div className="career-meter-list">
+            <CareerMeter label="Form" value={psychology?.form ?? 0} />
+            <CareerMeter label="Morale" value={psychology?.morale ?? 0} />
+            <CareerMeter label="Confidence" value={psychology?.confidence ?? 0} />
+          </div>
+          <div className="program-log-list career-button-spaced">
+            {(psychology?.recentDrivers ?? []).map((driver) => (
+              <div key={driver} className="program-log-row">
+                <span>driver</span>
+                <strong>{driver}</strong>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="command-panel command-panel-wide">
+          <div className="panel-header">
+            <h2>Targets And Promises</h2>
+            <span>Kept / missed / withdrawn</span>
+          </div>
+          <div className="career-action-row career-action-row-left">
+            <button className="command-button command-button-primary" type="button" onClick={() => props.onSetManagedAthletePromise("improve_stamina")}>
+              Promise Stamina
+            </button>
+            <button className="command-button command-button-secondary" type="button" onClick={() => props.onSetManagedAthletePromise("lower_event_entry")}>
+              Promise Lower Event
+            </button>
+          </div>
+          <div className="program-card-grid career-button-spaced">
+            {props.career.ecosystem.promises.map((promise) => (
+              <article key={promise.id} className="program-decision-card">
+                <span>{promise.status} / deadline {promise.deadline}</span>
+                <strong>{promise.targetValue}</strong>
+                <p>
+                  Reward morale {promise.reward.morale >= 0 ? "+" : ""}{promise.reward.morale}, confidence +
+                  {promise.reward.confidence}; penalty morale {promise.penalty.morale}, confidence {promise.penalty.confidence}.
+                </p>
+                <p>{promise.resolutionLog[0]}</p>
+                {promise.status === "active" && (
+                  <div className="danger-zone">
+                    <span>Danger zone</span>
+                    <button className="command-button command-button-secondary" type="button" onClick={() => props.onWithdrawPromise(promise.id)}>
+                      Withdraw Promise
+                    </button>
+                  </div>
+                )}
+              </article>
+            ))}
+          </div>
+        </section>
+      </div>
+    </section>
   );
 }
 
