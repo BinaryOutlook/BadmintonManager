@@ -22,7 +22,7 @@ class MemoryStorage {
 }
 
 describe("career save migration", () => {
-  it("migrates version 2 tournament saves into version 3 without schema loss", () => {
+  it("migrates version 2 tournament saves into version 4 without schema loss", () => {
     const legacy = {
       version: 2,
       selectedPlayerId: seededPlayers[0].player.id,
@@ -34,16 +34,43 @@ describe("career save migration", () => {
     const parsed = persistedSavePayloadSchema.parse(legacy);
     const migrated = migratePersistedSave(parsed);
 
-    expect(migrated.version).toBe(3);
+    expect(migrated.version).toBe(4);
     expect(migrated.selectedPlayerId).toBe(legacy.selectedPlayerId);
     expect(migrated.career).toBeNull();
     expect(persistedSaveSchema.parse(migrated)).toEqual(migrated);
   });
 
-  it("persists a career payload through the version 3 schema", () => {
-    const career = createInitialCareerState(seededPlayers[0].player.id, 456);
+  it("migrates Phase 1 career saves into defaulted Phase 2 ecosystem state", () => {
+    const career = createInitialCareerState(seededPlayers[0].player.id, 455);
+    const phase1Career = {
+      ...career,
+      version: 1
+    };
+    const { ecosystem: _ecosystem, ...careerWithoutEcosystem } = phase1Career;
     const save = {
       version: 3,
+      selectedPlayerId: seededPlayers[0].player.id,
+      plannedTacticKey: "balancedControl",
+      seed: 455,
+      tournament: null,
+      liveMatch: null,
+      career: careerWithoutEcosystem
+    };
+
+    const parsed = persistedSavePayloadSchema.parse(save);
+    const migrated = migratePersistedSave(parsed);
+
+    expect(migrated.version).toBe(4);
+    expect(migrated.career?.version).toBe(2);
+    expect(migrated.career?.ecosystem.recruitment.roster).toHaveLength(1);
+    expect(migrated.career?.ecosystem.staff.candidates).toHaveLength(5);
+    expect(migrated.career?.ecosystem.psychology[0]?.athleteId).toBe(seededPlayers[0].player.id);
+  });
+
+  it("persists a career payload through the version 4 schema", () => {
+    const career = createInitialCareerState(seededPlayers[0].player.id, 456);
+    const save = {
+      version: 4,
       selectedPlayerId: seededPlayers[0].player.id,
       plannedTacticKey: "balancedControl",
       seed: 456,
@@ -72,7 +99,7 @@ describe("career save migration", () => {
 
   it("quarantines schema-invalid saves and exposes a recovery notice", () => {
     const raw = JSON.stringify({
-      version: 3,
+      version: 4,
       selectedPlayerId: seededPlayers[0].player.id,
       plannedTacticKey: "balancedControl",
       seed: 123,

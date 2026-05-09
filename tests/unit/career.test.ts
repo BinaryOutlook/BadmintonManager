@@ -3,6 +3,17 @@ import { seededPlayers } from "../../game/content/players";
 import { tacticLibrary } from "../../game/content/tactics";
 import { advanceCareerCalendar } from "../../game/career/calendar";
 import { canAffordEventEntry, chargeEventEntry, eventEntryCost } from "../../game/career/economy";
+import {
+  commissionScoutReport,
+  developYouthProspect,
+  hireStaffMember,
+  makeRecruitmentOffer,
+  resolveDueScoutReports,
+  resolvePromises,
+  setManagedAthletePromise,
+  staffModifiers,
+  withdrawPromise
+} from "../../game/career/ecosystem";
 import { getCareerEvent } from "../../game/career/events";
 import { settleCareerMatch } from "../../game/career/hubs";
 import { createInitialCareerState, managedAthlete } from "../../game/career/state";
@@ -143,5 +154,83 @@ describe("career core slice", () => {
     expect(charged.cash).toBe(lowCashEconomy.cash);
     expect(charged.travelSpend).toBe(lowCashEconomy.travelSpend);
     expect(charged.ledger).toHaveLength(lowCashEconomy.ledger.length);
+  });
+});
+
+describe("program ecosystem depth", () => {
+  it("uses scout capacity, cost, confidence, and verified fields before recruitment", () => {
+    const initial = createInitialCareerState(seededPlayers[0].player.id, 8101);
+    const withScout = hireStaffMember(initial, "staff-scout-okafor");
+    const assigned = commissionScoutReport(withScout, "cand-arya-prakash", "candidate");
+
+    expect(assigned.economy.cash).toBe(withScout.economy.cash - 3200);
+    expect(assigned.ecosystem.scouting.assignments[0]?.status).toBe("pending");
+    expect(staffModifiers(assigned.ecosystem).scoutCapacity).toBe(3);
+
+    const resolved = resolveDueScoutReports({
+      ...assigned,
+      date: assigned.ecosystem.scouting.assignments[0]!.dueAt
+    });
+    const report = resolved.ecosystem.scouting.reports[0]!;
+    const candidate = resolved.ecosystem.recruitment.candidates.find((entry) => entry.id === "cand-arya-prakash")!;
+
+    expect(report.confidence).toBeGreaterThanOrEqual(80);
+    expect(report.verifiedFields.cost).toContain("$");
+    expect(candidate.knowledge.cost).toBe("verified");
+    expect(candidate.risk).toBeLessThan(42);
+  });
+
+  it("reconciles recruitment offers with roster, budget, and signing promises", () => {
+    const withReport = resolveDueScoutReports({
+      ...commissionScoutReport(createInitialCareerState(seededPlayers[0].player.id, 8102), "cand-arya-prakash", "candidate"),
+      date: "2026-06-03"
+    });
+    const signed = makeRecruitmentOffer(withReport, "cand-arya-prakash");
+
+    expect(signed.ecosystem.recruitment.roster.some((slot) => slot.athleteId === "cand-arya-prakash")).toBe(true);
+    expect(signed.ecosystem.recruitment.candidates.find((entry) => entry.id === "cand-arya-prakash")?.offerState).toBe("accepted");
+    expect(signed.economy.cash).toBeLessThan(withReport.economy.cash);
+    expect(signed.ecosystem.promises.some((promise) => promise.athleteId === "cand-arya-prakash")).toBe(true);
+  });
+
+  it("develops a 16-year-old prospect into lower-event eligibility with staff modifiers", () => {
+    const initial = createInitialCareerState(seededPlayers[0].player.id, 8103);
+    const withCoach = hireStaffMember(initial, "staff-assistant-ruiz");
+    const developed = developYouthProspect(developYouthProspect(withCoach, "prospect-mei-sato"), "prospect-mei-sato");
+    const prospect = developed.ecosystem.academy.prospects[0]!;
+
+    expect(prospect.age).toBe(16);
+    expect(prospect.readiness).toBeGreaterThan(initial.ecosystem.academy.prospects[0]!.readiness);
+    expect(prospect.mentorOrStaffModifier).toBeGreaterThan(0);
+    expect(prospect.lowerEventEligibility).toBe(true);
+  });
+
+  it("tracks kept, missed, and withdrawn promise consequences against psychology", () => {
+    const promised = setManagedAthletePromise(createInitialCareerState(seededPlayers[0].player.id, 8104), "improve_stamina");
+    const kept = resolvePromises({
+      ...promised,
+      athletes: promised.athletes.map((athlete) => ({
+        ...athlete,
+        development: {
+          ...athlete.development,
+          stamina: 76
+        }
+      }))
+    });
+
+    expect(kept.ecosystem.promises[0]?.status).toBe("kept");
+    expect(kept.ecosystem.psychology[0]?.confidence).toBeGreaterThan(promised.ecosystem.psychology[0]!.confidence);
+
+    const missedBase = setManagedAthletePromise(createInitialCareerState(seededPlayers[0].player.id, 8105), "beat_top8");
+    const missed = resolvePromises({ ...missedBase, date: "2026-07-20" });
+
+    expect(missed.ecosystem.promises[0]?.status).toBe("missed");
+    expect(missed.ecosystem.psychology[0]?.morale).toBeLessThan(missedBase.ecosystem.psychology[0]!.morale);
+
+    const withdrawnBase = setManagedAthletePromise(createInitialCareerState(seededPlayers[0].player.id, 8106), "lower_event_entry");
+    const withdrawn = withdrawPromise(withdrawnBase, withdrawnBase.ecosystem.promises[0]!.id);
+
+    expect(withdrawn.ecosystem.promises[0]?.status).toBe("withdrawn");
+    expect(withdrawn.ecosystem.psychology[0]?.recentDrivers[0]).toContain("withdrawn");
   });
 });

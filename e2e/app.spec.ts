@@ -145,3 +145,62 @@ test("surfaces corrupt save recovery and blocks unaffordable event entry", async
   await expect(page.getByText(/Insufficient funds: program cash \$100/).first()).toBeVisible();
   await expect(page.getByRole("button", { name: "Insufficient Funds" }).first()).toBeDisabled();
 });
+
+test("can run the Phase 2 program ecosystem flow and persist it after reload", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Events" }).click();
+  await page.getByRole("button", { name: "Create Career Save" }).click();
+  await page.getByRole("button", { name: "Program Hub" }).click();
+  await expect(page.getByRole("heading", { name: "Program Ecosystem" })).toBeVisible();
+  await expect(page.getByText(/Scout capacity/)).toBeVisible();
+
+  await page.getByRole("button", { name: "Scouting Network" }).click();
+  await expect(page.getByRole("heading", { name: "Reduce Uncertainty" })).toBeVisible();
+  await page.getByRole("button", { name: "Commission Report" }).first().click();
+  await expect(page.getByText(/Assignment pending/).first()).toBeVisible();
+
+  await page.getByRole("button", { name: "Advance Day" }).click();
+  await page.getByRole("button", { name: "Advance Day" }).click();
+  await page.getByRole("button", { name: "Career Home" }).click();
+  await page.getByRole("button", { name: "Program Hub" }).click();
+  await page.getByRole("button", { name: "Scouting Network" }).click();
+  await expect(page.getByText(/confidence/).first()).toBeVisible();
+  await expect(page.getByText(/verified/).first()).toBeVisible();
+
+  await page.getByRole("button", { name: "Program Hub" }).click();
+  await page.getByRole("button", { name: "Recruitment Desk" }).click();
+  await expect(page.getByRole("heading", { name: "Offer Flow" })).toBeVisible();
+  await page.getByRole("button", { name: "Make Offer" }).first().click();
+  await expect(page.getByText(/Offer accepted/).first()).toBeVisible();
+  await expect(page.getByText(/weekly contract/).first()).toBeVisible();
+
+  await page.getByRole("button", { name: "Program Hub" }).click();
+  await page.getByRole("button", { name: "Youth Academy" }).click();
+  await expect(page.getByRole("heading", { name: "Prospect Pipeline" })).toBeVisible();
+  await page.getByRole("button", { name: "Run Development Block" }).click();
+  await page.getByRole("button", { name: "Run Development Block" }).click();
+  await expect(page.getByText(/Eligible/)).toBeVisible();
+
+  await page.getByRole("button", { name: "Program Hub" }).click();
+  await page.getByRole("button", { name: "Staff Room" }).click();
+  await expect(page.getByRole("heading", { name: "Hire Modifiers" })).toBeVisible();
+  await page.getByRole("button", { name: "Hire Staff" }).first().click();
+  await expect(page.getByText(/Active Modifiers/)).toBeVisible();
+  await expect(page.getByText(/Marta Ruiz/)).toBeVisible();
+
+  await page.getByRole("button", { name: "Program Hub" }).click();
+  await page.getByRole("button", { name: "Athlete State + Promises" }).click();
+  await expect(page.getByRole("heading", { name: "Psychology Desk" })).toBeVisible();
+  await page.getByRole("button", { name: "Promise Stamina" }).click();
+  await expect(page.getByText(/Promise created/).first()).toBeVisible();
+  await page.getByRole("button", { name: "Withdraw Promise" }).click();
+  await expect(page.getByText(/withdrawn/).first()).toBeVisible();
+
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Psychology Desk" })).toBeVisible();
+  await expect(page.getByText(/withdrawn/).first()).toBeVisible();
+  await page.getByRole("button", { name: "Program Hub" }).click();
+  await expect(page.getByText(/Arya Prakash offer accepted/)).toBeVisible();
+});
