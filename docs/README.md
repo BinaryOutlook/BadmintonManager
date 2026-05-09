@@ -32,6 +32,7 @@ docs/README.md
 | Milestone sequence | `docs/product/ROADMAP.md` | Version order, goals, or exit criteria change |
 | Current release work | `docs/product/versions/v0.2.3/v0.2.3.md` | The active version scope changes |
 | Planned release work | `docs/product/versions/v0.2.4/v0.2.4.md` | The next version scope changes |
+| `v0.2.4` player page and shell cleanup | `docs/product/versions/v0.2.4/player-profile-and-shell-amendment.md` | Player profile, player-name navigation, or settings consolidation direction changes |
 | Current project state | `docs/plans/active/project-status.md` | Work completes, next work changes, blockers appear |
 | Architecture boundaries | `docs/architecture/overview.md` | Module ownership or runtime boundaries change |
 | Subsystem rules | `docs/reference/*.md` | Engine, tactics, player, or tournament contracts change |

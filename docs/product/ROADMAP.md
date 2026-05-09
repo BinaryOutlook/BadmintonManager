@@ -133,7 +133,9 @@ Goal:
 
 - introduce a stronger internal UI framework inside the existing local-first React app
 - separate major features into purposeful page-level workspaces
+- add a badminton-native player profile page generated for every player name click
 - add a typed pop-up and overlay system for detail-heavy surfaces
+- consolidate true app settings into one settings pop-up while moving game decisions to their page homes
 - prepare the interface for around `32` available games or events
 - add season and calendar page scaffolds that can later support multi-game progression
 - keep the existing 16-player tournament loop playable while future systems take shape
@@ -142,7 +144,9 @@ Exit criteria:
 
 - major feature areas have clear page homes instead of competing inside one crowded command center
 - every page has an explicit player decision, primary context, primary action, and feedback path
+- every concrete player name can open a generated profile with badminton attributes, derived profile, traits, and current-run context
 - tactical intel and future detail surfaces render through a shared overlay or pop-up contract
+- theme and app preferences live in one settings pop-up; tactics, squad, tactical intel, and events do not
 - Games, Season, and Calendar pages exist as future-ready UI surfaces without pretending full season simulation is complete
 - the existing setup, bracket, live match, and recap flow works through the new page framework
 - no backend, auth, state-library replacement, or material persistence change is introduced by default
