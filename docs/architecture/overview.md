@@ -83,6 +83,7 @@ docs/
 app/
 components/
 game/
+  career/
   content/
   core/
   store/
@@ -100,6 +101,7 @@ e2e/
 - `app/`: route-level screens and top-level composition
 - `components/`: reusable UI surfaces
 - `game/core/`: pure simulation logic with no React imports
+- `game/career/`: typed career state, calendar, event tiers, training, health, economy, rankings, and hub view-model formulas
 - `game/content/`: player seeds, tactic presets, commentary templates
 - `game/store/`: Zustand state and UI-facing actions
 - `game/commentary/`: transforming engine events into readable match text
@@ -134,6 +136,7 @@ This layer must be:
 The application state owns:
 
 - the selected player
+- the career save, calendar, training/recovery choices, budget ledger, and ranking points
 - tournament progress
 - chosen tactics
 - current match presentation state

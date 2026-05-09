@@ -1,6 +1,6 @@
 # Project Status
 
-Status date: 2026-05-09
+Status date: 2026-05-10
 Current version target: `v0.2.3 Game-algorithm`
 Overall phase: Match simulation fidelity and game-algorithm upgrade
 Chosen stack: Option A local-first SPA
@@ -43,6 +43,7 @@ What is now stable:
 - the player profile overview now behaves more like a scout dossier, with radar metrics, archetype, strengths, weaknesses, tactical fit drivers, readiness, and smart player-name links inside prose
 - the player profile overview now fits as a compact one-screen desktop dashboard, fixes radar label clipping, and supports a resizable/collapsible persistent sidebar
 - the tournament setup athlete picker now leads with playstyle/strength recommendation modes, features the strongest choice in a `1 x 2` coach-pick card with four compact alternatives, and moves country, search, tier, style, and sort controls into the Browse All Athletes fallback
+- the first career core slice is implemented with a version `3` save payload, typed `game/career/*` modules, calendar/event entry, training/recovery, fatigue/injury readiness, ranking points, budget ledger, and career-aware pre/post match hubs
 
 ## Completed
 
@@ -96,6 +97,7 @@ What is now stable:
 - [x] upgraded the player profile overview into a Football Manager-style scout report with radar metrics, archetype, strengths, weaknesses, risk flags, readiness, and smart player-name linking in profile prose
 - [x] compressed the player profile Overview into a one-screen dashboard at `1440 x 900`, added short-viewport compact mode for `1366 x 768`, fixed the radar safe drawing area, and made the sidebar resizable, collapsible, and locally persistent
 - [x] refined setup player selection into a playstyle-first recommendation flow with a featured coach-pick layout plus full-roster search, country, tier, style, and stat sort controls
+- [x] added the Phase 1 career core vertical slice across save migration, calendar/event entry, training/recovery, health, ranking, economy, pre-match hub, post-match hub, unit tests, and Playwright reload proof
 
 ## In Progress
 
@@ -107,6 +109,7 @@ What is now stable:
 - [ ] improve commentary variety and phrasing
 - [ ] expand post-match stats and scouting reads
 - [ ] polish responsive behavior and visual details across the new shell
+- [ ] review the Phase 1 career core slice for balance, UI density, and later-wave scope boundaries before expanding into scouting, staff, rivals, facilities, media, or tactical viewer work
 
 ## Next
 
@@ -122,6 +125,7 @@ What is now stable:
 - [ ] deepen the tactical intel layer with richer contextual explanations
 - [ ] add more differentiated live directives and opponent pattern reads
 - [ ] tighten save migration coverage for future `v0.2.x` changes
+- [ ] tune Phase 1 career economy values, event tier rewards, and training load numbers after review feedback
 
 ## Blockers
 
