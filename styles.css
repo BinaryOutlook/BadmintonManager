@@ -666,6 +666,16 @@ button {
   background: rgba(12, 14, 17, 0.72);
 }
 
+.career-recovery-panel {
+  margin-bottom: 1rem;
+  border-color: rgba(242, 193, 78, 0.55);
+  background: rgba(48, 38, 18, 0.76);
+}
+
+.career-recovery-panel strong {
+  color: var(--text);
+}
+
 .career-stat-grid span,
 .career-brief-grid span,
 .career-event-card span,
@@ -766,6 +776,16 @@ button {
 
 .career-event-card .command-button {
   flex: 0 0 auto;
+}
+
+.career-event-card-blocked {
+  border-color: rgba(242, 193, 78, 0.46);
+}
+
+.career-event-warning {
+  margin-top: 0.38rem;
+  color: #f2c14e;
+  font-weight: 700;
 }
 
 .career-evidence-grid {

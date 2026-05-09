@@ -44,6 +44,18 @@ export function addLedgerEntry(args: {
   };
 }
 
+export function eventEntryCost(args: { travelCost: number; entryFee: number }) {
+  return args.travelCost + args.entryFee;
+}
+
+export function canAffordEventEntry(args: {
+  economy: ProgramEconomy;
+  travelCost: number;
+  entryFee: number;
+}) {
+  return args.economy.cash >= eventEntryCost(args);
+}
+
 export function chargeEventEntry(args: {
   economy: ProgramEconomy;
   date: string;
@@ -51,6 +63,10 @@ export function chargeEventEntry(args: {
   travelCost: number;
   entryFee: number;
 }) {
+  if (!canAffordEventEntry(args)) {
+    return args.economy;
+  }
+
   const withTravel = addLedgerEntry({
     economy: args.economy,
     date: args.date,

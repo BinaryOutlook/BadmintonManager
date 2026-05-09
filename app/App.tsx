@@ -110,6 +110,7 @@ export function App() {
     tournament,
     liveMatch,
     career,
+    saveRecovery,
     startCareer,
     applyCareerTraining,
     enterCareerEvent,
@@ -313,6 +314,7 @@ export function App() {
   function renderPage() {
     const careerPageProps = {
       career,
+      saveRecovery,
       onStartCareer: handleStartCareer,
       onOpenTraining: () => setActivePage({ id: "season" }),
       onOpenCalendar: () => setActivePage({ id: "calendar" }),

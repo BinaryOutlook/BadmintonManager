@@ -1,12 +1,15 @@
 import { playerMap } from "../game/content/players";
 import { buildWeek, daysBetween } from "../game/career/calendar";
+import { canAffordEventEntry, eventEntryCost } from "../game/career/economy";
 import { getCareerEvent, getNextEvent } from "../game/career/events";
 import type { CareerState } from "../game/career/models";
 import { managedAthlete } from "../game/career/state";
 import { trainingPlans } from "../game/career/training";
+import type { SaveRecoveryNotice } from "../game/store/store";
 
 interface CareerPageProps {
   career: CareerState | null;
+  saveRecovery: SaveRecoveryNotice | null;
   onStartCareer: () => void;
   onOpenTraining: () => void;
   onOpenCalendar: () => void;
@@ -32,7 +35,7 @@ function activeEvent(career: CareerState) {
     : getNextEvent(career.events, career.date);
 }
 
-function CareerEmpty(props: Pick<CareerPageProps, "onStartCareer">) {
+function CareerEmpty(props: Pick<CareerPageProps, "onStartCareer" | "saveRecovery">) {
   return (
     <section className="screen-shell">
       <div className="screen-header">
@@ -48,10 +51,23 @@ function CareerEmpty(props: Pick<CareerPageProps, "onStartCareer">) {
         </button>
       </div>
 
+      {props.saveRecovery && (
+        <section className="command-panel career-recovery-panel" role="status" aria-live="polite">
+          <div className="panel-header">
+            <h2>Career Save Recovery</h2>
+            <span>Corrupt save quarantined</span>
+          </div>
+          <p className="panel-summary">
+            {props.saveRecovery.message} The unreadable payload remains in local storage as{" "}
+            <strong>{props.saveRecovery.backupKey}</strong> for manual recovery.
+          </p>
+        </section>
+      )}
+
       <section className="command-panel">
         <div className="panel-header">
           <h2>No Career Loaded</h2>
-          <span>Local save slot ready</span>
+          <span>{props.saveRecovery ? "Fresh safe slot ready" : "Local save slot ready"}</span>
         </div>
         <p className="panel-summary">
           The career save will preserve the season date, athlete readiness, budget ledger, event entry, ranking points,
@@ -64,7 +80,7 @@ function CareerEmpty(props: Pick<CareerPageProps, "onStartCareer">) {
 
 export function CareerHomePage(props: CareerPageProps) {
   if (!props.career) {
-    return <CareerEmpty onStartCareer={props.onStartCareer} />;
+    return <CareerEmpty onStartCareer={props.onStartCareer} saveRecovery={props.saveRecovery} />;
   }
 
   const athlete = managedAthlete(props.career);
@@ -184,7 +200,7 @@ function CareerMeter(props: { label: string; value: number; danger?: boolean }) 
 
 export function CareerTrainingPage(props: CareerPageProps) {
   if (!props.career) {
-    return <CareerEmpty onStartCareer={props.onStartCareer} />;
+    return <CareerEmpty onStartCareer={props.onStartCareer} saveRecovery={props.saveRecovery} />;
   }
 
   const athlete = managedAthlete(props.career);
@@ -271,7 +287,7 @@ export function CareerTrainingPage(props: CareerPageProps) {
 
 export function CareerCalendarPage(props: CareerPageProps) {
   if (!props.career) {
-    return <CareerEmpty onStartCareer={props.onStartCareer} />;
+    return <CareerEmpty onStartCareer={props.onStartCareer} saveRecovery={props.saveRecovery} />;
   }
 
   const week = buildWeek(props.career.date);
@@ -323,23 +339,42 @@ export function CareerCalendarPage(props: CareerPageProps) {
             {props.career.events.map((event) => {
               const entered = props.career?.enteredEventIds.includes(event.id);
               const completed = props.career?.completedEventIds.includes(event.id);
+              const totalCost = eventEntryCost({
+                travelCost: event.travelCost,
+                entryFee: event.entryFee
+              });
+              const affordable = props.career
+                ? canAffordEventEntry({
+                    economy: props.career.economy,
+                    travelCost: event.travelCost,
+                    entryFee: event.entryFee
+                  })
+                : false;
               return (
-                <article key={event.id} className="career-event-card">
+                <article
+                  key={event.id}
+                  className={affordable || entered || completed ? "career-event-card" : "career-event-card career-event-card-blocked"}
+                >
                   <div>
                     <span>{event.tier}</span>
                     <strong>{event.name}</strong>
                     <p>
-                      {event.startDate} - travel {money(event.travelCost)}, entry {money(event.entryFee)}, champion points{" "}
-                      {event.rankingPoints.champion}
+                      {event.startDate} - travel {money(event.travelCost)}, entry {money(event.entryFee)}, total{" "}
+                      {money(totalCost)}, prize {money(event.prizeMoney.champion)}, champion points {event.rankingPoints.champion}
                     </p>
+                    {!affordable && !entered && !completed && (
+                      <p className="career-event-warning">
+                        Insufficient funds: program cash {money(props.career?.economy.cash ?? 0)} cannot cover entry.
+                      </p>
+                    )}
                   </div>
                   <button
                     className={entered ? "command-button command-button-secondary" : "command-button command-button-primary"}
                     type="button"
-                    disabled={entered || completed}
+                    disabled={entered || completed || !affordable}
                     onClick={() => props.onEnterEvent(event.id)}
                   >
-                    {completed ? "Complete" : entered ? "Entered" : "Enter Event"}
+                    {completed ? "Complete" : entered ? "Entered" : affordable ? "Enter Event" : "Insufficient Funds"}
                   </button>
                 </article>
               );
@@ -353,7 +388,7 @@ export function CareerCalendarPage(props: CareerPageProps) {
 
 export function CareerPreMatchHubPage(props: CareerPageProps) {
   if (!props.career) {
-    return <CareerEmpty onStartCareer={props.onStartCareer} />;
+    return <CareerEmpty onStartCareer={props.onStartCareer} saveRecovery={props.saveRecovery} />;
   }
 
   const brief = props.career.lastPreMatchBrief;
@@ -408,7 +443,7 @@ export function CareerPreMatchHubPage(props: CareerPageProps) {
 
 export function CareerPostMatchHubPage(props: CareerPageProps) {
   if (!props.career) {
-    return <CareerEmpty onStartCareer={props.onStartCareer} />;
+    return <CareerEmpty onStartCareer={props.onStartCareer} saveRecovery={props.saveRecovery} />;
   }
 
   const report = props.career.lastMatchReport;

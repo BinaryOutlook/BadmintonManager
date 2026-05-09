@@ -4,4 +4,8 @@ import { afterEach } from "vitest";
 
 afterEach(() => {
   cleanup();
+
+  if (typeof window !== "undefined" && typeof window.localStorage?.clear === "function") {
+    window.localStorage.clear();
+  }
 });

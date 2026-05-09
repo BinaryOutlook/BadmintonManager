@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { seededPlayers } from "../../game/content/players";
 import { tacticLibrary } from "../../game/content/tactics";
 import { advanceCareerCalendar } from "../../game/career/calendar";
-import { chargeEventEntry } from "../../game/career/economy";
+import { canAffordEventEntry, chargeEventEntry, eventEntryCost } from "../../game/career/economy";
 import { getCareerEvent } from "../../game/career/events";
 import { settleCareerMatch } from "../../game/career/hubs";
 import { createInitialCareerState, managedAthlete } from "../../game/career/state";
@@ -112,5 +112,36 @@ describe("career core slice", () => {
     expect(settled.economy.prizeIncome).toBeGreaterThan(0);
     expect(settled.economy.cash).toBeGreaterThan(career.economy.cash);
     expect(managedAthlete(settled).fatigue).toBeGreaterThan(managedAthlete(career).fatigue);
+  });
+
+  it("blocks event entry charges when program cash cannot cover travel and entry", () => {
+    const initial = createInitialCareerState(seededPlayers[0].player.id, 7004);
+    const event = getCareerEvent(initial.events, "summit-invitational-750")!;
+    const entryCost = eventEntryCost({
+      travelCost: event.travelCost,
+      entryFee: event.entryFee
+    });
+    const lowCashEconomy = {
+      ...initial.economy,
+      cash: entryCost - 1
+    };
+
+    expect(canAffordEventEntry({
+      economy: lowCashEconomy,
+      travelCost: event.travelCost,
+      entryFee: event.entryFee
+    })).toBe(false);
+
+    const charged = chargeEventEntry({
+      economy: lowCashEconomy,
+      date: initial.date,
+      label: event.name,
+      travelCost: event.travelCost,
+      entryFee: event.entryFee
+    });
+
+    expect(charged.cash).toBe(lowCashEconomy.cash);
+    expect(charged.travelSpend).toBe(lowCashEconomy.travelSpend);
+    expect(charged.ledger).toHaveLength(lowCashEconomy.ledger.length);
   });
 });

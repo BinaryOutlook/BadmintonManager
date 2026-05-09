@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { seededPlayers, playerMap } from "../content/players";
 import { tacticLibrary } from "../content/tactics";
 import { advanceCareerCalendar } from "../career/calendar";
-import { chargeEventEntry } from "../career/economy";
+import { canAffordEventEntry, chargeEventEntry } from "../career/economy";
 import { getCareerEvent } from "../career/events";
 import { buildPreMatchBrief, settleCareerMatch } from "../career/hubs";
 import {
@@ -25,10 +25,17 @@ import {
 } from "../tournament/tournament";
 import { migratePersistedSave, persistedSavePayloadSchema, type PersistedSave } from "./save";
 
-const STORAGE_KEY = "badminton-manager-save";
+export const STORAGE_KEY = "badminton-manager-save";
+export const CORRUPT_STORAGE_KEY = "badminton-manager-save-corrupt";
 
 export type TacticKey = keyof typeof tacticLibrary;
 export type AppPhase = "setup" | "overview" | "match" | "complete";
+
+export interface SaveRecoveryNotice {
+  reason: "malformed_json" | "invalid_schema";
+  backupKey: string;
+  message: string;
+}
 
 interface LiveManagedMatch {
   matchId: string;
@@ -47,6 +54,7 @@ export interface TournamentStoreState {
   tournament: TournamentState | null;
   liveMatch: LiveManagedMatch | null;
   career: CareerState | null;
+  saveRecovery: SaveRecoveryNotice | null;
   startCareer: () => void;
   applyCareerTraining: (planId: string) => void;
   enterCareerEvent: (eventId: string) => void;
@@ -65,6 +73,19 @@ export interface TournamentStoreState {
 
 function randomSeed() {
   return Math.floor(Math.random() * 2_147_483_000);
+}
+
+function createDefaultPersistedState(seed = randomSeed()) {
+  return {
+    selectedPlayerId: seededPlayers[0].player.id,
+    plannedTacticKey: "balancedControl" as TacticKey,
+    seed,
+    tournament: null,
+    liveMatch: null,
+    career: null,
+    saveRecovery: null,
+    phase: "setup" as AppPhase
+  };
 }
 
 function inferPhase(tournament: TournamentState | null, liveMatch: LiveManagedMatch | null): AppPhase {
@@ -101,26 +122,43 @@ function persist(state: TournamentStoreState) {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
 }
 
-function loadPersisted(): Pick<
+type PersistedRuntimeState = Pick<
   TournamentStoreState,
   "selectedPlayerId" | "plannedTacticKey" | "seed" | "tournament" | "liveMatch" | "phase"
-  | "career"
-> {
-  const defaultState = {
-    selectedPlayerId: seededPlayers[0].player.id,
-    plannedTacticKey: "balancedControl" as TacticKey,
-    seed: randomSeed(),
-    tournament: null,
-    liveMatch: null,
-    career: null,
-    phase: "setup" as AppPhase
-  };
+  | "career" | "saveRecovery"
+>;
 
-  if (typeof window === "undefined") {
-    return defaultState;
+type StorageAdapter = Pick<Storage, "getItem" | "setItem" | "removeItem">;
+
+function isStorageAdapter(storage: unknown): storage is StorageAdapter {
+  return Boolean(
+    storage &&
+      typeof (storage as StorageAdapter).getItem === "function" &&
+      typeof (storage as StorageAdapter).setItem === "function" &&
+      typeof (storage as StorageAdapter).removeItem === "function"
+  );
+}
+
+function quarantineCorruptSave(storage: StorageAdapter, raw: string) {
+  try {
+    storage.setItem(CORRUPT_STORAGE_KEY, raw);
+  } catch {
+    // If backup storage is unavailable, still clear the active slot so boot remains safe.
   }
 
-  const raw = window.localStorage.getItem(STORAGE_KEY);
+  try {
+    storage.removeItem(STORAGE_KEY);
+  } catch {
+    // Ignore storage teardown failures; recovery state still tells the user what happened.
+  }
+}
+
+export function loadPersistedFromStorage(
+  storage: StorageAdapter,
+  seedFactory: () => number = randomSeed
+): PersistedRuntimeState {
+  const defaultState = createDefaultPersistedState(seedFactory());
+  const raw = storage.getItem(STORAGE_KEY);
 
   if (!raw) {
     return defaultState;
@@ -131,15 +169,31 @@ function loadPersisted(): Pick<
   try {
     json = JSON.parse(raw);
   } catch {
-    window.localStorage.removeItem(STORAGE_KEY);
-    return defaultState;
+    quarantineCorruptSave(storage, raw);
+
+    return {
+      ...defaultState,
+      saveRecovery: {
+        reason: "malformed_json",
+        backupKey: CORRUPT_STORAGE_KEY,
+        message: "The local save file could not be read as JSON, so it was quarantined before a fresh safe slot was opened."
+      }
+    };
   }
 
   const parsed = persistedSavePayloadSchema.safeParse(json);
 
   if (!parsed.success) {
-    window.localStorage.removeItem(STORAGE_KEY);
-    return defaultState;
+    quarantineCorruptSave(storage, raw);
+
+    return {
+      ...defaultState,
+      saveRecovery: {
+        reason: "invalid_schema",
+        backupKey: CORRUPT_STORAGE_KEY,
+        message: "The local save file did not match the supported save schema, so it was quarantined before a fresh safe slot was opened."
+      }
+    };
   }
 
   const migrated = migratePersistedSave(parsed.data);
@@ -151,8 +205,17 @@ function loadPersisted(): Pick<
     tournament: migrated.tournament,
     liveMatch: migrated.liveMatch,
     career: migrated.career,
+    saveRecovery: null,
     phase: inferPhase(migrated.tournament, migrated.liveMatch)
   };
+}
+
+function loadPersisted(): PersistedRuntimeState {
+  if (typeof window === "undefined" || !isStorageAdapter(window.localStorage)) {
+    return createDefaultPersistedState();
+  }
+
+  return loadPersistedFromStorage(window.localStorage);
 }
 
 function currentManagedTactic(state: TournamentStoreState): MatchTactic {
@@ -219,6 +282,7 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
         career,
         tournament: null,
         liveMatch: null,
+        saveRecovery: null,
         phase: "setup" as AppPhase
       };
       persist(next);
@@ -273,6 +337,23 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
 
       if (!event || state.career.completedEventIds.includes(eventId)) {
         return state;
+      }
+
+      if (!canAffordEventEntry({
+        economy: state.career.economy,
+        travelCost: event.travelCost,
+        entryFee: event.entryFee
+      })) {
+        const career = {
+          ...state.career,
+          notes: [`Insufficient funds for ${event.name}`, ...state.career.notes].slice(0, 6)
+        };
+        const next = {
+          ...state,
+          career
+        };
+        persist(next);
+        return next;
       }
 
       const economy = chargeEventEntry({
@@ -368,6 +449,7 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
         tournament,
         liveMatch: null,
         career: null,
+        saveRecovery: null,
         phase: "overview" as AppPhase
       };
       persist(next);

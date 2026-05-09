@@ -73,6 +73,7 @@ test("can complete and reload the career core slice", async ({ page }) => {
   await page.getByRole("button", { name: "Career Home" }).click();
   await page.getByRole("button", { name: "Event Desk" }).click();
   await expect(page.getByRole("heading", { name: "Season Week" })).toBeVisible();
+  await expect(page.getByText(/prize \$15,000/)).toBeVisible();
   await page.getByRole("button", { name: "Enter Event" }).first().click();
   await expect(page.getByRole("button", { name: "Entered" }).first()).toBeVisible();
 
@@ -109,4 +110,38 @@ test("can complete and reload the career core slice", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Match Evidence Review" })).toBeVisible();
   await expect(page.getByText(/Points/).first()).toBeVisible();
   await expect(page.getByText(/Cash/).first()).toBeVisible();
+});
+
+test("surfaces corrupt save recovery and blocks unaffordable event entry", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.addInitScript(() => {
+    if (!window.sessionStorage.getItem("corrupt-save-seeded")) {
+      window.localStorage.setItem("badminton-manager-save", "{not-valid-json");
+      window.sessionStorage.setItem("corrupt-save-seeded", "true");
+    }
+  });
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Events" }).click();
+  await expect(page.getByRole("heading", { name: "Career Save Recovery" })).toBeVisible();
+  await expect(page.getByText(/Corrupt save quarantined/)).toBeVisible();
+
+  await page.getByRole("button", { name: "Create Career Save" }).click();
+  await page.evaluate(() => {
+    const raw = window.localStorage.getItem("badminton-manager-save");
+    if (!raw) {
+      throw new Error("Expected a career save after creation.");
+    }
+
+    const save = JSON.parse(raw);
+    save.career.economy.cash = 100;
+    window.localStorage.setItem("badminton-manager-save", JSON.stringify(save));
+  });
+  await page.reload();
+
+  await page.getByRole("button", { name: "Event Desk" }).click();
+  await expect(page.getByRole("heading", { name: "Season Week" })).toBeVisible();
+  await expect(page.getByText(/prize \$15,000/)).toBeVisible();
+  await expect(page.getByText(/Insufficient funds: program cash \$100/).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Insufficient Funds" }).first()).toBeDisabled();
 });
