@@ -35,6 +35,13 @@ interface RecommendationMode {
   reasonFor: (item: RankedAthlete) => string;
 }
 
+interface FeaturedRecommendationCopy {
+  headline: string;
+  body: string;
+  tacticalRead: string;
+  metrics: Array<{ label: string; value: number | string }>;
+}
+
 const archetypeLabels: Record<ArchetypeKey, string> = {
   attack: "Attack First",
   control: "Control Artist",
@@ -239,6 +246,82 @@ function filterAndSortRoster(
     });
 }
 
+function buildFeaturedRecommendationCopy(
+  modeKey: RecommendationModeKey,
+  item: RankedAthlete
+): FeaturedRecommendationCopy {
+  const player = item.entry.player;
+  const tier = tierLabels[getTier(item)].toLowerCase();
+
+  if (modeKey === "attack") {
+    return {
+      headline: "Best fit when you want to seize initiative early.",
+      body: `${player.name} is the strongest attacking read because the power-speed base is backed by elite smash output and a fearless aggression profile. This is the pick for a coach who wants short rallies, first-strike pressure, and fewer neutral exchanges.`,
+      tacticalRead: "Open with forward tempo, hunt short lifts, and accept a little volatility in exchange for constant scoreboard pressure.",
+      metrics: [
+        { label: "Power", value: item.dossier.power },
+        { label: "Speed", value: item.dossier.speed },
+        { label: "Smash", value: player.ratings.technical.smash },
+        { label: "Aggression", value: player.ratings.mental.aggression }
+      ]
+    };
+  }
+
+  if (modeKey === "control") {
+    return {
+      headline: "Best fit when you want the match on your terms.",
+      body: `${player.name} leads this lane because the control profile combines front-court precision, serve-return quality, and anticipation. The upside is not just clean technique; it is the ability to keep the opponent reacting instead of choosing.`,
+      tacticalRead: "Use patient placement, crowd the net after weak replies, and make the opponent solve one uncomfortable shot after another.",
+      metrics: [
+        { label: "Control", value: item.dossier.control },
+        { label: "Net", value: player.ratings.technical.netPlay },
+        { label: "Drop", value: player.ratings.technical.dropShot },
+        { label: "Anticipation", value: player.ratings.mental.anticipation }
+      ]
+    };
+  }
+
+  if (modeKey === "rally") {
+    return {
+      headline: "Best fit when you want to stretch the match.",
+      body: `${player.name} is the safest rally-engine choice because stamina, retrieval, focus, and movement all support repeated long exchanges. This profile is built to absorb pressure without letting the tactical shape collapse late in games.`,
+      tacticalRead: "Extend rallies, deny cheap winners, and let the opponent's risk profile become the problem over time.",
+      metrics: [
+        { label: "Stamina", value: item.dossier.stamina },
+        { label: "Retrieval", value: player.ratings.technical.defenseRetrieval },
+        { label: "Focus", value: player.ratings.mental.focus },
+        { label: "Footwork", value: player.ratings.physical.footworkSpeed }
+      ]
+    };
+  }
+
+  if (modeKey === "underdog") {
+    return {
+      headline: "Best fit when you want a dangerous challenge run.",
+      body: `${player.name} is the most interesting underdog recommendation because one standout weapon gives the coach a real plan despite the lower OVR. This is not the safest route; it is the route with a sharp identity.`,
+      tacticalRead: "Protect the weak phase, lean hard into the standout trait, and force opponents to answer the same problem repeatedly.",
+      metrics: [
+        { label: "OVR", value: item.overall },
+        { label: "Power", value: item.dossier.power },
+        { label: "Control", value: item.dossier.control },
+        { label: "Style", value: archetypeLabels[getArchetype(item)] }
+      ]
+    };
+  }
+
+  return {
+    headline: `Best overall title route at rank #${item.rank}.`,
+    body: `${player.name} is the featured coach pick because the ${tier} OVR profile gives you the cleanest starting point before tactics complicate the draw. The recommendation is not about nationality; it is about a complete badminton base that can win in multiple match shapes.`,
+    tacticalRead: "Start from a balanced plan, scout the first opponent, then adjust tempo once the bracket reveals the real threat.",
+    metrics: [
+      { label: "OVR", value: item.overall },
+      { label: "Power", value: item.dossier.power },
+      { label: "Speed", value: item.dossier.speed },
+      { label: "Control", value: item.dossier.control }
+    ]
+  };
+}
+
 export function SetupView(props: SetupViewProps) {
   const [rosterModalOpen, setRosterModalOpen] = useState(false);
   const [activeModeKey, setActiveModeKey] = useState<RecommendationModeKey>("best");
@@ -267,6 +350,11 @@ export function SetupView(props: SetupViewProps) {
   );
   const activeMode =
     recommendationModes.find((mode) => mode.key === activeModeKey) ?? recommendationModes[0];
+  const featuredPick = activeMode.picks[0];
+  const alternatePicks = activeMode.picks.slice(1, 5);
+  const featuredCopy = featuredPick
+    ? buildFeaturedRecommendationCopy(activeMode.key, featuredPick)
+    : undefined;
   const selected =
     rankedRoster.find((item) => item.entry.player.id === props.selectedPlayerId) ?? rankedRoster[0];
   const hasBrowseFilters =
@@ -379,8 +467,7 @@ export function SetupView(props: SetupViewProps) {
             <div>
               <h2>Pick Your Playstyle</h2>
               <p className="panel-summary panel-summary-tight">
-                Start with how you want to win. Country stays visible, but the first choice is
-                strength and badminton style.
+                Start by defining how you want to play.
               </p>
             </div>
             <button
@@ -417,50 +504,115 @@ export function SetupView(props: SetupViewProps) {
               </div>
               <p>{activeMode.summary}</p>
             </div>
-            <div className="recommendation-picks recommendation-picks-featured">
-              {activeMode.picks.map((item) => (
+            {featuredPick && featuredCopy && (
+              <div className="recommendation-layout">
                 <article
                   className={
-                    item.entry.player.id === props.selectedPlayerId
-                      ? "recommendation-pick recommendation-pick-active"
-                      : "recommendation-pick"
+                    featuredPick.entry.player.id === props.selectedPlayerId
+                      ? "recommendation-featured-card recommendation-pick-active"
+                      : "recommendation-featured-card"
                   }
-                  key={`${activeMode.key}-${item.entry.player.id}`}
+                  aria-label={`Featured recommendation: ${featuredPick.entry.player.name}`}
                 >
-                  <div className="recommendation-pick-top">
-                    <span className="athlete-avatar">{item.entry.player.nationality}</span>
-                    <span>Rank #{item.rank}</span>
+                  <div className="recommendation-featured-top">
+                    <span className="athlete-avatar">{featuredPick.entry.player.nationality}</span>
+                    <div>
+                      <span className="recommendation-featured-kicker">Featured Coach Pick</span>
+                      <span>Rank #{featuredPick.rank}</span>
+                    </div>
                   </div>
                   <button
-                    className="athlete-profile-button athlete-profile-button-block"
+                    className="athlete-profile-button recommendation-featured-name"
                     type="button"
-                    onClick={() => props.onOpenPlayerProfile(item.entry.player.id)}
+                    onClick={() => props.onOpenPlayerProfile(featuredPick.entry.player.id)}
                   >
-                    {item.entry.player.name}
+                    {featuredPick.entry.player.name}
                   </button>
-                  <p>{activeMode.reasonFor(item)}</p>
                   <div className="recommendation-pick-tags">
-                    <span>{archetypeLabels[getArchetype(item)]}</span>
-                    <span>{tierLabels[getTier(item)]}</span>
+                    <span>{archetypeLabels[getArchetype(featuredPick)]}</span>
+                    <span>{tierLabels[getTier(featuredPick)]}</span>
+                    <span>OVR {featuredPick.overall}</span>
                   </div>
-                  <div className="recommendation-pick-actions">
-                    {item.entry.player.id !== props.selectedPlayerId ? (
+                  <p className="recommendation-featured-headline">{featuredCopy.headline}</p>
+                  <p className="recommendation-featured-copy">{featuredCopy.body}</p>
+                  <div className="featured-stat-grid" aria-label="Featured recommendation stat cluster">
+                    {featuredCopy.metrics.map((metric) => (
+                      <div className="featured-stat" key={metric.label}>
+                        <span>{metric.label}</span>
+                        <strong>{metric.value}</strong>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="recommendation-featured-tactical">{featuredCopy.tacticalRead}</p>
+                  <div className="recommendation-featured-actions">
+                    {featuredPick.entry.player.id !== props.selectedPlayerId ? (
                       <button
                         className="sidebar-mini-button"
                         type="button"
-                        aria-label={`Select ${item.entry.player.name}`}
-                        onClick={() => selectPlayer(item.entry.player.id)}
+                        aria-label={`Select featured ${featuredPick.entry.player.name}`}
+                        onClick={() => selectPlayer(featuredPick.entry.player.id)}
                       >
                         Select
                       </button>
                     ) : (
                       <span className="selection-chip">Selected</span>
                     )}
-                    <span>OVR {item.overall}</span>
+                    <button
+                      className="sidebar-mini-button profile-open-button"
+                      type="button"
+                      onClick={() => props.onOpenPlayerProfile(featuredPick.entry.player.id)}
+                    >
+                      Open Profile
+                    </button>
                   </div>
                 </article>
-              ))}
-            </div>
+
+                <div className="recommendation-alt-grid" aria-label="Supporting recommendations">
+                  {alternatePicks.map((item) => (
+                    <article
+                      className={
+                        item.entry.player.id === props.selectedPlayerId
+                          ? "recommendation-pick recommendation-pick-active"
+                          : "recommendation-pick"
+                      }
+                      key={`${activeMode.key}-${item.entry.player.id}`}
+                    >
+                      <div className="recommendation-pick-top">
+                        <span className="athlete-avatar">{item.entry.player.nationality}</span>
+                        <span>Rank #{item.rank}</span>
+                      </div>
+                      <button
+                        className="athlete-profile-button athlete-profile-button-block"
+                        type="button"
+                        onClick={() => props.onOpenPlayerProfile(item.entry.player.id)}
+                      >
+                        {item.entry.player.name}
+                      </button>
+                      <p>{activeMode.reasonFor(item)}</p>
+                      <div className="recommendation-pick-tags">
+                        <span>{archetypeLabels[getArchetype(item)]}</span>
+                        <span>{tierLabels[getTier(item)]}</span>
+                      </div>
+                      <div className="recommendation-pick-actions">
+                        {item.entry.player.id !== props.selectedPlayerId ? (
+                          <button
+                            className="sidebar-mini-button"
+                            type="button"
+                            aria-label={`Select ${item.entry.player.name}`}
+                            onClick={() => selectPlayer(item.entry.player.id)}
+                          >
+                            Select
+                          </button>
+                        ) : (
+                          <span className="selection-chip">Selected</span>
+                        )}
+                        <span>OVR {item.overall}</span>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </div>
+            )}
           </section>
         </section>
 

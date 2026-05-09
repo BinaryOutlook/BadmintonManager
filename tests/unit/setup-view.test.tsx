@@ -23,11 +23,14 @@ describe("SetupView", () => {
     expect(screen.getByRole("button", { name: /Rally Engine/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Underdog/ })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Active Roster" })).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/Featured recommendation:/)).toHaveTextContent("Featured Coach Pick");
+    expect(screen.getByLabelText("Supporting recommendations").querySelectorAll(".recommendation-pick")).toHaveLength(4);
 
     fireEvent.click(screen.getByRole("button", { name: /Attack First/ }));
 
     expect(screen.getByRole("button", { name: /Attack First/ })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getAllByText(/aggression/i).length).toBeGreaterThan(0);
+    expect(screen.getByLabelText(/Featured recommendation:/)).toHaveTextContent("short rallies");
 
     fireEvent.click(screen.getByRole("button", { name: "Browse All Athletes" }));
 
@@ -47,6 +50,31 @@ describe("SetupView", () => {
     expect(within(athleteCards[0] as HTMLElement).getByText("OVR Rank #1")).toBeInTheDocument();
     expect(within(athleteCards[0] as HTMLElement).queryByText("GS")).not.toBeInTheDocument();
     expect(within(rosterPanel!).queryByText(/Seed #/)).not.toBeInTheDocument();
+  });
+
+  it("selects from the featured coach pick and supporting alternatives", () => {
+    const onSelectPlayer = vi.fn();
+
+    render(
+      <SetupView
+        selectedPlayerId={seededPlayers[0].player.id}
+        plannedTacticKey="balancedControl"
+        onSelectPlayer={onSelectPlayer}
+        onOpenPlayerProfile={vi.fn()}
+        onChooseTactic={vi.fn()}
+        onStartTournament={vi.fn()}
+      />
+    );
+
+    const featuredCard = screen.getByLabelText(/Featured recommendation:/);
+    fireEvent.click(within(featuredCard).getByRole("button", { name: /Select featured/ }));
+
+    expect(onSelectPlayer).toHaveBeenCalledTimes(1);
+
+    const supportingRecommendations = screen.getByLabelText("Supporting recommendations");
+    fireEvent.click(within(supportingRecommendations).getAllByRole("button", { name: /Select/ })[0]);
+
+    expect(onSelectPlayer).toHaveBeenCalledTimes(2);
   });
 
   it("filters the full roster by country and resets browse state", () => {
