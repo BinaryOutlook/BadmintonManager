@@ -220,6 +220,7 @@ export function CareerTrainingPage(props: CareerPageProps) {
                     : "career-plan-card"
                 }
                 type="button"
+                aria-pressed={props.career?.selectedTrainingPlanId === plan.id}
                 onClick={() => props.onApplyTraining(plan.id)}
               >
                 <span>{plan.intensity}</span>

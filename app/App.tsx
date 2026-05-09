@@ -125,7 +125,15 @@ export function App() {
     advanceAfterMatch,
     reset
   } = useTournamentStore();
-  const [activePage, setActivePage] = useState<AppPage>(() => pageForPhase(phase));
+  const [activePage, setActivePage] = useState<AppPage>(() =>
+    career
+      ? career.stage === "post_match"
+        ? { id: "review" }
+        : career.stage === "pre_match"
+          ? { id: "bracket" }
+          : { id: "home" }
+      : pageForPhase(phase)
+  );
   const [intelOpen, setIntelOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [confirmResetOpen, setConfirmResetOpen] = useState(false);
@@ -372,6 +380,10 @@ export function App() {
       );
     }
 
+    if (career?.stage === "post_match") {
+      return <CareerPostMatchHubPage {...careerPageProps} />;
+    }
+
     if (phase === "overview" && tournament) {
       if (career?.stage === "pre_match") {
         return <CareerPreMatchHubPage {...careerPageProps} />;
@@ -404,10 +416,6 @@ export function App() {
           onOpenPlayerProfile={openPlayerProfile}
         />
       );
-    }
-
-    if (career?.stage === "post_match") {
-      return <CareerPostMatchHubPage {...careerPageProps} />;
     }
 
     if (phase === "complete" && tournament) {

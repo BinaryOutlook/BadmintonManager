@@ -54,3 +54,59 @@ test("can start a tournament run and play through a managed match", async ({ pag
     page.getByRole("button", { name: /Enter Match|Start New Session/ })
   ).toBeVisible();
 });
+
+test("can complete and reload the career core slice", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Events" }).click();
+  await page.getByRole("button", { name: "Create Career Save" }).click();
+  await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
+  await expect(page.getByText(/Rank/).first()).toBeVisible();
+
+  await page.getByRole("button", { name: "Training Desk" }).click();
+  await expect(page.getByRole("heading", { name: "Load Management" })).toBeVisible();
+  const rallyBase = page.getByRole("button", { name: /Rally Base/ });
+  await rallyBase.click();
+  await expect(rallyBase).toHaveAttribute("aria-pressed", "true");
+
+  await page.getByRole("button", { name: "Career Home" }).click();
+  await page.getByRole("button", { name: "Event Desk" }).click();
+  await expect(page.getByRole("heading", { name: "Season Week" })).toBeVisible();
+  await page.getByRole("button", { name: "Enter Event" }).first().click();
+  await expect(page.getByRole("button", { name: "Entered" }).first()).toBeVisible();
+
+  await page.getByRole("button", { name: "Advance Day" }).click();
+  await page.getByRole("button", { name: "Advance Day" }).click();
+  await expect(page.getByRole("heading", { name: "Opponent Briefing" })).toBeVisible();
+  await expect(page.getByText(/Career context is now attached/)).toBeVisible();
+
+  await page.getByRole("button", { name: "Enter Match" }).click();
+  await expect(page.getByRole("button", { name: "Simulate Next Point" })).toBeVisible();
+
+  for (let index = 0; index < 180; index += 1) {
+    if (await page.getByRole("button", { name: "Advance Bracket" }).isVisible().catch(() => false)) {
+      break;
+    }
+
+    if (await page.getByRole("button", { name: "Encourage" }).isVisible().catch(() => false)) {
+      await page.getByRole("button", { name: "Encourage" }).click();
+    }
+
+    if (await page.getByRole("button", { name: "Open Next Set" }).isVisible().catch(() => false)) {
+      await page.getByRole("button", { name: "Open Next Set" }).click();
+    } else {
+      await page.getByRole("button", { name: "Simulate Next Point" }).click();
+    }
+  }
+
+  await page.getByRole("button", { name: "Advance Bracket" }).click();
+  await expect(page.getByRole("heading", { name: "Match Evidence Review" })).toBeVisible();
+  await expect(page.getByText("Career-aware recap")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Training Recommendations" })).toBeVisible();
+
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Match Evidence Review" })).toBeVisible();
+  await expect(page.getByText(/Points/).first()).toBeVisible();
+  await expect(page.getByText(/Cash/).first()).toBeVisible();
+});
