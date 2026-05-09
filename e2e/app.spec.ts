@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test("can start a tournament run and play through a managed match", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/");
 
   await expect(page.getByRole("heading", { name: "Tournament Deployment" })).toBeVisible();
@@ -8,6 +9,11 @@ test("can start a tournament run and play through a managed match", async ({ pag
   await page.getByRole("button", { name: "Grand-Slam Southpaw" }).click();
   await expect(page.getByRole("heading", { name: "Grand-Slam Southpaw" })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Attributes" })).toBeVisible();
+  await expect(page.getByText("Endurance").first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Resize sidebar" })).toBeVisible();
+  await page.getByRole("button", { name: "Collapse sidebar" }).click();
+  await expect(page.getByRole("button", { name: "Expand sidebar" })).toBeVisible();
+  await page.getByRole("button", { name: "Expand sidebar" }).click();
 
   await page.getByRole("banner").getByRole("button", { name: "SETTINGS" }).click();
   await expect(page.getByRole("heading", { name: "Console Preferences" })).toBeVisible();

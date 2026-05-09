@@ -4,6 +4,7 @@ import { deriveAthleteDossier, deriveThreatReport, summarizeTacticPlan } from ".
 import type { TournamentState } from "../game/tournament/tournament";
 import type { TacticKey } from "../game/store/store";
 import type { LiveMatchSession, Side } from "../game/core/models";
+import { PlayerLink, SmartPlayerText } from "./PlayerLink";
 
 interface TacticalIntelPanelProps {
   open: boolean;
@@ -52,7 +53,9 @@ export function TacticalIntelPanel(props: TacticalIntelPanelProps) {
 
       <div className="intel-section">
         <h3>Managed Athlete</h3>
-        <p className="intel-title">{selectedPlayer.name}</p>
+        <p className="intel-title">
+          <PlayerLink playerId={selectedPlayer.id} />
+        </p>
         <p>
           {selectedPlayer.nationality} · {selectedPlayer.styleLabel}
         </p>
@@ -69,7 +72,7 @@ export function TacticalIntelPanel(props: TacticalIntelPanelProps) {
         <p className="intel-title">{tactic.label}</p>
         <p>{tactic.summary}</p>
         <p className="intel-note">
-          {tacticPlan.title} {tacticPlan.summary}
+          <SmartPlayerText text={`${tacticPlan.title} ${tacticPlan.summary}`} />
         </p>
       </div>
 
@@ -77,9 +80,11 @@ export function TacticalIntelPanel(props: TacticalIntelPanelProps) {
         <div className="intel-section">
           <h3>Opponent Threat</h3>
           <p className="intel-title">
-            {opponent?.name} · {threat.level}
+            {opponent ? <PlayerLink playerId={opponent.id} /> : null} · {threat.level}
           </p>
-          <p>{threat.matchupSummary}</p>
+          <p>
+            <SmartPlayerText text={threat.matchupSummary} />
+          </p>
           <ul className="intel-list">
             {threat.strengths.map((strength) => (
               <li key={strength.label}>

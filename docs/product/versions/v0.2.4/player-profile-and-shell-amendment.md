@@ -494,7 +494,41 @@ Recommended page mapping:
 The sidebar can still show context-sensitive shortcuts, but those shortcuts should navigate or open a
 named overlay. They should not create hidden nested states that only the sidebar understands.
 
-## 14. Implementation Tasks For This Amendment
+## 14. Responsive Profile Layout Amendment
+
+The player profile Overview should behave like a tactical briefing screen, not a long scouting
+article. The implementation target is:
+
+```text
+--------------------------------------------------------------------------------+
+| Header + tabs                                                                  |
++--------------------------------------------------------------------------------+
+| Radar profile                  | Coach report                                   |
++--------------------------------------------------------------------------------+
+| Tactical fit                                                                    |
++--------------------------------------------------------------------------------+
+| Risk flags                     | Recent readiness                               |
++--------------------------------------------------------------------------------+
+```
+
+Acceptance criteria:
+
+- [x] The radar chart keeps every axis label inside its own SVG `viewBox`.
+- [x] The `Endurance` label remains visible at default and resized sidebar widths.
+- [x] The Overview fits in one screen at `1440 x 900` desktop size.
+- [x] A short-viewport compact mode keeps the primary Overview visible at `1366 x 768`.
+- [x] Tactical fit cards use compact driver lines instead of tall bullet lists.
+- [x] Risk flags and readiness use a compact bottom row.
+
+Sidebar behavior:
+
+- [x] The sidebar can be resized horizontally with a drag handle.
+- [x] Sidebar width is clamped between `180px` and `340px`.
+- [x] Default sidebar width is `240px`; collapsed width is `64px`.
+- [x] Sidebar width and collapsed state persist in `localStorage`.
+- [x] Short desktop viewports automatically use compact sidebar behavior.
+
+## 15. Implementation Tasks For This Amendment
 
 ### Task A: Add player profile page contract
 
@@ -549,7 +583,7 @@ Acceptance criteria:
 - [ ] Browser QA confirms the profile page and settings modal are reachable at desktop and narrow
       widths without text overlap.
 
-## 15. Verification Expectations
+## 16. Verification Expectations
 
 Run the standard release checks once implemented:
 

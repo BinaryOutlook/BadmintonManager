@@ -40,6 +40,8 @@ What is now stable:
 - the local roster now contains 47 fictional athletes, including six Trophy Titans and 15 Honorable Mentions, with setup selection sorted by OVR, nationality-code identifiers beside names, and each tournament drawing exactly 16 entrants for novelty
 - `v0.2.4 UI Framework and Season-Ready Layout` is drafted as the planned bridge release after `v0.2.3`, focused on page-level feature separation, runtime-generated player profiles, consolidated settings, pop-up windows, and UI preparation for larger event selection, seasons, and calendars
 - the first `v0.2.4` UI code slice now adds generated player profiles, a squad directory, player-name navigation, consolidated settings, theme accent choices, and reset confirmation while keeping simulation outcomes untouched
+- the player profile overview now behaves more like a scout dossier, with radar metrics, archetype, strengths, weaknesses, tactical fit drivers, readiness, and smart player-name links inside prose
+- the player profile overview now fits as a compact one-screen desktop dashboard, fixes radar label clipping, and supports a resizable/collapsible persistent sidebar
 
 ## Completed
 
@@ -90,6 +92,8 @@ What is now stable:
 - [x] added `v0.2.4` to the roadmap as the UI framework bridge before `v0.3`
 - [x] amended the `v0.2.4` documentation with the FM-inspired badminton player profile page, runtime player-page generation decision, player-name navigation rules, and consolidated settings pop-up direction
 - [x] implemented the first `v0.2.4` code slice for runtime-generated player profiles, squad directory navigation, consolidated settings, theme accent choices, and reset confirmation
+- [x] upgraded the player profile overview into a Football Manager-style scout report with radar metrics, archetype, strengths, weaknesses, risk flags, readiness, and smart player-name linking in profile prose
+- [x] compressed the player profile Overview into a one-screen dashboard at `1440 x 900`, added short-viewport compact mode for `1366 x 768`, fixed the radar safe drawing area, and made the sidebar resizable, collapsible, and locally persistent
 
 ## In Progress
 

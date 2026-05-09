@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { SmartPlayerText } from "../../components/PlayerLink";
 import { createPlayerProfileViewModel } from "../../game/selectors/player";
 import type { AppPhase } from "../../game/store/store";
 import type { LiveMatchSession } from "../../game/core/models";
@@ -52,7 +53,9 @@ function AttributeRows(props: {
           <div key={row.label} className="profile-attribute-row">
             <div className="metric-row">
               <span>{row.label}</span>
-              <strong>{Math.round(row.value)}</strong>
+              <strong>
+                {Math.round(row.value)} <em>{attributeBenchmark(row.value)}</em>
+              </strong>
             </div>
             <div className="metric-track">
               <div className={fillClass} style={{ width: `${Math.round(row.value)}%` }} />
@@ -61,6 +64,116 @@ function AttributeRows(props: {
         ))}
       </div>
     </section>
+  );
+}
+
+function attributeBenchmark(value: number) {
+  if (value >= 88) {
+    return "Elite";
+  }
+
+  if (value >= 80) {
+    return "Strong";
+  }
+
+  if (value >= 70) {
+    return "Average";
+  }
+
+  return "Weak";
+}
+
+function RadarChart(props: { metrics: Array<{ label: string; value: number }> }) {
+  const center = 210;
+  const radius = 122;
+  const labelPositions = [
+    { x: 210, y: 42, anchor: "middle" },
+    { x: 350, y: 122, anchor: "middle" },
+    { x: 350, y: 300, anchor: "middle" },
+    { x: 210, y: 382, anchor: "middle" },
+    { x: 70, y: 300, anchor: "middle" },
+    { x: 70, y: 122, anchor: "middle" }
+  ] as const;
+  const points = props.metrics.map((metric, index) => {
+    const angle = -Math.PI / 2 + (index * Math.PI * 2) / props.metrics.length;
+    const scaledRadius = radius * (metric.value / 100);
+    const labelPosition = labelPositions[index] ?? {
+      x: center + Math.cos(angle) * (radius + 52),
+      y: center + Math.sin(angle) * (radius + 52),
+      anchor: "middle" as const
+    };
+
+    return {
+      label: metric.label,
+      value: metric.value,
+      x: center + Math.cos(angle) * scaledRadius,
+      y: center + Math.sin(angle) * scaledRadius,
+      labelX: labelPosition.x,
+      labelY: labelPosition.y,
+      labelAnchor: labelPosition.anchor,
+      gridX: center + Math.cos(angle) * radius,
+      gridY: center + Math.sin(angle) * radius
+    };
+  });
+  const polygon = points.map((point) => `${point.x},${point.y}`).join(" ");
+  const gridPolygons = [0.35, 0.7, 1].map((scale) =>
+    props.metrics
+      .map((_, index) => {
+        const angle = -Math.PI / 2 + (index * Math.PI * 2) / props.metrics.length;
+
+        return `${center + Math.cos(angle) * radius * scale},${center + Math.sin(angle) * radius * scale}`;
+      })
+      .join(" ")
+  );
+
+  return (
+    <div className="profile-radar" aria-label="Badminton radar profile">
+      <svg
+        className="profile-radar-svg"
+        viewBox="0 0 420 420"
+        preserveAspectRatio="xMidYMid meet"
+        role="img"
+        aria-label="Radar profile chart"
+      >
+        <title>Badminton radar profile</title>
+        {gridPolygons.map((gridPolygon) => (
+          <polygon key={gridPolygon} className="profile-radar-grid" points={gridPolygon} />
+        ))}
+        {points.map((point) => (
+          <line
+            key={`axis-${point.label}`}
+            className="profile-radar-axis"
+            x1={center}
+            y1={center}
+            x2={point.gridX}
+            y2={point.gridY}
+          />
+        ))}
+        <polygon className="profile-radar-shape" points={polygon} />
+        {points.map((point) => (
+          <g key={point.label}>
+            <circle className="profile-radar-point" cx={point.x} cy={point.y} r="3" />
+            <text
+              className="profile-radar-label"
+              x={point.labelX}
+              y={point.labelY}
+              textAnchor={point.labelAnchor}
+              dominantBaseline="middle"
+            >
+              {point.label}
+            </text>
+          </g>
+        ))}
+      </svg>
+      <div className="profile-radar-values">
+        {props.metrics.map((metric) => (
+          <div key={metric.label}>
+            <span>{metric.label}</span>
+            <strong>{metric.value}</strong>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -116,6 +229,10 @@ export function PlayerProfilePage(props: PlayerProfilePageProps) {
     label: derivedAxisLabels[key] ?? key,
     value
   }));
+  const visibleStrengths = model.coachReport.strengths.slice(0, 2);
+  const visibleWeaknesses = model.coachReport.weaknesses.slice(0, 2);
+  const visibleRiskFlags = model.coachReport.riskFlags.slice(0, 2);
+  const hiddenRiskFlagCount = Math.max(0, model.coachReport.riskFlags.length - visibleRiskFlags.length);
 
   return (
     <section className="screen-shell player-profile-page">
@@ -128,7 +245,7 @@ export function PlayerProfilePage(props: PlayerProfilePageProps) {
             <span>{player.nationality}</span>
             <span>{player.age} years old</span>
             <span>{player.handedness === "left" ? "Left-handed" : "Right-handed"}</span>
-            <span>{player.styleLabel}</span>
+            <span>{model.coachReport.archetype}</span>
           </div>
         </div>
         <div className="player-profile-score">
@@ -170,61 +287,50 @@ export function PlayerProfilePage(props: PlayerProfilePageProps) {
       </div>
 
       {activeTab === "overview" && (
-        <div className="player-profile-grid">
-          <section className="command-panel profile-identity-panel">
+        <div className="player-profile-grid player-profile-grid-overview">
+          <section className="command-panel profile-radar-panel">
             <div className="panel-header">
-              <h2>Coach Read</h2>
+              <h2>Radar Profile</h2>
+              <span>{model.coachReport.archetype}</span>
+            </div>
+            <RadarChart metrics={model.radar} />
+          </section>
+
+          <section className="command-panel profile-scout-panel">
+            <div className="panel-header">
+              <h2>Coach Report</h2>
               <span>{model.context.label}</span>
             </div>
-            <p className="profile-context-copy">{model.context.detail}</p>
-
-            <div className="profile-dossier-grid">
+            <p className="profile-context-copy">{model.coachReport.summary}</p>
+            <div className="profile-report-columns">
               <div>
-                <span>Power</span>
-                <strong>{dossier.power}</strong>
+                <h3>Strengths</h3>
+                <ul>
+                  {visibleStrengths.map((strength) => (
+                    <li key={strength}>{strength}</li>
+                  ))}
+                </ul>
               </div>
               <div>
-                <span>Speed</span>
-                <strong>{dossier.speed}</strong>
-              </div>
-              <div>
-                <span>Stamina</span>
-                <strong>{dossier.stamina}</strong>
-              </div>
-              <div>
-                <span>Control</span>
-                <strong>{dossier.control}</strong>
+                <h3>Weaknesses</h3>
+                <ul>
+                  {visibleWeaknesses.map((weakness) => (
+                    <li key={weakness}>{weakness}</li>
+                  ))}
+                </ul>
               </div>
             </div>
-
-            <div className="dossier-note">
-              <span className="chip chip-primary">{dossier.formHeadline}</span>
-              <p>{dossier.formSummary}</p>
-            </div>
-          </section>
-
-          <section className="command-panel profile-strength-panel">
-            <div className="panel-header">
-              <h2>Top Weapons</h2>
-              <span>Ratings-backed</span>
-            </div>
-            <div className="profile-strength-list">
-              {model.strengths.map((strength) => (
-                <div key={`${strength.group}-${strength.label}`} className="profile-strength-row">
-                  <div>
-                    <strong>{strength.label}</strong>
-                    <span>{strength.group}</span>
-                  </div>
-                  <span>{strength.value}</span>
-                </div>
-              ))}
+            <div className="profile-decision-box">
+              <span>Selection Recommendation</span>
+              <strong>{model.coachReport.selectionRecommendation}</strong>
+              <p>{model.coachReport.bestUse}</p>
             </div>
           </section>
 
-          <section className="command-panel command-panel-full">
+          <section className="command-panel command-panel-full profile-fit-panel">
             <div className="panel-header">
               <h2>Tactical Fit</h2>
-              <span>Generated from badminton attributes</span>
+              <span>Interpretation + drivers</span>
             </div>
             <div className="profile-tactic-grid">
               {model.tacticFits.map((fit) => (
@@ -235,7 +341,37 @@ export function PlayerProfilePage(props: PlayerProfilePageProps) {
                   </div>
                   <p>{fit.headline}</p>
                   <small>{fit.risk}</small>
+                  <span className="profile-driver-line">Drivers: {fit.drivers.join(" · ")}</span>
                 </article>
+              ))}
+            </div>
+          </section>
+
+          <section className="command-panel profile-risk-panel">
+            <div className="panel-header">
+              <h2>Risk Flags</h2>
+              <span>Managerial caution</span>
+            </div>
+            <ul className="profile-risk-list">
+              {visibleRiskFlags.map((flag) => (
+                <li key={flag}>{flag}</li>
+              ))}
+              {hiddenRiskFlagCount > 0 && <li>+{hiddenRiskFlagCount} more scouting notes</li>}
+            </ul>
+          </section>
+
+          <section className="command-panel profile-readiness-panel">
+            <div className="panel-header">
+              <h2>Recent Readiness</h2>
+              <span>Current run</span>
+            </div>
+            <div className="profile-readiness-grid">
+              {model.coachReport.readiness.map((entry) => (
+                <div key={entry.label}>
+                  <span>{entry.label}</span>
+                  <strong>{entry.value}</strong>
+                  <small>{entry.detail}</small>
+                </div>
               ))}
             </div>
           </section>
@@ -256,7 +392,24 @@ export function PlayerProfilePage(props: PlayerProfilePageProps) {
           <section className="command-panel command-panel-wide">
             <div className="panel-header">
               <h2>Current-Run Evidence</h2>
-              <span>{model.performance.entries.length} entries</span>
+              <span>{model.performance.formLabel}</span>
+            </div>
+            <div className="profile-form-strip">
+              <span>Recent Form</span>
+              {model.performance.recentForm.length > 0 ? (
+                <div>
+                  {model.performance.recentForm.map((result, index) => (
+                    <strong
+                      key={`${result}-${index}`}
+                      className={result === "W" ? "form-chip form-chip-win" : "form-chip form-chip-loss"}
+                    >
+                      {result}
+                    </strong>
+                  ))}
+                </div>
+              ) : (
+                <p>{model.performance.emptyState}</p>
+              )}
             </div>
             {model.performance.entries.length > 0 ? (
               <div className="path-grid">
@@ -264,12 +417,14 @@ export function PlayerProfilePage(props: PlayerProfilePageProps) {
                   <article key={`${entry.label}-${entry.detail}`} className={`path-card path-card-${entry.result}`}>
                     <span>{entry.label}</span>
                     <strong>{entry.result}</strong>
-                    <small>{entry.detail}</small>
+                    <small>
+                      <SmartPlayerText text={entry.detail} />
+                    </small>
                   </article>
                 ))}
               </div>
             ) : (
-              <p className="panel-summary">No match record exists for this athlete in the current run.</p>
+              <p className="panel-summary">{model.performance.emptyState}</p>
             )}
           </section>
 
@@ -297,18 +452,25 @@ export function PlayerProfilePage(props: PlayerProfilePageProps) {
       {activeTab === "career" && (
         <section className="command-panel">
           <div className="panel-header">
-            <h2>Career Scaffold</h2>
-            <span>Season-ready</span>
+            <h2>Career Story</h2>
+            <span>{model.career.stage}</span>
           </div>
           <div className="profile-career-state">
-            <p>
-              Long-term records will connect here once seasons, calendar progression, and career
-              persistence are implemented.
-            </p>
+            <p>{model.career.narrative}</p>
             <div className="profile-career-facts">
-              <span>{player.nationality}</span>
-              <span>{player.styleLabel}</span>
-              <span>{model.traits.length > 0 ? `${model.traits.length} traits` : "No traits listed"}</span>
+              {model.career.recordCards.map((card) => (
+                <span key={card.label}>
+                  {card.label}: {card.value}
+                </span>
+              ))}
+            </div>
+            <div className="profile-career-milestones">
+              <h3>Milestones</h3>
+              <ul>
+                {model.career.milestones.map((milestone) => (
+                  <li key={milestone}>{milestone}</li>
+                ))}
+              </ul>
             </div>
           </div>
         </section>

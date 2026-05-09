@@ -17,6 +17,7 @@ export interface TacticFitSummary {
   score: number;
   headline: string;
   risk: string;
+  drivers: string[];
 }
 
 export interface PlayerPerformanceEntry {
@@ -28,6 +29,33 @@ export interface PlayerPerformanceEntry {
 export interface PlayerPerformanceSummary {
   entries: PlayerPerformanceEntry[];
   aggregateStats: Array<{ label: string; value: string }>;
+  recentForm: string[];
+  formLabel: string;
+  emptyState: string;
+}
+
+export interface PlayerRadarMetric {
+  label: string;
+  value: number;
+}
+
+export interface CoachReport {
+  archetype: string;
+  summary: string;
+  strengths: string[];
+  weaknesses: string[];
+  bestUse: string;
+  selectionRecommendation: string;
+  riskFlags: string[];
+  readiness: Array<{ label: string; value: string; detail: string }>;
+}
+
+export interface CareerSummary {
+  stage: string;
+  trajectory: string;
+  narrative: string;
+  milestones: string[];
+  recordCards: Array<{ label: string; value: string }>;
 }
 
 export interface PlayerProfileViewModel {
@@ -39,7 +67,10 @@ export interface PlayerProfileViewModel {
   context: PlayerContextSummary;
   tacticFits: TacticFitSummary[];
   strengths: Array<{ label: string; value: number; group: string }>;
+  radar: PlayerRadarMetric[];
+  coachReport: CoachReport;
   performance: PlayerPerformanceSummary;
+  career: CareerSummary;
 }
 
 export function overallFromDossier(dossier: AthleteDossier) {
@@ -175,6 +206,22 @@ function tacticFitScore(player: Player, derived: DerivedProfile, tacticKey: stri
   }
 }
 
+function ratingLabel(value: number) {
+  if (value >= 88) {
+    return "Elite";
+  }
+
+  if (value >= 80) {
+    return "Strong";
+  }
+
+  if (value >= 70) {
+    return "Average";
+  }
+
+  return "Weak";
+}
+
 function tacticHeadline(score: number) {
   if (score >= 88) {
     return "Natural fit";
@@ -189,6 +236,39 @@ function tacticHeadline(score: number) {
   }
 
   return "Specialist risk";
+}
+
+function tacticDrivers(player: Player, derived: DerivedProfile, tacticKey: string) {
+  const { technical, physical, mental } = player.ratings;
+
+  switch (tacticKey) {
+    case "aggressiveSmash":
+      return [
+        `smash ${technical.smash}`,
+        `attack pressure ${Math.round(derived.attackPressure)}`,
+        `aggression ${mental.aggression}`
+      ];
+    case "balancedControl":
+      return [
+        `front-court control ${Math.round(derived.frontCourtControl)}`,
+        `judgment ${Math.round(derived.judgment)}`,
+        `serve / return ${technical.serveReturn}`
+      ];
+    case "spreadCourt":
+      return [
+        `stamina ${physical.stamina}`,
+        `recovery ${Math.round(derived.recoveryQuality)}`,
+        `rally tolerance ${Math.round(derived.rallyTolerance)}`
+      ];
+    case "defensiveWall":
+      return [
+        `defense / retrieval ${technical.defenseRetrieval}`,
+        `pressure resistance ${Math.round(derived.pressureResistance)}`,
+        `rally tolerance ${Math.round(derived.rallyTolerance)}`
+      ];
+    default:
+      return ["overall balance"];
+  }
 }
 
 function tacticRisk(player: Player, tacticKey: string) {
@@ -225,7 +305,8 @@ function deriveTacticFits(player: Player, derived: DerivedProfile): TacticFitSum
       label: option.label,
       score,
       headline: tacticHeadline(score),
-      risk: tacticRisk(player, option.key)
+      risk: tacticRisk(player, option.key),
+      drivers: tacticDrivers(player, derived, option.key)
     };
   });
 }
@@ -246,6 +327,221 @@ function deriveStrengths(player: Player, derived: DerivedProfile) {
   return rawStrengths.sort((left, right) => right.value - left.value).slice(0, 5);
 }
 
+function deriveRadar(player: Player, derived: DerivedProfile): PlayerRadarMetric[] {
+  const { technical, physical, mental } = player.ratings;
+
+  return [
+    {
+      label: "Attack",
+      value: Math.round(
+        technical.smash * 0.32 +
+          technical.dropShot * 0.16 +
+          derived.attackPressure * 0.36 +
+          mental.aggression * 0.16
+      )
+    },
+    {
+      label: "Defense",
+      value: Math.round(
+        technical.defenseRetrieval * 0.4 + derived.recoveryQuality * 0.3 + derived.judgment * 0.3
+      )
+    },
+    {
+      label: "Movement",
+      value: Math.round(
+        physical.footworkSpeed * 0.34 +
+          physical.agilityBalance * 0.26 +
+          physical.explosivenessJump * 0.2 +
+          derived.recoveryQuality * 0.2
+      )
+    },
+    {
+      label: "Control",
+      value: Math.round(
+        technical.netPlay * 0.24 +
+          technical.clearLob * 0.2 +
+          technical.serveReturn * 0.2 +
+          mental.focus * 0.16 +
+          derived.frontCourtControl * 0.2
+      )
+    },
+    {
+      label: "Mentality",
+      value: Math.round(
+        mental.anticipation * 0.24 +
+          mental.composure * 0.24 +
+          mental.focus * 0.24 +
+          derived.judgment * 0.28
+      )
+    },
+    {
+      label: "Endurance",
+      value: Math.round(
+        physical.stamina * 0.44 + derived.rallyTolerance * 0.36 + derived.recoveryQuality * 0.2
+      )
+    }
+  ];
+}
+
+function bestRadarMetric(radar: PlayerRadarMetric[]) {
+  return [...radar].sort((left, right) => right.value - left.value)[0];
+}
+
+function lowestRadarMetric(radar: PlayerRadarMetric[]) {
+  return [...radar].sort((left, right) => left.value - right.value)[0];
+}
+
+function deriveArchetype(player: Player, radar: PlayerRadarMetric[], derived: DerivedProfile) {
+  const radarMap = Object.fromEntries(radar.map((metric) => [metric.label, metric.value]));
+  const { technical, physical, mental } = player.ratings;
+
+  if (radarMap.Endurance >= 91 && radarMap.Defense >= 88) {
+    return "Relentless Rally Controller";
+  }
+
+  if (radarMap.Attack >= 90 && mental.aggression >= 84) {
+    return "Explosive Smasher";
+  }
+
+  if (derived.frontCourtControl >= 88 && technical.netPlay >= 86) {
+    return "Front-Court Technician";
+  }
+
+  if (radarMap.Defense >= 88 && radarMap.Mentality >= 86) {
+    return "Pressure Absorber";
+  }
+
+  if (physical.footworkSpeed >= 88 && radarMap.Movement >= 88) {
+    return "Tempo Disruptor";
+  }
+
+  if (radar.every((metric) => metric.value >= 80)) {
+    return "Balanced All-Rounder";
+  }
+
+  return `${player.styleLabel} Specialist`;
+}
+
+function deriveWeaknesses(player: Player, radar: PlayerRadarMetric[], tacticFits: TacticFitSummary[]) {
+  const { technical, physical, mental } = player.ratings;
+  const weaknesses: string[] = [];
+  const lowRadar = lowestRadarMetric(radar);
+  const attackFit = tacticFits.find((fit) => fit.key === "aggressiveSmash");
+
+  if (technical.smash < 84) {
+    weaknesses.push("Instant kill threat is useful, but not a guaranteed primary weapon.");
+  }
+
+  if (mental.aggression < 76) {
+    weaknesses.push("Lower aggression can limit quick attacking conversion.");
+  }
+
+  if (physical.stamina < 78) {
+    weaknesses.push("Long match load can become expensive if the plan stretches too far.");
+  }
+
+  if (mental.composure < 78) {
+    weaknesses.push("Score pressure may affect late-set choices.");
+  }
+
+  if (attackFit && attackFit.score < 80) {
+    weaknesses.push("All-out attacking systems are situational rather than natural.");
+  }
+
+  weaknesses.push(`${lowRadar.label} is the least dominant radar category at ${lowRadar.value}.`);
+
+  return [...new Set(weaknesses)].slice(0, 4);
+}
+
+function deriveRiskFlags(player: Player, radar: PlayerRadarMetric[], tacticFits: TacticFitSummary[]) {
+  const { technical, physical, mental } = player.ratings;
+  const flags: string[] = [];
+  const lowestFit = [...tacticFits].sort((left, right) => left.score - right.score)[0];
+
+  if (mental.aggression < 76) {
+    flags.push("Lower aggression");
+  }
+
+  if (technical.smash < 84) {
+    flags.push("Moderate smash ceiling");
+  }
+
+  if (physical.stamina < 78) {
+    flags.push("Long-rally fatigue exposure");
+  }
+
+  if ((radar.find((metric) => metric.label === "Defense")?.value ?? 0) < 78) {
+    flags.push("Can be pressured by repeated attacks");
+  }
+
+  flags.push(`${lowestFit.label} is the weakest tactical fit`);
+
+  return [...new Set(flags)].slice(0, 4);
+}
+
+function deriveCoachReport(args: {
+  player: Player;
+  radar: PlayerRadarMetric[];
+  derived: DerivedProfile;
+  tacticFits: TacticFitSummary[];
+  performance: PlayerPerformanceSummary;
+}): CoachReport {
+  const { player, radar, tacticFits, performance } = args;
+  const topMetric = bestRadarMetric(radar);
+  const bestFit = [...tacticFits].sort((left, right) => right.score - left.score)[0];
+  const secondFit = [...tacticFits].sort((left, right) => right.score - left.score)[1];
+  const archetype = deriveArchetype(player, radar, args.derived);
+  const strengths = [
+    `${ratingLabel(topMetric.value)} ${topMetric.label.toLowerCase()} profile at ${topMetric.value}.`,
+    `${bestFit.label} is the cleanest tactical home (${bestFit.score}).`,
+    `${player.styleLabel} identity gives the coach a clear match-plan starting point.`,
+    `Best drivers: ${bestFit.drivers.join(", ")}.`
+  ];
+  const weaknesses = deriveWeaknesses(player, radar, tacticFits);
+  const riskFlags = deriveRiskFlags(player, radar, tacticFits);
+  const bestUse =
+    bestFit.key === "spreadCourt"
+      ? "Extend rallies, stretch the court, and drain opponents through repeated recovery demands."
+      : bestFit.key === "defensiveWall"
+        ? "Absorb pressure, reset safely, and invite overhit errors from impatient attackers."
+        : bestFit.key === "aggressiveSmash"
+          ? "Front-load initiative and shorten points before the opponent settles into rhythm."
+          : "Control openings, protect rally stability, and win through cleaner shot selection.";
+  const selectionRecommendation =
+    bestFit.score >= 88
+      ? `Start in matchups where ${bestFit.label} can define the rally shape.`
+      : bestFit.score >= 80
+        ? `Selectable, but pair with ${bestFit.label} or ${secondFit.label} rather than forcing a poor role.`
+        : "Use selectively until the matchup gives this athlete a clear tactical advantage.";
+
+  return {
+    archetype,
+    summary: `${player.name} profiles as a ${archetype.toLowerCase()} who is best understood through ${topMetric.label.toLowerCase()} and ${bestFit.label.toLowerCase()} usage rather than raw OVR alone.`,
+    strengths,
+    weaknesses,
+    bestUse,
+    selectionRecommendation,
+    riskFlags,
+    readiness: [
+      {
+        label: "Fitness",
+        value: radar.find((metric) => metric.label === "Endurance")!.value >= 86 ? "Excellent" : "Managed",
+        detail: "Read from stamina, recovery quality, and rally tolerance."
+      },
+      {
+        label: "Form",
+        value: performance.formLabel,
+        detail: performance.entries.length > 0 ? "Based on current-run match evidence." : "No current-run evidence yet."
+      },
+      {
+        label: "Morale",
+        value: player.ratings.mental.composure >= 84 ? "Stable" : "Watch",
+        detail: "Estimated from composure and pressure resistance."
+      }
+    ]
+  };
+}
+
 function collectPerformance(args: {
   playerId: string;
   selectedPlayerId: string;
@@ -255,6 +551,7 @@ function collectPerformance(args: {
   const { playerId, selectedPlayerId, tournament, liveMatch } = args;
   const entries: PlayerPerformanceEntry[] = [];
   const aggregateStats: Array<{ label: string; value: string }> = [];
+  const recentForm: string[] = [];
 
   if (liveMatch && isLiveCompetitor(playerId, liveMatch)) {
     const isA = liveMatch.input.playerA.id === playerId;
@@ -268,7 +565,14 @@ function collectPerformance(args: {
   }
 
   if (!tournament) {
-    return { entries, aggregateStats };
+    return {
+      entries,
+      aggregateStats,
+      recentForm,
+      formLabel: "No evidence",
+      emptyState:
+        "No match evidence yet. Select this athlete for a managed match to unlock performance telemetry, form trends, and opponent-specific analysis."
+    };
   }
 
   for (const round of tournament.rounds) {
@@ -294,6 +598,7 @@ function collectPerformance(args: {
         detail: `${match.winnerId === playerId ? "Won" : "Lost"} against ${opponent.name}, ${match.scoreline ?? "score pending"}.`,
         result: match.winnerId === playerId ? "won" : "lost"
       });
+      recentForm.push(match.winnerId === playerId ? "W" : "L");
     }
   }
 
@@ -321,7 +626,63 @@ function collectPerformance(args: {
     );
   }
 
-  return { entries, aggregateStats };
+  const latestFive = recentForm.slice(-5);
+
+  return {
+    entries,
+    aggregateStats,
+    recentForm: latestFive,
+    formLabel:
+      latestFive.length === 0
+        ? "No evidence"
+        : latestFive.filter((result) => result === "W").length >= Math.ceil(latestFive.length / 2)
+          ? "Positive"
+          : "Volatile",
+    emptyState:
+      "No match evidence yet. Select this athlete for a managed match to unlock performance telemetry, form trends, and opponent-specific analysis."
+  };
+}
+
+function deriveCareerSummary(args: {
+  player: Player;
+  overall: number;
+  performance: PlayerPerformanceSummary;
+}): CareerSummary {
+  const { player, overall, performance } = args;
+  const stage =
+    player.age <= 22
+      ? "Developing years"
+      : player.age <= 29
+        ? "Prime years"
+        : player.age <= 33
+          ? "Late prime"
+          : "Veteran phase";
+  const trajectory =
+    player.age <= 23 && overall >= 82
+      ? "Rising"
+      : player.age >= 31
+        ? "Monitor decline"
+        : "Stable";
+  const wins = performance.entries.filter((entry) => entry.result === "won").length;
+  const losses = performance.entries.filter((entry) => entry.result === "lost").length;
+  const played = wins + losses;
+
+  return {
+    stage,
+    trajectory,
+    narrative: `${player.name} is in the ${stage.toLowerCase()} as a ${player.styleLabel.toLowerCase()}. Long-term ranking history and season awards will attach here once the season model is active.`,
+    milestones: [
+      player.traits?.length ? `${player.traits.length} identity traits recorded` : "No special traits recorded yet",
+      played > 0 ? `${played} current-run match${played === 1 ? "" : "es"} logged` : "No current-run match record yet",
+      overall >= 88 ? "Profiles as an elite event-level option" : "Profiles as a selectable tour-level option"
+    ],
+    recordCards: [
+      { label: "Career stage", value: stage },
+      { label: "Trajectory", value: trajectory },
+      { label: "Current-run W/L", value: `${wins}-${losses}` },
+      { label: "Best event result", value: wins > 0 ? "Active run evidence" : "Not recorded" }
+    ]
+  };
 }
 
 export function createPlayerProfileViewModel(args: {
@@ -338,16 +699,29 @@ export function createPlayerProfileViewModel(args: {
 
   const dossier = deriveAthleteDossier(player);
   const derived = deriveProfile(player);
+  const tacticFits = deriveTacticFits(player, derived);
+  const radar = deriveRadar(player, derived);
+  const performance = collectPerformance(args);
+  const overall = overallFromDossier(dossier);
 
   return {
     player,
-    overall: overallFromDossier(dossier),
+    overall,
     dossier,
     derived,
     traits: player.traits ?? [],
     context: deriveContext(args),
-    tacticFits: deriveTacticFits(player, derived),
+    tacticFits,
     strengths: deriveStrengths(player, derived),
-    performance: collectPerformance(args)
+    radar,
+    coachReport: deriveCoachReport({
+      player,
+      radar,
+      derived,
+      tacticFits,
+      performance
+    }),
+    performance,
+    career: deriveCareerSummary({ player, overall, performance })
   };
 }

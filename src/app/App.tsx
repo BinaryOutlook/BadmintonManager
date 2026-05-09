@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { CompleteView } from "../components/CompleteView";
 import { ConfirmOverlay } from "../components/ConfirmOverlay";
 import { MatchView } from "../components/MatchView";
@@ -12,18 +12,25 @@ import { useTournamentStore } from "../game/store/store";
 import { isPhaseBoundPage, pageForPhase, type AppPage } from "./pages";
 import { PlayerProfilePage } from "./pages/PlayerProfilePage";
 import { SquadPage } from "./pages/SquadPage";
+import { PlayerNavigationProvider } from "./playerNavigation";
 
 type SidebarPanel = "command" | "tactics" | "athletes" | "events" | "settings";
 type TopMode = "LIVE" | "SQUAD" | "BRACKETS";
 
 const THEME_STORAGE_KEY = "badminton-manager-theme-accent";
+const SIDEBAR_WIDTH_STORAGE_KEY = "sidebarWidth";
+const SIDEBAR_COLLAPSED_STORAGE_KEY = "sidebarCollapsed";
+const SIDEBAR_MIN_WIDTH = 180;
+const SIDEBAR_DEFAULT_WIDTH = 240;
+const SIDEBAR_MAX_WIDTH = 340;
+const SIDEBAR_COLLAPSED_WIDTH = 64;
 
-const sideNavItems: Array<{ key: SidebarPanel; label: string }> = [
-  { key: "command", label: "Command" },
-  { key: "tactics", label: "Tactics" },
-  { key: "athletes", label: "Athletes" },
-  { key: "events", label: "Events" },
-  { key: "settings", label: "Settings" }
+const sideNavItems: Array<{ key: SidebarPanel; label: string; short: string }> = [
+  { key: "command", label: "Command", short: "CMD" },
+  { key: "tactics", label: "Tactics", short: "TAC" },
+  { key: "athletes", label: "Athletes", short: "ATH" },
+  { key: "events", label: "Events", short: "EVT" },
+  { key: "settings", label: "Settings", short: "SET" }
 ];
 
 function loadThemeAccent(): ThemeAccent {
@@ -36,6 +43,36 @@ function loadThemeAccent(): ThemeAccent {
   return stored === "cyan" || stored === "rose" || stored === "slate" || stored === "lime"
     ? stored
     : "lime";
+}
+
+function clampSidebarWidth(width: number) {
+  return Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, width));
+}
+
+function loadSidebarWidth() {
+  if (typeof window === "undefined") {
+    return SIDEBAR_DEFAULT_WIDTH;
+  }
+
+  const storedValue = window.localStorage.getItem(SIDEBAR_WIDTH_STORAGE_KEY);
+
+  if (storedValue === null) {
+    return SIDEBAR_DEFAULT_WIDTH;
+  }
+
+  const storedWidth = Number(storedValue);
+
+  return Number.isFinite(storedWidth)
+    ? clampSidebarWidth(storedWidth)
+    : SIDEBAR_DEFAULT_WIDTH;
+}
+
+function loadSidebarCollapsed() {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  return window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === "true";
 }
 
 function topModeForPage(page: AppPage, fallback: TopMode): TopMode {
@@ -107,6 +144,8 @@ export function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [confirmResetOpen, setConfirmResetOpen] = useState(false);
   const [sidebarPanel, setSidebarPanel] = useState<SidebarPanel>("command");
+  const [sidebarWidth, setSidebarWidth] = useState(loadSidebarWidth);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(loadSidebarCollapsed);
   const [themeAccent, setThemeAccent] = useState<ThemeAccent>(loadThemeAccent);
   const selectedPlayer = playerMap[selectedPlayerId];
   const phaseTopMode = phase === "match" ? "LIVE" : phase === "setup" ? "SQUAD" : "BRACKETS";
@@ -114,6 +153,9 @@ export function App() {
   const selectedTactic =
     tacticOptions.find((option) => option.key === plannedTacticKey) ?? tacticOptions[0];
   const canEnterManagedMatch = phase === "overview" && Boolean(tournament);
+  const workspaceStyle = {
+    "--sidebar-width": `${sidebarCollapsed ? SIDEBAR_COLLAPSED_WIDTH : sidebarWidth}px`
+  } as CSSProperties;
 
   useEffect(() => {
     setActivePage((currentPage) => {
@@ -124,6 +166,18 @@ export function App() {
       return pageForPhase(phase);
     });
   }, [phase]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, String(sidebarWidth));
+    }
+  }, [sidebarWidth]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, String(sidebarCollapsed));
+    }
+  }, [sidebarCollapsed]);
 
   function setThemeAccentPreference(accent: ThemeAccent) {
     setThemeAccent(accent);
@@ -204,6 +258,34 @@ export function App() {
         setSettingsOpen(true);
         break;
     }
+  }
+
+  function beginSidebarResize(event: ReactPointerEvent<HTMLButtonElement>) {
+    event.preventDefault();
+
+    const handle = event.currentTarget;
+    const pointerId = event.pointerId;
+    const startX = event.clientX;
+    const startWidth = sidebarCollapsed ? SIDEBAR_DEFAULT_WIDTH : sidebarWidth;
+
+    setSidebarCollapsed(false);
+    handle.setPointerCapture(pointerId);
+
+    function handlePointerMove(moveEvent: PointerEvent) {
+      setSidebarWidth(clampSidebarWidth(startWidth + moveEvent.clientX - startX));
+    }
+
+    function handlePointerUp() {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+
+      if (handle.hasPointerCapture(pointerId)) {
+        handle.releasePointerCapture(pointerId);
+      }
+    }
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
   }
 
   function renderPage() {
@@ -325,7 +407,11 @@ export function App() {
   }
 
   return (
-    <div className="command-shell" data-accent={themeAccent}>
+    <PlayerNavigationProvider onOpenPlayerProfile={openPlayerProfile}>
+      <div
+        className={sidebarCollapsed ? "command-shell command-shell-sidebar-collapsed" : "command-shell"}
+        data-accent={themeAccent}
+      >
       <header className="topbar">
         <div className="brand-row">
           <span className="brand-mark">SMASH_COMMAND</span>
@@ -354,7 +440,7 @@ export function App() {
         </div>
       </header>
 
-      <div className="workspace-shell">
+      <div className="workspace-shell" style={workspaceStyle}>
         <aside className="sidebar">
           <div className="sidebar-brand">
             <div className="sidebar-logo">BM</div>
@@ -362,6 +448,14 @@ export function App() {
               <h2>STRATEGIST_HUB</h2>
               <p>Local-first coaching console</p>
             </div>
+            <button
+              className="sidebar-collapse-button"
+              type="button"
+              aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              onClick={() => setSidebarCollapsed((current) => !current)}
+            >
+              {sidebarCollapsed ? ">" : "<"}
+            </button>
           </div>
 
           <button className="command-button command-button-secondary sidebar-reset" onClick={requestReset}>
@@ -377,6 +471,7 @@ export function App() {
                   sidebarPanel === item.key ? "sidenav-item sidenav-item-active" : "sidenav-item"
                 }
                 aria-pressed={sidebarPanel === item.key}
+                data-short={item.short}
                 onClick={() => activateSidebarPanel(item.key)}
               >
                 {item.label}
@@ -485,6 +580,12 @@ export function App() {
               {selectedPlayer.nationality} · {selectedPlayer.styleLabel}
             </span>
           </div>
+          <button
+            className="sidebar-resize-handle"
+            type="button"
+            aria-label="Resize sidebar"
+            onPointerDown={beginSidebarResize}
+          />
         </aside>
 
         <main className="main-canvas">{renderPage()}</main>
@@ -516,6 +617,7 @@ export function App() {
         onConfirm={confirmReset}
         onCancel={() => setConfirmResetOpen(false)}
       />
-    </div>
+      </div>
+    </PlayerNavigationProvider>
   );
 }
