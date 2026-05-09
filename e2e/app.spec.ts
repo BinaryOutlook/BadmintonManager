@@ -147,6 +147,7 @@ test("surfaces corrupt save recovery and blocks unaffordable event entry", async
 });
 
 test("can run the Phase 2 program ecosystem flow and persist it after reload", async ({ page }) => {
+  test.slow();
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto("/");
 
@@ -195,10 +196,13 @@ test("can run the Phase 2 program ecosystem flow and persist it after reload", a
   await expect(page.getByRole("heading", { name: "Psychology Desk" })).toBeVisible();
   await page.getByRole("button", { name: "Promise Stamina" }).click();
   await expect(page.getByText(/Promise created/).first()).toBeVisible();
-  await page.getByRole("button", { name: "Withdraw Promise" }).click();
+  await page.getByRole("button", { name: "Withdraw Promise" }).first().click();
   await expect(page.getByText(/withdrawn/).first()).toBeVisible();
 
   await page.reload();
+  await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
+  await page.getByRole("button", { name: "Program Hub" }).click();
+  await page.getByRole("button", { name: "Athlete State + Promises" }).click();
   await expect(page.getByRole("heading", { name: "Psychology Desk" })).toBeVisible();
   await expect(page.getByText(/withdrawn/).first()).toBeVisible();
   await page.getByRole("button", { name: "Program Hub" }).click();

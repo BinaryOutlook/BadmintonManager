@@ -656,6 +656,9 @@ export function CareerStaffRoomPage(props: CareerPageProps) {
         <div className="screen-meta">
           <span>Salary {money(modifiers.salary)}</span>
           <span>Scout cap {modifiers.scoutCapacity}</span>
+          <button className="command-button command-button-secondary" type="button" onClick={props.onOpenProgram}>
+            Program Hub
+          </button>
         </div>
       </div>
 
