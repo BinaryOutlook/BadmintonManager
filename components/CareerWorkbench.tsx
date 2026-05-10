@@ -5,7 +5,7 @@ import { canCommissionScoutReport, roleLabel, staffModifiers } from "../game/car
 import { getCareerEvent, getNextEvent } from "../game/career/events";
 import type { AdvancedTacticPlan, CareerState, PlayerPromise, RallyLengthIntent, TacticModule } from "../game/career/models";
 import { managedAthlete } from "../game/career/state";
-import { activeAdvancedTacticPlan, calculateTacticEffectProfile, tacticPlanToMatchTactic } from "../game/career/tactics";
+import { activeAdvancedTacticPlan, buildPreMatchPlanningBridge, calculateTacticEffectProfile, tacticPlanToMatchTactic } from "../game/career/tactics";
 import { trainingPlans } from "../game/career/training";
 import type { SaveRecoveryNotice } from "../game/store/store";
 
@@ -1493,6 +1493,7 @@ export function CareerPreMatchHubPage(props: CareerPageProps) {
   const brief = props.career.lastPreMatchBrief;
   const event = activeEvent(props.career);
   const opponent = brief ? playerMap[brief.opponentId] : null;
+  const planningBridge = buildPreMatchPlanningBridge(props.career);
 
   return (
     <section className="screen-shell career-page">
@@ -1534,6 +1535,43 @@ export function CareerPreMatchHubPage(props: CareerPageProps) {
               <strong>{brief?.recommendation ?? "Advance the calendar into match day."}</strong>
             </div>
           </div>
+        </section>
+        <section className="command-panel">
+          <div className="panel-header">
+            <h2>Pre-Match Planning Bridge</h2>
+            <span>{planningBridge.adviceState.replace("_", " ")}</span>
+          </div>
+          <div className="career-brief-grid pre-match-planning-grid">
+            <div>
+              <span>Selected Tactic</span>
+              <strong>{planningBridge.planName}</strong>
+              <p>{planningBridge.tacticSummary}</p>
+            </div>
+            <div>
+              <span>Assistant Signal</span>
+              <strong>{planningBridge.adviceLabel}</strong>
+              <p>{planningBridge.adviceDetail}</p>
+            </div>
+            <div>
+              <span>Rival Intel</span>
+              <strong>{planningBridge.rivalIntel}</strong>
+            </div>
+            <div>
+              <span>Objective Stakes</span>
+              <strong>{planningBridge.objectiveStakes}</strong>
+            </div>
+            <div>
+              <span>Effect Projection</span>
+              <strong>{planningBridge.effectSummary}</strong>
+            </div>
+            <div>
+              <span>Fatigue / Strain Warning</span>
+              <strong>{planningBridge.strainWarning}</strong>
+            </div>
+          </div>
+          <button className="command-button command-button-secondary career-button-spaced" type="button" onClick={props.onOpenMatchPlanning}>
+            Adjust Match Plan
+          </button>
         </section>
       </div>
     </section>

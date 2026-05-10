@@ -25,6 +25,7 @@ import { createInitialCareerState, managedAthlete } from "../../game/career/stat
 import {
   activeAdvancedTacticPlan,
   applyAssistantAdvice,
+  buildPreMatchPlanningBridge,
   calculateTacticEffectProfile,
   overrideAssistantAdvice,
   tacticPlanToMatchTactic,
@@ -573,5 +574,37 @@ describe("advanced tactics and assistant advice", () => {
       topic: "scouting",
       reason: "Saving scout capacity for the semifinal opponent."
     });
+  });
+
+  it("builds a pre-match planning bridge from active tactic and override context", () => {
+    const initial = createInitialCareerState(seededPlayers[0].player.id, 8305);
+    const event = getCareerEvent(initial.events, "metro-open-300")!;
+    const pressured = advanceRivalCircuit({
+      ...initial,
+      activeEventId: event.id,
+      enteredEventIds: [event.id],
+      date: event.startDate,
+      stage: "pre_match" as const
+    });
+    const tacticUpdated = updateAdvancedTacticPlan(pressured, {
+      name: "Rear Court Blitz",
+      tempo: 82,
+      rearCourtPressure: 88,
+      riskTolerance: 76,
+      rallyLengthIntent: "shorten",
+      modules: ["rear_court_lock", "body_smash"]
+    });
+    const scoutingAdvice = tacticUpdated.matchPlanning.advice.find((entry) => entry.topic === "scouting")!;
+    const overridden = overrideAssistantAdvice(tacticUpdated, scoutingAdvice.id, "Manager override kept Rear Court Blitz.");
+    const bridge = buildPreMatchPlanningBridge(overridden);
+
+    expect(bridge.planName).toBe("Rear Court Blitz");
+    expect(bridge.tacticSummary).toContain("all out attack");
+    expect(bridge.effectSummary).toContain("winner pressure");
+    expect(bridge.adviceLabel).toBe("Manager override: scouting");
+    expect(bridge.adviceDetail).toBe("Manager override kept Rear Court Blitz.");
+    expect(bridge.rivalIntel).toContain("rival programs");
+    expect(bridge.objectiveStakes).toContain(event.tier);
+    expect(bridge.strainWarning).toContain("strain");
   });
 });

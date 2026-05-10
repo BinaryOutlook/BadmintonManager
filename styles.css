@@ -643,6 +643,7 @@ button {
 .career-plan-card p,
 .career-event-card p,
 .career-evidence-grid p,
+.pre-match-planning-grid p,
 .advice-card p {
   margin: 0;
   color: var(--muted);
@@ -703,6 +704,15 @@ button {
   overflow-wrap: anywhere;
   color: var(--text);
   line-height: 1.24;
+}
+
+.pre-match-planning-grid {
+  grid-template-columns: 1fr;
+}
+
+.pre-match-planning-grid div {
+  display: grid;
+  gap: 0.35rem;
 }
 
 .career-ledger-row,

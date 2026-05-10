@@ -2,6 +2,7 @@ import { playerMap } from "../content/players";
 import { trainingPlans } from "./training";
 import type { MatchTactic, PressurePattern, RiskProfile, TempoSetting } from "../core/models";
 import { deriveProfile } from "../core/ratings";
+import { getCareerEvent } from "./events";
 import {
   clamp,
   type AdvicePacket,
@@ -329,6 +330,65 @@ export function refreshAssistantAdvice(state: CareerState): CareerState {
       ...state.matchPlanning,
       advice: generateAssistantAdvice(state)
     }
+  };
+}
+
+export interface PreMatchPlanningBridge {
+  planName: string;
+  tacticSummary: string;
+  effectSummary: string;
+  adviceLabel: string;
+  adviceDetail: string;
+  adviceState: AdvicePacket["overrideState"] | "none";
+  rivalIntel: string;
+  objectiveStakes: string;
+  strainWarning: string;
+}
+
+export function buildPreMatchPlanningBridge(state: CareerState): PreMatchPlanningBridge {
+  const plan = activeAdvancedTacticPlan(state);
+  const tactic = tacticPlanToMatchTactic(plan);
+  const effect = calculateTacticEffectProfile({ plan, state, opponentId: state.lastPreMatchBrief?.opponentId });
+  const activeEvent = state.activeEventId ? getCareerEvent(state.events, state.activeEventId) : undefined;
+  const eventPressure = state.activeEventId
+    ? state.rivals.fieldPressure.find((entry) => entry.eventId === state.activeEventId)
+    : undefined;
+  const tacticAdvice = state.matchPlanning.advice.find((entry) => entry.topic === "tactics");
+  const latestOverride = state.matchPlanning.overrideLog[0];
+  const athlete = managedAthlete(state);
+  const activePromises = state.ecosystem.promises.filter((promise) => promise.status === "active");
+  const adviceState = latestOverride ? "overridden" : tacticAdvice?.overrideState ?? "none";
+  const adviceLabel = latestOverride
+    ? `Manager override: ${latestOverride.topic}`
+    : tacticAdvice
+      ? `${roleLabel(tacticAdvice.sourceRole)} advice: ${tacticAdvice.overrideState}`
+      : "Assistant advice: unavailable";
+  const adviceDetail = latestOverride
+    ? latestOverride.reason
+    : tacticAdvice
+      ? `${tacticAdvice.recommendation} ${tacticAdvice.tradeoff}`
+      : "Refresh assistant advice before locking the match plan.";
+  const objectiveStakes = activePromises.length > 0
+    ? `${activePromises.length} active promise(s) can move morale before ${activeEvent?.name ?? "the next match"}.`
+    : activeEvent
+      ? `${activeEvent.tier} stakes: ${activeEvent.rankingPoints.R16} entry points, ${activeEvent.rankingPoints.champion} title points.`
+      : "No active objective pressure attached to this draw yet.";
+  const strainWarning = effect.strainBias >= 70 || athlete.fatigue >= 58
+    ? `High strain watch: ${effect.strainBias} tactic strain with fatigue ${Math.round(athlete.fatigue)}.`
+    : `Strain watch: ${effect.strainBias} tactic strain with readiness ${athlete.readiness}.`;
+
+  return {
+    planName: plan.name,
+    tacticSummary: `${tactic.tempo} tempo / ${tactic.pressurePattern.replaceAll("_", " ")} / ${tactic.riskProfile.replace("_", " ")}`,
+    effectSummary: `${effect.winnerPressure} winner pressure, ${effect.netControl} net control, ${effect.rearCourtControl} rear-court control`,
+    adviceLabel,
+    adviceDetail,
+    adviceState,
+    rivalIntel: eventPressure
+      ? `${eventPressure.rivalCount} rival programs, ${Math.round(eventPressure.pressureScore)} pressure, top threat ${eventPressure.topThreatName}.`
+      : "Rival field is still open; use scouting and form to narrow the matchup.",
+    objectiveStakes,
+    strainWarning
   };
 }
 

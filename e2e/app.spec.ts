@@ -297,4 +297,17 @@ test("can edit advanced tactics and preserve assistant advice overrides", async 
   await page.locator(".sidenav").getByRole("button", { name: /Tactics/ }).click();
   await expect(page.getByRole("heading", { name: "Advanced Tactics Creator" })).toBeVisible();
   await expect(page.getByText("Manager override kept Command Balance.", { exact: true }).first()).toBeVisible();
+
+  await page.getByRole("button", { name: "Career Home" }).click();
+  await page.getByRole("button", { name: "Event Desk" }).click();
+  await page.getByRole("button", { name: "Enter Event" }).first().click();
+  await page.getByRole("button", { name: "Advance Day" }).click();
+  await page.getByRole("button", { name: "Advance Day" }).click();
+  await expect(page.getByRole("heading", { name: "Opponent Briefing" })).toBeVisible();
+  await expect(page.getByText("Pre-Match Planning Bridge")).toBeVisible();
+  await expect(page.getByText("Selected Tactic")).toBeVisible();
+  await expect(page.getByText("Command Balance").first()).toBeVisible();
+  await expect(page.getByText(/Manager override:/).first()).toBeVisible();
+  await expect(page.getByText("Manager override kept Command Balance.", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Adjust Match Plan")).toBeVisible();
 });
