@@ -153,12 +153,14 @@ button {
 }
 
 .command-button {
+  max-width: 100%;
   border: 1px solid var(--border);
   border-radius: 0.28rem;
   padding: 0.85rem 1.1rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-weight: 800;
+  overflow-wrap: anywhere;
   background: var(--panel-2);
   color: var(--text);
   transition:
@@ -1227,6 +1229,204 @@ button {
   grid-column: 1 / -1;
 }
 
+.launch-decision-grid,
+.save-manager-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+  align-items: stretch;
+}
+
+.launch-decision-panel,
+.launch-save-strip {
+  display: grid;
+  gap: 0.9rem;
+  align-content: space-between;
+}
+
+.launch-decision-panel h2,
+.launch-save-strip h2,
+.save-slot-headline {
+  margin: 0;
+  color: var(--text);
+  font-size: 1.35rem;
+  letter-spacing: 0;
+}
+
+.launch-decision-panel p,
+.launch-save-strip p,
+.save-import-panel p,
+.danger-zone p,
+.danger-confirm-strip p,
+.save-manager-notice {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.42;
+}
+
+.launch-decision-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.launch-decision-meta span {
+  display: inline-flex;
+  min-height: 1.6rem;
+  align-items: center;
+  border: 1px solid rgba(48, 54, 61, 0.95);
+  border-radius: 0.22rem;
+  padding: 0.24rem 0.48rem;
+  background: rgba(12, 14, 17, 0.72);
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.launch-save-strip {
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.save-manager-page code {
+  color: var(--lime-soft);
+  font-size: 0.88em;
+}
+
+.save-slot-panel,
+.save-import-panel {
+  min-width: 0;
+}
+
+.save-slot-headline {
+  margin-bottom: 0.85rem;
+}
+
+.save-metadata-grid,
+.danger-action-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.save-metadata-grid div {
+  min-width: 0;
+  border: 1px solid rgba(48, 54, 61, 0.86);
+  border-radius: 0.3rem;
+  padding: 0.65rem;
+  background: rgba(12, 14, 17, 0.7);
+}
+
+.save-metadata-grid span {
+  display: block;
+  color: var(--muted-soft);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.save-metadata-grid strong {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+.save-metadata-grid-compact {
+  margin-top: 0.65rem;
+}
+
+.save-action-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin-top: 1rem;
+}
+
+.save-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.save-file-field {
+  margin-bottom: 0.75rem;
+}
+
+.save-import-textarea textarea {
+  width: 100%;
+  min-height: 10rem;
+  min-width: 0;
+  resize: vertical;
+  border: 1px solid var(--border);
+  border-radius: 0.28rem;
+  padding: 0.7rem;
+  background: rgba(12, 14, 17, 0.96);
+  color: var(--text);
+}
+
+.import-preview-box,
+.import-error-box,
+.danger-confirm-strip {
+  margin-top: 0.85rem;
+  border: 1px solid rgba(48, 54, 61, 0.9);
+  border-radius: 0.35rem;
+  padding: 0.8rem;
+  background: rgba(12, 14, 17, 0.72);
+}
+
+.import-preview-box > div:first-child {
+  display: grid;
+  gap: 0.18rem;
+}
+
+.import-preview-box span,
+.import-error-box strong,
+.danger-confirm-strip strong {
+  color: var(--lime-soft);
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.import-preview-box strong {
+  color: var(--text);
+  font-size: 1.08rem;
+}
+
+.import-error-box {
+  border-color: rgba(255, 140, 140, 0.28);
+  background: rgba(82, 22, 22, 0.24);
+}
+
+.import-error-box ul {
+  margin: 0.5rem 0 0;
+  padding-left: 1.1rem;
+  color: var(--muted);
+}
+
+.danger-confirm-strip {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.8rem;
+  align-items: center;
+}
+
+.save-manager-notice {
+  border: 1px solid rgba(57, 255, 20, 0.22);
+  border-radius: 0.35rem;
+  padding: 0.75rem;
+  background: rgba(27, 78, 20, 0.16);
+}
+
 .recommendation-panel .panel-header {
   align-items: flex-start;
 }
@@ -1239,6 +1439,7 @@ button {
 
 .browse-roster-button {
   flex: 0 0 auto;
+  max-width: 100%;
   white-space: nowrap;
 }
 
@@ -1305,6 +1506,7 @@ button {
 .panel-header,
 .intel-drawer-header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
@@ -3558,6 +3760,7 @@ button {
 
 @media (max-width: 1100px) {
   .deployment-grid,
+  .save-manager-grid,
   .overview-grid-v2,
   .complete-grid,
   .match-columns,
@@ -3895,6 +4098,11 @@ button {
 
   .roster-grid,
   .roster-grid-modal,
+  .launch-decision-grid,
+  .save-manager-grid,
+  .save-metadata-grid,
+  .save-action-grid,
+  .danger-action-grid,
   .recommendation-grid,
   .program-grid,
   .program-card-grid,
@@ -3930,6 +4138,22 @@ button {
   .bracket-columns,
   .telemetry-mini-grid {
     grid-template-columns: 1fr;
+  }
+
+  .launch-save-strip,
+  .danger-confirm-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .topbar-actions,
+  .save-action-row {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .browse-roster-button {
+    width: 100%;
+    white-space: normal;
   }
 
   .scoreboard-main {

@@ -20,19 +20,22 @@ import {
 import { ConfirmOverlay } from "../components/ConfirmOverlay";
 import { MatchView } from "../components/MatchView";
 import { OverviewView } from "../components/OverviewView";
+import { SaveManagerView } from "../components/SaveManagerView";
 import { SettingsOverlay, type ThemeAccent } from "../components/SettingsOverlay";
 import { SetupView } from "../components/SetupView";
 import { TacticalIntelPanel } from "../components/TacticalIntelPanel";
 import { playerMap } from "../game/content/players";
 import { tacticOptions } from "../game/content/tactics";
 import { useTournamentStore } from "../game/store/store";
+import type { PersistedSave } from "../game/store/save";
 import { isPhaseBoundPage, pageForPhase, type AppPage } from "./pages";
 import { PlayerProfilePage } from "./pages/PlayerProfilePage";
 import { SquadPage } from "./pages/SquadPage";
 import { PlayerNavigationProvider } from "./playerNavigation";
 
-type SidebarPanel = "command" | "tactics" | "athletes" | "events" | "settings";
+type SidebarPanel = "command" | "tactics" | "athletes" | "events" | "saves" | "settings";
 type TopMode = "LIVE" | "SQUAD" | "BRACKETS";
+type PendingConfirm = "resetSession" | "startTournamentReplaceCareer" | "startCareerReplaceSave";
 
 const THEME_STORAGE_KEY = "badminton-manager-theme-accent";
 const SIDEBAR_WIDTH_STORAGE_KEY = "sidebarWidth";
@@ -47,6 +50,7 @@ const sideNavItems: Array<{ key: SidebarPanel; label: string; short: string }> =
   { key: "tactics", label: "Tactics", short: "TAC" },
   { key: "athletes", label: "Athletes", short: "ATH" },
   { key: "events", label: "Events", short: "EVT" },
+  { key: "saves", label: "Saves", short: "SAV" },
   { key: "settings", label: "Settings", short: "SET" }
 ];
 
@@ -105,6 +109,7 @@ function topModeForPage(page: AppPage, fallback: TopMode): TopMode {
     case "games":
     case "season":
     case "calendar":
+    case "saveManager":
     case "home":
     case "program":
     case "rivals":
@@ -131,6 +136,8 @@ export function App() {
     liveMatch,
     career,
     saveRecovery,
+    activeSavePresent,
+    corruptSavePresent,
     startCareer,
     applyCareerTraining,
     enterCareerEvent,
@@ -160,7 +167,11 @@ export function App() {
     applyTalk,
     simulateNextPoint,
     advanceAfterMatch,
-    reset
+    reset,
+    exportActiveSave,
+    replaceActiveSave,
+    deleteActiveSave,
+    deleteCorruptSave
   } = useTournamentStore();
   const [activePage, setActivePage] = useState<AppPage>(() =>
     career
@@ -173,7 +184,7 @@ export function App() {
   );
   const [intelOpen, setIntelOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [confirmResetOpen, setConfirmResetOpen] = useState(false);
+  const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
   const [sidebarPanel, setSidebarPanel] = useState<SidebarPanel>("command");
   const [sidebarWidth, setSidebarWidth] = useState(loadSidebarWidth);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(loadSidebarCollapsed);
@@ -233,25 +244,108 @@ export function App() {
 
   function requestReset() {
     setSettingsOpen(false);
-    setConfirmResetOpen(true);
+    setPendingConfirm("resetSession");
   }
 
   function confirmReset() {
     reset();
-    setConfirmResetOpen(false);
     setActivePage({ id: "setup" });
     setSidebarPanel("command");
   }
 
-  function handleStartTournament() {
+  function performStartTournament() {
     startTournament();
     setActivePage({ id: "bracket" });
     setSidebarPanel("events");
   }
 
-  function handleStartCareer() {
+  function requestStartTournament() {
+    if (career) {
+      setPendingConfirm("startTournamentReplaceCareer");
+      return;
+    }
+
+    performStartTournament();
+  }
+
+  function performStartCareer() {
     startCareer();
     setActivePage({ id: "home" });
+    setSidebarPanel("command");
+  }
+
+  function requestStartCareer() {
+    if (career || tournament || liveMatch) {
+      setPendingConfirm("startCareerReplaceSave");
+      return;
+    }
+
+    performStartCareer();
+  }
+
+  function confirmPendingAction() {
+    if (pendingConfirm === "resetSession") {
+      confirmReset();
+    }
+
+    if (pendingConfirm === "startTournamentReplaceCareer") {
+      performStartTournament();
+    }
+
+    if (pendingConfirm === "startCareerReplaceSave") {
+      performStartCareer();
+    }
+
+    setPendingConfirm(null);
+  }
+
+  function openSaveManager() {
+    setSettingsOpen(false);
+    setActivePage({ id: "saveManager" });
+    setSidebarPanel("saves");
+  }
+
+  function continueLocalSave() {
+    if (career?.stage === "post_match") {
+      setActivePage({ id: "review" });
+    } else if (career?.stage === "pre_match") {
+      setActivePage({ id: "bracket" });
+    } else if (career) {
+      setActivePage({ id: "home" });
+    } else {
+      setActivePage(pageForPhase(phase));
+    }
+
+    setSidebarPanel(career ? "command" : "events");
+  }
+
+  function continueCareer() {
+    if (!career) {
+      return;
+    }
+
+    setActivePage(career.stage === "post_match" ? { id: "review" } : career.stage === "pre_match" ? { id: "bracket" } : { id: "home" });
+    setSidebarPanel("command");
+  }
+
+  function confirmImport(save: PersistedSave) {
+    replaceActiveSave(save);
+    const next = useTournamentStore.getState();
+    setActivePage(
+      next.career
+        ? next.career.stage === "post_match"
+          ? { id: "review" }
+          : next.career.stage === "pre_match"
+            ? { id: "bracket" }
+            : { id: "home" }
+        : pageForPhase(next.phase)
+    );
+    setSidebarPanel(next.career ? "command" : "events");
+  }
+
+  function handleDeleteActiveSave() {
+    deleteActiveSave();
+    setActivePage({ id: "setup" });
     setSidebarPanel("command");
   }
 
@@ -313,6 +407,9 @@ export function App() {
       case "events":
         setActivePage(career ? { id: "calendar" } : tournament ? { id: "bracket" } : { id: "games" });
         break;
+      case "saves":
+        setActivePage({ id: "saveManager" });
+        break;
       case "settings":
         setSettingsOpen(true);
         break;
@@ -351,7 +448,7 @@ export function App() {
     const careerPageProps = {
       career,
       saveRecovery,
-      onStartCareer: handleStartCareer,
+      onStartCareer: requestStartCareer,
       onOpenTraining: () => setActivePage({ id: "season" }),
       onOpenCalendar: () => setActivePage({ id: "calendar" }),
       onOpenHome: () => setActivePage({ id: "home" }),
@@ -387,6 +484,29 @@ export function App() {
       onApplyAssistantAdvice: applyAssistantAdvice,
       onOverrideAssistantAdvice: overrideAssistantAdvice
     };
+
+    if (activePage.id === "saveManager") {
+      return (
+        <SaveManagerView
+          activeSavePresent={activeSavePresent}
+          corruptSavePresent={corruptSavePresent}
+          phase={phase}
+          selectedPlayerId={selectedPlayerId}
+          plannedTacticKey={plannedTacticKey}
+          tournament={tournament}
+          liveMatchActive={Boolean(liveMatch)}
+          career={career}
+          onContinueLocalSave={continueLocalSave}
+          onContinueCareer={continueCareer}
+          onStartTournament={requestStartTournament}
+          onStartNewCareer={requestStartCareer}
+          onExportSave={exportActiveSave}
+          onConfirmImport={confirmImport}
+          onDeleteActiveSave={handleDeleteActiveSave}
+          onDeleteCorruptSave={deleteCorruptSave}
+        />
+      );
+    }
 
     if (activePage.id === "home") {
       return <CareerHomePage {...careerPageProps} />;
@@ -479,7 +599,12 @@ export function App() {
           onSelectPlayer={selectPlayer}
           onOpenPlayerProfile={openPlayerProfile}
           onChooseTactic={chooseTactic}
-          onStartTournament={handleStartTournament}
+          onStartTournament={requestStartTournament}
+          onStartCareer={requestStartCareer}
+          onOpenSaveManager={openSaveManager}
+          activeSavePresent={activeSavePresent}
+          careerPresent={Boolean(career)}
+          corruptSavePresent={corruptSavePresent}
         />
       );
     }
@@ -566,6 +691,9 @@ export function App() {
           </button>
           <button className="command-button command-button-secondary" onClick={() => setSettingsOpen(true)}>
             SETTINGS
+          </button>
+          <button className="command-button command-button-secondary" onClick={openSaveManager}>
+            SAVE_MANAGER
           </button>
         </div>
       </header>
@@ -686,6 +814,16 @@ export function App() {
               </div>
             )}
 
+            {sidebarPanel === "saves" && (
+              <div className="sidebar-option-stack">
+                <strong>{activeSavePresent ? "Active slot online" : "No active slot"}</strong>
+                <span>{corruptSavePresent ? "Quarantine backup present" : "Import/export desk ready"}</span>
+                <button className="sidebar-mini-button" type="button" onClick={openSaveManager}>
+                  Open Save Manager
+                </button>
+              </div>
+            )}
+
             {sidebarPanel === "settings" && (
               <div className="sidebar-option-stack">
                 <strong>Preferences</strong>
@@ -736,16 +874,39 @@ export function App() {
         themeAccent={themeAccent}
         onThemeAccentChange={setThemeAccentPreference}
         onRequestReset={requestReset}
+        onOpenSaveManager={openSaveManager}
         onClose={() => setSettingsOpen(false)}
       />
 
       <ConfirmOverlay
-        open={confirmResetOpen}
-        title="Start a new session?"
-        message="This clears the current local tournament run and returns the app to athlete selection."
-        confirmLabel="Start New Session"
-        onConfirm={confirmReset}
-        onCancel={() => setConfirmResetOpen(false)}
+        open={pendingConfirm !== null}
+        title={
+          pendingConfirm === "startTournamentReplaceCareer"
+            ? "Start tournament and replace career?"
+            : pendingConfirm === "startCareerReplaceSave"
+              ? "Start a new career?"
+              : career
+                ? "Reset tournament state?"
+                : "Start a new session?"
+        }
+        message={
+          pendingConfirm === "startTournamentReplaceCareer"
+            ? "Starting a tournament writes to the single active local slot and removes the current career save. Export JSON first if you want a backup."
+            : pendingConfirm === "startCareerReplaceSave"
+              ? "This creates a new career in the single active local slot and clears the current tournament/live match state. Export JSON first if you want a backup."
+              : career
+                ? "This clears the current tournament or live-match state and returns to athlete selection. Your career save remains in the active local slot."
+                : "This clears the current local tournament run and returns the app to athlete selection."
+        }
+        confirmLabel={
+          pendingConfirm === "startTournamentReplaceCareer"
+            ? "Start Tournament"
+            : pendingConfirm === "startCareerReplaceSave"
+              ? "Start New Career"
+              : "Start New Session"
+        }
+        onConfirm={confirmPendingAction}
+        onCancel={() => setPendingConfirm(null)}
       />
       </div>
     </PlayerNavigationProvider>

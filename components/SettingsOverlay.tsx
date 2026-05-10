@@ -5,6 +5,7 @@ interface SettingsOverlayProps {
   themeAccent: ThemeAccent;
   onThemeAccentChange: (accent: ThemeAccent) => void;
   onRequestReset: () => void;
+  onOpenSaveManager: () => void;
   onClose: () => void;
 }
 
@@ -69,6 +70,9 @@ export function SettingsOverlay(props: SettingsOverlayProps) {
           </p>
           <button className="command-button command-button-secondary" type="button" onClick={props.onRequestReset}>
             New Session
+          </button>
+          <button className="command-button command-button-secondary" type="button" onClick={props.onOpenSaveManager}>
+            Open Save Manager
           </button>
         </div>
 

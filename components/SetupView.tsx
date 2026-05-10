@@ -11,6 +11,11 @@ interface SetupViewProps {
   onOpenPlayerProfile: (playerId: string) => void;
   onChooseTactic: (tacticKey: TacticKey) => void;
   onStartTournament: () => void;
+  onStartCareer: () => void;
+  onOpenSaveManager: () => void;
+  activeSavePresent: boolean;
+  careerPresent: boolean;
+  corruptSavePresent: boolean;
 }
 
 function overallFromDossier(dossier: ReturnType<typeof deriveAthleteDossier>) {
@@ -370,6 +375,11 @@ export function SetupView(props: SetupViewProps) {
     archetypeFilter !== "all" ? `Style: ${archetypeLabels[archetypeFilter]}` : "",
     browseSortKey !== "overall" ? `Sort: ${sortLabels[browseSortKey]}` : ""
   ].filter(Boolean);
+  const localSlotLabel = props.activeSavePresent
+    ? props.careerPresent
+      ? "Career save loaded"
+      : "Tournament/setup save loaded"
+    : "No active local save";
 
   useEffect(() => {
     if (!rosterModalOpen) {
@@ -450,16 +460,66 @@ export function SetupView(props: SetupViewProps) {
     <section className="screen-shell">
       <div className="screen-header">
         <div>
-          <p className="screen-kicker">Squad</p>
-          <h1 className="screen-title">Tournament Deployment</h1>
+          <p className="screen-kicker">Launch Control</p>
+          <h1 className="screen-title">Choose The Run</h1>
           <p className="screen-copy">
-            Configure the managed athlete and opening tactical override for the next tournament run.
+            Start a quick seeded tournament or open a saved career program from the same local-first command desk.
           </p>
         </div>
-        <button className="command-button command-button-primary" onClick={props.onStartTournament}>
-          Start Tournament
-        </button>
+        <div className="screen-meta">
+          <span>{localSlotLabel}</span>
+          {props.corruptSavePresent && <span>Quarantine present</span>}
+        </div>
       </div>
+
+      <section className="launch-decision-grid" aria-label="First-session decisions">
+        <article className="command-panel launch-decision-panel">
+          <div>
+            <p className="screen-kicker">Tournament Run</p>
+            <h2>Start Tournament</h2>
+            <p>
+              Use the selected athlete and tactic to enter the seeded knockout bracket immediately.
+            </p>
+          </div>
+          <div className="launch-decision-meta">
+            <span>{selected.entry.player.name}</span>
+            <span>{tacticOptions.find((option) => option.key === props.plannedTacticKey)?.label ?? "Balanced Control"}</span>
+          </div>
+          <button className="command-button command-button-primary" type="button" onClick={props.onStartTournament}>
+            Start Tournament
+          </button>
+        </article>
+
+        <article className="command-panel launch-decision-panel">
+          <div>
+            <p className="screen-kicker">Career Save</p>
+            <h2>Start Career</h2>
+            <p>
+              Create a local coaching program with training, calendar entry, ranking pressure, and Save Manager controls.
+            </p>
+          </div>
+          <div className="launch-decision-meta">
+            <span>Single local slot</span>
+            <span>{props.activeSavePresent ? "Overwrite warning armed" : "Clean slot ready"}</span>
+          </div>
+          <button className="command-button command-button-primary" type="button" onClick={props.onStartCareer}>
+            Start Career
+          </button>
+        </article>
+
+        <article className="command-panel launch-save-strip">
+          <div>
+            <p className="screen-kicker">Save Status</p>
+            <h2>Local Save Manager</h2>
+            <p>
+              Inspect the active slot, continue a career, export JSON, import with preview, or clear a quarantined backup.
+            </p>
+          </div>
+          <button className="command-button command-button-secondary" type="button" onClick={props.onOpenSaveManager}>
+            Manage Saves
+          </button>
+        </article>
+      </section>
 
       <div className="deployment-grid">
         <section className="command-panel command-panel-wide recommendation-panel">

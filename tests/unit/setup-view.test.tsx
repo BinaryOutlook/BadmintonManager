@@ -3,18 +3,45 @@ import { describe, expect, it, vi } from "vitest";
 import { seededPlayers } from "../../game/content/players";
 import { SetupView, rankRosterByOverall } from "../../components/SetupView";
 
+function renderSetupView(overrides: Partial<Parameters<typeof SetupView>[0]> = {}) {
+  return render(
+    <SetupView
+      selectedPlayerId={seededPlayers[0].player.id}
+      plannedTacticKey="balancedControl"
+      onSelectPlayer={vi.fn()}
+      onOpenPlayerProfile={vi.fn()}
+      onChooseTactic={vi.fn()}
+      onStartTournament={vi.fn()}
+      onStartCareer={vi.fn()}
+      onOpenSaveManager={vi.fn()}
+      activeSavePresent={false}
+      careerPresent={false}
+      corruptSavePresent={false}
+      {...overrides}
+    />
+  );
+}
+
 describe("SetupView", () => {
+  it("presents tournament and career as paired first-launch choices", () => {
+    const onStartTournament = vi.fn();
+    const onStartCareer = vi.fn();
+    const onOpenSaveManager = vi.fn();
+
+    renderSetupView({ onStartTournament, onStartCareer, onOpenSaveManager });
+
+    expect(screen.getByRole("heading", { name: "Choose The Run" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Start Tournament" }));
+    fireEvent.click(screen.getByRole("button", { name: "Start Career" }));
+    fireEvent.click(screen.getByRole("button", { name: "Manage Saves" }));
+
+    expect(onStartTournament).toHaveBeenCalledTimes(1);
+    expect(onStartCareer).toHaveBeenCalledTimes(1);
+    expect(onOpenSaveManager).toHaveBeenCalledTimes(1);
+  });
+
   it("shows recommendations first and keeps the full roster as a fallback", () => {
-    render(
-      <SetupView
-        selectedPlayerId={seededPlayers[0].player.id}
-        plannedTacticKey="balancedControl"
-        onSelectPlayer={vi.fn()}
-        onOpenPlayerProfile={vi.fn()}
-        onChooseTactic={vi.fn()}
-        onStartTournament={vi.fn()}
-      />
-    );
+    renderSetupView();
 
     expect(screen.getByRole("heading", { name: "Pick Your Playstyle" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Best Overall/ })).toHaveAttribute("aria-pressed", "true");
@@ -55,16 +82,7 @@ describe("SetupView", () => {
   it("selects from the featured coach pick and supporting alternatives", () => {
     const onSelectPlayer = vi.fn();
 
-    render(
-      <SetupView
-        selectedPlayerId={seededPlayers[0].player.id}
-        plannedTacticKey="balancedControl"
-        onSelectPlayer={onSelectPlayer}
-        onOpenPlayerProfile={vi.fn()}
-        onChooseTactic={vi.fn()}
-        onStartTournament={vi.fn()}
-      />
-    );
+    renderSetupView({ onSelectPlayer });
 
     const featuredCard = screen.getByLabelText(/Featured recommendation:/);
     fireEvent.click(within(featuredCard).getByRole("button", { name: /Select featured/ }));
@@ -78,16 +96,7 @@ describe("SetupView", () => {
   });
 
   it("filters the full roster by country and resets browse state", () => {
-    render(
-      <SetupView
-        selectedPlayerId={seededPlayers[0].player.id}
-        plannedTacticKey="balancedControl"
-        onSelectPlayer={vi.fn()}
-        onOpenPlayerProfile={vi.fn()}
-        onChooseTactic={vi.fn()}
-        onStartTournament={vi.fn()}
-      />
-    );
+    renderSetupView();
 
     fireEvent.click(screen.getByRole("button", { name: "Browse All Athletes" }));
     fireEvent.change(screen.getByLabelText("Country"), { target: { value: "CHN" } });
