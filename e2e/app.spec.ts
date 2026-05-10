@@ -199,7 +199,7 @@ test("can run the Phase 2 program ecosystem flow and persist it after reload", a
   await page.getByRole("button", { name: "Program Hub" }).click();
   await page.getByRole("button", { name: "Athlete State + Promises" }).click();
   await expect(page.getByRole("heading", { name: "Psychology Desk" })).toBeVisible();
-  await expect(page.getByText(/Arya Prakash/)).toBeVisible();
+  await expect(page.getByText("Owner: Arya Prakash")).toBeVisible();
   await expect(page.getByText(/kept/).first()).toBeVisible();
   await page.getByRole("button", { name: "Promise Stamina" }).click();
   await expect(page.getByText(/Promise created/).first()).toBeVisible();
@@ -213,7 +213,9 @@ test("can run the Phase 2 program ecosystem flow and persist it after reload", a
   await expect(page.getByRole("heading", { name: "Psychology Desk" })).toBeVisible();
   await expect(page.getByText(/withdrawn/).first()).toBeVisible();
   await page.getByRole("button", { name: "Program Hub" }).click();
-  await expect(page.getByText(/Arya Prakash offer accepted/)).toBeVisible();
+  await page.getByRole("button", { name: "Recruitment Desk" }).click();
+  await expect(page.getByText(/Circuit Futures Invitational/)).toBeVisible();
+  await page.getByRole("button", { name: "Program Hub" }).click();
   await page.evaluate(() => {
     const raw = window.localStorage.getItem("badminton-manager-save");
     if (!raw) {
@@ -228,5 +230,8 @@ test("can run the Phase 2 program ecosystem flow and persist it after reload", a
   await page.getByRole("button", { name: "Program Hub" }).click();
   await page.getByRole("button", { name: "Scouting Network" }).click();
   await page.getByRole("button", { name: "Advance Day" }).click();
+  await page.getByRole("button", { name: "Career Home" }).click();
+  await page.getByRole("button", { name: "Program Hub" }).click();
+  await page.getByRole("button", { name: "Scouting Network" }).click();
   await expect(page.getByText(/expired/).first()).toBeVisible();
 });
