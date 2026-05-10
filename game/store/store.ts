@@ -91,6 +91,8 @@ export interface TournamentStoreState {
   liveMatch: LiveManagedMatch | null;
   career: CareerState | null;
   saveRecovery: SaveRecoveryNotice | null;
+  activeSavePresent: boolean;
+  corruptSavePresent: boolean;
   startCareer: () => void;
   applyCareerTraining: (planId: string) => void;
   enterCareerEvent: (eventId: string) => void;
@@ -128,13 +130,23 @@ export interface TournamentStoreState {
   simulateNextPoint: () => void;
   advanceAfterMatch: () => void;
   reset: () => void;
+  exportActiveSave: () => PersistedSave | null;
+  replaceActiveSave: (save: PersistedSave) => void;
+  deleteActiveSave: () => void;
+  deleteCorruptSave: () => void;
 }
 
 function randomSeed() {
   return Math.floor(Math.random() * 2_147_483_000);
 }
 
-function createDefaultPersistedState(seed = randomSeed()) {
+function createDefaultPersistedState(
+  seed = randomSeed(),
+  storageFlags: Pick<TournamentStoreState, "activeSavePresent" | "corruptSavePresent"> = {
+    activeSavePresent: false,
+    corruptSavePresent: false
+  }
+) {
   return {
     selectedPlayerId: seededPlayers[0].player.id,
     plannedTacticKey: "balancedControl" as TacticKey,
@@ -143,7 +155,9 @@ function createDefaultPersistedState(seed = randomSeed()) {
     liveMatch: null,
     career: null,
     saveRecovery: null,
-    phase: "setup" as AppPhase
+    phase: "setup" as AppPhase,
+    activeSavePresent: storageFlags.activeSavePresent,
+    corruptSavePresent: storageFlags.corruptSavePresent
   };
 }
 
@@ -163,12 +177,13 @@ function inferPhase(tournament: TournamentState | null, liveMatch: LiveManagedMa
   return "overview";
 }
 
-function persist(state: TournamentStoreState) {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  const payload: PersistedSave = {
+function createPersistedSavePayload(
+  state: Pick<
+    TournamentStoreState,
+    "selectedPlayerId" | "plannedTacticKey" | "seed" | "tournament" | "liveMatch" | "career"
+  >
+): PersistedSave {
+  return {
     version: 8,
     selectedPlayerId: state.selectedPlayerId,
     plannedTacticKey: state.plannedTacticKey,
@@ -177,14 +192,24 @@ function persist(state: TournamentStoreState) {
     liveMatch: state.liveMatch,
     career: state.career
   };
+}
 
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+function writeActiveSaveToStorage(save: PersistedSave) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(save));
+}
+
+function persist(state: TournamentStoreState) {
+  writeActiveSaveToStorage(createPersistedSavePayload(state));
 }
 
 type PersistedRuntimeState = Pick<
   TournamentStoreState,
   "selectedPlayerId" | "plannedTacticKey" | "seed" | "tournament" | "liveMatch" | "phase"
-  | "career" | "saveRecovery"
+  | "career" | "saveRecovery" | "activeSavePresent" | "corruptSavePresent"
 >;
 
 type StorageAdapter = Pick<Storage, "getItem" | "setItem" | "removeItem">;
@@ -216,7 +241,10 @@ export function loadPersistedFromStorage(
   storage: StorageAdapter,
   seedFactory: () => number = randomSeed
 ): PersistedRuntimeState {
-  const defaultState = createDefaultPersistedState(seedFactory());
+  const defaultState = createDefaultPersistedState(seedFactory(), {
+    activeSavePresent: false,
+    corruptSavePresent: storage.getItem(CORRUPT_STORAGE_KEY) !== null
+  });
   const raw = storage.getItem(STORAGE_KEY);
 
   if (!raw) {
@@ -236,7 +264,9 @@ export function loadPersistedFromStorage(
         reason: "malformed_json",
         backupKey: CORRUPT_STORAGE_KEY,
         message: "The local save file could not be read as JSON, so it was quarantined before a fresh safe slot was opened."
-      }
+      },
+      activeSavePresent: false,
+      corruptSavePresent: true
     };
   }
 
@@ -251,7 +281,9 @@ export function loadPersistedFromStorage(
         reason: "invalid_schema",
         backupKey: CORRUPT_STORAGE_KEY,
         message: "The local save file did not match the supported save schema, so it was quarantined before a fresh safe slot was opened."
-      }
+      },
+      activeSavePresent: false,
+      corruptSavePresent: true
     };
   }
 
@@ -265,7 +297,24 @@ export function loadPersistedFromStorage(
     liveMatch: migrated.liveMatch,
     career: migrated.career,
     saveRecovery: null,
-    phase: inferPhase(migrated.tournament, migrated.liveMatch)
+    phase: inferPhase(migrated.tournament, migrated.liveMatch),
+    activeSavePresent: true,
+    corruptSavePresent: defaultState.corruptSavePresent
+  };
+}
+
+function runtimeStateFromSave(save: PersistedSave, corruptSavePresent = false): PersistedRuntimeState {
+  return {
+    selectedPlayerId: save.selectedPlayerId,
+    plannedTacticKey: save.plannedTacticKey,
+    seed: save.seed,
+    tournament: save.tournament,
+    liveMatch: save.liveMatch,
+    career: save.career,
+    saveRecovery: null,
+    phase: inferPhase(save.tournament, save.liveMatch),
+    activeSavePresent: true,
+    corruptSavePresent
   };
 }
 
@@ -346,7 +395,8 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
         tournament: null,
         liveMatch: null,
         saveRecovery: null,
-        phase: "setup" as AppPhase
+        phase: "setup" as AppPhase,
+        activeSavePresent: true
       };
       persist(next);
       return next;
@@ -777,14 +827,14 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
   },
   selectPlayer: (playerId) => {
     set((state) => {
-      const next = { ...state, selectedPlayerId: playerId };
+      const next = { ...state, selectedPlayerId: playerId, activeSavePresent: true };
       persist(next);
       return next;
     });
   },
   chooseTactic: (plannedTacticKey) => {
     set((state) => {
-      const next = { ...state, plannedTacticKey };
+      const next = { ...state, plannedTacticKey, activeSavePresent: true };
       persist(next);
       return next;
     });
@@ -800,7 +850,8 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
         liveMatch: null,
         career: null,
         saveRecovery: null,
-        phase: "overview" as AppPhase
+        phase: "overview" as AppPhase,
+        activeSavePresent: true
       };
       persist(next);
       return next;
@@ -982,10 +1033,53 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
         seed: randomSeed(),
         tournament: null,
         liveMatch: null,
-        phase: "setup" as AppPhase
+        phase: "setup" as AppPhase,
+        activeSavePresent: true
       };
       persist(next);
       return next;
     });
+  },
+  exportActiveSave: () => {
+    const state = get();
+
+    if (!state.activeSavePresent) {
+      return null;
+    }
+
+    return createPersistedSavePayload(state);
+  },
+  replaceActiveSave: (save) => {
+    writeActiveSaveToStorage(save);
+    set((state) => ({
+      ...state,
+      ...runtimeStateFromSave(save, state.corruptSavePresent)
+    }));
+  },
+  deleteActiveSave: () => {
+    const corruptSavePresent =
+      typeof window !== "undefined" && window.localStorage.getItem(CORRUPT_STORAGE_KEY) !== null;
+
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(STORAGE_KEY);
+    }
+
+    set({
+      ...createDefaultPersistedState(randomSeed(), {
+        activeSavePresent: false,
+        corruptSavePresent
+      })
+    });
+  },
+  deleteCorruptSave: () => {
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(CORRUPT_STORAGE_KEY);
+    }
+
+    set((state) => ({
+      ...state,
+      saveRecovery: null,
+      corruptSavePresent: false
+    }));
   }
 }));

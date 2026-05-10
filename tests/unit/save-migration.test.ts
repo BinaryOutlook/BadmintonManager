@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 import { seededPlayers } from "../../game/content/players";
 import { careerStateSchema } from "../../game/career/models";
 import { createInitialCareerState } from "../../game/career/state";
-import { migratePersistedSave, persistedSavePayloadSchema, persistedSaveSchema } from "../../game/store/save";
+import {
+  migratePersistedSave,
+  persistedSavePayloadSchema,
+  persistedSaveSchema,
+  validateImportedSaveText
+} from "../../game/store/save";
 import { CORRUPT_STORAGE_KEY, STORAGE_KEY, loadPersistedFromStorage } from "../../game/store/store";
 
 class MemoryStorage {
@@ -310,5 +315,88 @@ describe("career save migration", () => {
     expect(loaded.saveRecovery?.backupKey).toBe(CORRUPT_STORAGE_KEY);
     expect(storage.getItem(STORAGE_KEY)).toBeNull();
     expect(storage.getItem(CORRUPT_STORAGE_KEY)).toBe(raw);
+  });
+
+  it("previews a current exported save without mutating storage", () => {
+    const career = createInitialCareerState(seededPlayers[0].player.id, 464);
+    const save = {
+      version: 8,
+      selectedPlayerId: seededPlayers[0].player.id,
+      plannedTacticKey: "balancedControl",
+      seed: 464,
+      tournament: null,
+      liveMatch: null,
+      career
+    };
+    const storage = new MemoryStorage();
+    storage.setItem(STORAGE_KEY, JSON.stringify(save));
+    storage.setItem(CORRUPT_STORAGE_KEY, "previous-corrupt-backup");
+
+    const preview = validateImportedSaveText(JSON.stringify(save));
+
+    expect(preview.ok).toBe(true);
+    if (preview.ok) {
+      expect(preview.save.version).toBe(8);
+      expect(preview.save.career?.version).toBe(6);
+    }
+    expect(storage.getItem(STORAGE_KEY)).toBe(JSON.stringify(save));
+    expect(storage.getItem(CORRUPT_STORAGE_KEY)).toBe("previous-corrupt-backup");
+  });
+
+  it("previews and migrates a valid old tournament-only import", () => {
+    const legacy = {
+      version: 2,
+      selectedPlayerId: seededPlayers[1].player.id,
+      plannedTacticKey: "spreadCourt",
+      seed: 2202,
+      tournament: null,
+      liveMatch: null
+    };
+
+    const preview = validateImportedSaveText(JSON.stringify(legacy));
+
+    expect(preview.ok).toBe(true);
+    if (preview.ok) {
+      expect(preview.save.version).toBe(8);
+      expect(preview.save.selectedPlayerId).toBe(legacy.selectedPlayerId);
+      expect(preview.save.career).toBeNull();
+    }
+  });
+
+  it("rejects malformed imports without changing active or corrupt storage", () => {
+    const storage = new MemoryStorage();
+    storage.setItem(STORAGE_KEY, "active-save");
+    storage.setItem(CORRUPT_STORAGE_KEY, "corrupt-save");
+
+    const preview = validateImportedSaveText("{not-json");
+
+    expect(preview.ok).toBe(false);
+    if (!preview.ok) {
+      expect(preview.reason).toBe("malformed_json");
+    }
+    expect(storage.getItem(STORAGE_KEY)).toBe("active-save");
+    expect(storage.getItem(CORRUPT_STORAGE_KEY)).toBe("corrupt-save");
+  });
+
+  it("rejects schema-invalid imports without changing active or corrupt storage", () => {
+    const storage = new MemoryStorage();
+    storage.setItem(STORAGE_KEY, "active-save");
+    storage.setItem(CORRUPT_STORAGE_KEY, "corrupt-save");
+
+    const preview = validateImportedSaveText(JSON.stringify({
+      version: 8,
+      selectedPlayerId: seededPlayers[0].player.id,
+      plannedTacticKey: "balancedControl",
+      seed: 777,
+      tournament: null,
+      liveMatch: null
+    }));
+
+    expect(preview.ok).toBe(false);
+    if (!preview.ok) {
+      expect(preview.reason).toBe("invalid_schema");
+    }
+    expect(storage.getItem(STORAGE_KEY)).toBe("active-save");
+    expect(storage.getItem(CORRUPT_STORAGE_KEY)).toBe("corrupt-save");
   });
 });

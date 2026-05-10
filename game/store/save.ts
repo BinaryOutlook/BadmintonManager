@@ -245,6 +245,18 @@ export const persistedSavePayloadSchema = z.union([
 export type PersistedSave = z.infer<typeof persistedSaveSchema>;
 export type PersistedSavePayload = z.infer<typeof persistedSavePayloadSchema>;
 
+export type SaveImportValidationResult =
+  | {
+      ok: true;
+      save: PersistedSave;
+    }
+  | {
+      ok: false;
+      reason: "malformed_json" | "invalid_schema";
+      message: string;
+      issues?: string[];
+    };
+
 function refreshMigratedCareer(career: PersistedSave["career"]) {
   return career ? refreshAssistantAdvice(career) : null;
 }
@@ -304,5 +316,47 @@ export function migratePersistedSave(payload: PersistedSavePayload): PersistedSa
     ...payload,
     version: 8,
     career: null
+  };
+}
+
+export function validateImportedSaveText(raw: string): SaveImportValidationResult {
+  let json: unknown;
+
+  try {
+    json = JSON.parse(raw);
+  } catch {
+    return {
+      ok: false,
+      reason: "malformed_json",
+      message: "That file is not valid JSON. The active local save was not changed."
+    };
+  }
+
+  const parsed = persistedSavePayloadSchema.safeParse(json);
+
+  if (!parsed.success) {
+    return {
+      ok: false,
+      reason: "invalid_schema",
+      message: "That JSON does not match any supported Badminton Manager save schema. The active local save was not changed.",
+      issues: parsed.error.issues.slice(0, 4).map((issue) => issue.message)
+    };
+  }
+
+  const migrated = migratePersistedSave(parsed.data);
+  const current = persistedSaveSchema.safeParse(migrated);
+
+  if (!current.success) {
+    return {
+      ok: false,
+      reason: "invalid_schema",
+      message: "The save parsed, but could not be migrated to the current save format. The active local save was not changed.",
+      issues: current.error.issues.slice(0, 4).map((issue) => issue.message)
+    };
+  }
+
+  return {
+    ok: true,
+    save: current.data
   };
 }
