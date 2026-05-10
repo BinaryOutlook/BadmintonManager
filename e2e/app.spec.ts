@@ -323,20 +323,28 @@ test("can upgrade facilities and resolve sponsor media pressure", async ({ page 
 
   await expect(page.getByRole("heading", { name: "Facilities Upgrades" })).toBeVisible();
   await page.getByRole("button", { name: "Upgrade Training Hall" }).click();
-  await expect(page.getByText("Training Hall upgraded to level 1")).toBeVisible();
+  await expect(page.getByText("Training Hall level 1 build started")).toBeVisible();
   await expect(page.getByText(/Training/).first()).toBeVisible();
 
   await page.getByRole("button", { name: "Upgrade Analytics Lab" }).click();
-  await expect(page.getByText("Analytics Lab upgraded to level 1")).toBeVisible();
+  await expect(page.getByText("Analytics Lab level 1 build started")).toBeVisible();
+  for (let i = 0; i < 6; i += 1) {
+    await page.getByRole("button", { name: "Advance Day" }).click();
+  }
+  await page.getByRole("button", { name: "Career Home" }).click();
+  await page.getByRole("button", { name: "Program Hub" }).click();
+  await page.getByRole("button", { name: "Facilities Upgrades" }).click();
+  await expect(page.getByText("Training Hall level 1 construction complete")).toBeVisible();
+  await expect(page.getByText("Analytics Lab level 1 construction complete")).toBeVisible();
   await page.reload();
   await page.getByRole("button", { name: "Program Hub" }).click();
   await page.getByRole("button", { name: "Facilities Upgrades" }).click();
-  await expect(page.getByText("Analytics Lab upgraded to level 1")).toBeVisible();
+  await expect(page.getByText("Analytics Lab level 1 construction complete")).toBeVisible();
   await expect(page.getByText(/Travel cost/)).toBeVisible();
+  await page.getByRole("button", { name: "Program Hub" }).click();
+  await page.getByRole("button", { name: "Scouting Network" }).click();
+  await expect(page.getByText("Cost $3,200 / 1 day(s).").first()).toBeVisible();
 
-  await page.getByRole("button", { name: "Media Desk" }).click();
-  await expect(page.getByRole("heading", { name: "Media / Sponsors / Objectives" })).toBeVisible();
-  await expect(page.getByText("Aero String Labs")).toBeVisible();
   await page.evaluate(() => {
     const raw = window.localStorage.getItem("badminton-manager-save");
     if (!raw) {
@@ -344,6 +352,20 @@ test("can upgrade facilities and resolve sponsor media pressure", async ({ page 
     }
 
     const save = JSON.parse(raw);
+    save.career.media.sponsors = save.career.media.sponsors.map((objective: any) => ({
+      ...objective,
+      deadline: "2026-06-20",
+      progress: 35,
+      status: "active",
+      resolutionLog: []
+    }));
+    save.career.media.federationObjectives = save.career.media.federationObjectives.map((objective: any) => ({
+      ...objective,
+      deadline: "2026-06-20",
+      progress: 50,
+      status: "active",
+      resolutionLog: []
+    }));
     save.career.lastMatchReport = {
       eventId: "metro-open-300",
       matchId: "managed-r16",
@@ -362,9 +384,11 @@ test("can upgrade facilities and resolve sponsor media pressure", async ({ page 
   await page.reload();
   await page.getByRole("button", { name: "Program Hub" }).click();
   await page.getByRole("button", { name: "Media Desk" }).click();
+  await expect(page.getByRole("heading", { name: "Media / Sponsors / Objectives" })).toBeVisible();
+  await expect(page.getByText("Aero String Labs", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Resolve Pressure" }).click();
 
-  await expect(page.getByText(/Aero String Labs objective fulfilled/)).toBeVisible();
-  await expect(page.getByText(/National Federation objective fulfilled/)).toBeVisible();
+  await expect(page.getByText(/Aero String Labs objective fulfilled/).first()).toBeVisible();
+  await expect(page.getByText(/National Federation objective fulfilled/).first()).toBeVisible();
   await expect(page.getByText(/Visible consequences/)).toBeVisible();
 });

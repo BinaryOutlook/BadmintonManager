@@ -4,9 +4,11 @@ import { tacticLibrary } from "../content/tactics";
 import { advanceCareerCalendar } from "../career/calendar";
 import { canAffordEventEntry, chargeEventEntry } from "../career/economy";
 import {
+  advanceFacilityBuilds,
   applyFacilitiesToTraining,
   applyFacilityDailyRecovery,
   applyTravelPressureForEvent,
+  chargeFacilityUpkeep,
   effectiveEventEntryCosts,
   resolveMediaObjectives,
   upgradeFacility
@@ -463,8 +465,12 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
 
       const career = refreshAssistantAdvice(
         resolveMediaObjectives(
-          applyFacilityDailyRecovery(
-            advanceRivalCircuit(resolvePromises(expireScoutReports(resolveDueScoutReports(advanceCareerCalendar(state.career)))))
+          chargeFacilityUpkeep(
+            applyFacilityDailyRecovery(
+              advanceFacilityBuilds(
+                advanceRivalCircuit(resolvePromises(expireScoutReports(resolveDueScoutReports(advanceCareerCalendar(state.career)))))
+              )
+            )
           )
         )
       );

@@ -27,7 +27,7 @@ const emptyModifier: FacilityModifier = {
   pressureResistance: 0
 };
 
-const facilityCatalog: Record<FacilityType, Omit<FacilityState, "level" | "nextUpgradeCost" | "maintenanceCost" | "status" | "modifiers" | "history"> & {
+const facilityCatalog: Record<FacilityType, Omit<FacilityState, "level" | "nextUpgradeCost" | "maintenanceCost" | "buildCompleteDate" | "status" | "modifiers" | "history"> & {
   baseCost: number;
   costStep: number;
   maintenanceBase: number;
@@ -115,6 +115,7 @@ function createFacility(type: FacilityType, date: string): FacilityState {
     nextUpgradeCost: nextCost(type, 0),
     maintenanceCost: 0,
     buildTimeDays: catalog.buildTimeDays,
+    buildCompleteDate: null,
     status: "ready",
     modifiers: modifiersFor(type, 0),
     history: [
@@ -156,6 +157,10 @@ export function facilityModifiers(facilities: FacilityState[]): FacilityModifier
   );
 }
 
+function maintenanceDue(facilities: FacilityState[]) {
+  return facilities.reduce((total, facility) => total + facility.maintenanceCost, 0);
+}
+
 export function applyFacilitiesToTraining(athlete: AthleteCareerState, facilities: FacilityState[]) {
   const modifiers = facilityModifiers(facilities);
 
@@ -192,6 +197,110 @@ export function applyFacilityDailyRecovery(state: CareerState): CareerState {
     ),
     notes: [`Recovery Center removed ${Math.round(modifiers.recoveryFatigue)} fatigue pressure`, ...state.notes].slice(0, 6)
   };
+}
+
+export function advanceFacilityBuilds(state: CareerState): CareerState {
+  const completed = state.facilities.filter(
+    (facility) =>
+      facility.status === "building" &&
+      facility.buildCompleteDate &&
+      daysBetween(facility.buildCompleteDate, state.date) >= 0
+  );
+
+  if (completed.length === 0) {
+    return state;
+  }
+
+  const completedIds = new Set(completed.map((facility) => facility.id));
+  const facilities = state.facilities.map((facility) => {
+    if (!completedIds.has(facility.id)) {
+      return facility;
+    }
+
+    return {
+      ...facility,
+      buildCompleteDate: null,
+      status: facility.level >= facility.maxLevel ? "maxed" as const : "ready" as const,
+      modifiers: modifiersFor(facility.type, facility.level),
+      history: [
+        {
+          id: `${facility.id}-${state.date}-complete-${facility.level}`,
+          date: state.date,
+          level: facility.level,
+          cost: 0,
+          note: `${facility.label} level ${facility.level} construction complete`
+        },
+        ...facility.history
+      ].slice(0, 8)
+    };
+  });
+  const reactionLog = completed.reduce(
+    (log, facility) =>
+      mediaLog({
+        state: { ...state.media, reactionLog: log },
+        date: state.date,
+        source: "facility",
+        message: `${facility.label} build completed`,
+        stateDelta: `Level ${facility.level} modifiers are now live`,
+        relatedIds: [facility.id]
+      }),
+    state.media.reactionLog
+  );
+
+  return {
+    ...state,
+    facilities,
+    media: {
+      ...state.media,
+      reactionLog
+    },
+    notes: [`${completed.map((facility) => facility.label).join(", ")} build complete`, ...state.notes].slice(0, 6)
+  };
+}
+
+export function chargeFacilityUpkeep(state: CareerState): CareerState {
+  const due = maintenanceDue(state.facilities);
+
+  if (due <= 0 || state.economy.ledger.some((entry) => entry.date === state.date && entry.label === "Facility upkeep")) {
+    return state;
+  }
+
+  const amount = -Math.min(state.economy.cash, due);
+  const economy = addLedgerEntry({
+    economy: state.economy,
+    date: state.date,
+    category: "facility",
+    label: "Facility upkeep",
+    amount
+  });
+
+  if (Math.abs(amount) >= due) {
+    return {
+      ...state,
+      economy,
+      notes: [`Facility upkeep paid ${Math.abs(amount).toLocaleString()}`, ...state.notes].slice(0, 6)
+    };
+  }
+
+  const shortage = due - Math.abs(amount);
+  const withMedia = {
+    ...state,
+    economy,
+    media: {
+      ...state.media,
+      reputation: clamp(state.media.reputation - 2, 0, 100),
+      reactionLog: mediaLog({
+        state: state.media,
+        date: state.date,
+        source: "facility",
+        message: "Facility upkeep underfunded",
+        stateDelta: `Short ${shortage} budget, reputation -2, morale -2`,
+        relatedIds: state.facilities.filter((facility) => facility.maintenanceCost > 0).map((facility) => facility.id)
+      })
+    }
+  };
+
+  return updateManagedPsychology(withMedia, -2, "Facility upkeep underfunded");
 }
 
 export function effectiveEventEntryCosts(event: CareerEventDefinition, facilities: FacilityState[]) {
@@ -468,26 +577,50 @@ export function resolveMediaObjectives(state: CareerState): CareerState {
     objectives: sponsorResolved.state.media.federationObjectives,
     source: "federation"
   });
+  let withPress = federationResolved.state;
+  const pressEvents = withPress.media.pressEvents.map((event) => {
+    if (event.status !== "active" || daysBetween(addDays(event.date, 14), withPress.date) <= 0) {
+      return event;
+    }
+
+    withPress = updateManagedPsychology(
+      {
+        ...withPress,
+        media: {
+          ...withPress.media,
+          reputation: clamp(withPress.media.reputation + event.reputationDelta, 0, 100),
+          reactionLog: mediaLog({
+            state: withPress.media,
+            date: withPress.date,
+            source: "press",
+            message: `Press reaction settled: ${event.headline}`,
+            stateDelta: `Reputation ${event.reputationDelta >= 0 ? "+" : ""}${event.reputationDelta}, morale ${event.moraleDelta >= 0 ? "+" : ""}${event.moraleDelta}`,
+            relatedIds: [event.id]
+          })
+        }
+      },
+      event.moraleDelta,
+      `Press reaction: ${event.headline}`
+    );
+
+    return { ...event, status: "settled" as const };
+  });
 
   return {
-    ...federationResolved.state,
+    ...withPress,
     media: {
-      ...federationResolved.state.media,
+      ...withPress.media,
       federationObjectives: federationResolved.objectives,
-      pressEvents: federationResolved.state.media.pressEvents.map((event) =>
-        event.status === "active" && daysBetween(addDays(event.date, 14), federationResolved.state.date) > 0
-          ? { ...event, status: "settled" as const }
-          : event
-      )
+      pressEvents
     },
-    notes: ["Media desk reconciled sponsor and federation pressure", ...federationResolved.state.notes].slice(0, 6)
+    notes: ["Media desk reconciled sponsor and federation pressure", ...withPress.notes].slice(0, 6)
   };
 }
 
 export function upgradeFacility(state: CareerState, type: FacilityType): CareerState {
   const facility = state.facilities.find((entry) => entry.type === type);
 
-  if (!facility || facility.level >= facility.maxLevel) {
+  if (!facility || facility.level >= facility.maxLevel || facility.status === "building") {
     return state;
   }
 
@@ -505,15 +638,16 @@ export function upgradeFacility(state: CareerState, type: FacilityType): CareerS
     level: nextLevel,
     nextUpgradeCost: nextCost(type, nextLevel),
     maintenanceCost: catalog.maintenanceBase * nextLevel,
-    status: nextLevel >= facility.maxLevel ? "maxed" : "ready",
-    modifiers: modifiersFor(type, nextLevel),
+    buildCompleteDate: addDays(state.date, facility.buildTimeDays),
+    status: "building",
+    modifiers: modifiersFor(type, facility.level),
     history: [
       {
         id: `${facility.id}-${state.date}-${nextLevel}`,
         date: state.date,
         level: nextLevel,
         cost: facility.nextUpgradeCost,
-        note: `${facility.label} upgraded to level ${nextLevel}`
+        note: `${facility.label} level ${nextLevel} build started`
       },
       ...facility.history
     ].slice(0, 8)
@@ -532,8 +666,8 @@ export function upgradeFacility(state: CareerState, type: FacilityType): CareerS
       state: state.media,
       date: state.date,
       source: "facility",
-      message: `${facility.label} reached level ${nextLevel}`,
-      stateDelta: `-${facility.nextUpgradeCost} budget, modifiers now live`,
+      message: `${facility.label} level ${nextLevel} build started`,
+      stateDelta: `-${facility.nextUpgradeCost} budget, completes ${addDays(state.date, facility.buildTimeDays)}`,
       relatedIds: [facility.id]
     })
   };
@@ -543,7 +677,7 @@ export function upgradeFacility(state: CareerState, type: FacilityType): CareerS
     economy,
     media,
     facilities: state.facilities.map((entry) => (entry.type === type ? upgraded : entry)),
-    notes: [`${facility.label} upgraded to level ${nextLevel}`, ...state.notes].slice(0, 6)
+    notes: [`${facility.label} level ${nextLevel} build started`, ...state.notes].slice(0, 6)
   };
 }
 

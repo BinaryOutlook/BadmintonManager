@@ -4,8 +4,10 @@ import { tacticLibrary } from "../../game/content/tactics";
 import { advanceCareerCalendar, addDays } from "../../game/career/calendar";
 import { canAffordEventEntry, chargeEventEntry, eventEntryCost } from "../../game/career/economy";
 import {
+  advanceFacilityBuilds,
   applyFacilitiesToTraining,
   applyTravelPressureForEvent,
+  chargeFacilityUpkeep,
   effectiveEventEntryCosts,
   facilityModifiers,
   resolveMediaObjectives,
@@ -619,7 +621,7 @@ describe("advanced tactics and assistant advice", () => {
 });
 
 describe("facilities, media, sponsors, and reputation", () => {
-  it("upgrades facilities through the program budget and exposes active modifiers", () => {
+  it("starts facility builds through the program budget and activates modifiers on the build date", () => {
     const career = createInitialCareerState(seededPlayers[0].player.id, 8401);
     const upgraded = upgradeFacility(career, "training_hall");
     const trainingHall = upgraded.facilities.find((entry) => entry.type === "training_hall")!;
@@ -631,14 +633,27 @@ describe("facilities, media, sponsors, and reputation", () => {
       amount: -18000
     });
     expect(trainingHall.level).toBe(1);
+    expect(trainingHall.status).toBe("building");
+    expect(trainingHall.buildCompleteDate).toBe("2026-06-06");
     expect(trainingHall.nextUpgradeCost).toBe(27000);
-    expect(facilityModifiers(upgraded.facilities).trainingDevelopment).toBeGreaterThan(0);
-    expect(upgraded.media.reactionLog[0]?.message).toContain("Training Hall reached level 1");
+    expect(facilityModifiers(upgraded.facilities).trainingDevelopment).toBe(0);
+    expect(upgraded.media.reactionLog[0]?.message).toContain("Training Hall level 1 build started");
+
+    const completed = advanceFacilityBuilds({ ...upgraded, date: trainingHall.buildCompleteDate! });
+    const completedHall = completed.facilities.find((entry) => entry.type === "training_hall")!;
+
+    expect(completedHall.status).toBe("ready");
+    expect(completedHall.buildCompleteDate).toBeNull();
+    expect(facilityModifiers(completed.facilities).trainingDevelopment).toBeGreaterThan(0);
+    expect(completed.media.reactionLog[0]?.message).toContain("Training Hall build completed");
   });
 
   it("facility modifiers affect training and recovery outcomes", () => {
     const career = createInitialCareerState(seededPlayers[0].player.id, 8402);
-    const withFacilities = upgradeFacility(upgradeFacility(career, "training_hall"), "recovery_center");
+    const trainingBuild = upgradeFacility(career, "training_hall");
+    const trainingComplete = advanceFacilityBuilds({ ...trainingBuild, date: "2026-06-06" });
+    const recoveryBuild = upgradeFacility(trainingComplete, "recovery_center");
+    const withFacilities = advanceFacilityBuilds({ ...recoveryBuild, date: "2026-06-11" });
     const plan = trainingPlans.find((entry) => entry.id === "rear-court-power")!;
     const baseTraining = applyTrainingPlan({
       athlete: managedAthlete(career),
@@ -657,7 +672,7 @@ describe("facilities, media, sponsors, and reputation", () => {
     const career = createInitialCareerState(seededPlayers[0].player.id, 8403);
     const event = getCareerEvent(career.events, "summit-invitational-750")!;
     const baselineCosts = effectiveEventEntryCosts(event, career.facilities);
-    const upgraded = upgradeFacility(career, "travel_quality");
+    const upgraded = advanceFacilityBuilds({ ...upgradeFacility(career, "travel_quality"), date: "2026-06-05" });
     const upgradedCosts = effectiveEventEntryCosts(event, upgraded.facilities);
     const pressuredBaseline = applyTravelPressureForEvent(career, event);
     const pressuredUpgrade = applyTravelPressureForEvent(upgraded, event);
@@ -675,10 +690,13 @@ describe("facilities, media, sponsors, and reputation", () => {
       ...commissionScoutReport(base, "cand-arya-prakash", "candidate"),
       date: "2026-06-03"
     });
-    const upgraded = refreshAssistantAdvice(upgradeFacility(upgradeFacility(base, "analytics_lab"), "youth_academy"));
+    const analyticsComplete = advanceFacilityBuilds({ ...upgradeFacility(base, "analytics_lab"), date: "2026-06-07" });
+    const upgraded = refreshAssistantAdvice(
+      advanceFacilityBuilds({ ...upgradeFacility(analyticsComplete, "youth_academy"), date: "2026-06-15" })
+    );
     const upgradedReport = resolveDueScoutReports({
       ...commissionScoutReport(upgraded, "cand-arya-prakash", "candidate"),
-      date: "2026-06-02"
+      date: "2026-06-16"
     });
     const baseYouth = developYouthProspect(base, "prospect-mei-sato");
     const upgradedYouth = developYouthProspect(upgraded, "prospect-mei-sato");
@@ -690,6 +708,44 @@ describe("facilities, media, sponsors, and reputation", () => {
     expect(upgradedYouth.ecosystem.academy.prospects[0]!.readiness).toBeGreaterThan(
       baseYouth.ecosystem.academy.prospects[0]!.readiness
     );
+  });
+
+  it("analytics lab accuracy uses the same one-day scouting duration as scout staff", () => {
+    const base = createInitialCareerState(seededPlayers[0].player.id, 8406);
+    const analyticsComplete = advanceFacilityBuilds({ ...upgradeFacility(base, "analytics_lab"), date: "2026-06-07" });
+    const assigned = commissionScoutReport(analyticsComplete, "cand-arya-prakash", "candidate");
+
+    expect(staffModifiers(assigned.ecosystem).scouting).toBe(0);
+    expect(facilityModifiers(assigned.facilities).scoutingAccuracy).toBeGreaterThanOrEqual(5);
+    expect(assigned.ecosystem.scouting.assignments[0]?.startedAt).toBe("2026-06-07");
+    expect(assigned.ecosystem.scouting.assignments[0]?.dueAt).toBe("2026-06-08");
+  });
+
+  it("charges recurring facility upkeep once per day and records depleted-budget pressure", () => {
+    const career = createInitialCareerState(seededPlayers[0].player.id, 8407);
+    const trainingComplete = advanceFacilityBuilds({ ...upgradeFacility(career, "training_hall"), date: "2026-06-06" });
+    const nextDay = { ...trainingComplete, date: "2026-06-07" };
+    const charged = chargeFacilityUpkeep(nextDay);
+    const chargedAgain = chargeFacilityUpkeep(charged);
+
+    expect(charged.economy.ledger.at(-1)).toMatchObject({
+      category: "facility",
+      label: "Facility upkeep",
+      amount: -1200,
+      date: "2026-06-07"
+    });
+    expect(chargedAgain.economy.cash).toBe(charged.economy.cash);
+
+    const depleted = chargeFacilityUpkeep({
+      ...nextDay,
+      economy: { ...nextDay.economy, cash: 500 }
+    });
+    const psychology = depleted.ecosystem.psychology.find((entry) => entry.athleteId === depleted.program.managedPlayerId)!;
+
+    expect(depleted.economy.cash).toBe(0);
+    expect(depleted.economy.ledger.at(-1)?.amount).toBe(-500);
+    expect(depleted.media.reactionLog[0]?.message).toBe("Facility upkeep underfunded");
+    expect(psychology.morale).toBeLessThan(nextDay.ecosystem.psychology[0]!.morale);
   });
 
   it("resolves sponsor and federation objectives into cash, reputation, morale, and reactions", () => {
@@ -721,5 +777,42 @@ describe("facilities, media, sponsors, and reputation", () => {
     expect(resolved.media.reactionLog.map((entry) => entry.source)).toEqual(
       expect.arrayContaining(["sponsor", "federation"])
     );
+  });
+
+  it("settles press events by applying displayed reputation and morale deltas once", () => {
+    const career = createInitialCareerState(seededPlayers[0].player.id, 8408);
+    const pressReady = {
+      ...career,
+      date: addDays(career.media.pressEvents[0]!.date, 15),
+      media: {
+        ...career.media,
+        sponsors: career.media.sponsors.map((objective) => ({ ...objective, status: "fulfilled" as const })),
+        federationObjectives: career.media.federationObjectives.map((objective) => ({
+          ...objective,
+          status: "fulfilled" as const
+        })),
+        pressEvents: [
+          {
+            ...career.media.pressEvents[0]!,
+            reputationDelta: -3,
+            moraleDelta: -4
+          }
+        ]
+      }
+    };
+    const resolved = resolveMediaObjectives(pressReady);
+    const resolvedAgain = resolveMediaObjectives(resolved);
+    const psychology = resolved.ecosystem.psychology.find((entry) => entry.athleteId === resolved.program.managedPlayerId)!;
+
+    expect(resolved.media.pressEvents[0]?.status).toBe("settled");
+    expect(resolved.media.reputation).toBe(pressReady.media.reputation - 3);
+    expect(psychology.morale).toBe(pressReady.ecosystem.psychology[0]!.morale - 4);
+    expect(resolved.media.reactionLog[0]).toMatchObject({
+      source: "press",
+      relatedIds: ["press-launch-scrutiny"]
+    });
+    expect(resolvedAgain.media.reputation).toBe(resolved.media.reputation);
+    expect(resolvedAgain.ecosystem.psychology[0]!.morale).toBe(psychology.morale);
+    expect(resolvedAgain.media.reactionLog.filter((entry) => entry.source === "press")).toHaveLength(1);
   });
 });

@@ -605,7 +605,10 @@ export function CareerFacilitiesPage(props: CareerPageProps) {
         </div>
         <div className="screen-meta">
           <span>Cash {money(props.career.economy.cash)}</span>
-          <span>Upkeep {money(totalMaintenance)}</span>
+          <span>Daily upkeep {money(totalMaintenance)}</span>
+          <button className="command-button command-button-secondary" type="button" onClick={props.onAdvanceDay}>
+            Advance Day
+          </button>
           <button className="command-button command-button-secondary" type="button" onClick={props.onOpenProgram}>
             Program Hub
           </button>
@@ -623,15 +626,18 @@ export function CareerFacilitiesPage(props: CareerPageProps) {
           </div>
           <div className="program-card-grid facility-card-grid">
             {props.career.facilities.map((facility) => {
-              const canUpgrade = facility.status !== "maxed" && props.career!.economy.cash >= facility.nextUpgradeCost;
+              const canUpgrade = facility.status === "ready" && props.career!.economy.cash >= facility.nextUpgradeCost;
+              const buildDetail =
+                facility.status === "building" && facility.buildCompleteDate
+                  ? `completes ${facility.buildCompleteDate}`
+                  : `build window ${facility.buildTimeDays} day(s)`;
 
               return (
                 <article key={facility.id} className="program-decision-card facility-card">
                   <span>{facility.status} / level {facility.level} of {facility.maxLevel}</span>
                   <strong>{facility.label}</strong>
                   <p>
-                    Next cost {money(facility.nextUpgradeCost)}; build window {facility.buildTimeDays} day(s); upkeep{" "}
-                    {money(facility.maintenanceCost)}.
+                    Next cost {money(facility.nextUpgradeCost)}; {buildDetail}; daily upkeep {money(facility.maintenanceCost)}.
                   </p>
                   <div className="career-stat-grid">
                     {Object.entries(facility.modifiers)
@@ -658,6 +664,8 @@ export function CareerFacilitiesPage(props: CareerPageProps) {
                   >
                     {facility.status === "maxed"
                       ? "Max Level"
+                      : facility.status === "building"
+                        ? "Build In Progress"
                       : props.career!.economy.cash < facility.nextUpgradeCost
                         ? "Unaffordable"
                         : `Upgrade ${facility.label}`}
@@ -704,7 +712,7 @@ export function CareerFacilitiesPage(props: CareerPageProps) {
                 <div key={entry.id} className="program-log-row">
                   <span>{entry.date} / {facility.label}</span>
                   <strong>{entry.note}</strong>
-                  <p>Cost {money(entry.cost)}; level {entry.level}; current upkeep {money(facility.maintenanceCost)}.</p>
+                  <p>Cost {money(entry.cost)}; level {entry.level}; daily upkeep {money(facility.maintenanceCost)}.</p>
                 </div>
               ))
             )}
@@ -872,6 +880,8 @@ export function CareerScoutingNetworkPage(props: CareerPageProps) {
   }
 
   const modifiers = staffModifiers(props.career.ecosystem);
+  const facilities = facilityModifiers(props.career.facilities);
+  const scoutDurationDays = modifiers.scouting >= 0.18 || facilities.scoutingAccuracy >= 5 ? 1 : 2;
   const scoutSubjects = [
     ...props.career.ecosystem.recruitment.candidates.map((candidate) => ({
       id: candidate.id,
@@ -943,7 +953,7 @@ export function CareerScoutingNetworkPage(props: CareerPageProps) {
                       ? `Report ${report.state}: ${report.confidence}% confidence, ${report.accuracy}% accuracy, expires ${report.expiresAt}.`
                       : assignment
                         ? `Assignment pending until ${assignment.dueAt}.`
-                        : `Cost ${money(3200)} / ${modifiers.scouting >= 0.18 ? "1" : "2"} day(s).`}
+                        : `Cost ${money(3200)} / ${scoutDurationDays} day(s).`}
                   </p>
                   <button
                     className="command-button command-button-primary"

@@ -405,7 +405,8 @@ export const facilityStateSchema = z.object({
   nextUpgradeCost: z.number().int().nonnegative(),
   maintenanceCost: z.number().int().nonnegative(),
   buildTimeDays: z.number().int().nonnegative(),
-  status: z.enum(["ready", "maxed"]),
+  buildCompleteDate: z.string().nullable().optional(),
+  status: z.enum(["ready", "building", "maxed"]),
   modifiers: facilityModifierSchema,
   history: z.array(
     z.object({
