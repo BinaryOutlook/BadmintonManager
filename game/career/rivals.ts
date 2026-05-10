@@ -218,7 +218,7 @@ function selectEvent(program: RivalProgramState, event: CareerEventDefinition, d
     eventName: event.name,
     tier: event.tier,
     selectedAt: date,
-    status: "selected",
+    status: "entered",
     fieldStrength: clamp(threat + event.prestige * 0.22, 0, 100),
     projectedRound: projectedRound(threat, event),
     resultRound: null,
@@ -253,7 +253,7 @@ function progressProgram(program: RivalProgramState, date: string, logIndex: num
   const delta = trainingDelta(program, date);
   const logs: RivalProgressionEvent[] = [];
   const roster: RivalAthleteState[] = program.roster.map((athlete) => {
-    const ageDecline = Math.max(0, athlete.age - 26) * 0.09;
+    const ageDecline = Math.max(0, athlete.age - program.ageCurve.peakAge) * program.ageCurve.declineRate;
     const fatigueGain = program.trainingBias === "endurance" ? 1.1 : program.trainingBias === "attack" ? 1.9 : 1.4;
     const nextRating = clamp(athlete.rating + delta - ageDecline, 1, 100);
     const nextForm = clamp(athlete.form + delta * 0.85 - athlete.fatigue * 0.015 - ageDecline * 0.4, 0, 100);
@@ -431,6 +431,10 @@ export function createInitialRivalCircuit(date = "2026-06-01", rankings: Ranking
       strategy: seed.strategy,
       budgetTier: seed.budgetTier,
       trainingBias: seed.trainingBias,
+      ageCurve: {
+        peakAge: 26,
+        declineRate: 0.09
+      },
       roster,
       eventEntries: [],
       form: 62 + index * 4,
@@ -467,6 +471,7 @@ export function advanceRivalCircuit(state: CareerState): CareerState {
   let rankings = state.rankings;
   let logIndex = state.rivals.circuitLog.length + 1;
   let programs = state.rivals.programs.map((program) => progressProgram(syncRivalRosterFromRankings(program, rankings), state.date, logIndex++));
+  const trainingEvents = programs.map((program) => program.progressionLog[0]).filter(Boolean) as RivalProgressionEvent[];
   const circuitEvents: RivalProgressionEvent[] = [];
 
   for (const event of state.events) {
@@ -489,7 +494,6 @@ export function advanceRivalCircuit(state: CareerState): CareerState {
     });
   }
 
-  const trainingEvents = programs.map((program) => program.progressionLog[0]).filter(Boolean) as RivalProgressionEvent[];
   const fieldPressure = calculateRivalFieldPressure(programs, state.events);
   const peakPressure = [...fieldPressure].sort((left, right) => right.pressureScore - left.pressureScore)[0];
 

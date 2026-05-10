@@ -265,6 +265,10 @@ export const rivalProgramStateSchema = z.object({
   strategy: rivalStrategySchema,
   budgetTier: z.enum(["lean", "stable", "elite"]),
   trainingBias: rivalTrainingBiasSchema,
+  ageCurve: z.object({
+    peakAge: z.number().int().min(18).max(32),
+    declineRate: z.number().min(0).max(1)
+  }),
   roster: z.array(rivalAthleteStateSchema),
   eventEntries: z.array(rivalEventEntrySchema),
   form: z.number().min(0).max(100),

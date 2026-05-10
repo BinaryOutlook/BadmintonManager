@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { seededPlayers } from "../../game/content/players";
 import { tacticLibrary } from "../../game/content/tactics";
-import { advanceCareerCalendar } from "../../game/career/calendar";
+import { advanceCareerCalendar, addDays } from "../../game/career/calendar";
 import { canAffordEventEntry, chargeEventEntry, eventEntryCost } from "../../game/career/economy";
 import {
   commissionScoutReport,
@@ -20,6 +20,7 @@ import {
 } from "../../game/career/ecosystem";
 import { getCareerEvent } from "../../game/career/events";
 import { settleCareerMatch } from "../../game/career/hubs";
+import { advanceRivalCircuit } from "../../game/career/rivals";
 import { createInitialCareerState, managedAthlete } from "../../game/career/state";
 import { applyTrainingPlan, trainingPlans } from "../../game/career/training";
 import { simulateMatch } from "../../game/core/match";
@@ -322,5 +323,112 @@ describe("program ecosystem depth", () => {
 
     expect(withdrawn.ecosystem.promises[0]?.status).toBe("withdrawn");
     expect(withdrawn.ecosystem.psychology[0]?.recentDrivers[0]).toContain("withdrawn");
+  });
+});
+
+describe("dynamic rival ecosystem", () => {
+  it("seeds persistent rival programs with ranked rosters and pressure metadata", () => {
+    const career = createInitialCareerState(seededPlayers[0].player.id, 8201);
+
+    expect(career.version).toBe(3);
+    expect(career.rivals.programs).toHaveLength(4);
+    expect(career.rivals.programs[0]?.ageCurve).toMatchObject({ peakAge: 26, declineRate: 0.09 });
+    expect(career.rivals.programs[0]?.roster[0]?.currentRank).toBeGreaterThan(0);
+    expect(career.rivals.programs.every((program) => program.pressureScore > 0)).toBe(true);
+    expect(career.rivals.circuitLog.some((entry) => entry.type === "form")).toBe(true);
+  });
+
+  it("trains rivals, records selections, and creates visible event field pressure", () => {
+    const career = createInitialCareerState(seededPlayers[0].player.id, 8202);
+    const advanced = advanceRivalCircuit(career);
+    const firstProgramBefore = career.rivals.programs[0]!;
+    const firstProgramAfter = advanced.rivals.programs[0]!;
+
+    expect(firstProgramAfter.roster[0]!.rating).toBeGreaterThan(firstProgramBefore.roster[0]!.rating);
+    expect(firstProgramAfter.roster[0]!.fatigue).toBeGreaterThan(firstProgramBefore.roster[0]!.fatigue);
+    expect(advanced.rivals.programs.some((program) => program.eventEntries.some((entry) => entry.status === "entered"))).toBe(true);
+    expect(advanced.rivals.fieldPressure.length).toBeGreaterThan(0);
+    expect(advanced.rivals.circuitLog.map((entry) => entry.type)).toEqual(
+      expect.arrayContaining(["training", "selection"])
+    );
+    expect(advanced.notes[0]).toMatch(/Rival pressure|Rival circuit trained/);
+  });
+
+  it("settles rival event results into rankings during deterministic batch simulation", () => {
+    let career = createInitialCareerState(seededPlayers[0].player.id, 8203);
+    const startingRankings = career.rankings;
+
+    for (let day = 0; day < 14; day += 1) {
+      career = advanceRivalCircuit(career);
+      career = advanceCareerCalendar(career);
+    }
+
+    const completedEntries = career.rivals.programs.flatMap((program) =>
+      program.eventEntries.filter((entry) => entry.status === "completed")
+    );
+    const completedProgram = career.rivals.programs.find((program) =>
+      program.eventEntries.some((entry) => entry.status === "completed")
+    )!;
+    const completedLeadId = completedProgram.roster[0]!.playerId;
+    const startingRanking = startingRankings.find((entry) => entry.playerId === completedLeadId)!;
+    const settledRanking = career.rankings.find((entry) => entry.playerId === completedLeadId)!;
+
+    expect(completedEntries.length).toBeGreaterThan(0);
+    expect(completedEntries.some((entry) => entry.pointsAwarded > 0 && entry.resultRound)).toBe(true);
+    expect(settledRanking.points).toBeGreaterThan(startingRanking.points);
+    expect(settledRanking.eventHistory.length).toBeGreaterThan(startingRanking.eventHistory.length);
+    expect(career.rivals.circuitLog.some((entry) => entry.type === "event_result")).toBe(true);
+  });
+
+  it("records age-curve decline when an older rival cannot offset training load", () => {
+    const career = createInitialCareerState(seededPlayers[0].player.id, 8204);
+    const aged = {
+      ...career,
+      rivals: {
+        ...career.rivals,
+        programs: career.rivals.programs.map((program, programIndex) =>
+          programIndex === 0
+            ? {
+                ...program,
+                ageCurve: { peakAge: 26, declineRate: 0.45 },
+                roster: program.roster.map((athlete, athleteIndex) =>
+                  athleteIndex === 0
+                    ? { ...athlete, age: 35, rating: 78, form: 70, fatigue: 24 }
+                    : athlete
+                )
+              }
+            : program
+        )
+      }
+    };
+    const advanced = advanceRivalCircuit(aged);
+    const declinedAthlete = advanced.rivals.programs[0]!.roster[0]!;
+
+    expect(declinedAthlete.rating).toBeLessThan(78);
+    expect(declinedAthlete.trend).toBe("sliding");
+    expect(advanced.rivals.programs[0]!.progressionLog.some((entry) => entry.type === "decline")).toBe(true);
+  });
+
+  it("keeps rival simulation deterministic for the same calendar segment", () => {
+    const simulateSegment = () => {
+      let career = createInitialCareerState(seededPlayers[0].player.id, 8205);
+
+      for (let day = 0; day < 24; day += 1) {
+        career = advanceRivalCircuit({
+          ...career,
+          date: addDays("2026-06-01", day)
+        });
+      }
+
+      return {
+        rankings: career.rankings.map((entry) => [entry.playerId, entry.rank, entry.points]),
+        entries: career.rivals.programs.map((program) =>
+          program.eventEntries.map((entry) => [entry.eventId, entry.status, entry.resultRound, entry.pointsAwarded])
+        ),
+        pressure: career.rivals.fieldPressure
+      };
+    };
+
+    expect(simulateSegment()).toEqual(simulateSegment());
   });
 });
