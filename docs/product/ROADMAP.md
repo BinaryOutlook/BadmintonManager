@@ -102,7 +102,7 @@ Exit criteria:
 
 ## `v0.2.3` Game-algorithm
 
-Status: Active
+Status: Completed baseline / ongoing calibration
 
 Goal:
 
@@ -127,7 +127,7 @@ Exit criteria:
 
 ## `v0.2.4` UI Framework and Season-Ready Layout
 
-Status: Planned
+Status: Active
 
 Goal:
 
@@ -136,6 +136,12 @@ Goal:
 - add a badminton-native player profile page generated for every player name click
 - add a typed pop-up and overlay system for detail-heavy surfaces
 - consolidate true app settings into one settings pop-up while moving game decisions to their page homes
+- expose `Start Tournament` and `Start Career` as paired clean-launch decisions
+- expose a single-slot local Save Manager with export, import preview/confirm, active-slot delete,
+  corrupt-backup delete, and reset/new-session trust flows
+- expose career route-map access to Training, Calendar / Event Desk, Match Planning, Live Match,
+  Post-Match Review, Save Manager, and New Session
+- present fictional Circuit calendar/ranking data without licensed event branding or official tables
 - prepare the interface for around `32` available games or events
 - add season and calendar page scaffolds that can later support multi-game progression
 - keep the existing 16-player tournament loop playable while future systems take shape
@@ -148,6 +154,11 @@ Exit criteria:
 - tactical intel and future detail surfaces render through a shared overlay or pop-up contract
 - theme and app preferences live in one settings pop-up; tactics, squad, tactical intel, and events do not
 - Games, Season, and Calendar pages exist as future-ready UI surfaces without pretending full season simulation is complete
+- clean first launch shows both quick tournament and saved career paths
+- Save Manager import rejects malformed/schema-invalid JSON without mutating `badminton-manager-save`
+  or `badminton-manager-save-corrupt`
+- fictional `Circuit` labels and fictional event names are used in active runtime copy, with legacy
+  saves normalized during load/import
 - the existing setup, bracket, live match, and recap flow works through the new page framework
 - no backend, auth, state-library replacement, or material persistence change is introduced by default
 - `npm run typecheck`, `npm run test`, `npm run build`, and `npm run test:e2e` pass

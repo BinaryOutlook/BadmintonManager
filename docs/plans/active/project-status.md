@@ -1,8 +1,8 @@
 # Project Status
 
 Status date: 2026-05-11
-Current version target: `v0.2.3 Game-algorithm`
-Overall phase: Match simulation fidelity and game-algorithm upgrade
+Current version target: `v0.2.4 UI Framework and Season-Ready Layout`
+Overall phase: UI/career/save trust and release polish on top of the `v0.2.3` match-algorithm baseline
 Chosen stack: Option A local-first SPA
 
 ## Snapshot
@@ -49,6 +49,8 @@ What is now stable:
 - the career workspace now has visible route chrome and an in-page Career Home map for Training, Calendar/Event Desk, Match Planning, Live Match, Post-Match Review, Save Manager, and New Session actions
 - the Career Home and Calendar/Event Desk now surface the fictional circuit calendar/ranking model: event tiers, entry deadlines, eligibility gates, ranking cutoffs, seed snapshots, draw milestones, points, prize/cost, readiness, and season-race stakes with a simplification boundary
 - public event tiers now use fictional `Circuit 300`, `Circuit 500`, `Circuit 750`, and `Circuit 1000` labels while legacy save imports normalize the previous tier text safely
+- the quick tournament event now uses the fictional `Harborline Open` name; legacy local/imported saves that still contain the old real event name are normalized during load/import
+- Phase 3 proof captured 36 desktop/mobile screenshots plus storage reset and import-validation evidence; no video proof is currently part of the shipped evidence pack
 
 ## Completed
 
@@ -107,6 +109,8 @@ What is now stable:
 - [x] added the career workspace navigation shell and in-page management map for the core career route family
 - [x] integrated the fictional calendar/ranking domain data into Career Home and Calendar/Event Desk UI copy
 - [x] remediated the public tier-label boundary by replacing active runtime/docs/tests with fictional Circuit labels and preserving legacy save compatibility
+- [x] fictionalized the active quick-tournament event name and normalized legacy tournament saves during load/import
+- [x] updated release/status docs for first-launch, Save Manager, career route reachability, fictional calendar/ranking, import validation, and Phase 4 residual polish decisions
 
 ## In Progress
 
@@ -118,8 +122,8 @@ What is now stable:
 - [ ] improve commentary variety and phrasing
 - [ ] expand post-match stats and scouting reads
 - [ ] polish responsive behavior and visual details across the new shell
-- [ ] review the integrated career calendar/ranking workspace for responsive density, route contract clarity, and honest simplification boundaries
-- [ ] review the first-launch and Save Manager surfaces for copy, visual density, and mobile ergonomics before larger save/history features
+- [ ] track mobile Calendar/Event Desk compactness as non-blocking polish debt; current proof shows reachability without horizontal clipping or critical-action loss
+- [ ] track dense live-match directive labels as non-blocking polish debt; current proof does not require a Phase 4 source change
 
 ## Next
 
@@ -128,7 +132,7 @@ What is now stable:
 - [ ] stage detailed rally cap testing through `48`, and then `70`
 - [ ] add optional calibration assertions behind `MATCH_BALANCE_ASSERT=1`
 - [ ] add optional stat-composition assertions behind `STAT_COMPOSITION_ASSERT=1`
-- [ ] use `docs/product/versions/v0.2.4/v0.2.4.md` as the next release packet once `v0.2.3` exits active algorithm tuning
+- [ ] keep `docs/product/versions/v0.2.4/v0.2.4.md` as the active UI/career/save packet while algorithm tuning continues against the `v0.2.3` baseline
 - [ ] use `docs/product/versions/v0.2.4/player-profile-and-shell-amendment.md` as the implementation guide for the player profile page and shell/settings cleanup
 - [ ] decide whether `v0.2.4` should keep internal SPA page state or introduce URL routes
 - [ ] confirm whether the future `32` selectable items should be called games, events, competitions, or tournaments in player-facing UI
@@ -136,6 +140,7 @@ What is now stable:
 - [ ] add more differentiated live directives and opponent pattern reads
 - [ ] tighten save migration coverage for future `v0.2.x` changes
 - [ ] tune Phase 1 career economy values, event tier rewards, and training load numbers after review feedback
+- [ ] consider a compact mobile Calendar/Event Desk layout after final release packaging, without reopening the accepted Phase 3 reachability proof
 
 ## Blockers
 
@@ -151,6 +156,7 @@ Current design questions that could affect scope:
 - whether `v0.2.4` should adopt URL routes or keep a typed internal page registry inside the current SPA shell
 - whether the first calendar should use fixed fictional dates or seed-generated dates
 - how much of the full player profile should ship as page content in `v0.2.4` versus remain as focused overlays or later season/career scaffolds
+- whether future evidence packages should require walkthrough video in addition to the current screenshot, command, reset, and import proof
 
 ## Risks
 
@@ -180,11 +186,11 @@ Future sessions should read these files first:
 - `docs/product/PRD.md`
 - `docs/product/ROADMAP.md`
 - `docs/plans/active/project-status.md`
+- `docs/product/versions/v0.2.4/v0.2.4.md`
+- `docs/product/versions/v0.2.4/player-profile-and-shell-amendment.md`
 - `docs/reference/match-engine.md`
 - `docs/reference/match-simulation-fidelity.md`
 - `docs/product/versions/v0.2.3/v0.2.3.md`
-- `docs/product/versions/v0.2.4/v0.2.4.md`
-- `docs/product/versions/v0.2.4/player-profile-and-shell-amendment.md`
 
 ## Update Rule
 

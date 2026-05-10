@@ -353,7 +353,7 @@ describe("career save migration", () => {
       seed: 465,
       tournament: {
         id: "legacy-event",
-        name: "Legacy Event",
+        name: "Singapore Open",
         tier: `${legacyPrefix} 750`,
         prizePoolUsd: 850_000,
         managedPlayerId: seededPlayers[0].player.id,
@@ -391,6 +391,7 @@ describe("career save migration", () => {
 
     expect(preview.ok).toBe(true);
     if (preview.ok) {
+      expect(preview.save.tournament?.name).toBe("Harborline Open");
       expect(preview.save.tournament?.tier).toBe("Circuit 750");
       expect(preview.save.career?.events.find((event) => event.id === "metro-open-300")?.tier).toBe("Circuit 300");
       expect(preview.save.career?.rankings[0]?.eventHistory[0]?.tier).toBe("Circuit 300");

@@ -69,13 +69,12 @@ $$
 
 ## Current Version
 
-Current target: `v0.2.3 Game-algorithm`
+Current runnable target: `v0.2.4 UI Framework and Season-Ready Layout`, layered on the completed
+`v0.2.3 Game-algorithm` baseline.
 
-`v0.2.3` is the game-algorithm release. It promotes the high-fidelity active-match simulator and
-quick background-match simulator into the active implementation target.
-
-The goal is richer real-match feel for managed matches while keeping unseen tournament matches fast,
-deterministic, and tournament-compatible.
+`v0.2.4` is the active UI/career/save release packet. The shipped runtime now includes the first-launch
+dual path, visible single-slot Save Manager, career route map, and fictional Circuit calendar/ranking
+workspace while preserving the deterministic match engine and local-first persistence model.
 
 ## Documentation
 
@@ -85,7 +84,8 @@ This repo now uses an agent-first documentation harness:
 - `docs/README.md` - documentation map and update rules
 - `docs/product/PRD.md` - stable product direction
 - `docs/product/versions/` - versioned release packets and UI references
-- `docs/product/versions/v0.2.3/v0.2.3.md` - active release packet
+- `docs/product/versions/v0.2.4/v0.2.4.md` - active UI/career/save release packet
+- `docs/product/versions/v0.2.3/v0.2.3.md` - match-algorithm baseline packet
 - `docs/architecture/overview.md` - architecture and implementation boundaries
 - `docs/reference/` - subsystem contracts
 - `docs/plans/active/project-status.md` - current state and next work

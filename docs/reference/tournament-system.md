@@ -19,6 +19,7 @@ The MVP tournament is:
 - a 16-player singles knockout
 - one managed player entering the draw
 - one champion at the end of the run
+- a fictional quick-tournament event named `Harborline Open` at `Circuit 750`
 
 ## Bracket Model
 
@@ -83,6 +84,13 @@ At minimum, save:
 - next scheduled match
 - selected player
 - selected tactic package for the next match if needed
+
+Legacy save compatibility:
+
+- the active local key remains `badminton-manager-save`
+- older saves that contain the previous quick-tournament real event name are accepted and normalized
+  to `Harborline Open` during load/import
+- older public tier labels are accepted and normalized to fictional `Circuit` labels
 
 ## Presentation Rule
 

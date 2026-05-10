@@ -2,8 +2,8 @@
 
 Status: Living product baseline
 Owner: binaryoutlook
-Last updated: 2026-04-28
-Project phase: Command-center super build
+Last updated: 2026-05-11
+Project phase: UI/career/save trust build
 
 ## 1. Purpose
 
@@ -85,6 +85,8 @@ For the first serious version, the product should:
 - present matches through a commentary-first interface before attempting complex visuals
 - remain local-first and easy to run during early development
 - stay readable enough for future maintainers and future AI sessions to re-enter quickly
+- make a quick tournament run and a saved career program discoverable from clean first launch
+- keep save ownership visible through local export/import/delete/reset and corrupt-save recovery
 
 ## 6. Non-Goals
 
@@ -236,6 +238,19 @@ The core loop for the first serious version should be:
 5. Advance through the bracket.
 6. Review outcome summaries and key stats.
 
+The current build also exposes a local-first career loop:
+
+```text
+Start Career -> Career Home -> Training / Calendar / Match Planning -> Live Match -> Review
+                                      |
+                                      v
+                               Save Manager
+```
+
+Career calendar and ranking presentation is fictional and structurally inspired by badminton circuit
+concepts. It must not use licensed event branding, real athlete likenesses, or official ranking
+tables as product content.
+
 ## 11. Core Systems
 
 The early product depends on five systems:
@@ -275,5 +290,5 @@ The foundation phase is successful when all of the following are true:
 ## 14. Open Questions
 
 - Whether the first version manages a single athlete or a small squad should be confirmed before the long-term manager loop is designed.
-- Whether official rankings, fictional rankings, or purely local tournament seeding is best for the first content pass remains open.
+- The first shipped career pass uses fictional Circuit rankings and event tiers. Any future move toward official-looking rankings needs a fresh licensing/content decision.
 - Whether player growth belongs in `v0.2` or `v0.3` depends on how quickly the core match engine becomes trustworthy.

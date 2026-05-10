@@ -21,6 +21,7 @@ import {
 import { upgradeCareerStateV3 } from "../career/tactics";
 import { refreshAssistantAdvice } from "../career/tactics";
 import { upgradeCareerStateV4 } from "../career/facilitiesMedia";
+import { normalizeTournamentName } from "../tournament/metadata";
 
 const matchSummaryEventSchema = z.object({
   kind: z.enum([
@@ -56,7 +57,7 @@ const tournamentRoundSchema = z.object({
 
 export const tournamentStateSchema = z.object({
   id: z.string(),
-  name: z.string(),
+  name: z.preprocess(normalizeTournamentName, z.string()),
   tier: z.preprocess(normalizeCareerTierLabel, z.string()),
   prizePoolUsd: z.number().int().nonnegative(),
   managedPlayerId: z.string(),

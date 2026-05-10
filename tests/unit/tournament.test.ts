@@ -25,6 +25,8 @@ describe("tournament progression", () => {
     expect(entrantIds).toContain(managedPlayerId);
     expect(entrantIds).toEqual(repeatedIds);
     expect(entrantIds).not.toEqual(alternateIds);
+    expect(first.name).toBe("Harborline Open");
+    expect(first.tier).toBe("Circuit 750");
   });
 
   it("creates an opening round with one pending managed match", () => {

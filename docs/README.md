@@ -30,8 +30,8 @@ docs/README.md
 | Fast session entry | `AGENTS.md` | Routing or required commands change |
 | Product direction | `docs/product/PRD.md` | The product thesis, scope, or non-goals change |
 | Milestone sequence | `docs/product/ROADMAP.md` | Version order, goals, or exit criteria change |
-| Current release work | `docs/product/versions/v0.2.3/v0.2.3.md` | The active version scope changes |
-| Planned release work | `docs/product/versions/v0.2.4/v0.2.4.md` | The next version scope changes |
+| Current release work | `docs/product/versions/v0.2.4/v0.2.4.md` | The active UI/career/save version scope changes |
+| Match-algorithm baseline | `docs/product/versions/v0.2.3/v0.2.3.md` | Detailed/quick simulation scope or calibration baseline changes |
 | `v0.2.4` player page and shell cleanup | `docs/product/versions/v0.2.4/player-profile-and-shell-amendment.md` | Player profile, player-name navigation, or settings consolidation direction changes |
 | Current project state | `docs/plans/active/project-status.md` | Work completes, next work changes, blockers appear |
 | Architecture boundaries | `docs/architecture/overview.md` | Module ownership or runtime boundaries change |
@@ -63,9 +63,10 @@ For most coding tasks, read in this order:
 For product or architecture tasks, start with:
 
 1. `docs/product/PRD.md`
-2. `docs/product/versions/v0.2.3/v0.2.3.md`
-3. `docs/architecture/overview.md`
-4. Related ADRs in `docs/decisions/`
+2. `docs/product/versions/v0.2.4/v0.2.4.md`
+3. `docs/product/versions/v0.2.3/v0.2.3.md` when match-algorithm intent is relevant
+4. `docs/architecture/overview.md`
+5. Related ADRs in `docs/decisions/`
 
 ## Update Contract
 

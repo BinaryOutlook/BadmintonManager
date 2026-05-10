@@ -19,9 +19,10 @@ Use progressive disclosure. Read only what the task needs.
 1. `docs/README.md` - documentation map and update rules
 2. `docs/plans/active/project-status.md` - current phase, completed work, next work
 3. `docs/product/PRD.md` - stable product truth
-4. `docs/product/versions/v0.2.3/v0.2.3.md` - active release packet
-5. `docs/architecture/overview.md` - architecture boundaries and commands
-6. `docs/reference/` - subsystem contracts for match engine, player model, tactics, and tournament flow
+4. `docs/product/versions/v0.2.4/v0.2.4.md` - active UI/career/save release packet
+5. `docs/product/versions/v0.2.3/v0.2.3.md` - match-algorithm baseline packet
+6. `docs/architecture/overview.md` - architecture boundaries and commands
+7. `docs/reference/` - subsystem contracts for match engine, player model, tactics, tournament flow, and career calendar/ranking
 
 ## Architecture Rules
 

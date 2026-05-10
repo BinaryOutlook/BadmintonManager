@@ -1,6 +1,7 @@
 import { tacticLibrary } from "../content/tactics";
 import { simulateMatchByFidelity } from "../core/match";
 import { SeededRng } from "../core/rng";
+import { QUICK_TOURNAMENT_NAME } from "./metadata";
 import type {
   MatchInput,
   MatchResult,
@@ -231,7 +232,7 @@ export function createTournament(seededEntries: SeededPlayer[], managedPlayerId:
 
   return {
     id: "badminton-manager-open",
-    name: "Singapore Open",
+    name: QUICK_TOURNAMENT_NAME,
     tier: "Circuit 750",
     prizePoolUsd: 850_000,
     managedPlayerId,
