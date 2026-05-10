@@ -156,7 +156,7 @@ function persist(state: TournamentStoreState) {
   }
 
   const payload: PersistedSave = {
-    version: 6,
+    version: 7,
     selectedPlayerId: state.selectedPlayerId,
     plannedTacticKey: state.plannedTacticKey,
     seed: state.seed,

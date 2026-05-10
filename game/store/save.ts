@@ -8,8 +8,16 @@ import {
   teamTalkSchema
 } from "../core/models";
 import { upgradeCareerStateV1, upgradeCareerStateV2 } from "../career/ecosystem";
-import { careerStateSchema, careerStateV1Schema, careerStateV2Schema, careerStateV3Schema } from "../career/models";
+import {
+  careerStateSchema,
+  careerStateV1Schema,
+  careerStateV2Schema,
+  careerStateV3Schema,
+  careerStateV4Schema
+} from "../career/models";
 import { upgradeCareerStateV3 } from "../career/tactics";
+import { refreshAssistantAdvice } from "../career/tactics";
+import { upgradeCareerStateV4 } from "../career/facilitiesMedia";
 
 const matchSummaryEventSchema = z.object({
   kind: z.enum([
@@ -208,13 +216,19 @@ export const phase3RivalPersistedSaveSchema = legacyPersistedSaveSchema.extend({
   career: careerStateV3Schema.nullable()
 });
 
-export const persistedSaveSchema = legacyPersistedSaveSchema.extend({
+export const phase3TacticsPersistedSaveSchema = legacyPersistedSaveSchema.extend({
   version: z.literal(6),
+  career: careerStateV4Schema.nullable()
+});
+
+export const persistedSaveSchema = legacyPersistedSaveSchema.extend({
+  version: z.literal(7),
   career: careerStateSchema.nullable()
 });
 
 export const persistedSavePayloadSchema = z.union([
   persistedSaveSchema,
+  phase3TacticsPersistedSaveSchema,
   phase3RivalPersistedSaveSchema,
   phase2PersistedSaveSchema,
   phase1PersistedSaveSchema,
@@ -224,38 +238,54 @@ export const persistedSavePayloadSchema = z.union([
 export type PersistedSave = z.infer<typeof persistedSaveSchema>;
 export type PersistedSavePayload = z.infer<typeof persistedSavePayloadSchema>;
 
+function refreshMigratedCareer(career: PersistedSave["career"]) {
+  return career ? refreshAssistantAdvice(career) : null;
+}
+
 export function migratePersistedSave(payload: PersistedSavePayload): PersistedSave {
-  if (payload.version === 6) {
+  if (payload.version === 7) {
     return payload;
   }
 
   if (payload.version === 3) {
     return {
       ...payload,
-      version: 6,
-      career: payload.career ? upgradeCareerStateV3(upgradeCareerStateV1(payload.career)) : null
+      version: 7,
+      career: payload.career
+        ? refreshMigratedCareer(upgradeCareerStateV4(upgradeCareerStateV3(upgradeCareerStateV1(payload.career))))
+        : null
     };
   }
 
   if (payload.version === 4) {
     return {
       ...payload,
-      version: 6,
-      career: payload.career ? upgradeCareerStateV3(upgradeCareerStateV2(payload.career)) : null
+      version: 7,
+      career: payload.career
+        ? refreshMigratedCareer(upgradeCareerStateV4(upgradeCareerStateV3(upgradeCareerStateV2(payload.career))))
+        : null
     };
   }
 
   if (payload.version === 5) {
     return {
       ...payload,
-      version: 6,
-      career: payload.career ? upgradeCareerStateV3(payload.career) : null
+      version: 7,
+      career: payload.career ? refreshMigratedCareer(upgradeCareerStateV4(upgradeCareerStateV3(payload.career))) : null
+    };
+  }
+
+  if (payload.version === 6) {
+    return {
+      ...payload,
+      version: 7,
+      career: payload.career ? refreshMigratedCareer(upgradeCareerStateV4(payload.career)) : null
     };
   }
 
   return {
     ...payload,
-    version: 6,
+    version: 7,
     career: null
   };
 }

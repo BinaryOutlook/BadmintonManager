@@ -9,6 +9,7 @@ import {
   type AdvancedTacticPlan,
   type AthleteCareerState,
   type CareerState,
+  type CareerStateV4,
   type CareerStateV3,
   type MatchPlanningState,
   type TacticEffectProfile
@@ -43,12 +44,12 @@ export function createInitialMatchPlanning(date = "2026-06-01"): MatchPlanningSt
   };
 }
 
-export function upgradeCareerStateV3(career: CareerStateV3): CareerState {
-  return refreshAssistantAdvice({
+export function upgradeCareerStateV3(career: CareerStateV3): CareerStateV4 {
+  return {
     ...career,
     version: 4,
     matchPlanning: createInitialMatchPlanning(career.date)
-  });
+  };
 }
 
 export function activeAdvancedTacticPlan(state: CareerState): AdvancedTacticPlan {

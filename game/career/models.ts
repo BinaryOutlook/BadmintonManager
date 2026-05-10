@@ -31,7 +31,10 @@ export const ledgerCategorySchema = z.enum([
   "scouting",
   "staff",
   "recruitment",
-  "academy"
+  "academy",
+  "facility",
+  "media",
+  "federation"
 ]);
 export type LedgerCategory = z.infer<typeof ledgerCategorySchema>;
 
@@ -371,6 +374,108 @@ export const matchPlanningStateSchema = z.object({
 });
 export type MatchPlanningState = z.infer<typeof matchPlanningStateSchema>;
 
+export const facilityTypeSchema = z.enum([
+  "training_hall",
+  "recovery_center",
+  "analytics_lab",
+  "youth_academy",
+  "travel_quality"
+]);
+export type FacilityType = z.infer<typeof facilityTypeSchema>;
+
+export const facilityModifierSchema = z.object({
+  trainingDevelopment: z.number(),
+  recoveryFatigue: z.number(),
+  injuryMitigation: z.number(),
+  scoutingAccuracy: z.number(),
+  adviceQuality: z.number(),
+  youthReadiness: z.number(),
+  travelCostReduction: z.number(),
+  travelFatigueReduction: z.number(),
+  pressureResistance: z.number()
+});
+export type FacilityModifier = z.infer<typeof facilityModifierSchema>;
+
+export const facilityStateSchema = z.object({
+  id: z.string(),
+  type: facilityTypeSchema,
+  label: z.string(),
+  level: z.number().int().min(0).max(3),
+  maxLevel: z.number().int().min(1).max(3),
+  nextUpgradeCost: z.number().int().nonnegative(),
+  maintenanceCost: z.number().int().nonnegative(),
+  buildTimeDays: z.number().int().nonnegative(),
+  status: z.enum(["ready", "maxed"]),
+  modifiers: facilityModifierSchema,
+  history: z.array(
+    z.object({
+      id: z.string(),
+      date: z.string(),
+      level: z.number().int().min(0).max(3),
+      cost: z.number().int().nonnegative(),
+      note: z.string()
+    })
+  )
+});
+export type FacilityState = z.infer<typeof facilityStateSchema>;
+
+export const sponsorObjectiveStatusSchema = z.enum(["active", "fulfilled", "failed", "expired", "withdrawn"]);
+export type SponsorObjectiveStatus = z.infer<typeof sponsorObjectiveStatusSchema>;
+
+export const sponsorObjectiveSchema = z.object({
+  id: z.string(),
+  sponsorId: z.string(),
+  sponsorName: z.string(),
+  target: z.enum(["reach_qf", "win_match", "enter_tier", "maintain_reputation", "readiness_floor"]),
+  description: z.string(),
+  deadline: z.string(),
+  reward: z.object({
+    cash: z.number().int(),
+    reputation: z.number(),
+    morale: z.number()
+  }),
+  penalty: z.object({
+    cash: z.number().int(),
+    reputation: z.number(),
+    morale: z.number()
+  }),
+  status: sponsorObjectiveStatusSchema,
+  progress: z.number().min(0).max(100),
+  relatedEventIds: z.array(z.string()),
+  resolutionLog: z.array(z.string())
+});
+export type SponsorObjective = z.infer<typeof sponsorObjectiveSchema>;
+
+export const pressEventSchema = z.object({
+  id: z.string(),
+  date: z.string(),
+  headline: z.string(),
+  pressure: z.number().min(0).max(100),
+  reputationDelta: z.number(),
+  moraleDelta: z.number(),
+  status: z.enum(["active", "answered", "settled"])
+});
+export type PressEvent = z.infer<typeof pressEventSchema>;
+
+export const mediaReactionLogSchema = z.object({
+  id: z.string(),
+  date: z.string(),
+  source: z.enum(["sponsor", "press", "federation", "facility", "system"]),
+  message: z.string(),
+  stateDelta: z.string(),
+  relatedIds: z.array(z.string())
+});
+export type MediaReactionLog = z.infer<typeof mediaReactionLogSchema>;
+
+export const mediaSponsorStateSchema = z.object({
+  sponsors: z.array(sponsorObjectiveSchema),
+  federationObjectives: z.array(sponsorObjectiveSchema),
+  pressEvents: z.array(pressEventSchema),
+  reputation: z.number().min(0).max(100),
+  reactionLog: z.array(mediaReactionLogSchema)
+});
+export type MediaSponsorState = z.infer<typeof mediaSponsorStateSchema>;
+
 export const careerEventDefinitionSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -519,9 +624,16 @@ export const careerStateV3Schema = careerStateV2Schema.extend({
 });
 export type CareerStateV3 = z.infer<typeof careerStateV3Schema>;
 
-export const careerStateSchema = careerStateV3Schema.extend({
+export const careerStateV4Schema = careerStateV3Schema.extend({
   version: z.literal(4),
   matchPlanning: matchPlanningStateSchema
+});
+export type CareerStateV4 = z.infer<typeof careerStateV4Schema>;
+
+export const careerStateSchema = careerStateV4Schema.extend({
+  version: z.literal(5),
+  facilities: z.array(facilityStateSchema),
+  media: mediaSponsorStateSchema
 });
 export type CareerState = z.infer<typeof careerStateSchema>;
 
