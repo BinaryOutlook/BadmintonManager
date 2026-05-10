@@ -6,12 +6,16 @@ import { canAffordEventEntry, chargeEventEntry, eventEntryCost } from "../../gam
 import {
   commissionScoutReport,
   developYouthProspect,
+  enterRosterAthleteLowerEvent,
+  enterYouthLowerEvent,
+  expireScoutReports,
   hireStaffMember,
   makeRecruitmentOffer,
   resolveDueScoutReports,
   resolvePromises,
   setManagedAthletePromise,
   staffModifiers,
+  trainRosterAthlete,
   withdrawPromise
 } from "../../game/career/ecosystem";
 import { getCareerEvent } from "../../game/career/events";
@@ -180,6 +184,22 @@ describe("program ecosystem depth", () => {
     expect(candidate.risk).toBeLessThan(42);
   });
 
+  it("expires scout reports through domain behavior and stales verified recruitment fields", () => {
+    const resolved = resolveDueScoutReports({
+      ...commissionScoutReport(createInitialCareerState(seededPlayers[0].player.id, 8111), "cand-arya-prakash", "candidate"),
+      date: "2026-06-03"
+    });
+
+    expect(resolved.ecosystem.scouting.reports[0]?.state).toBe("verified");
+    expect(resolved.ecosystem.recruitment.candidates.find((entry) => entry.id === "cand-arya-prakash")?.knowledge.cost).toBe("verified");
+
+    const expired = expireScoutReports({ ...resolved, date: "2026-06-25" });
+
+    expect(expired.ecosystem.scouting.reports[0]?.state).toBe("expired");
+    expect(expired.ecosystem.recruitment.candidates.find((entry) => entry.id === "cand-arya-prakash")?.knowledge.cost).toBe("estimated");
+    expect(expired.ecosystem.programLog[0]?.message).toContain("expired");
+  });
+
   it("reconciles recruitment offers with roster, budget, and signing promises", () => {
     const withReport = resolveDueScoutReports({
       ...commissionScoutReport(createInitialCareerState(seededPlayers[0].player.id, 8102), "cand-arya-prakash", "candidate"),
@@ -188,9 +208,30 @@ describe("program ecosystem depth", () => {
     const signed = makeRecruitmentOffer(withReport, "cand-arya-prakash");
 
     expect(signed.ecosystem.recruitment.roster.some((slot) => slot.athleteId === "cand-arya-prakash")).toBe(true);
+    expect(signed.athletes.some((athlete) => athlete.playerId === "cand-arya-prakash")).toBe(true);
     expect(signed.ecosystem.recruitment.candidates.find((entry) => entry.id === "cand-arya-prakash")?.offerState).toBe("accepted");
     expect(signed.economy.cash).toBeLessThan(withReport.economy.cash);
     expect(signed.ecosystem.promises.some((promise) => promise.athleteId === "cand-arya-prakash")).toBe(true);
+  });
+
+  it("gives accepted recruits functional training and lower-event paths", () => {
+    const signed = makeRecruitmentOffer(
+      resolveDueScoutReports({
+        ...commissionScoutReport(createInitialCareerState(seededPlayers[0].player.id, 8112), "cand-arya-prakash", "candidate"),
+        date: "2026-06-03"
+      }),
+      "cand-arya-prakash"
+    );
+    const signedAthlete = signed.athletes.find((athlete) => athlete.playerId === "cand-arya-prakash")!;
+    const trained = trainRosterAthlete(signed, "cand-arya-prakash");
+    const trainedAthlete = trained.athletes.find((athlete) => athlete.playerId === "cand-arya-prakash")!;
+    const entered = enterRosterAthleteLowerEvent(trained, "cand-arya-prakash");
+
+    expect(trainedAthlete.development.stamina).toBeGreaterThan(signedAthlete.development.stamina);
+    expect(trained.economy.cash).toBeLessThan(signed.economy.cash);
+    expect(entered.ecosystem.lowerEventEntries[0]?.subjectId).toBe("cand-arya-prakash");
+    expect(entered.ecosystem.lowerEventEntries[0]?.subjectType).toBe("roster_athlete");
+    expect(entered.ecosystem.lowerEventEntries[0]?.resultRound).toMatch(/R16|QF|SF|champion/);
   });
 
   it("develops a 16-year-old prospect into lower-event eligibility with staff modifiers", () => {
@@ -203,6 +244,55 @@ describe("program ecosystem depth", () => {
     expect(prospect.readiness).toBeGreaterThan(initial.ecosystem.academy.prospects[0]!.readiness);
     expect(prospect.mentorOrStaffModifier).toBeGreaterThan(0);
     expect(prospect.lowerEventEligibility).toBe(true);
+  });
+
+  it("records a real youth lower-tier event entry after eligibility", () => {
+    const initial = createInitialCareerState(seededPlayers[0].player.id, 8113);
+    const withCoach = hireStaffMember(initial, "staff-assistant-ruiz");
+    const eligible = developYouthProspect(developYouthProspect(withCoach, "prospect-mei-sato"), "prospect-mei-sato");
+    const entered = enterYouthLowerEvent(eligible, "prospect-mei-sato");
+
+    expect(entered.ecosystem.lowerEventEntries[0]).toMatchObject({
+      subjectId: "prospect-mei-sato",
+      subjectType: "youth_prospect",
+      eventName: "National Junior Futures",
+      status: "completed"
+    });
+    expect(entered.economy.cash).toBe(eligible.economy.cash - 900);
+    expect(entered.ecosystem.programLog[0]?.message).toContain("Mei Sato entered");
+  });
+
+  it("does not let the managed athlete's match result satisfy a recruited athlete promise", () => {
+    const signed = makeRecruitmentOffer(
+      resolveDueScoutReports({
+        ...commissionScoutReport(createInitialCareerState(seededPlayers[0].player.id, 8114), "cand-arya-prakash", "candidate"),
+        date: "2026-06-03"
+      }),
+      "cand-arya-prakash"
+    );
+    const recruitPromise = signed.ecosystem.promises.find((promise) => promise.athleteId === "cand-arya-prakash")!;
+    const wrongOwnerReport = resolvePromises({
+      ...signed,
+      lastMatchReport: {
+        eventId: "metro-open-300",
+        matchId: "managed-qf",
+        opponentId: "opponent",
+        result: "win",
+        scoreline: "21-12 21-14",
+        round: "QF",
+        pointsDelta: 210,
+        cashDelta: 1800,
+        fatigueDelta: 9,
+        evidence: [],
+        recommendations: []
+      }
+    });
+
+    expect(wrongOwnerReport.ecosystem.promises.find((promise) => promise.id === recruitPromise.id)?.status).toBe("active");
+
+    const ownEntry = resolvePromises(enterRosterAthleteLowerEvent(wrongOwnerReport, "cand-arya-prakash"));
+
+    expect(ownEntry.ecosystem.promises.find((promise) => promise.id === recruitPromise.id)?.status).toBe("kept");
   });
 
   it("tracks kept, missed, and withdrawn promise consequences against psychology", () => {

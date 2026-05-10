@@ -8,6 +8,7 @@ import type {
   PlayerPromise,
   ProgramEcosystemState,
   ProgramEventLog,
+  ProgramLowerEventEntry,
   ProgramRosterSlot,
   RecruitmentCandidate,
   ScoutAssignment,
@@ -195,6 +196,7 @@ export function createInitialEcosystem(managedPlayerId: string, date = "2026-06-
     },
     academy: { prospects: youthSeed },
     staff: { hired: [], candidates: staffCandidatePool },
+    lowerEventEntries: [],
     psychology: [createInitialPsychology(managedPlayerId)],
     promises: [],
     programLog: [
@@ -208,6 +210,52 @@ export function createInitialEcosystem(managedPlayerId: string, date = "2026-06-
       }
     ]
   };
+}
+
+function createRecruitAthlete(candidate: RecruitmentCandidate, rank: number): AthleteCareerState {
+  const upside = candidate.knowledge.potential === "estimated" ? 5 : 0;
+  const riskDrag = Math.round(candidate.risk * 0.08);
+  const athlete = {
+    playerId: candidate.id,
+    development: {
+      smash: clamp(57 + candidate.fit * 0.18 + upside - riskDrag, 1, 100),
+      stamina: clamp(58 + candidate.fit * 0.16 - riskDrag, 1, 100),
+      composure: clamp(55 + candidate.interest * 0.12 - riskDrag, 1, 100),
+      recovery: clamp(56 + (100 - candidate.risk) * 0.12, 1, 100)
+    },
+    fatigue: 18,
+    injuryRisk: clamp(0.05 + candidate.risk / 1000, 0.02, 1),
+    readiness: 0,
+    recoveryStatus: "ready" as const,
+    rankingPoints: 0,
+    currentRank: rank
+  };
+
+  return refreshAthleteReadiness(athlete);
+}
+
+function lowerEventResult(readiness: number): ProgramLowerEventEntry["resultRound"] {
+  if (readiness >= 86) {
+    return "champion";
+  }
+
+  if (readiness >= 76) {
+    return "SF";
+  }
+
+  if (readiness >= 62) {
+    return "QF";
+  }
+
+  return "R16";
+}
+
+function lowerEventPromiseKept(state: ProgramEcosystemState, athleteId: string) {
+  return state.lowerEventEntries.some(
+    (entry) =>
+      entry.subjectId === athleteId &&
+      ["QF", "SF", "F", "champion"].includes(entry.resultRound)
+  );
 }
 
 export function upgradeCareerStateV1(career: CareerStateV1): CareerState {
@@ -379,6 +427,61 @@ export function resolveDueScoutReports(state: CareerState) {
   };
 }
 
+export function expireScoutReports(state: CareerState) {
+  const expiringReports = state.ecosystem.scouting.reports.filter(
+    (report) => report.state !== "expired" && daysBetween(report.expiresAt, state.date) > 0
+  );
+
+  if (expiringReports.length === 0) {
+    return state;
+  }
+
+  const expiredSubjectIds = new Set(expiringReports.map((report) => report.subjectId));
+  const ecosystem: ProgramEcosystemState = {
+    ...state.ecosystem,
+    scouting: {
+      ...state.ecosystem.scouting,
+      reports: state.ecosystem.scouting.reports.map((report) =>
+        expiredSubjectIds.has(report.subjectId)
+          ? {
+              ...report,
+              state: "expired" as const
+            }
+          : report
+      )
+    },
+    recruitment: {
+      ...state.ecosystem.recruitment,
+      candidates: state.ecosystem.recruitment.candidates.map((candidate) =>
+        expiredSubjectIds.has(candidate.id)
+          ? {
+              ...candidate,
+              knowledge: {
+                ...candidate.knowledge,
+                cost: "estimated",
+                temperament: "unknown"
+              }
+            }
+          : candidate
+      )
+    },
+    programLog: logEntry({
+      state: state.ecosystem,
+      date: state.date,
+      source: "scouting",
+      message: `${expiringReports.length} scout report${expiringReports.length === 1 ? "" : "s"} expired`,
+      stateDelta: "Verified recruitment fields are stale until a new report is commissioned.",
+      relatedIds: expiringReports.map((report) => report.id)
+    })
+  };
+
+  return {
+    ...state,
+    ecosystem,
+    notes: [`${expiringReports.length} scout report${expiringReports.length === 1 ? "" : "s"} expired`, ...state.notes].slice(0, 6)
+  };
+}
+
 export function applyStaffToTraining(athlete: AthleteCareerState, ecosystem: ProgramEcosystemState) {
   const modifiers = staffModifiers(ecosystem);
 
@@ -497,6 +600,15 @@ export function makeRecruitmentOffer(state: CareerState, candidateId: string) {
           ...state.ecosystem.promises
         ]
       : state.ecosystem.promises,
+    psychology: accepted
+      ? [
+          ...state.ecosystem.psychology.filter((entry) => entry.athleteId !== candidate.id),
+          {
+            ...createInitialPsychology(candidate.id),
+            recentDrivers: [`${candidate.name} signed into the program`]
+          }
+        ]
+      : state.ecosystem.psychology,
     programLog: logEntry({
       state: state.ecosystem,
       date: state.date,
@@ -509,9 +621,140 @@ export function makeRecruitmentOffer(state: CareerState, candidateId: string) {
 
   return {
     ...state,
+    athletes: accepted && !state.athletes.some((athlete) => athlete.playerId === candidate.id)
+      ? [...state.athletes, createRecruitAthlete(candidate, 120 + state.athletes.length)]
+      : state.athletes,
     economy,
     ecosystem,
     notes: [`${candidate.name} offer ${offerState}`, ...state.notes].slice(0, 6)
+  };
+}
+
+export function trainRosterAthlete(state: CareerState, athleteId: string) {
+  const rosterSlot = state.ecosystem.recruitment.roster.find(
+    (slot) => slot.athleteId === athleteId && slot.status === "active"
+  );
+  const athlete = state.athletes.find((entry) => entry.playerId === athleteId);
+  const cost = 950;
+
+  if (!rosterSlot || !athlete) {
+    return state;
+  }
+
+  if (state.economy.cash < cost) {
+    return { ...state, notes: [`Insufficient funds to train ${rosterSlot.name}`, ...state.notes].slice(0, 6) };
+  }
+
+  const trained = refreshAthleteReadiness({
+    ...athlete,
+    development: {
+      ...athlete.development,
+      stamina: clamp(athlete.development.stamina + 4.5, 1, 100),
+      composure: clamp(athlete.development.composure + 2, 1, 100),
+      recovery: clamp(athlete.development.recovery + 1, 1, 100)
+    },
+    fatigue: clamp(athlete.fatigue + 5, 0, 100),
+    injuryRisk: clamp(athlete.injuryRisk + 0.01, 0.02, 1)
+  });
+  const economy = addLedgerEntry({
+    economy: state.economy,
+    date: state.date,
+    category: "recruitment",
+    label: `${rosterSlot.name} roster training`,
+    amount: -cost
+  });
+  const ecosystem = updatePsychology(state.ecosystem, athleteId, {
+    form: 2,
+    morale: 1,
+    confidence: 2,
+    driver: "Roster training block completed"
+  });
+
+  return {
+    ...state,
+    economy,
+    athletes: state.athletes.map((entry) => (entry.playerId === athleteId ? trained : entry)),
+    ecosystem: {
+      ...ecosystem,
+      programLog: logEntry({
+        state: ecosystem,
+        date: state.date,
+        source: "recruitment",
+        message: `${rosterSlot.name} completed roster training`,
+        stateDelta: "Stamina, composure, readiness, and psychology updated.",
+        relatedIds: [athleteId]
+      })
+    },
+    notes: [`${rosterSlot.name} roster training completed`, ...state.notes].slice(0, 6)
+  };
+}
+
+export function enterRosterAthleteLowerEvent(state: CareerState, athleteId: string) {
+  const rosterSlot = state.ecosystem.recruitment.roster.find(
+    (slot) => slot.athleteId === athleteId && slot.status === "active"
+  );
+  const athlete = state.athletes.find((entry) => entry.playerId === athleteId);
+  const cost = 1_400;
+
+  if (!rosterSlot || !athlete) {
+    return state;
+  }
+
+  if (state.economy.cash < cost) {
+    return { ...state, notes: [`Insufficient funds to enter ${rosterSlot.name}`, ...state.notes].slice(0, 6) };
+  }
+
+  const resultRound = lowerEventResult(athlete.readiness);
+  const entry: ProgramLowerEventEntry = {
+    id: `lower-entry-${athleteId}-${state.ecosystem.lowerEventEntries.length + 1}`,
+    subjectId: athleteId,
+    subjectType: "roster_athlete",
+    subjectName: rosterSlot.name,
+    eventName: "Circuit Futures Invitational",
+    tier: "Invitational",
+    enteredAt: state.date,
+    cost,
+    readinessAtEntry: Math.round(athlete.readiness),
+    resultRound,
+    status: "completed"
+  };
+  const economy = addLedgerEntry({
+    economy: state.economy,
+    date: state.date,
+    category: "entry",
+    label: `${rosterSlot.name} lower event`,
+    amount: -cost
+  });
+  const competed = refreshAthleteReadiness({
+    ...athlete,
+    fatigue: clamp(athlete.fatigue + 9, 0, 100),
+    rankingPoints: athlete.rankingPoints + (resultRound === "QF" ? 45 : resultRound === "SF" ? 80 : resultRound === "champion" ? 140 : 20)
+  });
+  const withPsychology = updatePsychology(state.ecosystem, athleteId, {
+    form: resultRound === "R16" ? -1 : 3,
+    morale: resultRound === "R16" ? -2 : 4,
+    confidence: resultRound === "R16" ? -1 : 5,
+    driver: `${entry.eventName} result: ${resultRound}`
+  });
+  const ecosystem: ProgramEcosystemState = {
+    ...withPsychology,
+    lowerEventEntries: [entry, ...withPsychology.lowerEventEntries],
+    programLog: logEntry({
+      state: withPsychology,
+      date: state.date,
+      source: "recruitment",
+      message: `${rosterSlot.name} entered ${entry.eventName}`,
+      stateDelta: `Finished ${resultRound}; athlete-specific event result recorded.`,
+      relatedIds: [entry.id, athleteId]
+    })
+  };
+
+  return {
+    ...state,
+    economy,
+    athletes: state.athletes.map((entry) => (entry.playerId === athleteId ? competed : entry)),
+    ecosystem,
+    notes: [`${rosterSlot.name} lower-event result: ${resultRound}`, ...state.notes].slice(0, 6)
   };
 }
 
@@ -551,6 +794,75 @@ export function developYouthProspect(state: CareerState, prospectId: string) {
     ...state,
     ecosystem,
     notes: ["Youth development block completed", ...state.notes].slice(0, 6)
+  };
+}
+
+export function enterYouthLowerEvent(state: CareerState, prospectId: string) {
+  const prospect = state.ecosystem.academy.prospects.find((entry) => entry.id === prospectId);
+  const cost = 900;
+
+  if (!prospect) {
+    return state;
+  }
+
+  if (!prospect.lowerEventEligibility) {
+    return { ...state, notes: [`${prospect.name} is not lower-event ready`, ...state.notes].slice(0, 6) };
+  }
+
+  if (state.economy.cash < cost) {
+    return { ...state, notes: [`Insufficient academy budget for ${prospect.name}`, ...state.notes].slice(0, 6) };
+  }
+
+  const resultRound = lowerEventResult(prospect.readiness);
+  const entry: ProgramLowerEventEntry = {
+    id: `lower-entry-${prospectId}-${state.ecosystem.lowerEventEntries.length + 1}`,
+    subjectId: prospect.id,
+    subjectType: "youth_prospect",
+    subjectName: prospect.name,
+    eventName: "National Junior Futures",
+    tier: "National",
+    enteredAt: state.date,
+    cost,
+    readinessAtEntry: Math.round(prospect.readiness),
+    resultRound,
+    status: "completed"
+  };
+  const economy = addLedgerEntry({
+    economy: state.economy,
+    date: state.date,
+    category: "academy",
+    label: `${prospect.name} youth lower event`,
+    amount: -cost
+  });
+  const ecosystem: ProgramEcosystemState = {
+    ...state.ecosystem,
+    lowerEventEntries: [entry, ...state.ecosystem.lowerEventEntries],
+    academy: {
+      prospects: state.ecosystem.academy.prospects.map((candidate) =>
+        candidate.id === prospect.id
+          ? {
+              ...candidate,
+              readiness: clamp(candidate.readiness - 4, 0, 100),
+              morale: clamp(candidate.morale + (resultRound === "R16" ? 1 : 5), 0, 100)
+            }
+          : candidate
+      )
+    },
+    programLog: logEntry({
+      state: state.ecosystem,
+      date: state.date,
+      source: "academy",
+      message: `${prospect.name} entered ${entry.eventName}`,
+      stateDelta: `Lower-tier event entry recorded; result ${resultRound}.`,
+      relatedIds: [entry.id, prospect.id]
+    })
+  };
+
+  return {
+    ...state,
+    economy,
+    ecosystem,
+    notes: [`${prospect.name} lower-event entry recorded`, ...state.notes].slice(0, 6)
   };
 }
 
@@ -648,7 +960,6 @@ function updatePsychology(
 export function resolvePromises(state: CareerState) {
   let ecosystem = state.ecosystem;
   let changed = false;
-  const managed = state.athletes.find((athlete) => athlete.playerId === state.program.managedPlayerId);
 
   const promises = state.ecosystem.promises.map((promise) => {
     if (promise.status !== "active") {
@@ -656,10 +967,18 @@ export function resolvePromises(state: CareerState) {
     }
 
     const deadlinePassed = daysBetween(promise.deadline, state.date) > 0;
+    const ownerAthlete = state.athletes.find((athlete) => athlete.playerId === promise.athleteId);
+    const ownerIsManaged = promise.athleteId === state.program.managedPlayerId;
     const kept =
-      (promise.targetType === "improve_stamina" && Boolean(managed && managed.development.stamina >= 75)) ||
-      (promise.targetType === "reach_qf" && Boolean(state.lastMatchReport && ["QF", "SF", "F"].includes(state.lastMatchReport.round))) ||
-      (promise.targetType === "lower_event_entry" && state.enteredEventIds.length > 0);
+      (promise.targetType === "improve_stamina" && Boolean(ownerAthlete && ownerAthlete.development.stamina >= 75)) ||
+      (promise.targetType === "reach_qf" && (
+        lowerEventPromiseKept(ecosystem, promise.athleteId) ||
+        Boolean(ownerIsManaged && state.lastMatchReport && ["QF", "SF", "F"].includes(state.lastMatchReport.round))
+      )) ||
+      (promise.targetType === "lower_event_entry" && (
+        state.ecosystem.lowerEventEntries.some((entry) => entry.subjectId === promise.athleteId) ||
+        Boolean(ownerIsManaged && state.enteredEventIds.length > 0)
+      ));
 
     if (!kept && !deadlinePassed) {
       return promise;

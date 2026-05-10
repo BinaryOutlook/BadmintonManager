@@ -82,6 +82,27 @@ describe("career save migration", () => {
     expect(persistedSaveSchema.parse(save).career).toEqual(careerStateSchema.parse(career));
   });
 
+  it("loads prior Phase 2 saves that predate lower-event entry records", () => {
+    const career = createInitialCareerState(seededPlayers[0].player.id, 457);
+    const { lowerEventEntries: _lowerEventEntries, ...ecosystemWithoutEntries } = career.ecosystem;
+    const save = {
+      version: 4,
+      selectedPlayerId: seededPlayers[0].player.id,
+      plannedTacticKey: "balancedControl",
+      seed: 457,
+      tournament: null,
+      liveMatch: null,
+      career: {
+        ...career,
+        ecosystem: ecosystemWithoutEntries
+      }
+    };
+
+    const parsed = persistedSaveSchema.parse(save);
+
+    expect(parsed.career?.ecosystem.lowerEventEntries).toEqual([]);
+  });
+
   it("quarantines malformed JSON saves and exposes a recovery notice", () => {
     const raw = "{not-valid-json";
     const storage = new MemoryStorage();

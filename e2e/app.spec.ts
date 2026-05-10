@@ -176,6 +176,9 @@ test("can run the Phase 2 program ecosystem flow and persist it after reload", a
   await page.getByRole("button", { name: "Make Offer" }).first().click();
   await expect(page.getByText(/Offer accepted/).first()).toBeVisible();
   await expect(page.getByText(/weekly contract/).first()).toBeVisible();
+  await page.getByRole("button", { name: "Train Athlete" }).click();
+  await page.getByRole("button", { name: "Enter Lower Event" }).click();
+  await expect(page.getByText(/Circuit Futures Invitational/)).toBeVisible();
 
   await page.getByRole("button", { name: "Program Hub" }).click();
   await page.getByRole("button", { name: "Youth Academy" }).click();
@@ -183,6 +186,8 @@ test("can run the Phase 2 program ecosystem flow and persist it after reload", a
   await page.getByRole("button", { name: "Run Development Block" }).click();
   await page.getByRole("button", { name: "Run Development Block" }).click();
   await expect(page.getByText(/Eligible/)).toBeVisible();
+  await page.getByRole("button", { name: "Enter Lower Event" }).click();
+  await expect(page.getByText(/National Junior Futures/)).toBeVisible();
 
   await page.getByRole("button", { name: "Program Hub" }).click();
   await page.getByRole("button", { name: "Staff Room" }).click();
@@ -194,6 +199,8 @@ test("can run the Phase 2 program ecosystem flow and persist it after reload", a
   await page.getByRole("button", { name: "Program Hub" }).click();
   await page.getByRole("button", { name: "Athlete State + Promises" }).click();
   await expect(page.getByRole("heading", { name: "Psychology Desk" })).toBeVisible();
+  await expect(page.getByText(/Arya Prakash/)).toBeVisible();
+  await expect(page.getByText(/kept/).first()).toBeVisible();
   await page.getByRole("button", { name: "Promise Stamina" }).click();
   await expect(page.getByText(/Promise created/).first()).toBeVisible();
   await page.getByRole("button", { name: "Withdraw Promise" }).first().click();
@@ -207,4 +214,19 @@ test("can run the Phase 2 program ecosystem flow and persist it after reload", a
   await expect(page.getByText(/withdrawn/).first()).toBeVisible();
   await page.getByRole("button", { name: "Program Hub" }).click();
   await expect(page.getByText(/Arya Prakash offer accepted/)).toBeVisible();
+  await page.evaluate(() => {
+    const raw = window.localStorage.getItem("badminton-manager-save");
+    if (!raw) {
+      throw new Error("Expected a persisted career save.");
+    }
+
+    const save = JSON.parse(raw);
+    save.career.date = "2026-06-25";
+    window.localStorage.setItem("badminton-manager-save", JSON.stringify(save));
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Program Hub" }).click();
+  await page.getByRole("button", { name: "Scouting Network" }).click();
+  await page.getByRole("button", { name: "Advance Day" }).click();
+  await expect(page.getByText(/expired/).first()).toBeVisible();
 });

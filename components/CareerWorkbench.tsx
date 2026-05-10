@@ -28,7 +28,10 @@ interface CareerPageProps {
   onContinueAfterPostMatch: () => void;
   onCommissionScoutReport: (subjectId: string, subjectType: "candidate" | "prospect" | "opponent") => void;
   onMakeRecruitmentOffer: (candidateId: string) => void;
+  onTrainRosterAthlete: (athleteId: string) => void;
+  onEnterRosterAthleteLowerEvent: (athleteId: string) => void;
   onDevelopYouthProspect: (prospectId: string) => void;
+  onEnterYouthLowerEvent: (prospectId: string) => void;
   onHireStaffMember: (staffId: string) => void;
   onSetManagedAthletePromise: (targetType: PlayerPromise["targetType"]) => void;
   onWithdrawPromise: (promiseId: string) => void;
@@ -214,7 +217,7 @@ export function CareerHomePage(props: CareerPageProps) {
             <button className="career-system-tile" type="button" onClick={props.onOpenYouth}>
               <span>Youth</span>
               <strong>{props.career.ecosystem.academy.prospects.length}</strong>
-              <small>{props.career.ecosystem.academy.prospects.filter((prospect) => prospect.lowerEventEligibility).length} eligible</small>
+              <small>{props.career.ecosystem.lowerEventEntries.filter((entry) => entry.subjectType === "youth_prospect").length} lower entries</small>
             </button>
             <button className="career-system-tile" type="button" onClick={props.onOpenStaff}>
               <span>Staff</span>
@@ -277,7 +280,10 @@ export function CareerProgramHubPage(props: CareerPageProps) {
             <button className="career-system-tile" type="button" onClick={props.onOpenScouting}>
               <span>Scouting Network</span>
               <strong>{pendingAssignments.length} pending</strong>
-              <small>{props.career.ecosystem.scouting.reports.length} verified reports</small>
+              <small>
+                {props.career.ecosystem.scouting.reports.filter((report) => report.state !== "expired").length} live reports,{" "}
+                {props.career.ecosystem.scouting.reports.filter((report) => report.state === "expired").length} expired
+              </small>
             </button>
             <button className="career-system-tile" type="button" onClick={props.onOpenRecruitment}>
               <span>Recruitment Desk</span>
@@ -458,7 +464,10 @@ export function CareerScoutingNetworkPage(props: CareerPageProps) {
         <section className="command-panel">
           <div className="panel-header">
             <h2>Report Queue</h2>
-            <span>{props.career.ecosystem.scouting.reports.length} reports</span>
+            <span>
+              {props.career.ecosystem.scouting.reports.filter((report) => report.state !== "expired").length} live /{" "}
+              {props.career.ecosystem.scouting.reports.filter((report) => report.state === "expired").length} expired
+            </span>
           </div>
           <div className="program-log-list">
             {props.career.ecosystem.scouting.assignments.map((assignment) => (
@@ -486,6 +495,8 @@ export function CareerRecruitmentDeskPage(props: CareerPageProps) {
   if (!props.career) {
     return <CareerEmpty onStartCareer={props.onStartCareer} saveRecovery={props.saveRecovery} />;
   }
+
+  const career = props.career;
 
   return (
     <section className="screen-shell career-page">
@@ -568,13 +579,49 @@ export function CareerRecruitmentDeskPage(props: CareerPageProps) {
             <span>{props.career.ecosystem.recruitment.roster.length}/{props.career.ecosystem.recruitment.rosterLimit}</span>
           </div>
           <div className="program-log-list">
-            {props.career.ecosystem.recruitment.roster.map((slot) => (
-              <div key={slot.athleteId} className="program-log-row">
-                <span>{slot.role} / {slot.status}</span>
-                <strong>{slot.name}</strong>
-                <p>{money(slot.contractCost)} weekly contract, joined {slot.joinedAt}</p>
-              </div>
-            ))}
+            {career.ecosystem.recruitment.roster.map((slot) => {
+              const athleteState = career.athletes.find((athlete) => athlete.playerId === slot.athleteId);
+
+              return (
+                <div key={slot.athleteId} className="program-log-row">
+                  <span>{slot.role} / {slot.status}</span>
+                  <strong>{slot.name}</strong>
+                  <p>
+                    {money(slot.contractCost)} weekly contract, joined {slot.joinedAt}.{" "}
+                    {athleteState
+                      ? `Career athlete ready at ${Math.round(athleteState.readiness)} readiness.`
+                      : "Roster display only."}
+                  </p>
+                  {slot.athleteId !== career.program.managedPlayerId && (
+                    <div className="career-action-row career-action-row-left">
+                      <button
+                        className="command-button command-button-secondary"
+                        type="button"
+                        onClick={() => props.onTrainRosterAthlete(slot.athleteId)}
+                      >
+                        Train Athlete
+                      </button>
+                      <button
+                        className="command-button command-button-primary"
+                        type="button"
+                        onClick={() => props.onEnterRosterAthleteLowerEvent(slot.athleteId)}
+                      >
+                        Enter Lower Event
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {props.career.ecosystem.lowerEventEntries
+              .filter((entry) => entry.subjectType === "roster_athlete")
+              .map((entry) => (
+                <div key={entry.id} className="program-log-row">
+                  <span>{entry.tier} / {entry.resultRound}</span>
+                  <strong>{entry.subjectName}</strong>
+                  <p>{entry.eventName} entered {entry.enteredAt}; readiness {entry.readinessAtEntry}.</p>
+                </div>
+              ))}
           </div>
         </section>
       </div>
@@ -632,8 +679,27 @@ export function CareerYouthAcademyPage(props: CareerPageProps) {
             <button className="command-button command-button-primary" type="button" onClick={() => props.onDevelopYouthProspect(prospect.id)}>
               Run Development Block
             </button>
+            <button
+              className="command-button command-button-secondary"
+              type="button"
+              disabled={!prospect.lowerEventEligibility}
+              onClick={() => props.onEnterYouthLowerEvent(prospect.id)}
+            >
+              {prospect.lowerEventEligibility ? "Enter Lower Event" : "Lower Event Locked"}
+            </button>
           </article>
         ))}
+        {props.career.ecosystem.lowerEventEntries
+          .filter((entry) => entry.subjectType === "youth_prospect")
+          .map((entry) => (
+            <article key={entry.id} className="command-panel program-decision-card">
+              <span>{entry.tier} / {entry.status}</span>
+              <strong>{entry.subjectName} lower-event entry</strong>
+              <p>
+                {entry.eventName} recorded on {entry.enteredAt}; readiness {entry.readinessAtEntry}; result {entry.resultRound}.
+              </p>
+            </article>
+          ))}
       </div>
     </section>
   );
@@ -769,10 +835,11 @@ export function CareerAthletePromisesPage(props: CareerPageProps) {
             <CareerMeter label="Confidence" value={psychology?.confidence ?? 0} />
           </div>
           <div className="program-log-list career-button-spaced">
-            {(psychology?.recentDrivers ?? []).map((driver) => (
-              <div key={driver} className="program-log-row">
-                <span>driver</span>
-                <strong>{driver}</strong>
+            {props.career.ecosystem.psychology.map((entry) => (
+              <div key={entry.athleteId} className="program-log-row">
+                <span>{entry.athleteId === props.career?.program.managedPlayerId ? "managed athlete" : "program athlete"}</span>
+                <strong>{props.career?.ecosystem.recruitment.roster.find((slot) => slot.athleteId === entry.athleteId)?.name ?? playerMap[entry.athleteId]?.name ?? entry.athleteId}</strong>
+                <p>Form {entry.form}, morale {entry.morale}, confidence {entry.confidence}. Latest: {entry.recentDrivers[0]}</p>
               </div>
             ))}
           </div>
@@ -796,6 +863,9 @@ export function CareerAthletePromisesPage(props: CareerPageProps) {
               <article key={promise.id} className="program-decision-card">
                 <span>{promise.status} / deadline {promise.deadline}</span>
                 <strong>{promise.targetValue}</strong>
+                <p>
+                  Owner: {props.career?.ecosystem.recruitment.roster.find((slot) => slot.athleteId === promise.athleteId)?.name ?? playerMap[promise.athleteId]?.name ?? promise.athleteId}
+                </p>
                 <p>
                   Reward morale {promise.reward.morale >= 0 ? "+" : ""}{promise.reward.morale}, confidence +
                   {promise.reward.confidence}; penalty morale {promise.penalty.morale}, confidence {promise.penalty.confidence}.

@@ -8,11 +8,15 @@ import {
   applyStaffToTraining,
   commissionScoutReport,
   developYouthProspect,
+  enterRosterAthleteLowerEvent,
+  enterYouthLowerEvent,
+  expireScoutReports,
   hireStaffMember,
   makeRecruitmentOffer,
   resolveDueScoutReports,
   resolvePromises,
   setManagedAthletePromise,
+  trainRosterAthlete,
   withdrawPromise
 } from "../career/ecosystem";
 import { getCareerEvent } from "../career/events";
@@ -75,7 +79,10 @@ export interface TournamentStoreState {
   continueCareerAfterPostMatch: () => void;
   commissionScoutReport: (subjectId: string, subjectType: "candidate" | "prospect" | "opponent") => void;
   makeRecruitmentOffer: (candidateId: string) => void;
+  trainRosterAthlete: (athleteId: string) => void;
+  enterRosterAthleteLowerEvent: (athleteId: string) => void;
   developYouthProspect: (prospectId: string) => void;
+  enterYouthLowerEvent: (prospectId: string) => void;
   hireStaffMember: (staffId: string) => void;
   setManagedAthletePromise: (targetType: PlayerPromise["targetType"]) => void;
   withdrawPromise: (promiseId: string) => void;
@@ -412,7 +419,7 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
         return state;
       }
 
-      const career = resolvePromises(resolveDueScoutReports(advanceCareerCalendar(state.career)));
+      const career = resolvePromises(expireScoutReports(resolveDueScoutReports(advanceCareerCalendar(state.career))));
       const withTournament = addCareerTournamentIfReady(state, career);
       const next = {
         ...state,
@@ -473,6 +480,34 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
       return next;
     });
   },
+  trainRosterAthlete: (athleteId) => {
+    set((state) => {
+      if (!state.career) {
+        return state;
+      }
+
+      const next = {
+        ...state,
+        career: resolvePromises(trainRosterAthlete(state.career, athleteId))
+      };
+      persist(next);
+      return next;
+    });
+  },
+  enterRosterAthleteLowerEvent: (athleteId) => {
+    set((state) => {
+      if (!state.career) {
+        return state;
+      }
+
+      const next = {
+        ...state,
+        career: resolvePromises(enterRosterAthleteLowerEvent(state.career, athleteId))
+      };
+      persist(next);
+      return next;
+    });
+  },
   developYouthProspect: (prospectId) => {
     set((state) => {
       if (!state.career) {
@@ -482,6 +517,20 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
       const next = {
         ...state,
         career: developYouthProspect(state.career, prospectId)
+      };
+      persist(next);
+      return next;
+    });
+  },
+  enterYouthLowerEvent: (prospectId) => {
+    set((state) => {
+      if (!state.career) {
+        return state;
+      }
+
+      const next = {
+        ...state,
+        career: resolvePromises(enterYouthLowerEvent(state.career, prospectId))
       };
       persist(next);
       return next;

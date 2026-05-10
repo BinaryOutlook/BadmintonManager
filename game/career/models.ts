@@ -116,6 +116,21 @@ export const youthProspectSchema = z.object({
 });
 export type YouthProspect = z.infer<typeof youthProspectSchema>;
 
+export const programLowerEventEntrySchema = z.object({
+  id: z.string(),
+  subjectId: z.string(),
+  subjectType: z.enum(["youth_prospect", "roster_athlete"]),
+  subjectName: z.string(),
+  eventName: z.string(),
+  tier: z.enum(["National", "Invitational", "Super 300"]),
+  enteredAt: z.string(),
+  cost: z.number().int().nonnegative(),
+  readinessAtEntry: z.number().min(0).max(100),
+  resultRound: z.enum(["R16", "QF", "SF", "F", "champion"]),
+  status: z.enum(["entered", "completed"])
+});
+export type ProgramLowerEventEntry = z.infer<typeof programLowerEventEntrySchema>;
+
 export const staffMemberSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -193,6 +208,7 @@ export const programEcosystemStateSchema = z.object({
     hired: z.array(staffMemberSchema),
     candidates: z.array(staffMemberSchema)
   }),
+  lowerEventEntries: z.array(programLowerEventEntrySchema).default([]),
   psychology: z.array(athletePsychologySchema),
   promises: z.array(playerPromiseSchema),
   programLog: z.array(programEventLogSchema)
