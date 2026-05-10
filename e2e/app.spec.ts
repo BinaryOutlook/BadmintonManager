@@ -85,6 +85,7 @@ test("can complete and reload the career core slice", async ({ page }) => {
 
   await page.getByRole("button", { name: "Enter Match" }).click();
   await expect(page.getByRole("button", { name: "Simulate Next Point" })).toBeVisible();
+  await expect(page.getByTestId("tactical-viewer")).toBeVisible();
 
   for (let index = 0; index < 180; index += 1) {
     if (await page.getByRole("button", { name: "Advance Bracket" }).isVisible().catch(() => false)) {
@@ -105,10 +106,25 @@ test("can complete and reload the career core slice", async ({ page }) => {
   await page.getByRole("button", { name: "Advance Bracket" }).click();
   await expect(page.getByRole("heading", { name: "Match Evidence Review" })).toBeVisible();
   await expect(page.getByText("Career-aware recap")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "2D Tactical Viewer" })).toBeVisible();
+  await expect(page.locator("[data-zone]")).toHaveCount(9);
+  await expect(page.getByTestId("tactical-momentum-timeline")).toBeVisible();
+  await page.evaluate(() => {
+    const raw = window.localStorage.getItem("badminton-manager-save");
+    if (!raw) {
+      throw new Error("Expected a persisted career save.");
+    }
+
+    const save = JSON.parse(raw);
+    if (!save.career.lastMatchReport?.tacticalViewer || save.career.lastMatchReport.tacticalViewer.sequence < 1) {
+      throw new Error("Expected persisted tactical viewer evidence.");
+    }
+  });
   await expect(page.getByRole("heading", { name: "Training Recommendations" })).toBeVisible();
 
   await page.reload();
   await expect(page.getByRole("heading", { name: "Match Evidence Review" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "2D Tactical Viewer" })).toBeVisible();
   await expect(page.getByText(/Points/).first()).toBeVisible();
   await expect(page.getByText(/Cash/).first()).toBeVisible();
 });

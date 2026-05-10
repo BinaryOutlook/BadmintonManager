@@ -17,6 +17,7 @@ import { managedAthlete } from "../game/career/state";
 import { activeAdvancedTacticPlan, buildPreMatchPlanningBridge, calculateTacticEffectProfile, tacticPlanToMatchTactic } from "../game/career/tactics";
 import { trainingPlans } from "../game/career/training";
 import type { SaveRecoveryNotice } from "../game/store/store";
+import { TacticalMatchViewer } from "./TacticalMatchViewer";
 
 interface CareerPageProps {
   career: CareerState | null;
@@ -453,6 +454,7 @@ export function CareerRivalCircuitPage(props: CareerPageProps) {
             })}
           </div>
         </section>
+
       </div>
     </section>
   );
@@ -578,6 +580,7 @@ export function CareerProgramHubPage(props: CareerPageProps) {
             ))}
           </div>
         </section>
+
       </div>
     </section>
   );
@@ -1968,6 +1971,14 @@ export function CareerPostMatchHubPage(props: CareerPageProps) {
               ))}
             </div>
           </div>
+        </section>
+
+        <section className="command-panel command-panel-full">
+          <TacticalMatchViewer
+            frame={report?.tacticalViewer ?? null}
+            title="2D Tactical Viewer"
+            statusLabel={report?.tacticalViewer ? `${report.tacticalViewer.sequence} rally frames` : "No frame"}
+          />
         </section>
       </div>
     </section>

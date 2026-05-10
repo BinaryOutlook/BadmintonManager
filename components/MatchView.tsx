@@ -1,6 +1,8 @@
 import { liveDirectiveOptions } from "../game/content/tactics";
 import { telemetryForCompetitor } from "../game/core/intel";
 import type { LiveDirective, LiveMatchSession, Side, TeamTalk } from "../game/core/models";
+import { projectTacticalViewerFromSession } from "../game/career/tacticalViewer";
+import { TacticalMatchViewer } from "./TacticalMatchViewer";
 
 interface MatchViewProps {
   session: LiveMatchSession;
@@ -43,6 +45,10 @@ export function MatchView(props: MatchViewProps) {
       : props.session.competitorB.directive;
   const pendingTeamTalk =
     props.managedSide === "A" ? props.session.pendingTalkA : props.session.pendingTalkB;
+  const tacticalFrame = projectTacticalViewerFromSession({
+    session: props.session,
+    managedSide: props.managedSide
+  });
 
   return (
     <section className="screen-shell">
@@ -117,6 +123,14 @@ export function MatchView(props: MatchViewProps) {
               </article>
             )}
           </div>
+        </section>
+
+        <section className="command-panel command-panel-full tactical-viewer-live-panel">
+          <TacticalMatchViewer
+            frame={tacticalFrame}
+            title="2D Tactical Viewer"
+            statusLabel={props.session.complete ? "Final frame" : `${tacticalFrame.sequence} rally frames`}
+          />
         </section>
 
         <div className="match-columns">

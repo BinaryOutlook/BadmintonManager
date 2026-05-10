@@ -807,6 +807,170 @@ button {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.tactical-viewer {
+  display: grid;
+  gap: 0.9rem;
+  min-width: 0;
+}
+
+.tactical-viewer-layout {
+  display: grid;
+  grid-template-columns: minmax(19rem, 0.78fr) minmax(0, 1fr);
+  gap: 0.9rem;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.tactical-court-wrap {
+  min-width: 0;
+}
+
+.tactical-court {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  gap: 0.32rem;
+  width: 100%;
+  aspect-ratio: 1 / 1.28;
+  min-height: 20rem;
+  border: 2px solid rgba(39, 211, 178, 0.58);
+  border-radius: 0.35rem;
+  padding: 0.55rem;
+  background:
+    linear-gradient(90deg, transparent calc(50% - 1px), rgba(242, 193, 78, 0.35) 50%, transparent calc(50% + 1px)),
+    linear-gradient(180deg, rgba(39, 211, 178, 0.12), rgba(17, 19, 22, 0.98));
+}
+
+.tactical-court::after {
+  position: absolute;
+  top: calc(33.333% + 0.16rem);
+  right: 0.55rem;
+  left: 0.55rem;
+  height: 1px;
+  background: rgba(242, 193, 78, 0.35);
+  box-shadow: 0 calc(33.333% + 0.16rem) 0 rgba(242, 193, 78, 0.35);
+  content: "";
+  pointer-events: none;
+}
+
+.tactical-court-zone {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 0.25rem;
+  min-width: 0;
+  border: 1px solid rgba(39, 211, 178, var(--zone-border-alpha, 0.24));
+  border-radius: 0.26rem;
+  padding: 0.42rem;
+  background: rgba(39, 211, 178, var(--zone-alpha, 0.12));
+  text-align: center;
+}
+
+.tactical-court-zone-managed {
+  border-color: rgba(57, 255, 20, var(--zone-border-alpha, 0.28));
+  background: rgba(57, 255, 20, var(--zone-alpha, 0.12));
+}
+
+.tactical-court-zone-opponent {
+  border-color: rgba(255, 140, 140, var(--zone-border-alpha, 0.28));
+  background: rgba(255, 140, 140, var(--zone-alpha, 0.1));
+}
+
+.tactical-court-zone span,
+.tactical-metric-grid span,
+.tactical-summary-block span {
+  color: var(--muted-soft);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tactical-court-zone strong {
+  color: var(--text);
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.tactical-court-zone small,
+.tactical-metric-grid small {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.tactical-viewer-rail {
+  display: grid;
+  gap: 0.75rem;
+  align-content: start;
+  min-width: 0;
+}
+
+.tactical-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.tactical-metric-grid > div,
+.tactical-summary-block {
+  min-width: 0;
+  border: 1px solid rgba(48, 54, 61, 0.92);
+  border-radius: 0.35rem;
+  padding: 0.75rem;
+  background: rgba(17, 19, 22, 0.88);
+}
+
+.tactical-metric-grid strong {
+  display: block;
+  margin: 0.18rem 0;
+  color: var(--text);
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.tactical-summary-block strong {
+  display: block;
+  margin: 0.35rem 0;
+  color: var(--text);
+  line-height: 1.25;
+}
+
+.tactical-summary-block p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.42;
+}
+
+.tactical-timeline {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.28rem;
+  min-height: 7rem;
+  border: 1px solid rgba(48, 54, 61, 0.92);
+  border-radius: 0.35rem;
+  padding: 0.65rem;
+  background: rgba(12, 14, 17, 0.86);
+}
+
+.tactical-timeline span {
+  flex: 1 1 0;
+  min-width: 0.38rem;
+  border-radius: 0.15rem 0.15rem 0 0;
+  background: linear-gradient(180deg, var(--cyan), rgba(39, 211, 178, 0.18));
+}
+
+.tactical-timeline-empty {
+  height: 12%;
+  opacity: 0.35;
+}
+
+.tactical-viewer-live-panel {
+  overflow: hidden;
+}
+
 .career-evidence-grid h3 {
   margin: 0 0 0.45rem;
   color: var(--text);
@@ -3389,6 +3553,7 @@ button {
   .overview-grid-v2,
   .complete-grid,
   .match-columns,
+  .tactical-viewer-layout,
   .profile-radar,
   .profile-report-columns,
   .player-profile-grid {
