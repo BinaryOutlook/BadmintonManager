@@ -339,7 +339,7 @@ describe("dynamic rival ecosystem", () => {
   });
 
   it("trains rivals, records selections, and creates visible event field pressure", () => {
-    const career = createInitialCareerState(seededPlayers[0].player.id, 8202);
+    const career = advanceCareerCalendar(createInitialCareerState(seededPlayers[0].player.id, 8202));
     const advanced = advanceRivalCircuit(career);
     const firstProgramBefore = career.rivals.programs[0]!;
     const firstProgramAfter = advanced.rivals.programs[0]!;
@@ -352,6 +352,19 @@ describe("dynamic rival ecosystem", () => {
       expect.arrayContaining(["training", "selection"])
     );
     expect(advanced.notes[0]).toMatch(/Rival pressure|Rival circuit trained/);
+  });
+
+  it("does not replay rival training or results for an already simulated calendar date", () => {
+    const career = advanceCareerCalendar(createInitialCareerState(seededPlayers[0].player.id, 8206));
+    const once = advanceRivalCircuit(career);
+    const twice = advanceRivalCircuit(once);
+
+    expect(once.rivals.lastSimulatedDate).toBe(once.date);
+    expect(twice).toBe(once);
+    expect(twice.rivals.programs[0]!.roster[0]!.rating).toBe(once.rivals.programs[0]!.roster[0]!.rating);
+    expect(twice.rivals.programs[0]!.roster[0]!.fatigue).toBe(once.rivals.programs[0]!.roster[0]!.fatigue);
+    expect(twice.rivals.circuitLog).toHaveLength(once.rivals.circuitLog.length);
+    expect(twice.rankings).toEqual(once.rankings);
   });
 
   it("settles rival event results into rankings during deterministic batch simulation", () => {
@@ -381,7 +394,7 @@ describe("dynamic rival ecosystem", () => {
   });
 
   it("records age-curve decline when an older rival cannot offset training load", () => {
-    const career = createInitialCareerState(seededPlayers[0].player.id, 8204);
+    const career = advanceCareerCalendar(createInitialCareerState(seededPlayers[0].player.id, 8204));
     const aged = {
       ...career,
       rivals: {

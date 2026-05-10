@@ -468,6 +468,10 @@ export function createInitialRivalCircuit(date = "2026-06-01", rankings: Ranking
 }
 
 export function advanceRivalCircuit(state: CareerState): CareerState {
+  if (state.rivals.lastSimulatedDate === state.date) {
+    return state;
+  }
+
   let rankings = state.rankings;
   let logIndex = state.rivals.circuitLog.length + 1;
   let programs = state.rivals.programs.map((program) => progressProgram(syncRivalRosterFromRankings(program, rankings), state.date, logIndex++));
