@@ -13,6 +13,7 @@ interface SaveManagerViewProps {
   phase: AppPhase;
   selectedPlayerId: string;
   plannedTacticKey: TacticKey;
+  seed: number;
   tournament: TournamentState | null;
   liveMatchActive: boolean;
   career: CareerState | null;
@@ -136,7 +137,7 @@ function summarizeRuntime(props: SaveManagerViewProps): SaveSummary {
     version: 8,
     selectedPlayerId: props.selectedPlayerId,
     plannedTacticKey: props.plannedTacticKey,
-    seed: 0,
+    seed: props.seed,
     tournament: props.tournament,
     liveMatch: null,
     career: props.career

@@ -132,6 +132,7 @@ export function App() {
     phase,
     selectedPlayerId,
     plannedTacticKey,
+    seed,
     tournament,
     liveMatch,
     career,
@@ -493,6 +494,7 @@ export function App() {
           phase={phase}
           selectedPlayerId={selectedPlayerId}
           plannedTacticKey={plannedTacticKey}
+          seed={seed}
           tournament={tournament}
           liveMatchActive={Boolean(liveMatch)}
           career={career}
