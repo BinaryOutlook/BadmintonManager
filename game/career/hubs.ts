@@ -95,7 +95,10 @@ export function settleCareerMatch(args: {
     playerId: args.state.program.managedPlayerId,
     eventId: event.id,
     round: placementKey,
-    points: pointsDelta
+    points: pointsDelta,
+    date: args.state.date,
+    seasonId: args.state.seasonId,
+    tier: event.tier
   });
   const economy = recordPrizeMoney({
     economy: args.state.economy,

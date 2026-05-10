@@ -8,6 +8,7 @@ import {
   teamTalkSchema
 } from "../core/models";
 import { upgradeCareerStateV1, upgradeCareerStateV2 } from "../career/ecosystem";
+import { hydrateCareerEvents } from "../career/events";
 import {
   careerStateSchema,
   careerStateV1Schema,
@@ -258,7 +259,12 @@ export type SaveImportValidationResult =
     };
 
 function refreshMigratedCareer(career: PersistedSave["career"]) {
-  return career ? refreshAssistantAdvice(career) : null;
+  return career
+    ? refreshAssistantAdvice({
+        ...career,
+        events: hydrateCareerEvents(career.events)
+      })
+    : null;
 }
 
 export function migratePersistedSave(payload: PersistedSavePayload): PersistedSave {
@@ -271,7 +277,10 @@ export function migratePersistedSave(payload: PersistedSavePayload): PersistedSa
   }
 
   if (payload.version === 8) {
-    return payload;
+    return {
+      ...payload,
+      career: refreshMigratedCareer(payload.career)
+    };
   }
 
   if (payload.version === 3) {

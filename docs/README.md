@@ -36,6 +36,7 @@ docs/README.md
 | Current project state | `docs/plans/active/project-status.md` | Work completes, next work changes, blockers appear |
 | Architecture boundaries | `docs/architecture/overview.md` | Module ownership or runtime boundaries change |
 | Subsystem rules | `docs/reference/*.md` | Engine, tactics, player, or tournament contracts change |
+| Career calendar/ranking rules | `docs/reference/career-calendar-ranking.md` | Event deadlines, eligibility, seeding snapshots, or ranking behavior change |
 | Simulation fidelity design | `docs/reference/match-simulation-fidelity.md` | Detailed/quick match algorithm design or calibration strategy changes |
 | Match balance calibration | `docs/reference/match-balance-calibration.md` | OVR fairness, upset probability, or rally-shape tuning changes |
 | Stat composition calibration | `docs/reference/stat-composition-calibration.md` | Rating-field influence, archetype balance, or displayed OVR formulas change |

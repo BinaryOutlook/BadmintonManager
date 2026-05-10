@@ -370,7 +370,15 @@ function settleEvent(program: RivalProgramState, event: CareerEventDefinition, d
   };
 }
 
-function updateRankings(rankings: RankingEntry[], eventId: string, awards: Array<{ playerId: string; round: RoundKey; points: number }>) {
+function updateRankings(args: {
+  rankings: RankingEntry[];
+  event: CareerEventDefinition;
+  date: string;
+  seasonId: string;
+  awards: Array<{ playerId: string; round: RoundKey; points: number }>;
+}) {
+  const { awards, event, rankings } = args;
+
   if (awards.length === 0) {
     return rankings;
   }
@@ -383,9 +391,17 @@ function updateRankings(rankings: RankingEntry[], eventId: string, awards: Array
         ? {
             ...entry,
             points: entry.points + award.points,
+            seasonPoints: entry.seasonPoints + award.points,
             eventHistory: [
               ...entry.eventHistory,
-              { eventId, round: award.round, points: award.points }
+              {
+                eventId: event.id,
+                round: award.round,
+                points: award.points,
+                date: args.date,
+                seasonId: args.seasonId,
+                tier: event.tier
+              }
             ]
           }
         : entry;
@@ -490,7 +506,13 @@ export function advanceRivalCircuit(state: CareerState): CareerState {
       const settled = settleEvent(nextProgram, event, state.date, logIndex++);
       if (settled.program !== nextProgram) {
         circuitEvents.push(settled.program.progressionLog[0]!);
-        rankings = updateRankings(rankings, event.id, settled.rankingAwards);
+        rankings = updateRankings({
+          rankings,
+          event,
+          date: state.date,
+          seasonId: state.seasonId,
+          awards: settled.rankingAwards
+        });
         return syncRivalRosterFromRankings(settled.program, rankings);
       }
 

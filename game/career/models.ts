@@ -11,6 +11,16 @@ export const careerTierSchema = z.enum([
 ]);
 export type CareerTier = z.infer<typeof careerTierSchema>;
 
+export const careerEventStatusSchema = z.enum([
+  "scheduled",
+  "entry_open",
+  "entry_closed",
+  "draw_published",
+  "in_progress",
+  "completed"
+]);
+export type CareerEventStatus = z.infer<typeof careerEventStatusSchema>;
+
 export const careerStageSchema = z.enum([
   "planning",
   "event_entered",
@@ -481,8 +491,42 @@ export const careerEventDefinitionSchema = z.object({
   id: z.string(),
   name: z.string(),
   tier: careerTierSchema,
+  weekNumber: z.number().int().positive().default(1),
   startDate: z.string(),
   durationDays: z.number().int().positive(),
+  location: z
+    .object({
+      city: z.string(),
+      country: z.string(),
+      venue: z.string()
+    })
+    .default({
+      city: "Local Circuit",
+      country: "Fictional Circuit",
+      venue: "Training Hall"
+    }),
+  entryDeadline: z.string().default("2026-06-01"),
+  rankingCutoffDate: z.string().default("2026-06-01"),
+  seedingDate: z.string().default("2026-06-01"),
+  withdrawalDeadline: z.string().default("2026-06-01"),
+  drawDate: z.string().default("2026-06-01"),
+  drawSize: z.number().int().positive().default(16),
+  seedCount: z.number().int().nonnegative().default(8),
+  status: careerEventStatusSchema.default("scheduled"),
+  eligibility: z
+    .object({
+      minRank: z.number().int().positive().nullable(),
+      minPoints: z.number().int().nonnegative().nullable(),
+      readinessFloor: z.number().int().min(0).max(100),
+      minCompletedEvents: z.number().int().nonnegative().nullable()
+    })
+    .default({
+      minRank: null,
+      minPoints: null,
+      readinessFloor: 0,
+      minCompletedEvents: null
+    }),
+  stakesLabel: z.string().default("Circuit points and program funding"),
   travelCost: z.number().int().nonnegative(),
   entryFee: z.number().int().nonnegative(),
   trainingCostModifier: z.number().positive(),
@@ -573,11 +617,15 @@ export const rankingEntrySchema = z.object({
   playerId: z.string(),
   rank: z.number().int().positive(),
   points: z.number().int().nonnegative(),
+  seasonPoints: z.number().int().nonnegative().default(0),
   eventHistory: z.array(
     z.object({
       eventId: z.string(),
       round: z.string(),
-      points: z.number().int().nonnegative()
+      points: z.number().int().nonnegative(),
+      date: z.string().optional(),
+      seasonId: z.string().optional(),
+      tier: careerTierSchema.optional()
     })
   )
 });

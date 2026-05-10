@@ -6,6 +6,7 @@ export function createInitialRankings(seededEntries: SeededPlayer[], managedPlay
     playerId: entry.player.id,
     rank: entry.seed,
     points: Math.max(220, 1900 - entry.seed * 32),
+    seasonPoints: Math.max(80, 520 - entry.seed * 9),
     eventHistory: []
   }));
   const managed = entries.find((entry) => entry.playerId === managedPlayerId);
@@ -32,6 +33,9 @@ export function awardRankingPoints(args: {
   eventId: string;
   round: string;
   points: number;
+  date?: string;
+  seasonId?: string;
+  tier?: RankingEntry["eventHistory"][number]["tier"];
 }) {
   return recalculateRanks(
     args.rankings.map((entry) => {
@@ -42,12 +46,16 @@ export function awardRankingPoints(args: {
       return {
         ...entry,
         points: entry.points + args.points,
+        seasonPoints: entry.seasonPoints + args.points,
         eventHistory: [
           ...entry.eventHistory,
           {
             eventId: args.eventId,
             round: args.round,
-            points: args.points
+            points: args.points,
+            date: args.date,
+            seasonId: args.seasonId,
+            tier: args.tier
           }
         ]
       };
