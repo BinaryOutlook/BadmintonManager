@@ -66,7 +66,7 @@ describe("career save migration", () => {
     expect(migrated.career?.ecosystem.staff.candidates).toHaveLength(5);
     expect(migrated.career?.ecosystem.psychology[0]?.athleteId).toBe(seededPlayers[0].player.id);
     expect(migrated.career?.rivals.programs).toHaveLength(4);
-    expect(migrated.career?.rivals.lastSimulatedDate).toBe(career.date);
+    expect(migrated.career?.rivals.lastSimulatedDate).toBe("");
   });
 
   it("migrates Phase 2 career saves into defaulted Phase 3 rival state", () => {

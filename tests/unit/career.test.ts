@@ -339,7 +339,7 @@ describe("dynamic rival ecosystem", () => {
   });
 
   it("trains rivals, records selections, and creates visible event field pressure", () => {
-    const career = advanceCareerCalendar(createInitialCareerState(seededPlayers[0].player.id, 8202));
+    const career = createInitialCareerState(seededPlayers[0].player.id, 8202);
     const advanced = advanceRivalCircuit(career);
     const firstProgramBefore = career.rivals.programs[0]!;
     const firstProgramAfter = advanced.rivals.programs[0]!;
@@ -355,7 +355,7 @@ describe("dynamic rival ecosystem", () => {
   });
 
   it("does not replay rival training or results for an already simulated calendar date", () => {
-    const career = advanceCareerCalendar(createInitialCareerState(seededPlayers[0].player.id, 8206));
+    const career = createInitialCareerState(seededPlayers[0].player.id, 8206);
     const once = advanceRivalCircuit(career);
     const twice = advanceRivalCircuit(once);
 
@@ -394,7 +394,7 @@ describe("dynamic rival ecosystem", () => {
   });
 
   it("records age-curve decline when an older rival cannot offset training load", () => {
-    const career = advanceCareerCalendar(createInitialCareerState(seededPlayers[0].player.id, 8204));
+    const career = createInitialCareerState(seededPlayers[0].player.id, 8204);
     const aged = {
       ...career,
       rivals: {

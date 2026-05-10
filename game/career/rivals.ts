@@ -463,7 +463,7 @@ export function createInitialRivalCircuit(date = "2026-06-01", rankings: Ranking
     programs,
     fieldPressure: [],
     circuitLog: programs.flatMap((program) => program.progressionLog).slice(0, 24),
-    lastSimulatedDate: date
+    lastSimulatedDate: ""
   };
 }
 
