@@ -343,6 +343,60 @@ describe("career save migration", () => {
     expect(storage.getItem(CORRUPT_STORAGE_KEY)).toBe("previous-corrupt-backup");
   });
 
+  it("normalizes legacy public tier labels during current-save import", () => {
+    const legacyPrefix = "Super";
+    const career = createInitialCareerState(seededPlayers[0].player.id, 465);
+    const save = {
+      version: 8,
+      selectedPlayerId: seededPlayers[0].player.id,
+      plannedTacticKey: "balancedControl",
+      seed: 465,
+      tournament: {
+        id: "legacy-event",
+        name: "Legacy Event",
+        tier: `${legacyPrefix} 750`,
+        prizePoolUsd: 850_000,
+        managedPlayerId: seededPlayers[0].player.id,
+        rounds: [],
+        currentRoundIndex: 0,
+        rngState: 12345,
+        eliminated: false,
+        managedResults: []
+      },
+      liveMatch: null,
+      career: {
+        ...career,
+        events: career.events.map((event) =>
+          event.id === "metro-open-300"
+            ? { ...event, tier: `${legacyPrefix} 300` }
+            : event
+        ),
+        rankings: career.rankings.map((entry) => ({
+          ...entry,
+          eventHistory: [
+            {
+              eventId: "metro-open-300",
+              round: "QF",
+              points: 210,
+              date: "2026-06-03",
+              seasonId: career.seasonId,
+              tier: `${legacyPrefix} 300`
+            }
+          ]
+        }))
+      }
+    };
+
+    const preview = validateImportedSaveText(JSON.stringify(save));
+
+    expect(preview.ok).toBe(true);
+    if (preview.ok) {
+      expect(preview.save.tournament?.tier).toBe("Circuit 750");
+      expect(preview.save.career?.events.find((event) => event.id === "metro-open-300")?.tier).toBe("Circuit 300");
+      expect(preview.save.career?.rankings[0]?.eventHistory[0]?.tier).toBe("Circuit 300");
+    }
+  });
+
   it("previews and migrates a valid old tournament-only import", () => {
     const legacy = {
       version: 2,

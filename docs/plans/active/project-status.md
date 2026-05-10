@@ -48,6 +48,7 @@ What is now stable:
 - the command shell now exposes a Save Manager for the single local slot, including continue career, export JSON, import preview/confirm, active-save deletion, corrupt-backup deletion, and overwrite warnings
 - the career workspace now has visible route chrome and an in-page Career Home map for Training, Calendar/Event Desk, Match Planning, Live Match, Post-Match Review, Save Manager, and New Session actions
 - the Career Home and Calendar/Event Desk now surface the fictional circuit calendar/ranking model: event tiers, entry deadlines, eligibility gates, ranking cutoffs, seed snapshots, draw milestones, points, prize/cost, readiness, and season-race stakes with a simplification boundary
+- public event tiers now use fictional `Circuit 300`, `Circuit 500`, `Circuit 750`, and `Circuit 1000` labels while legacy save imports normalize the previous tier text safely
 
 ## Completed
 
@@ -105,6 +106,7 @@ What is now stable:
 - [x] added the first-launch dual path and Save Manager trust slice with import/export/delete/recovery coverage
 - [x] added the career workspace navigation shell and in-page management map for the core career route family
 - [x] integrated the fictional calendar/ranking domain data into Career Home and Calendar/Event Desk UI copy
+- [x] remediated the public tier-label boundary by replacing active runtime/docs/tests with fictional Circuit labels and preserving legacy save compatibility
 
 ## In Progress
 

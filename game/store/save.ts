@@ -15,7 +15,8 @@ import {
   careerStateV2Schema,
   careerStateV3Schema,
   careerStateV4Schema,
-  careerStateV5Schema
+  careerStateV5Schema,
+  normalizeCareerTierLabel
 } from "../career/models";
 import { upgradeCareerStateV3 } from "../career/tactics";
 import { refreshAssistantAdvice } from "../career/tactics";
@@ -56,7 +57,7 @@ const tournamentRoundSchema = z.object({
 export const tournamentStateSchema = z.object({
   id: z.string(),
   name: z.string(),
-  tier: z.string(),
+  tier: z.preprocess(normalizeCareerTierLabel, z.string()),
   prizePoolUsd: z.number().int().nonnegative(),
   managedPlayerId: z.string(),
   rounds: z.array(tournamentRoundSchema),

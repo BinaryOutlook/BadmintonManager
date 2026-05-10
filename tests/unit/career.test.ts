@@ -223,7 +223,7 @@ describe("career core slice", () => {
     const career = createInitialCareerState(seededPlayers[0].player.id, 7012);
 
     expect(new Set(career.events.map((event) => event.tier))).toEqual(
-      new Set(["Super 300", "Super 500", "Super 750", "Super 1000", "National", "Invitational", "Finals"])
+      new Set(["Circuit 300", "Circuit 500", "Circuit 750", "Circuit 1000", "National", "Invitational", "Finals"])
     );
 
     const super1000 = getCareerEvent(career.events, "continental-premier-1000")!;

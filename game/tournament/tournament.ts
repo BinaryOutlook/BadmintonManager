@@ -232,7 +232,7 @@ export function createTournament(seededEntries: SeededPlayer[], managedPlayerId:
   return {
     id: "badminton-manager-open",
     name: "Singapore Open",
-    tier: "Super 750",
+    tier: "Circuit 750",
     prizePoolUsd: 850_000,
     managedPlayerId,
     rounds: [round],

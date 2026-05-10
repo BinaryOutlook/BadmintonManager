@@ -41,6 +41,8 @@ Core fields:
 - `stakesLabel`
 - prize, cost, prestige, and ranking-point values
 
+Public tier labels are fictional circuit names: `Circuit 300`, `Circuit 500`, `Circuit 750`, and `Circuit 1000`, plus domestic/invitational/finale labels. Legacy save payloads using the previous public tier text are normalized at load/import time so old local saves keep working without reintroducing those labels into current UI copy.
+
 Deadline ordering is deterministic:
 
 $$

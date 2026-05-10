@@ -1,14 +1,28 @@
 import { z } from "zod";
 
-export const careerTierSchema = z.enum([
-  "Super 300",
-  "Super 500",
-  "Super 750",
-  "Super 1000",
-  "National",
-  "Invitational",
-  "Finals"
-]);
+const circuitPointTiers = ["300", "500", "750", "1000"] as const;
+const legacyTierPrefix = "Super";
+const circuitTierLabels = circuitPointTiers.map((points) => `Circuit ${points}`) as [
+  "Circuit 300",
+  "Circuit 500",
+  "Circuit 750",
+  "Circuit 1000"
+];
+
+export function normalizeCareerTierLabel(value: unknown) {
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  const legacyPointTier = circuitPointTiers.find((points) => value === `${legacyTierPrefix} ${points}`);
+
+  return legacyPointTier ? `Circuit ${legacyPointTier}` : value;
+}
+
+export const careerTierSchema = z.preprocess(
+  normalizeCareerTierLabel,
+  z.enum([...circuitTierLabels, "National", "Invitational", "Finals"])
+);
 export type CareerTier = z.infer<typeof careerTierSchema>;
 
 export const careerEventStatusSchema = z.enum([
@@ -135,7 +149,7 @@ export const programLowerEventEntrySchema = z.object({
   subjectType: z.enum(["youth_prospect", "roster_athlete"]),
   subjectName: z.string(),
   eventName: z.string(),
-  tier: z.enum(["National", "Invitational", "Super 300"]),
+  tier: z.preprocess(normalizeCareerTierLabel, z.enum(["National", "Invitational", "Circuit 300"])),
   enteredAt: z.string(),
   cost: z.number().int().nonnegative(),
   readinessAtEntry: z.number().min(0).max(100),

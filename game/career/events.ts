@@ -1,4 +1,5 @@
 import { addDays, daysBetween } from "./calendar";
+import { normalizeCareerTierLabel } from "./models";
 import type { CareerEventDefinition, CareerEventStatus, CareerState, CareerTier, RankingEntry } from "./models";
 
 export type CalendarEventStatus =
@@ -10,7 +11,7 @@ export const careerEventCatalog: CareerEventDefinition[] = [
   {
     id: "metro-open-300",
     name: "Metro Open",
-    tier: "Super 300",
+    tier: "Circuit 300",
     weekNumber: 23,
     startDate: "2026-06-03",
     durationDays: 5,
@@ -44,7 +45,7 @@ export const careerEventCatalog: CareerEventDefinition[] = [
   {
     id: "harbor-masters-500",
     name: "Harbor Masters",
-    tier: "Super 500",
+    tier: "Circuit 500",
     weekNumber: 24,
     startDate: "2026-06-12",
     durationDays: 6,
@@ -78,7 +79,7 @@ export const careerEventCatalog: CareerEventDefinition[] = [
   {
     id: "summit-invitational-750",
     name: "Summit Invitational",
-    tier: "Super 750",
+    tier: "Circuit 750",
     weekNumber: 26,
     startDate: "2026-06-24",
     durationDays: 6,
@@ -112,7 +113,7 @@ export const careerEventCatalog: CareerEventDefinition[] = [
   {
     id: "continental-premier-1000",
     name: "Continental Premier",
-    tier: "Super 1000",
+    tier: "Circuit 1000",
     weekNumber: 28,
     startDate: "2026-07-10",
     durationDays: 7,
@@ -250,10 +251,10 @@ export const careerEventCatalog: CareerEventDefinition[] = [
 export const tierOrder: Record<CareerTier, number> = {
   National: 1,
   Invitational: 2,
-  "Super 300": 3,
-  "Super 500": 4,
-  "Super 750": 5,
-  "Super 1000": 6,
+  "Circuit 300": 3,
+  "Circuit 500": 4,
+  "Circuit 750": 5,
+  "Circuit 1000": 6,
   Finals: 7
 };
 
@@ -267,6 +268,7 @@ export function hydrateCareerEventDefinition(event: CareerEventDefinition): Care
   return catalogEvent
     ? {
         ...event,
+        tier: catalogEvent.tier,
         weekNumber: catalogEvent.weekNumber,
         location: catalogEvent.location,
         entryDeadline: catalogEvent.entryDeadline,
@@ -280,7 +282,7 @@ export function hydrateCareerEventDefinition(event: CareerEventDefinition): Care
         eligibility: catalogEvent.eligibility,
         stakesLabel: catalogEvent.stakesLabel
       }
-    : event;
+    : { ...event, tier: normalizeCareerTierLabel(event.tier) as CareerTier };
 }
 
 export function hydrateCareerEvents(events: CareerEventDefinition[]): CareerEventDefinition[] {
