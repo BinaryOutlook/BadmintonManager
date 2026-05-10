@@ -215,6 +215,82 @@ export const programEcosystemStateSchema = z.object({
 });
 export type ProgramEcosystemState = z.infer<typeof programEcosystemStateSchema>;
 
+export const rivalTrainingBiasSchema = z.enum(["attack", "endurance", "control", "balanced"]);
+export type RivalTrainingBias = z.infer<typeof rivalTrainingBiasSchema>;
+
+export const rivalStrategySchema = z.enum(["points_chaser", "prestige_hunter", "developmental", "selective"]);
+export type RivalStrategy = z.infer<typeof rivalStrategySchema>;
+
+export const rivalAthleteStateSchema = z.object({
+  playerId: z.string(),
+  name: z.string(),
+  age: z.number().int().min(16).max(42),
+  rating: z.number().min(1).max(100),
+  form: z.number().min(0).max(100),
+  fatigue: z.number().min(0).max(100),
+  rankingPoints: z.number().int().nonnegative(),
+  currentRank: z.number().int().positive(),
+  trend: z.enum(["surging", "steady", "sliding"])
+});
+export type RivalAthleteState = z.infer<typeof rivalAthleteStateSchema>;
+
+export const rivalEventEntrySchema = z.object({
+  id: z.string(),
+  eventId: z.string(),
+  eventName: z.string(),
+  tier: careerTierSchema,
+  selectedAt: z.string(),
+  status: z.enum(["selected", "entered", "completed", "withdrawn"]),
+  fieldStrength: z.number().min(0).max(100),
+  projectedRound: z.enum(["R16", "QF", "SF", "F", "champion"]),
+  resultRound: z.enum(["R16", "QF", "SF", "F", "champion"]).nullable(),
+  pointsAwarded: z.number().int().nonnegative()
+});
+export type RivalEventEntry = z.infer<typeof rivalEventEntrySchema>;
+
+export const rivalProgressionEventSchema = z.object({
+  id: z.string(),
+  date: z.string(),
+  rivalId: z.string(),
+  type: z.enum(["training", "event_entry", "event_result", "decline", "form", "selection"]),
+  stateDelta: z.string(),
+  reason: z.string(),
+  visibility: z.enum(["public", "scouted", "internal"])
+});
+export type RivalProgressionEvent = z.infer<typeof rivalProgressionEventSchema>;
+
+export const rivalProgramStateSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  strategy: rivalStrategySchema,
+  budgetTier: z.enum(["lean", "stable", "elite"]),
+  trainingBias: rivalTrainingBiasSchema,
+  roster: z.array(rivalAthleteStateSchema),
+  eventEntries: z.array(rivalEventEntrySchema),
+  form: z.number().min(0).max(100),
+  reputation: z.number().min(0).max(100),
+  pressureScore: z.number().min(0).max(100),
+  progressionLog: z.array(rivalProgressionEventSchema)
+});
+export type RivalProgramState = z.infer<typeof rivalProgramStateSchema>;
+
+export const rivalEventPressureSchema = z.object({
+  eventId: z.string(),
+  rivalCount: z.number().int().nonnegative(),
+  averageThreat: z.number().min(0).max(100),
+  pressureScore: z.number().min(0).max(100),
+  topThreatName: z.string()
+});
+export type RivalEventPressure = z.infer<typeof rivalEventPressureSchema>;
+
+export const rivalCircuitStateSchema = z.object({
+  programs: z.array(rivalProgramStateSchema),
+  fieldPressure: z.array(rivalEventPressureSchema),
+  circuitLog: z.array(rivalProgressionEventSchema),
+  lastSimulatedDate: z.string()
+});
+export type RivalCircuitState = z.infer<typeof rivalCircuitStateSchema>;
+
 export const careerEventDefinitionSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -351,9 +427,15 @@ export const careerStateV1Schema = z.object({
 
 export type CareerStateV1 = z.infer<typeof careerStateV1Schema>;
 
-export const careerStateSchema = careerStateV1Schema.extend({
+export const careerStateV2Schema = careerStateV1Schema.extend({
   version: z.literal(2),
   ecosystem: programEcosystemStateSchema
+});
+export type CareerStateV2 = z.infer<typeof careerStateV2Schema>;
+
+export const careerStateSchema = careerStateV2Schema.extend({
+  version: z.literal(3),
+  rivals: rivalCircuitStateSchema
 });
 export type CareerState = z.infer<typeof careerStateSchema>;
 

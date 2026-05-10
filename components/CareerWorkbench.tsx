@@ -16,6 +16,7 @@ interface CareerPageProps {
   onOpenCalendar: () => void;
   onOpenHome: () => void;
   onOpenProgram: () => void;
+  onOpenRivals: () => void;
   onOpenScouting: () => void;
   onOpenRecruitment: () => void;
   onOpenYouth: () => void;
@@ -35,6 +36,7 @@ interface CareerPageProps {
   onHireStaffMember: (staffId: string) => void;
   onSetManagedAthletePromise: (targetType: PlayerPromise["targetType"]) => void;
   onWithdrawPromise: (promiseId: string) => void;
+  onAdvanceRivalCircuit: () => void;
 }
 
 function money(value: number) {
@@ -49,6 +51,10 @@ function activeEvent(career: CareerState) {
   return career.activeEventId
     ? getCareerEvent(career.events, career.activeEventId)
     : getNextEvent(career.events, career.date);
+}
+
+function pressureForEvent(career: CareerState, eventId: string) {
+  return career.rivals.fieldPressure.find((entry) => entry.eventId === eventId);
 }
 
 function CareerEmpty(props: Pick<CareerPageProps, "onStartCareer" | "saveRecovery">) {
@@ -144,6 +150,9 @@ export function CareerHomePage(props: CareerPageProps) {
               <button className="command-button command-button-secondary" type="button" onClick={props.onOpenProgram}>
                 Program Hub
               </button>
+              <button className="command-button command-button-secondary" type="button" onClick={props.onOpenRivals}>
+                Circuit Room
+              </button>
             </div>
           </div>
         </section>
@@ -229,6 +238,158 @@ export function CareerHomePage(props: CareerPageProps) {
               <strong>{props.career.ecosystem.promises.filter((promise) => promise.status === "active").length}</strong>
               <small>{props.career.ecosystem.promises.filter((promise) => promise.status !== "active").length} resolved</small>
             </button>
+            <button className="career-system-tile" type="button" onClick={props.onOpenRivals}>
+              <span>Rivals</span>
+              <strong>{Math.round(Math.max(...props.career.rivals.programs.map((program) => program.pressureScore)))}</strong>
+              <small>{props.career.rivals.fieldPressure.length} pressured event fields</small>
+            </button>
+          </div>
+        </section>
+      </div>
+    </section>
+  );
+}
+
+export function CareerRivalCircuitPage(props: CareerPageProps) {
+  if (!props.career) {
+    return <CareerEmpty onStartCareer={props.onStartCareer} saveRecovery={props.saveRecovery} />;
+  }
+
+  const topPressure = [...props.career.rivals.fieldPressure].sort(
+    (left, right) => right.pressureScore - left.pressureScore
+  )[0];
+
+  return (
+    <section className="screen-shell career-page">
+      <div className="screen-header">
+        <div>
+          <p className="screen-kicker">Circuit Room</p>
+          <h1 className="screen-title">Rival Programs</h1>
+          <p className="screen-copy">
+            Rival academies train, select event fields, age through form curves, and push ranking pressure while your program plans.
+          </p>
+        </div>
+        <div className="screen-meta">
+          <span>Last sim {props.career.rivals.lastSimulatedDate}</span>
+          <span>{props.career.rivals.fieldPressure.length} fields watched</span>
+          <button className="command-button command-button-secondary" type="button" onClick={props.onOpenHome}>
+            Career Home
+          </button>
+          <button className="command-button command-button-primary" type="button" onClick={props.onAdvanceRivalCircuit}>
+            Sim Rival Day
+          </button>
+        </div>
+      </div>
+
+      <div className="program-grid rival-circuit-grid">
+        <section className="command-panel command-panel-wide">
+          <div className="panel-header">
+            <h2>Season Pressure</h2>
+            <span>{topPressure ? topPressure.topThreatName : "No field locked"}</span>
+          </div>
+          <div className="career-stat-grid">
+            <div>
+              <span>Peak Pressure</span>
+              <strong>{topPressure ? Math.round(topPressure.pressureScore) : 0}</strong>
+            </div>
+            <div>
+              <span>Rival Entries</span>
+              <strong>{props.career.rivals.programs.reduce((total, program) => total + program.eventEntries.length, 0)}</strong>
+            </div>
+            <div>
+              <span>Completed Results</span>
+              <strong>
+                {props.career.rivals.programs.reduce(
+                  (total, program) => total + program.eventEntries.filter((entry) => entry.status === "completed").length,
+                  0
+                )}
+              </strong>
+            </div>
+            <div>
+              <span>Ranking Leader</span>
+              <strong>{props.career.rivals.programs[0]?.roster[0]?.currentRank ?? "-"}</strong>
+            </div>
+          </div>
+          <div className="rival-pressure-list">
+            {props.career.rivals.fieldPressure.map((pressure) => {
+              const event = getCareerEvent(props.career!.events, pressure.eventId);
+
+              return (
+                <div key={pressure.eventId} className="program-log-row">
+                  <span>{event?.tier ?? "event"} / {pressure.rivalCount} rivals</span>
+                  <strong>{event?.name ?? pressure.eventId}</strong>
+                  <p>
+                    {pressure.topThreatName} leads the field; average threat {Math.round(pressure.averageThreat)}, pressure{" "}
+                    {Math.round(pressure.pressureScore)}.
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="command-panel">
+          <div className="panel-header">
+            <h2>Rival Progression Log</h2>
+            <span>Persistent circuit events</span>
+          </div>
+          <div className="program-log-list">
+            {props.career.rivals.circuitLog.slice(0, 8).map((entry) => (
+              <div key={entry.id} className="program-log-row">
+                <span>{entry.date} / {entry.type}</span>
+                <strong>{entry.stateDelta}</strong>
+                <p>{entry.reason}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="command-panel command-panel-full">
+          <div className="panel-header">
+            <h2>Program Watchlist</h2>
+            <span>Training bias / entries / age curve</span>
+          </div>
+          <div className="program-card-grid">
+            {props.career.rivals.programs.map((program) => {
+              const lead = program.roster[0];
+              const latestEntry = program.eventEntries[0];
+
+              return (
+                <article key={program.id} className="program-decision-card rival-program-card">
+                  <span>{program.strategy.replace("_", " ")} / {program.budgetTier}</span>
+                  <strong>{program.name}</strong>
+                  <p>
+                    Bias {program.trainingBias}; form {Math.round(program.form)}; pressure {Math.round(program.pressureScore)}.
+                  </p>
+                  <div className="career-stat-grid">
+                    <div>
+                      <span>Lead</span>
+                      <strong>{lead?.name ?? "No athlete"}</strong>
+                    </div>
+                    <div>
+                      <span>Rating</span>
+                      <strong>{lead ? Math.round(lead.rating) : 0}</strong>
+                    </div>
+                    <div>
+                      <span>Rank</span>
+                      <strong>{lead?.currentRank ?? "-"}</strong>
+                    </div>
+                    <div>
+                      <span>Trend</span>
+                      <strong>{lead?.trend ?? "steady"}</strong>
+                    </div>
+                  </div>
+                  <p>
+                    Latest selection:{" "}
+                    {latestEntry
+                      ? `${latestEntry.eventName}, projected ${latestEntry.projectedRound}, ${latestEntry.status}${
+                          latestEntry.resultRound ? ` as ${latestEntry.resultRound}` : ""
+                        }`
+                      : "watching the calendar"}.
+                  </p>
+                </article>
+              );
+            })}
           </div>
         </section>
       </div>
@@ -1029,6 +1190,7 @@ export function CareerCalendarPage(props: CareerPageProps) {
             {props.career.events.map((event) => {
               const entered = props.career?.enteredEventIds.includes(event.id);
               const completed = props.career?.completedEventIds.includes(event.id);
+              const fieldPressure = props.career ? pressureForEvent(props.career, event.id) : undefined;
               const totalCost = eventEntryCost({
                 travelCost: event.travelCost,
                 entryFee: event.entryFee
@@ -1051,6 +1213,12 @@ export function CareerCalendarPage(props: CareerPageProps) {
                     <p>
                       {event.startDate} - travel {money(event.travelCost)}, entry {money(event.entryFee)}, total{" "}
                       {money(totalCost)}, prize {money(event.prizeMoney.champion)}, champion points {event.rankingPoints.champion}
+                    </p>
+                    <p>
+                      Rival field:{" "}
+                      {fieldPressure
+                        ? `${fieldPressure.rivalCount} programs, ${Math.round(fieldPressure.pressureScore)} pressure, top threat ${fieldPressure.topThreatName}`
+                        : "open scouting field"}
                     </p>
                     {!affordable && !entered && !completed && (
                       <p className="career-event-warning">

@@ -8,6 +8,7 @@ import {
   CareerPreMatchHubPage,
   CareerProgramHubPage,
   CareerRecruitmentDeskPage,
+  CareerRivalCircuitPage,
   CareerScoutingNetworkPage,
   CareerStaffRoomPage,
   CareerTrainingPage,
@@ -103,6 +104,7 @@ function topModeForPage(page: AppPage, fallback: TopMode): TopMode {
     case "calendar":
     case "home":
     case "program":
+    case "rivals":
     case "scouting":
     case "recruitment":
     case "youth":
@@ -137,6 +139,7 @@ export function App() {
     hireStaffMember,
     setManagedAthletePromise,
     withdrawPromise,
+    advanceRivalCircuit,
     selectPlayer,
     chooseTactic,
     startTournament,
@@ -341,6 +344,7 @@ export function App() {
       onOpenCalendar: () => setActivePage({ id: "calendar" }),
       onOpenHome: () => setActivePage({ id: "home" }),
       onOpenProgram: () => setActivePage({ id: "program" }),
+      onOpenRivals: () => setActivePage({ id: "rivals" }),
       onOpenScouting: () => setActivePage({ id: "scouting" }),
       onOpenRecruitment: () => setActivePage({ id: "recruitment" }),
       onOpenYouth: () => setActivePage({ id: "youth" }),
@@ -359,7 +363,8 @@ export function App() {
       onEnterYouthLowerEvent: enterYouthLowerEvent,
       onHireStaffMember: hireStaffMember,
       onSetManagedAthletePromise: setManagedAthletePromise,
-      onWithdrawPromise: withdrawPromise
+      onWithdrawPromise: withdrawPromise,
+      onAdvanceRivalCircuit: advanceRivalCircuit
     };
 
     if (activePage.id === "home") {
@@ -368,6 +373,10 @@ export function App() {
 
     if (activePage.id === "program") {
       return <CareerProgramHubPage {...careerPageProps} />;
+    }
+
+    if (activePage.id === "rivals") {
+      return <CareerRivalCircuitPage {...careerPageProps} />;
     }
 
     if (activePage.id === "scouting") {

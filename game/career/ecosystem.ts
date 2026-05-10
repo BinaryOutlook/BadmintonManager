@@ -5,6 +5,7 @@ import type {
   AthletePsychology,
   CareerState,
   CareerStateV1,
+  CareerStateV2,
   PlayerPromise,
   ProgramEcosystemState,
   ProgramEventLog,
@@ -19,6 +20,7 @@ import type {
 } from "./models";
 import { clamp } from "./models";
 import { refreshAthleteReadiness } from "./health";
+import { createInitialRivalCircuit } from "./rivals";
 
 export const staffCandidatePool: StaffMember[] = [
   {
@@ -259,10 +261,18 @@ function lowerEventPromiseKept(state: ProgramEcosystemState, athleteId: string) 
 }
 
 export function upgradeCareerStateV1(career: CareerStateV1): CareerState {
-  return {
+  return upgradeCareerStateV2({
     ...career,
     version: 2,
     ecosystem: createInitialEcosystem(career.program.managedPlayerId, career.date)
+  });
+}
+
+export function upgradeCareerStateV2(career: CareerStateV2): CareerState {
+  return {
+    ...career,
+    version: 3,
+    rivals: createInitialRivalCircuit(career.date, career.rankings)
   };
 }
 

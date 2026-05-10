@@ -7,8 +7,8 @@ import {
   simulationFidelitySchema,
   teamTalkSchema
 } from "../core/models";
-import { upgradeCareerStateV1 } from "../career/ecosystem";
-import { careerStateSchema, careerStateV1Schema } from "../career/models";
+import { upgradeCareerStateV1, upgradeCareerStateV2 } from "../career/ecosystem";
+import { careerStateSchema, careerStateV1Schema, careerStateV2Schema } from "../career/models";
 
 const matchSummaryEventSchema = z.object({
   kind: z.enum([
@@ -197,13 +197,19 @@ export const phase1PersistedSaveSchema = legacyPersistedSaveSchema.extend({
   career: careerStateV1Schema.nullable()
 });
 
-export const persistedSaveSchema = legacyPersistedSaveSchema.extend({
+export const phase2PersistedSaveSchema = legacyPersistedSaveSchema.extend({
   version: z.literal(4),
+  career: careerStateV2Schema.nullable()
+});
+
+export const persistedSaveSchema = legacyPersistedSaveSchema.extend({
+  version: z.literal(5),
   career: careerStateSchema.nullable()
 });
 
 export const persistedSavePayloadSchema = z.union([
   persistedSaveSchema,
+  phase2PersistedSaveSchema,
   phase1PersistedSaveSchema,
   legacyPersistedSaveSchema
 ]);
@@ -212,21 +218,29 @@ export type PersistedSave = z.infer<typeof persistedSaveSchema>;
 export type PersistedSavePayload = z.infer<typeof persistedSavePayloadSchema>;
 
 export function migratePersistedSave(payload: PersistedSavePayload): PersistedSave {
-  if (payload.version === 4) {
+  if (payload.version === 5) {
     return payload;
   }
 
   if (payload.version === 3) {
     return {
       ...payload,
-      version: 4,
+      version: 5,
       career: payload.career ? upgradeCareerStateV1(payload.career) : null
+    };
+  }
+
+  if (payload.version === 4) {
+    return {
+      ...payload,
+      version: 5,
+      career: payload.career ? upgradeCareerStateV2(payload.career) : null
     };
   }
 
   return {
     ...payload,
-    version: 4,
+    version: 5,
     career: null
   };
 }

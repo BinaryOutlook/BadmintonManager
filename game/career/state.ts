@@ -5,6 +5,7 @@ import { createInitialEcosystem } from "./ecosystem";
 import type { AthleteCareerState, CareerState } from "./models";
 import { createInitialRankings, rankingFor } from "./rankings";
 import { refreshAthleteReadiness } from "./health";
+import { createInitialRivalCircuit } from "./rivals";
 
 export function createCareerAthlete(playerId: string, rank: number, points: number): AthleteCareerState {
   const entry = seededPlayers.find((seeded) => seeded.player.id === playerId) ?? seededPlayers[0];
@@ -53,7 +54,7 @@ export function createInitialCareerState(selectedPlayerId: string, seed: number)
   const ranking = rankingFor(rankings, selectedPlayerId) ?? rankings[0];
 
   return {
-    version: 2,
+    version: 3,
     seed,
     date: "2026-06-01",
     seasonId: "2026",
@@ -74,6 +75,7 @@ export function createInitialCareerState(selectedPlayerId: string, seed: number)
     lastPreMatchBrief: null,
     lastMatchReport: null,
     ecosystem: createInitialEcosystem(selectedPlayerId),
+    rivals: createInitialRivalCircuit("2026-06-01", rankings),
     notes: ["Career save initialized"]
   };
 }

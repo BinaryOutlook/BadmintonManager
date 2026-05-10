@@ -33,6 +33,7 @@ import type { CareerState } from "../career/models";
 import type { PlayerPromise } from "../career/models";
 import { createInitialCareerState } from "../career/state";
 import { applyTrainingPlan, getTrainingPlan } from "../career/training";
+import { advanceRivalCircuit } from "../career/rivals";
 import {
   advanceTournament,
   createManagedMatchInput,
@@ -86,6 +87,7 @@ export interface TournamentStoreState {
   hireStaffMember: (staffId: string) => void;
   setManagedAthletePromise: (targetType: PlayerPromise["targetType"]) => void;
   withdrawPromise: (promiseId: string) => void;
+  advanceRivalCircuit: () => void;
   selectPlayer: (playerId: string) => void;
   chooseTactic: (tacticKey: TacticKey) => void;
   startTournament: () => void;
@@ -136,7 +138,7 @@ function persist(state: TournamentStoreState) {
   }
 
   const payload: PersistedSave = {
-    version: 4,
+    version: 5,
     selectedPlayerId: state.selectedPlayerId,
     plannedTacticKey: state.plannedTacticKey,
     seed: state.seed,
@@ -419,7 +421,7 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
         return state;
       }
 
-      const career = resolvePromises(expireScoutReports(resolveDueScoutReports(advanceCareerCalendar(state.career))));
+      const career = advanceRivalCircuit(resolvePromises(expireScoutReports(resolveDueScoutReports(advanceCareerCalendar(state.career)))));
       const withTournament = addCareerTournamentIfReady(state, career);
       const next = {
         ...state,
@@ -573,6 +575,20 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
       const next = {
         ...state,
         career: withdrawPromise(state.career, promiseId)
+      };
+      persist(next);
+      return next;
+    });
+  },
+  advanceRivalCircuit: () => {
+    set((state) => {
+      if (!state.career) {
+        return state;
+      }
+
+      const next = {
+        ...state,
+        career: advanceRivalCircuit(state.career)
       };
       persist(next);
       return next;

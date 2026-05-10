@@ -891,6 +891,20 @@ button {
   padding: 0.72rem;
 }
 
+.rival-circuit-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(22rem, 0.45fr);
+}
+
+.rival-pressure-list {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 0.8rem;
+}
+
+.rival-program-card {
+  border-color: rgba(242, 193, 78, 0.3);
+}
+
 .knowledge-chip-row {
   display: flex;
   flex-wrap: wrap;
