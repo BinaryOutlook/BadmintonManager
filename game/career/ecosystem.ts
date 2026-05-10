@@ -22,6 +22,7 @@ import type {
 import { clamp } from "./models";
 import { refreshAthleteReadiness } from "./health";
 import { createInitialRivalCircuit } from "./rivals";
+import { facilityModifiers } from "./facilitiesMedia";
 
 export const staffCandidatePool: StaffMember[] = [
   {
@@ -310,7 +311,8 @@ export function commissionScoutReport(state: CareerState, subjectId: string, sub
   }
 
   const modifiers = staffModifiers(state.ecosystem);
-  const days = modifiers.scouting >= 0.18 ? 1 : 2;
+  const facilities = facilityModifiers(state.facilities);
+  const days = modifiers.scouting >= 0.18 || facilities.scoutingAccuracy >= 5 ? 1 : 2;
   const assignment: ScoutAssignment = {
     id: `assignment-${subjectId}-${state.ecosystem.scouting.assignments.length + 1}`,
     subjectId,
@@ -356,7 +358,8 @@ export function commissionScoutReport(state: CareerState, subjectId: string, sub
 
 function reportForAssignment(state: CareerState, assignment: ScoutAssignment): ScoutReport {
   const modifiers = staffModifiers(state.ecosystem);
-  const confidence = Math.round(clamp(62 + modifiers.scouting * 100 + modifiers.analysis * 45, 45, 95));
+  const facilities = facilityModifiers(state.facilities);
+  const confidence = Math.round(clamp(62 + modifiers.scouting * 100 + modifiers.analysis * 45 + facilities.scoutingAccuracy, 45, 95));
   const accuracy = Math.round(clamp(confidence - 8 + (assignment.subjectType === "prospect" ? 3 : 0), 40, 94));
   const subject =
     state.ecosystem.recruitment.candidates.find((candidate) => candidate.id === assignment.subjectId) ??
@@ -771,6 +774,7 @@ export function enterRosterAthleteLowerEvent(state: CareerState, athleteId: stri
 
 export function developYouthProspect(state: CareerState, prospectId: string) {
   const modifiers = staffModifiers(state.ecosystem);
+  const facilities = facilityModifiers(state.facilities);
   const ecosystem: ProgramEcosystemState = {
     ...state.ecosystem,
     academy: {
@@ -779,12 +783,12 @@ export function developYouthProspect(state: CareerState, prospectId: string) {
           return prospect;
         }
 
-        const readiness = clamp(prospect.readiness + 9 + modifiers.training * 25 + modifiers.morale * 12, 0, 100);
+        const readiness = clamp(prospect.readiness + 9 + modifiers.training * 25 + modifiers.morale * 12 + facilities.youthReadiness, 0, 100);
 
         return {
           ...prospect,
           readiness,
-          mentorOrStaffModifier: Math.round((modifiers.training + modifiers.morale) * 100),
+          mentorOrStaffModifier: Math.round((modifiers.training + modifiers.morale) * 100 + facilities.youthReadiness),
           lowerEventEligibility: readiness >= 58,
           morale: clamp(prospect.morale + 3 + modifiers.morale * 20, 0, 100),
           developmentPlan: readiness >= 58 ? "competition" : prospect.developmentPlan

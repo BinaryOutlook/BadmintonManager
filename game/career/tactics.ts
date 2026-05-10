@@ -15,6 +15,7 @@ import {
   type TacticEffectProfile
 } from "./models";
 import { staffModifiers } from "./ecosystem";
+import { facilityModifiers } from "./facilitiesMedia";
 
 const DEFAULT_PLAN_ID = "plan-command-balance";
 
@@ -235,13 +236,14 @@ function createAdvicePacket(args: {
 export function generateAssistantAdvice(state: CareerState): AdvicePacket[] {
   const athlete = managedAthlete(state);
   const modifiers = staffModifiers(state.ecosystem);
+  const facilities = facilityModifiers(state.facilities);
   const plan = activeAdvancedTacticPlan(state);
   const effect = calculateTacticEffectProfile({ plan, state, opponentId: state.lastPreMatchBrief?.opponentId });
   const topPressure = [...state.rivals.fieldPressure].sort((left, right) => right.pressureScore - left.pressureScore)[0];
   const liveReports = state.ecosystem.scouting.reports.filter((report) => report.state !== "expired");
   const activePromises = state.ecosystem.promises.filter((promise) => promise.status === "active");
-  const analysisBoost = modifiers.analysis * 85 + modifiers.morale * 30;
-  const scoutBoost = modifiers.scouting * 70;
+  const analysisBoost = modifiers.analysis * 85 + modifiers.morale * 30 + facilities.adviceQuality;
+  const scoutBoost = modifiers.scouting * 70 + facilities.scoutingAccuracy;
   const recoveryBoost = modifiers.recovery * 80;
   const trainingPlan =
     athlete.fatigue >= 56 || athlete.injuryRisk >= 0.15

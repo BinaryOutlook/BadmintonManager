@@ -4,6 +4,14 @@ import { tacticLibrary } from "../content/tactics";
 import { advanceCareerCalendar } from "../career/calendar";
 import { canAffordEventEntry, chargeEventEntry } from "../career/economy";
 import {
+  applyFacilitiesToTraining,
+  applyFacilityDailyRecovery,
+  applyTravelPressureForEvent,
+  effectiveEventEntryCosts,
+  resolveMediaObjectives,
+  upgradeFacility
+} from "../career/facilitiesMedia";
+import {
   applyMatchPsychology,
   applyStaffToTraining,
   commissionScoutReport,
@@ -29,7 +37,7 @@ import {
   simulateNextPoint as runNextPoint
 } from "../core/match";
 import type { LiveDirective, LiveMatchSession, MatchTactic, Side, TeamTalk } from "../core/models";
-import type { AdvancedTacticPlan, CareerState, PlayerPromise } from "../career/models";
+import type { AdvancedTacticPlan, CareerState, FacilityType, PlayerPromise } from "../career/models";
 import { createInitialCareerState } from "../career/state";
 import { applyTrainingPlan, getTrainingPlan } from "../career/training";
 import { advanceRivalCircuit } from "../career/rivals";
@@ -95,6 +103,8 @@ export interface TournamentStoreState {
   setManagedAthletePromise: (targetType: PlayerPromise["targetType"]) => void;
   withdrawPromise: (promiseId: string) => void;
   advanceRivalCircuit: () => void;
+  upgradeFacility: (facilityType: FacilityType) => void;
+  resolveMediaObjectives: () => void;
   updateAdvancedTacticPlan: (
     patch: Partial<
       Pick<
@@ -360,7 +370,10 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
         plan,
         date: state.career.date
       });
-      const athleteWithStaff = applyStaffToTraining(result.athlete, state.career.ecosystem);
+      const athleteWithStaff = applyFacilitiesToTraining(
+        applyStaffToTraining(result.athlete, state.career.ecosystem),
+        state.career.facilities
+      );
       const career = refreshAssistantAdvice({
         ...state.career,
         selectedTrainingPlanId: plan.id,
@@ -390,10 +403,12 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
         return state;
       }
 
+      const entryCosts = effectiveEventEntryCosts(event, state.career.facilities);
+
       if (!canAffordEventEntry({
         economy: state.career.economy,
-        travelCost: event.travelCost,
-        entryFee: event.entryFee
+        travelCost: entryCosts.travelCost,
+        entryFee: entryCosts.entryFee
       })) {
         const career = {
           ...state.career,
@@ -411,20 +426,23 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
         economy: state.career.economy,
         date: state.career.date,
         label: event.name,
-        travelCost: event.travelCost,
-        entryFee: event.entryFee
+        travelCost: entryCosts.travelCost,
+        entryFee: entryCosts.entryFee
       });
       const enteredEventIds = state.career.enteredEventIds.includes(eventId)
         ? state.career.enteredEventIds
         : [...state.career.enteredEventIds, eventId];
-      const career = {
+      const career = applyTravelPressureForEvent({
         ...state.career,
         activeEventId: eventId,
         enteredEventIds,
         economy,
         stage: state.career.date >= event.startDate ? "pre_match" as const : "event_entered" as const,
-        notes: [`Entered ${event.name}`, ...state.career.notes].slice(0, 6)
-      };
+        notes: [
+          `Entered ${event.name}${entryCosts.savedTravelCost > 0 ? ` with ${entryCosts.savedTravelCost} travel savings` : ""}`,
+          ...state.career.notes
+        ].slice(0, 6)
+      }, event);
       const withTournament = addCareerTournamentIfReady(state, career);
       const next = {
         ...state,
@@ -444,7 +462,11 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
       }
 
       const career = refreshAssistantAdvice(
-        advanceRivalCircuit(resolvePromises(expireScoutReports(resolveDueScoutReports(advanceCareerCalendar(state.career)))))
+        resolveMediaObjectives(
+          applyFacilityDailyRecovery(
+            advanceRivalCircuit(resolvePromises(expireScoutReports(resolveDueScoutReports(advanceCareerCalendar(state.career)))))
+          )
+        )
       );
       const withTournament = addCareerTournamentIfReady(state, career);
       const next = {
@@ -613,6 +635,34 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
       const next = {
         ...state,
         career: refreshAssistantAdvice(advanceRivalCircuit(state.career))
+      };
+      persist(next);
+      return next;
+    });
+  },
+  upgradeFacility: (facilityType) => {
+    set((state) => {
+      if (!state.career) {
+        return state;
+      }
+
+      const next = {
+        ...state,
+        career: refreshAssistantAdvice(upgradeFacility(state.career, facilityType))
+      };
+      persist(next);
+      return next;
+    });
+  },
+  resolveMediaObjectives: () => {
+    set((state) => {
+      if (!state.career) {
+        return state;
+      }
+
+      const next = {
+        ...state,
+        career: refreshAssistantAdvice(resolveMediaObjectives(state.career))
       };
       persist(next);
       return next;
@@ -841,7 +891,7 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
             })
           : state.career;
       const careerWithPsychology = career
-        ? refreshAssistantAdvice(resolvePromises(applyMatchPsychology(career, managedResult.winner === state.liveMatch.managedSide)))
+        ? refreshAssistantAdvice(resolveMediaObjectives(resolvePromises(applyMatchPsychology(career, managedResult.winner === state.liveMatch.managedSide))))
         : career;
 
       const next = {
