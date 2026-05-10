@@ -2,7 +2,7 @@ import { playerMap } from "../game/content/players";
 import { buildWeek, daysBetween } from "../game/career/calendar";
 import { canAffordEventEntry, eventEntryCost } from "../game/career/economy";
 import { canCommissionScoutReport, roleLabel, staffModifiers } from "../game/career/ecosystem";
-import { getCareerEvent, getNextEvent } from "../game/career/events";
+import { eventEligibilityFor, getCareerEvent, getNextEvent } from "../game/career/events";
 import { canCompeteWithInjury, canTrainWithInjury } from "../game/career/health";
 import type {
   AdvancedTacticPlan,
@@ -1789,6 +1789,7 @@ export function CareerCalendarPage(props: CareerPageProps) {
               const entered = props.career?.enteredEventIds.includes(event.id);
               const completed = props.career?.completedEventIds.includes(event.id);
               const fieldPressure = props.career ? pressureForEvent(props.career, event.id) : undefined;
+              const tierGate = props.career ? eventEligibilityFor(props.career, event) : null;
               const totalCost = eventEntryCost({
                 travelCost: event.travelCost,
                 entryFee: event.entryFee
@@ -1800,7 +1801,8 @@ export function CareerCalendarPage(props: CareerPageProps) {
                     entryFee: event.entryFee
                   })
                 : false;
-              const eventBlocked = !affordable || !medicalGate.allowed;
+              const tierAllowed = tierGate?.allowed ?? false;
+              const eventBlocked = !affordable || !medicalGate.allowed || !tierAllowed;
               return (
                 <article
                   key={event.id}
@@ -1819,9 +1821,20 @@ export function CareerCalendarPage(props: CareerPageProps) {
                         ? `${fieldPressure.rivalCount} programs, ${Math.round(fieldPressure.pressureScore)} pressure, top threat ${fieldPressure.topThreatName}`
                         : "open scouting field"}
                     </p>
+                    {tierGate && (
+                      <p>
+                        Eligibility: rank {tierGate.rank}, {tierGate.points} pts, readiness {tierGate.readiness},{" "}
+                        {tierGate.completedEvents} completed event(s). {tierGate.reason}.
+                      </p>
+                    )}
                     {!affordable && !entered && !completed && (
                       <p className="career-event-warning">
                         Insufficient funds: program cash {money(props.career?.economy.cash ?? 0)} cannot cover entry.
+                      </p>
+                    )}
+                    {!tierAllowed && !entered && !completed && (
+                      <p className="career-event-warning">
+                        Tier gate: {tierGate?.requirements.join(", ")}.
                       </p>
                     )}
                     {!medicalGate.allowed && !entered && !completed && (
@@ -1842,6 +1855,8 @@ export function CareerCalendarPage(props: CareerPageProps) {
                         ? "Entered"
                         : !medicalGate.allowed
                           ? "Medical Hold"
+                          : !tierAllowed
+                            ? "Tier Locked"
                           : affordable
                             ? "Enter Event"
                             : "Insufficient Funds"}

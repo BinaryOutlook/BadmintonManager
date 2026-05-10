@@ -29,7 +29,7 @@ import {
   trainRosterAthlete,
   withdrawPromise
 } from "../../game/career/ecosystem";
-import { getCareerEvent } from "../../game/career/events";
+import { eventEligibilityFor, getCareerEvent } from "../../game/career/events";
 import { settleCareerMatch } from "../../game/career/hubs";
 import { advanceRivalCircuit } from "../../game/career/rivals";
 import { createInitialCareerState, managedAthlete } from "../../game/career/state";
@@ -217,6 +217,44 @@ describe("career core slice", () => {
     expect(charged.cash).toBe(lowCashEconomy.cash);
     expect(charged.travelSpend).toBe(lowCashEconomy.travelSpend);
     expect(charged.ledger).toHaveLength(lowCashEconomy.ledger.length);
+  });
+
+  it("uses all requested tier families and gates elite events by ranking-season qualification", () => {
+    const career = createInitialCareerState(seededPlayers[0].player.id, 7012);
+
+    expect(new Set(career.events.map((event) => event.tier))).toEqual(
+      new Set(["Super 300", "Super 500", "Super 750", "Super 1000", "National", "Invitational", "Finals"])
+    );
+
+    const super1000 = getCareerEvent(career.events, "continental-premier-1000")!;
+    const finals = getCareerEvent(career.events, "season-finals")!;
+    const lowQualified = {
+      ...career,
+      rankings: career.rankings.map((entry) =>
+        entry.playerId === career.program.managedPlayerId
+          ? { ...entry, rank: 19, points: 980 }
+          : entry
+      ),
+      athletes: career.athletes.map((athlete) =>
+        athlete.playerId === career.program.managedPlayerId
+          ? { ...athlete, currentRank: 19, rankingPoints: 980, readiness: 66 }
+          : athlete
+      )
+    };
+    const finalsQualified = {
+      ...career,
+      completedEventIds: ["metro-open-300", "harbor-masters-500", "summit-invitational-750", "continental-premier-1000"],
+      rankings: career.rankings.map((entry) =>
+        entry.playerId === career.program.managedPlayerId
+          ? { ...entry, rank: 4, points: 2550 }
+          : entry
+      )
+    };
+
+    expect(eventEligibilityFor(career, super1000).allowed).toBe(true);
+    expect(eventEligibilityFor(lowQualified, super1000).allowed).toBe(false);
+    expect(eventEligibilityFor(career, finals).allowed).toBe(false);
+    expect(eventEligibilityFor(finalsQualified, finals).allowed).toBe(true);
   });
 });
 
