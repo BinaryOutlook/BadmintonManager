@@ -11,6 +11,8 @@ export type AppPage =
   | { id: "program" }
   | { id: "rivals" }
   | { id: "matchPlanning" }
+  | { id: "facilities" }
+  | { id: "media" }
   | { id: "scouting" }
   | { id: "recruitment" }
   | { id: "youth" }

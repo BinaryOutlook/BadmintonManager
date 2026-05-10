@@ -311,3 +311,60 @@ test("can edit advanced tactics and preserve assistant advice overrides", async 
   await expect(page.getByText("Manager override kept Command Balance.", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("Adjust Match Plan")).toBeVisible();
 });
+
+test("can upgrade facilities and resolve sponsor media pressure", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Events" }).click();
+  await page.getByRole("button", { name: "Create Career Save" }).click();
+  await page.getByRole("button", { name: "Program Hub" }).click();
+  await page.getByRole("button", { name: "Facilities Upgrades" }).click();
+
+  await expect(page.getByRole("heading", { name: "Facilities Upgrades" })).toBeVisible();
+  await page.getByRole("button", { name: "Upgrade Training Hall" }).click();
+  await expect(page.getByText("Training Hall upgraded to level 1")).toBeVisible();
+  await expect(page.getByText(/Training/).first()).toBeVisible();
+
+  await page.getByRole("button", { name: "Upgrade Analytics Lab" }).click();
+  await expect(page.getByText("Analytics Lab upgraded to level 1")).toBeVisible();
+  await page.reload();
+  await page.getByRole("button", { name: "Program Hub" }).click();
+  await page.getByRole("button", { name: "Facilities Upgrades" }).click();
+  await expect(page.getByText("Analytics Lab upgraded to level 1")).toBeVisible();
+  await expect(page.getByText(/Travel cost/)).toBeVisible();
+
+  await page.getByRole("button", { name: "Media Desk" }).click();
+  await expect(page.getByRole("heading", { name: "Media / Sponsors / Objectives" })).toBeVisible();
+  await expect(page.getByText("Aero String Labs")).toBeVisible();
+  await page.evaluate(() => {
+    const raw = window.localStorage.getItem("badminton-manager-save");
+    if (!raw) {
+      throw new Error("Expected a career save.");
+    }
+
+    const save = JSON.parse(raw);
+    save.career.lastMatchReport = {
+      eventId: "metro-open-300",
+      matchId: "managed-r16",
+      opponentId: "opponent",
+      result: "win",
+      scoreline: "21-17 21-19",
+      round: "R16",
+      pointsDelta: 210,
+      cashDelta: 1500,
+      fatigueDelta: 8,
+      evidence: [],
+      recommendations: []
+    };
+    window.localStorage.setItem("badminton-manager-save", JSON.stringify(save));
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Program Hub" }).click();
+  await page.getByRole("button", { name: "Media Desk" }).click();
+  await page.getByRole("button", { name: "Resolve Pressure" }).click();
+
+  await expect(page.getByText(/Aero String Labs objective fulfilled/)).toBeVisible();
+  await expect(page.getByText(/National Federation objective fulfilled/)).toBeVisible();
+  await expect(page.getByText(/Visible consequences/)).toBeVisible();
+});

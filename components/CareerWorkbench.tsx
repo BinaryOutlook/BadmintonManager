@@ -3,7 +3,16 @@ import { buildWeek, daysBetween } from "../game/career/calendar";
 import { canAffordEventEntry, eventEntryCost } from "../game/career/economy";
 import { canCommissionScoutReport, roleLabel, staffModifiers } from "../game/career/ecosystem";
 import { getCareerEvent, getNextEvent } from "../game/career/events";
-import type { AdvancedTacticPlan, CareerState, PlayerPromise, RallyLengthIntent, TacticModule } from "../game/career/models";
+import type {
+  AdvancedTacticPlan,
+  CareerState,
+  FacilityModifier,
+  FacilityType,
+  PlayerPromise,
+  RallyLengthIntent,
+  TacticModule
+} from "../game/career/models";
+import { effectiveEventEntryCosts, facilityModifiers } from "../game/career/facilitiesMedia";
 import { managedAthlete } from "../game/career/state";
 import { activeAdvancedTacticPlan, buildPreMatchPlanningBridge, calculateTacticEffectProfile, tacticPlanToMatchTactic } from "../game/career/tactics";
 import { trainingPlans } from "../game/career/training";
@@ -19,6 +28,8 @@ interface CareerPageProps {
   onOpenProgram: () => void;
   onOpenRivals: () => void;
   onOpenMatchPlanning: () => void;
+  onOpenFacilities: () => void;
+  onOpenMedia: () => void;
   onOpenScouting: () => void;
   onOpenRecruitment: () => void;
   onOpenYouth: () => void;
@@ -39,6 +50,8 @@ interface CareerPageProps {
   onSetManagedAthletePromise: (targetType: PlayerPromise["targetType"]) => void;
   onWithdrawPromise: (promiseId: string) => void;
   onAdvanceRivalCircuit: () => void;
+  onUpgradeFacility: (facilityType: FacilityType) => void;
+  onResolveMediaObjectives: () => void;
   onUpdateAdvancedTacticPlan: (
     patch: Partial<
       Pick<
@@ -68,6 +81,19 @@ function activeEvent(career: CareerState) {
 
 function pressureForEvent(career: CareerState, eventId: string) {
   return career.rivals.fieldPressure.find((entry) => entry.eventId === eventId);
+}
+
+function modifierRows(modifiers: FacilityModifier) {
+  return [
+    ["Training", `+${Math.round(modifiers.trainingDevelopment * 100)}%`],
+    ["Recovery", `-${Math.round(modifiers.recoveryFatigue)} fatigue`],
+    ["Injury", `-${Math.round(modifiers.injuryMitigation * 100)} pts`],
+    ["Scouting", `+${Math.round(modifiers.scoutingAccuracy)} accuracy`],
+    ["Advice", `+${Math.round(modifiers.adviceQuality)} quality`],
+    ["Youth", `+${Math.round(modifiers.youthReadiness)} ready`],
+    ["Travel", `-${Math.round(modifiers.travelCostReduction * 100)}% cost`],
+    ["Pressure", `+${Math.round(modifiers.pressureResistance)} buffer`]
+  ];
 }
 
 function CareerEmpty(props: Pick<CareerPageProps, "onStartCareer" | "saveRecovery">) {
@@ -263,6 +289,20 @@ export function CareerHomePage(props: CareerPageProps) {
               <span>Tactics</span>
               <strong>{activeAdvancedTacticPlan(props.career).name}</strong>
               <small>{props.career.matchPlanning.advice.filter((entry) => entry.overrideState === "pending").length} staff notes</small>
+            </button>
+            <button className="career-system-tile" type="button" onClick={props.onOpenFacilities}>
+              <span>Facilities</span>
+              <strong>{props.career.facilities.reduce((total, facility) => total + facility.level, 0)}</strong>
+              <small>{money(props.career.facilities.reduce((total, facility) => total + facility.maintenanceCost, 0))} upkeep</small>
+            </button>
+            <button className="career-system-tile" type="button" onClick={props.onOpenMedia}>
+              <span>Media</span>
+              <strong>{props.career.media.reputation}</strong>
+              <small>
+                {props.career.media.sponsors.filter((objective) => objective.status === "active").length +
+                  props.career.media.federationObjectives.filter((objective) => objective.status === "active").length}{" "}
+                active objectives
+              </small>
             </button>
           </div>
         </section>
@@ -482,6 +522,16 @@ export function CareerProgramHubPage(props: CareerPageProps) {
               <strong>{props.career.ecosystem.staff.hired.length} hired</strong>
               <small>Training +{Math.round(modifiers.training * 100)}%, recovery +{Math.round(modifiers.recovery * 100)}%</small>
             </button>
+            <button className="career-system-tile" type="button" onClick={props.onOpenFacilities}>
+              <span>Facilities Upgrades</span>
+              <strong>{props.career.facilities.reduce((total, facility) => total + facility.level, 0)} levels</strong>
+              <small>Training, recovery, analytics, youth, travel</small>
+            </button>
+            <button className="career-system-tile" type="button" onClick={props.onOpenMedia}>
+              <span>Media Desk</span>
+              <strong>Rep {props.career.media.reputation}</strong>
+              <small>Sponsor goals and federation expectations</small>
+            </button>
           </div>
         </section>
 
@@ -520,6 +570,272 @@ export function CareerProgramHubPage(props: CareerPageProps) {
           </div>
           <div className="program-log-list">
             {props.career.ecosystem.programLog.slice(0, 6).map((entry) => (
+              <div key={entry.id} className="program-log-row">
+                <span>{entry.date} / {entry.source}</span>
+                <strong>{entry.message}</strong>
+                <p>{entry.stateDelta}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+    </section>
+  );
+}
+
+export function CareerFacilitiesPage(props: CareerPageProps) {
+  if (!props.career) {
+    return <CareerEmpty onStartCareer={props.onStartCareer} saveRecovery={props.saveRecovery} />;
+  }
+
+  const modifiers = facilityModifiers(props.career.facilities);
+  const nextEvent = activeEvent(props.career);
+  const travelCosts = nextEvent ? effectiveEventEntryCosts(nextEvent, props.career.facilities) : null;
+  const totalMaintenance = props.career.facilities.reduce((total, facility) => total + facility.maintenanceCost, 0);
+
+  return (
+    <section className="screen-shell career-page">
+      <div className="screen-header">
+        <div>
+          <p className="screen-kicker">Program Infrastructure</p>
+          <h1 className="screen-title">Facilities Upgrades</h1>
+          <p className="screen-copy">
+            Infrastructure spend changes training output, recovery load, analytics clarity, youth readiness, and travel strain.
+          </p>
+        </div>
+        <div className="screen-meta">
+          <span>Cash {money(props.career.economy.cash)}</span>
+          <span>Upkeep {money(totalMaintenance)}</span>
+          <button className="command-button command-button-secondary" type="button" onClick={props.onOpenProgram}>
+            Program Hub
+          </button>
+          <button className="command-button command-button-secondary" type="button" onClick={props.onOpenMedia}>
+            Media Desk
+          </button>
+        </div>
+      </div>
+
+      <div className="program-grid infrastructure-grid">
+        <section className="command-panel command-panel-wide">
+          <div className="panel-header">
+            <h2>Upgrade Board</h2>
+            <span>{props.career.facilities.reduce((total, facility) => total + facility.level, 0)} total levels</span>
+          </div>
+          <div className="program-card-grid facility-card-grid">
+            {props.career.facilities.map((facility) => {
+              const canUpgrade = facility.status !== "maxed" && props.career!.economy.cash >= facility.nextUpgradeCost;
+
+              return (
+                <article key={facility.id} className="program-decision-card facility-card">
+                  <span>{facility.status} / level {facility.level} of {facility.maxLevel}</span>
+                  <strong>{facility.label}</strong>
+                  <p>
+                    Next cost {money(facility.nextUpgradeCost)}; build window {facility.buildTimeDays} day(s); upkeep{" "}
+                    {money(facility.maintenanceCost)}.
+                  </p>
+                  <div className="career-stat-grid">
+                    {Object.entries(facility.modifiers)
+                      .filter(([, value]) => value !== 0)
+                      .slice(0, 4)
+                      .map(([key, value]) => (
+                        <div key={key}>
+                          <span>{key.replace(/([A-Z])/g, " $1")}</span>
+                          <strong>{typeof value === "number" && value < 1 ? `${Math.round(value * 100)}%` : Math.round(value)}</strong>
+                        </div>
+                      ))}
+                    {facility.level === 0 && (
+                      <div>
+                        <span>Modifier</span>
+                        <strong>Baseline</strong>
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    className="command-button command-button-primary"
+                    type="button"
+                    disabled={!canUpgrade}
+                    onClick={() => props.onUpgradeFacility(facility.type)}
+                  >
+                    {facility.status === "maxed"
+                      ? "Max Level"
+                      : props.career!.economy.cash < facility.nextUpgradeCost
+                        ? "Unaffordable"
+                        : `Upgrade ${facility.label}`}
+                  </button>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="command-panel">
+          <div className="panel-header">
+            <h2>Active Modifiers</h2>
+            <span>Gameplay effects</span>
+          </div>
+          <div className="career-stat-grid facility-modifier-grid">
+            {modifierRows(modifiers).map(([label, value]) => (
+              <div key={label}>
+                <span>{label}</span>
+                <strong>{value}</strong>
+              </div>
+            ))}
+          </div>
+          {travelCosts && nextEvent && (
+            <div className="program-log-row career-button-spaced">
+              <span>{nextEvent.tier} travel quality</span>
+              <strong>{nextEvent.name}</strong>
+              <p>
+                Travel cost {money(travelCosts.travelCost)} with {money(travelCosts.savedTravelCost)} saved; travel load{" "}
+                {travelCosts.travelFatigue} fatigue.
+              </p>
+            </div>
+          )}
+        </section>
+
+        <section className="command-panel command-panel-full">
+          <div className="panel-header">
+            <h2>Upgrade Log</h2>
+            <span>Budget consequences</span>
+          </div>
+          <div className="program-card-grid">
+            {props.career.facilities.flatMap((facility) =>
+              facility.history.slice(0, 2).map((entry) => (
+                <div key={entry.id} className="program-log-row">
+                  <span>{entry.date} / {facility.label}</span>
+                  <strong>{entry.note}</strong>
+                  <p>Cost {money(entry.cost)}; level {entry.level}; current upkeep {money(facility.maintenanceCost)}.</p>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
+      </div>
+    </section>
+  );
+}
+
+export function CareerMediaObjectivesPage(props: CareerPageProps) {
+  if (!props.career) {
+    return <CareerEmpty onStartCareer={props.onStartCareer} saveRecovery={props.saveRecovery} />;
+  }
+
+  const activeObjectives = [
+    ...props.career.media.sponsors.map((objective) => ({ ...objective, source: "Sponsor" })),
+    ...props.career.media.federationObjectives.map((objective) => ({ ...objective, source: "Federation" }))
+  ];
+  const psychology = props.career.ecosystem.psychology.find(
+    (entry) => entry.athleteId === props.career?.program.managedPlayerId
+  );
+
+  return (
+    <section className="screen-shell career-page">
+      <div className="screen-header">
+        <div>
+          <p className="screen-kicker">External Pressure</p>
+          <h1 className="screen-title">Media / Sponsors / Objectives</h1>
+          <p className="screen-copy">
+            Sponsors, federation targets, press pressure, and reputation now move budget, morale, and program leverage.
+          </p>
+        </div>
+        <div className="screen-meta">
+          <span>Reputation {props.career.media.reputation}</span>
+          <span>Morale {psychology?.morale ?? 0}</span>
+          <button className="command-button command-button-primary" type="button" onClick={props.onResolveMediaObjectives}>
+            Resolve Pressure
+          </button>
+          <button className="command-button command-button-secondary" type="button" onClick={props.onOpenFacilities}>
+            Facilities
+          </button>
+        </div>
+      </div>
+
+      <div className="program-grid media-grid">
+        <section className="command-panel command-panel-wide">
+          <div className="panel-header">
+            <h2>Objective Board</h2>
+            <span>{activeObjectives.filter((objective) => objective.status === "active").length} active</span>
+          </div>
+          <div className="program-card-grid objective-card-grid">
+            {activeObjectives.map((objective) => (
+              <article key={objective.id} className="program-decision-card objective-card">
+                <span>{objective.source} / {objective.status} / due {objective.deadline}</span>
+                <strong>{objective.sponsorName}</strong>
+                <p>{objective.description}</p>
+                <div className="career-meter">
+                  <div className="metric-row">
+                    <span>Progress</span>
+                    <strong>{Math.round(objective.progress)}%</strong>
+                  </div>
+                  <div className="metric-track">
+                    <div className="metric-track-fill" style={{ width: `${Math.max(3, Math.min(100, objective.progress))}%` }} />
+                  </div>
+                </div>
+                <div className="career-stat-grid">
+                  <div>
+                    <span>Reward</span>
+                    <strong>{signedMoney(objective.reward.cash)}</strong>
+                  </div>
+                  <div>
+                    <span>Penalty</span>
+                    <strong>{signedMoney(objective.penalty.cash)}</strong>
+                  </div>
+                  <div>
+                    <span>Rep</span>
+                    <strong>{objective.reward.reputation}/{objective.penalty.reputation}</strong>
+                  </div>
+                  <div>
+                    <span>Morale</span>
+                    <strong>{objective.reward.morale}/{objective.penalty.morale}</strong>
+                  </div>
+                </div>
+                {objective.resolutionLog[0] && <p>{objective.resolutionLog[0]}</p>}
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="command-panel">
+          <div className="panel-header">
+            <h2>Press Pressure</h2>
+            <span>{props.career.media.pressEvents.filter((event) => event.status === "active").length} active</span>
+          </div>
+          <div className="career-stat-grid">
+            <div>
+              <span>Reputation</span>
+              <strong>{props.career.media.reputation}</strong>
+            </div>
+            <div>
+              <span>Morale</span>
+              <strong>{psychology?.morale ?? 0}</strong>
+            </div>
+            <div>
+              <span>Confidence</span>
+              <strong>{psychology?.confidence ?? 0}</strong>
+            </div>
+            <div>
+              <span>Cash</span>
+              <strong>{money(props.career.economy.cash)}</strong>
+            </div>
+          </div>
+          <div className="program-log-list career-button-spaced">
+            {props.career.media.pressEvents.map((event) => (
+              <div key={event.id} className="program-log-row">
+                <span>{event.status} / pressure {event.pressure}</span>
+                <strong>{event.headline}</strong>
+                <p>Potential swing: reputation {event.reputationDelta}, morale {event.moraleDelta}.</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="command-panel command-panel-full">
+          <div className="panel-header">
+            <h2>Reaction Log</h2>
+            <span>Visible consequences</span>
+          </div>
+          <div className="program-card-grid">
+            {props.career.media.reactionLog.map((entry) => (
               <div key={entry.id} className="program-log-row">
                 <span>{entry.date} / {entry.source}</span>
                 <strong>{entry.message}</strong>

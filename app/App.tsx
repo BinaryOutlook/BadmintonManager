@@ -3,8 +3,10 @@ import { CompleteView } from "../components/CompleteView";
 import {
   CareerAthletePromisesPage,
   CareerCalendarPage,
+  CareerFacilitiesPage,
   CareerHomePage,
   CareerMatchPlanningPage,
+  CareerMediaObjectivesPage,
   CareerPostMatchHubPage,
   CareerPreMatchHubPage,
   CareerProgramHubPage,
@@ -107,6 +109,8 @@ function topModeForPage(page: AppPage, fallback: TopMode): TopMode {
     case "program":
     case "rivals":
     case "matchPlanning":
+    case "facilities":
+    case "media":
     case "scouting":
     case "recruitment":
     case "youth":
@@ -142,6 +146,8 @@ export function App() {
     setManagedAthletePromise,
     withdrawPromise,
     advanceRivalCircuit,
+    upgradeFacility,
+    resolveMediaObjectives,
     updateAdvancedTacticPlan,
     refreshAssistantAdvice,
     applyAssistantAdvice,
@@ -352,6 +358,8 @@ export function App() {
       onOpenProgram: () => setActivePage({ id: "program" }),
       onOpenRivals: () => setActivePage({ id: "rivals" }),
       onOpenMatchPlanning: () => setActivePage({ id: "matchPlanning" }),
+      onOpenFacilities: () => setActivePage({ id: "facilities" }),
+      onOpenMedia: () => setActivePage({ id: "media" }),
       onOpenScouting: () => setActivePage({ id: "scouting" }),
       onOpenRecruitment: () => setActivePage({ id: "recruitment" }),
       onOpenYouth: () => setActivePage({ id: "youth" }),
@@ -372,6 +380,8 @@ export function App() {
       onSetManagedAthletePromise: setManagedAthletePromise,
       onWithdrawPromise: withdrawPromise,
       onAdvanceRivalCircuit: advanceRivalCircuit,
+      onUpgradeFacility: upgradeFacility,
+      onResolveMediaObjectives: resolveMediaObjectives,
       onUpdateAdvancedTacticPlan: updateAdvancedTacticPlan,
       onRefreshAssistantAdvice: refreshAssistantAdvice,
       onApplyAssistantAdvice: applyAssistantAdvice,
@@ -392,6 +402,14 @@ export function App() {
 
     if (activePage.id === "matchPlanning") {
       return <CareerMatchPlanningPage {...careerPageProps} />;
+    }
+
+    if (activePage.id === "facilities") {
+      return <CareerFacilitiesPage {...careerPageProps} />;
+    }
+
+    if (activePage.id === "media") {
+      return <CareerMediaObjectivesPage {...careerPageProps} />;
     }
 
     if (activePage.id === "scouting") {
