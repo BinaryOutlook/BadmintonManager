@@ -8,7 +8,8 @@ import {
   teamTalkSchema
 } from "../core/models";
 import { upgradeCareerStateV1, upgradeCareerStateV2 } from "../career/ecosystem";
-import { careerStateSchema, careerStateV1Schema, careerStateV2Schema } from "../career/models";
+import { careerStateSchema, careerStateV1Schema, careerStateV2Schema, careerStateV3Schema } from "../career/models";
+import { upgradeCareerStateV3 } from "../career/tactics";
 
 const matchSummaryEventSchema = z.object({
   kind: z.enum([
@@ -202,13 +203,19 @@ export const phase2PersistedSaveSchema = legacyPersistedSaveSchema.extend({
   career: careerStateV2Schema.nullable()
 });
 
-export const persistedSaveSchema = legacyPersistedSaveSchema.extend({
+export const phase3RivalPersistedSaveSchema = legacyPersistedSaveSchema.extend({
   version: z.literal(5),
+  career: careerStateV3Schema.nullable()
+});
+
+export const persistedSaveSchema = legacyPersistedSaveSchema.extend({
+  version: z.literal(6),
   career: careerStateSchema.nullable()
 });
 
 export const persistedSavePayloadSchema = z.union([
   persistedSaveSchema,
+  phase3RivalPersistedSaveSchema,
   phase2PersistedSaveSchema,
   phase1PersistedSaveSchema,
   legacyPersistedSaveSchema
@@ -218,29 +225,37 @@ export type PersistedSave = z.infer<typeof persistedSaveSchema>;
 export type PersistedSavePayload = z.infer<typeof persistedSavePayloadSchema>;
 
 export function migratePersistedSave(payload: PersistedSavePayload): PersistedSave {
-  if (payload.version === 5) {
+  if (payload.version === 6) {
     return payload;
   }
 
   if (payload.version === 3) {
     return {
       ...payload,
-      version: 5,
-      career: payload.career ? upgradeCareerStateV1(payload.career) : null
+      version: 6,
+      career: payload.career ? upgradeCareerStateV3(upgradeCareerStateV1(payload.career)) : null
     };
   }
 
   if (payload.version === 4) {
     return {
       ...payload,
-      version: 5,
-      career: payload.career ? upgradeCareerStateV2(payload.career) : null
+      version: 6,
+      career: payload.career ? upgradeCareerStateV3(upgradeCareerStateV2(payload.career)) : null
+    };
+  }
+
+  if (payload.version === 5) {
+    return {
+      ...payload,
+      version: 6,
+      career: payload.career ? upgradeCareerStateV3(payload.career) : null
     };
   }
 
   return {
     ...payload,
-    version: 5,
+    version: 6,
     career: null
   };
 }

@@ -29,11 +29,18 @@ import {
   simulateNextPoint as runNextPoint
 } from "../core/match";
 import type { LiveDirective, LiveMatchSession, MatchTactic, Side, TeamTalk } from "../core/models";
-import type { CareerState } from "../career/models";
-import type { PlayerPromise } from "../career/models";
+import type { AdvancedTacticPlan, CareerState, PlayerPromise } from "../career/models";
 import { createInitialCareerState } from "../career/state";
 import { applyTrainingPlan, getTrainingPlan } from "../career/training";
 import { advanceRivalCircuit } from "../career/rivals";
+import {
+  activeAdvancedTacticPlan,
+  applyAssistantAdvice,
+  overrideAssistantAdvice,
+  refreshAssistantAdvice,
+  tacticPlanToMatchTactic,
+  updateAdvancedTacticPlan
+} from "../career/tactics";
 import {
   advanceTournament,
   createManagedMatchInput,
@@ -88,6 +95,17 @@ export interface TournamentStoreState {
   setManagedAthletePromise: (targetType: PlayerPromise["targetType"]) => void;
   withdrawPromise: (promiseId: string) => void;
   advanceRivalCircuit: () => void;
+  updateAdvancedTacticPlan: (
+    patch: Partial<
+      Pick<
+        AdvancedTacticPlan,
+        "name" | "tempo" | "rearCourtPressure" | "netPriority" | "riskTolerance" | "rallyLengthIntent" | "modules"
+      >
+    >
+  ) => void;
+  refreshAssistantAdvice: () => void;
+  applyAssistantAdvice: (adviceId: string) => void;
+  overrideAssistantAdvice: (adviceId: string, reason: string) => void;
   selectPlayer: (playerId: string) => void;
   chooseTactic: (tacticKey: TacticKey) => void;
   startTournament: () => void;
@@ -138,7 +156,7 @@ function persist(state: TournamentStoreState) {
   }
 
   const payload: PersistedSave = {
-    version: 5,
+    version: 6,
     selectedPlayerId: state.selectedPlayerId,
     plannedTacticKey: state.plannedTacticKey,
     seed: state.seed,
@@ -247,6 +265,10 @@ function loadPersisted(): PersistedRuntimeState {
 }
 
 function currentManagedTactic(state: TournamentStoreState): MatchTactic {
+  if (state.career) {
+    return tacticPlanToMatchTactic(activeAdvancedTacticPlan(state.career));
+  }
+
   return tacticLibrary[state.plannedTacticKey];
 }
 
@@ -339,7 +361,7 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
         date: state.career.date
       });
       const athleteWithStaff = applyStaffToTraining(result.athlete, state.career.ecosystem);
-      const career = {
+      const career = refreshAssistantAdvice({
         ...state.career,
         selectedTrainingPlanId: plan.id,
         athletes: state.career.athletes.map((entry) =>
@@ -347,7 +369,7 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
         ),
         economy: result.economy,
         notes: [`${plan.label} completed with staff modifiers`, ...state.career.notes].slice(0, 6)
-      };
+      });
       const next = {
         ...state,
         career
@@ -421,7 +443,9 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
         return state;
       }
 
-      const career = advanceRivalCircuit(resolvePromises(expireScoutReports(resolveDueScoutReports(advanceCareerCalendar(state.career)))));
+      const career = refreshAssistantAdvice(
+        advanceRivalCircuit(resolvePromises(expireScoutReports(resolveDueScoutReports(advanceCareerCalendar(state.career)))))
+      );
       const withTournament = addCareerTournamentIfReady(state, career);
       const next = {
         ...state,
@@ -588,7 +612,63 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
 
       const next = {
         ...state,
-        career: advanceRivalCircuit(state.career)
+        career: refreshAssistantAdvice(advanceRivalCircuit(state.career))
+      };
+      persist(next);
+      return next;
+    });
+  },
+  updateAdvancedTacticPlan: (patch) => {
+    set((state) => {
+      if (!state.career) {
+        return state;
+      }
+
+      const next = {
+        ...state,
+        career: updateAdvancedTacticPlan(state.career, patch)
+      };
+      persist(next);
+      return next;
+    });
+  },
+  refreshAssistantAdvice: () => {
+    set((state) => {
+      if (!state.career) {
+        return state;
+      }
+
+      const next = {
+        ...state,
+        career: refreshAssistantAdvice(state.career)
+      };
+      persist(next);
+      return next;
+    });
+  },
+  applyAssistantAdvice: (adviceId) => {
+    set((state) => {
+      if (!state.career) {
+        return state;
+      }
+
+      const next = {
+        ...state,
+        career: applyAssistantAdvice(state.career, adviceId)
+      };
+      persist(next);
+      return next;
+    });
+  },
+  overrideAssistantAdvice: (adviceId, reason) => {
+    set((state) => {
+      if (!state.career) {
+        return state;
+      }
+
+      const next = {
+        ...state,
+        career: overrideAssistantAdvice(state.career, adviceId, reason)
       };
       persist(next);
       return next;
@@ -761,7 +841,7 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
             })
           : state.career;
       const careerWithPsychology = career
-        ? resolvePromises(applyMatchPsychology(career, managedResult.winner === state.liveMatch.managedSide))
+        ? refreshAssistantAdvice(resolvePromises(applyMatchPsychology(career, managedResult.winner === state.liveMatch.managedSide)))
         : career;
 
       const next = {

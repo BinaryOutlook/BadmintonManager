@@ -6,6 +6,7 @@ import type {
   CareerState,
   CareerStateV1,
   CareerStateV2,
+  CareerStateV3,
   PlayerPromise,
   ProgramEcosystemState,
   ProgramEventLog,
@@ -260,7 +261,7 @@ function lowerEventPromiseKept(state: ProgramEcosystemState, athleteId: string) 
   );
 }
 
-export function upgradeCareerStateV1(career: CareerStateV1): CareerState {
+export function upgradeCareerStateV1(career: CareerStateV1): CareerStateV3 {
   return upgradeCareerStateV2({
     ...career,
     version: 2,
@@ -268,7 +269,7 @@ export function upgradeCareerStateV1(career: CareerStateV1): CareerState {
   });
 }
 
-export function upgradeCareerStateV2(career: CareerStateV2): CareerState {
+export function upgradeCareerStateV2(career: CareerStateV2): CareerStateV3 {
   return {
     ...career,
     version: 3,

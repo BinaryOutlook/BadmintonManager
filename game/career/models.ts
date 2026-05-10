@@ -183,7 +183,7 @@ export type PlayerPromise = z.infer<typeof playerPromiseSchema>;
 export const programEventLogSchema = z.object({
   id: z.string(),
   date: z.string(),
-  source: z.enum(["scouting", "recruitment", "academy", "staff", "psychology", "promise", "system"]),
+  source: z.enum(["scouting", "recruitment", "academy", "staff", "psychology", "promise", "tactics", "advice", "system"]),
   message: z.string(),
   stateDelta: z.string(),
   relatedIds: z.array(z.string())
@@ -294,6 +294,82 @@ export const rivalCircuitStateSchema = z.object({
   lastSimulatedDate: z.string()
 });
 export type RivalCircuitState = z.infer<typeof rivalCircuitStateSchema>;
+
+export const tacticModuleSchema = z.enum([
+  "target_backhand",
+  "net_trap",
+  "rear_court_lock",
+  "body_smash",
+  "safe_lift_release"
+]);
+export type TacticModule = z.infer<typeof tacticModuleSchema>;
+
+export const rallyLengthIntentSchema = z.enum(["shorten", "balanced", "extend"]);
+export type RallyLengthIntent = z.infer<typeof rallyLengthIntentSchema>;
+
+export const advancedTacticPlanSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  tempo: z.number().int().min(0).max(100),
+  rearCourtPressure: z.number().int().min(0).max(100),
+  netPriority: z.number().int().min(0).max(100),
+  riskTolerance: z.number().int().min(0).max(100),
+  rallyLengthIntent: rallyLengthIntentSchema,
+  modules: z.array(tacticModuleSchema),
+  createdAt: z.string(),
+  updatedAt: z.string()
+});
+export type AdvancedTacticPlan = z.infer<typeof advancedTacticPlanSchema>;
+
+export const tacticEffectProfileSchema = z.object({
+  planId: z.string(),
+  staminaLoad: z.number().min(0).max(100),
+  errorRisk: z.number().min(0).max(100),
+  winnerPressure: z.number().min(0).max(100),
+  netControl: z.number().min(0).max(100),
+  rearCourtControl: z.number().min(0).max(100),
+  strainBias: z.number().min(0).max(100),
+  matchupNotes: z.array(z.string())
+});
+export type TacticEffectProfile = z.infer<typeof tacticEffectProfileSchema>;
+
+export const adviceTopicSchema = z.enum(["tactics", "training", "rotation", "scouting"]);
+export type AdviceTopic = z.infer<typeof adviceTopicSchema>;
+
+export const advicePacketSchema = z.object({
+  id: z.string(),
+  sourceRole: staffRoleSchema,
+  topic: adviceTopicSchema,
+  recommendation: z.string(),
+  rationale: z.string(),
+  confidence: z.number().min(0).max(100),
+  inputs: z.array(z.string()),
+  tradeoff: z.string(),
+  suggestedPlan: advancedTacticPlanSchema.partial().nullable(),
+  suggestedTrainingPlanId: z.string().nullable(),
+  subjectId: z.string().nullable(),
+  createdAt: z.string(),
+  appliedAt: z.string().nullable(),
+  overrideState: z.enum(["pending", "applied", "overridden"]),
+  overrideReason: z.string().nullable()
+});
+export type AdvicePacket = z.infer<typeof advicePacketSchema>;
+
+export const matchPlanningStateSchema = z.object({
+  plans: z.array(advancedTacticPlanSchema),
+  activePlanId: z.string(),
+  advice: z.array(advicePacketSchema),
+  overrideLog: z.array(
+    z.object({
+      id: z.string(),
+      date: z.string(),
+      adviceId: z.string(),
+      topic: adviceTopicSchema,
+      reason: z.string()
+    })
+  )
+});
+export type MatchPlanningState = z.infer<typeof matchPlanningStateSchema>;
 
 export const careerEventDefinitionSchema = z.object({
   id: z.string(),
@@ -437,9 +513,15 @@ export const careerStateV2Schema = careerStateV1Schema.extend({
 });
 export type CareerStateV2 = z.infer<typeof careerStateV2Schema>;
 
-export const careerStateSchema = careerStateV2Schema.extend({
+export const careerStateV3Schema = careerStateV2Schema.extend({
   version: z.literal(3),
   rivals: rivalCircuitStateSchema
+});
+export type CareerStateV3 = z.infer<typeof careerStateV3Schema>;
+
+export const careerStateSchema = careerStateV3Schema.extend({
+  version: z.literal(4),
+  matchPlanning: matchPlanningStateSchema
 });
 export type CareerState = z.infer<typeof careerStateSchema>;
 

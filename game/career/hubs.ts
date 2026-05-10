@@ -8,6 +8,7 @@ import type { CareerState, PostMatchReport, PreMatchBrief } from "./models";
 import { awardRankingPoints } from "./rankings";
 import { managedAthlete, syncManagedAthleteFromRankings } from "./state";
 import { recordPrizeMoney } from "./economy";
+import { activeAdvancedTacticPlan, calculateTacticEffectProfile, tacticPlanToMatchTactic } from "./tactics";
 
 export function buildPreMatchBrief(args: {
   state: CareerState;
@@ -111,7 +112,10 @@ export function settleCareerMatch(args: {
     pointsDelta,
     cashDelta,
     fatigueDelta: athleteAfterMatch.fatigue - managedAthlete(args.state).fatigue,
-    evidence: evidenceFromResult(args.result, args.managedSide),
+    evidence: [
+      ...evidenceFromResult(args.result, args.managedSide),
+      ...tacticEvidence(args.state, args.opponentId)
+    ],
     recommendations:
       athleteAfterMatch.recoveryStatus === "red_zone" || athleteAfterMatch.recoveryStatus === "injured"
         ? ["Book physio recovery before the next event", "Reduce smash volume until readiness returns above 78"]
@@ -135,4 +139,15 @@ export function settleCareerMatch(args: {
   });
 
   return next;
+}
+
+function tacticEvidence(state: CareerState, opponentId: string) {
+  const plan = activeAdvancedTacticPlan(state);
+  const tactic = tacticPlanToMatchTactic(plan);
+  const effect = calculateTacticEffectProfile({ plan, state, opponentId });
+
+  return [
+    `${plan.name} translated to ${tactic.tempo} / ${tactic.pressurePattern.replaceAll("_", " ")} / ${tactic.riskProfile.replace("_", " ")}`,
+    `Tactic projection: ${effect.winnerPressure} winner pressure, ${effect.netControl} net control, ${effect.rearCourtControl} rear-court control, ${effect.strainBias} strain`
+  ];
 }

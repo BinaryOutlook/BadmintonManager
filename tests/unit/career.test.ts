@@ -22,6 +22,14 @@ import { getCareerEvent } from "../../game/career/events";
 import { settleCareerMatch } from "../../game/career/hubs";
 import { advanceRivalCircuit } from "../../game/career/rivals";
 import { createInitialCareerState, managedAthlete } from "../../game/career/state";
+import {
+  activeAdvancedTacticPlan,
+  applyAssistantAdvice,
+  calculateTacticEffectProfile,
+  overrideAssistantAdvice,
+  tacticPlanToMatchTactic,
+  updateAdvancedTacticPlan
+} from "../../game/career/tactics";
 import { applyTrainingPlan, trainingPlans } from "../../game/career/training";
 import { simulateMatch } from "../../game/core/match";
 import { createManagedMatchInput, createTournament } from "../../game/tournament/tournament";
@@ -330,7 +338,7 @@ describe("dynamic rival ecosystem", () => {
   it("seeds persistent rival programs with ranked rosters and pressure metadata", () => {
     const career = createInitialCareerState(seededPlayers[0].player.id, 8201);
 
-    expect(career.version).toBe(3);
+    expect(career.version).toBe(4);
     expect(career.rivals.programs).toHaveLength(4);
     expect(career.rivals.programs[0]?.ageCurve).toMatchObject({ peakAge: 26, declineRate: 0.09 });
     expect(career.rivals.programs[0]?.roster[0]?.currentRank).toBeGreaterThan(0);
@@ -443,5 +451,127 @@ describe("dynamic rival ecosystem", () => {
     };
 
     expect(simulateSegment()).toEqual(simulateSegment());
+  });
+});
+
+describe("advanced tactics and assistant advice", () => {
+  it("seeds a persistent advanced match plan and explainable advice packets", () => {
+    const career = createInitialCareerState(seededPlayers[0].player.id, 8301);
+    const plan = activeAdvancedTacticPlan(career);
+
+    expect(career.version).toBe(4);
+    expect(plan).toMatchObject({
+      tempo: 52,
+      rearCourtPressure: 58,
+      netPriority: 54,
+      riskTolerance: 42,
+      rallyLengthIntent: "balanced"
+    });
+    expect(career.matchPlanning.advice.map((entry) => entry.topic)).toEqual([
+      "tactics",
+      "training",
+      "rotation",
+      "scouting"
+    ]);
+    expect(career.matchPlanning.advice.every((entry) => entry.rationale.length > 20 && entry.inputs.length > 0)).toBe(true);
+  });
+
+  it("converts slider edits into match tactic inputs and effect projections", () => {
+    const career = createInitialCareerState(seededPlayers[0].player.id, 8302);
+    const updated = updateAdvancedTacticPlan(career, {
+      name: "Rear Court Blitz",
+      tempo: 82,
+      rearCourtPressure: 88,
+      netPriority: 48,
+      riskTolerance: 76,
+      rallyLengthIntent: "shorten",
+      modules: ["rear_court_lock", "body_smash"]
+    });
+    const plan = activeAdvancedTacticPlan(updated);
+    const tactic = tacticPlanToMatchTactic(plan);
+    const effect = calculateTacticEffectProfile({ plan, state: updated });
+
+    expect(tactic).toMatchObject({
+      label: "Rear Court Blitz",
+      tempo: "fast",
+      pressurePattern: "all_out_attack",
+      riskProfile: "high_risk"
+    });
+    expect(effect.winnerPressure).toBeGreaterThan(70);
+    expect(effect.rearCourtControl).toBeGreaterThan(effect.netControl);
+    expect(effect.errorRisk).toBeGreaterThan(45);
+    expect(updated.ecosystem.programLog[0]?.source).toBe("tactics");
+  });
+
+  it("produces different seeded match outcomes when advanced plans change match inputs", () => {
+    const base = createInitialCareerState(seededPlayers[0].player.id, 8303);
+    const event = getCareerEvent(base.events, "metro-open-300")!;
+    const tournament = {
+      ...createTournament(seededPlayers, base.program.managedPlayerId, 8303),
+      id: event.id,
+      name: event.name,
+      tier: event.tier
+    };
+    const playerMapById = Object.fromEntries(seededPlayers.map((entry) => [entry.player.id, entry.player]));
+    const safePlan = updateAdvancedTacticPlan(base, {
+      tempo: 28,
+      rearCourtPressure: 36,
+      netPriority: 64,
+      riskTolerance: 18,
+      rallyLengthIntent: "extend",
+      modules: ["safe_lift_release", "net_trap"]
+    });
+    const pressurePlan = updateAdvancedTacticPlan(base, {
+      tempo: 86,
+      rearCourtPressure: 92,
+      netPriority: 44,
+      riskTolerance: 82,
+      rallyLengthIntent: "shorten",
+      modules: ["rear_court_lock", "body_smash"]
+    });
+    const safePrepared = createManagedMatchInput({
+      tournament,
+      playerMap: playerMapById,
+      tacticA: tacticPlanToMatchTactic(activeAdvancedTacticPlan(safePlan))
+    })!;
+    const pressurePrepared = createManagedMatchInput({
+      tournament,
+      playerMap: playerMapById,
+      tacticA: tacticPlanToMatchTactic(activeAdvancedTacticPlan(pressurePlan))
+    })!;
+    const safeResult = simulateMatch(safePrepared.input);
+    const pressureResult = simulateMatch(pressurePrepared.input);
+    const managedSide = safePrepared.context.playerAId === base.program.managedPlayerId ? "A" : "B";
+    const safeErrors = managedSide === "A" ? safeResult.stats.unforcedErrorsA : safeResult.stats.unforcedErrorsB;
+    const pressureErrors = managedSide === "A" ? pressureResult.stats.unforcedErrorsA : pressureResult.stats.unforcedErrorsB;
+    const safeSmashes = managedSide === "A" ? safeResult.stats.totalSmashesA : safeResult.stats.totalSmashesB;
+    const pressureSmashes = managedSide === "A" ? pressureResult.stats.totalSmashesA : pressureResult.stats.totalSmashesB;
+
+    expect(safePrepared.input.tacticA).not.toEqual(pressurePrepared.input.tacticA);
+    expect(`${pressureResult.scoreline}|${pressureErrors}|${pressureSmashes}`).not.toBe(
+      `${safeResult.scoreline}|${safeErrors}|${safeSmashes}`
+    );
+  });
+
+  it("applies assistant tactic advice without hiding manager override behavior", () => {
+    const career = updateAdvancedTacticPlan(createInitialCareerState(seededPlayers[0].player.id, 8304), {
+      tempo: 78,
+      rearCourtPressure: 84,
+      riskTolerance: 82,
+      rallyLengthIntent: "shorten"
+    });
+    const tacticAdvice = career.matchPlanning.advice.find((entry) => entry.topic === "tactics")!;
+    const scoutingAdvice = career.matchPlanning.advice.find((entry) => entry.topic === "scouting")!;
+    const applied = applyAssistantAdvice(career, tacticAdvice.id);
+    const overridden = overrideAssistantAdvice(applied, scoutingAdvice.id, "Saving scout capacity for the semifinal opponent.");
+
+    expect(applied.matchPlanning.advice.find((entry) => entry.id === tacticAdvice.id)?.overrideState).toBe("applied");
+    expect(activeAdvancedTacticPlan(applied).riskTolerance).toBeLessThan(activeAdvancedTacticPlan(career).riskTolerance);
+    expect(overridden.matchPlanning.advice.find((entry) => entry.id === scoutingAdvice.id)?.overrideState).toBe("overridden");
+    expect(overridden.matchPlanning.overrideLog[0]).toMatchObject({
+      adviceId: scoutingAdvice.id,
+      topic: "scouting",
+      reason: "Saving scout capacity for the semifinal opponent."
+    });
   });
 });

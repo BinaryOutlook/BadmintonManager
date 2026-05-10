@@ -6,6 +6,7 @@ import type { AthleteCareerState, CareerState } from "./models";
 import { createInitialRankings, rankingFor } from "./rankings";
 import { refreshAthleteReadiness } from "./health";
 import { createInitialRivalCircuit } from "./rivals";
+import { createInitialMatchPlanning, refreshAssistantAdvice } from "./tactics";
 
 export function createCareerAthlete(playerId: string, rank: number, points: number): AthleteCareerState {
   const entry = seededPlayers.find((seeded) => seeded.player.id === playerId) ?? seededPlayers[0];
@@ -53,8 +54,8 @@ export function createInitialCareerState(selectedPlayerId: string, seed: number)
   const rankings = createInitialRankings(seededPlayers, selectedPlayerId);
   const ranking = rankingFor(rankings, selectedPlayerId) ?? rankings[0];
 
-  return {
-    version: 3,
+  const career: CareerState = {
+    version: 4,
     seed,
     date: "2026-06-01",
     seasonId: "2026",
@@ -76,8 +77,11 @@ export function createInitialCareerState(selectedPlayerId: string, seed: number)
     lastMatchReport: null,
     ecosystem: createInitialEcosystem(selectedPlayerId),
     rivals: createInitialRivalCircuit("2026-06-01", rankings),
+    matchPlanning: createInitialMatchPlanning("2026-06-01"),
     notes: ["Career save initialized"]
   };
+
+  return refreshAssistantAdvice(career);
 }
 
 export function managedAthlete(state: CareerState) {
