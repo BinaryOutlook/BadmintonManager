@@ -4,6 +4,7 @@ import {
   CareerAthletePromisesPage,
   CareerCalendarPage,
   CareerHomePage,
+  CareerMatchPlanningPage,
   CareerPostMatchHubPage,
   CareerPreMatchHubPage,
   CareerProgramHubPage,
@@ -105,6 +106,7 @@ function topModeForPage(page: AppPage, fallback: TopMode): TopMode {
     case "home":
     case "program":
     case "rivals":
+    case "matchPlanning":
     case "scouting":
     case "recruitment":
     case "youth":
@@ -140,6 +142,10 @@ export function App() {
     setManagedAthletePromise,
     withdrawPromise,
     advanceRivalCircuit,
+    updateAdvancedTacticPlan,
+    refreshAssistantAdvice,
+    applyAssistantAdvice,
+    overrideAssistantAdvice,
     selectPlayer,
     chooseTactic,
     startTournament,
@@ -293,7 +299,7 @@ export function App() {
         setActivePage(career && phase !== "match" ? { id: "home" } : pageForPhase(phase));
         break;
       case "tactics":
-        setActivePage(career && phase !== "match" ? { id: "season" } : phase === "setup" ? { id: "setup" } : pageForPhase(phase));
+        setActivePage(career && phase !== "match" ? { id: "matchPlanning" } : phase === "setup" ? { id: "setup" } : pageForPhase(phase));
         break;
       case "athletes":
         setActivePage({ id: "squad" });
@@ -345,6 +351,7 @@ export function App() {
       onOpenHome: () => setActivePage({ id: "home" }),
       onOpenProgram: () => setActivePage({ id: "program" }),
       onOpenRivals: () => setActivePage({ id: "rivals" }),
+      onOpenMatchPlanning: () => setActivePage({ id: "matchPlanning" }),
       onOpenScouting: () => setActivePage({ id: "scouting" }),
       onOpenRecruitment: () => setActivePage({ id: "recruitment" }),
       onOpenYouth: () => setActivePage({ id: "youth" }),
@@ -364,7 +371,11 @@ export function App() {
       onHireStaffMember: hireStaffMember,
       onSetManagedAthletePromise: setManagedAthletePromise,
       onWithdrawPromise: withdrawPromise,
-      onAdvanceRivalCircuit: advanceRivalCircuit
+      onAdvanceRivalCircuit: advanceRivalCircuit,
+      onUpdateAdvancedTacticPlan: updateAdvancedTacticPlan,
+      onRefreshAssistantAdvice: refreshAssistantAdvice,
+      onApplyAssistantAdvice: applyAssistantAdvice,
+      onOverrideAssistantAdvice: overrideAssistantAdvice
     };
 
     if (activePage.id === "home") {
@@ -377,6 +388,10 @@ export function App() {
 
     if (activePage.id === "rivals") {
       return <CareerRivalCircuitPage {...careerPageProps} />;
+    }
+
+    if (activePage.id === "matchPlanning") {
+      return <CareerMatchPlanningPage {...careerPageProps} />;
     }
 
     if (activePage.id === "scouting") {

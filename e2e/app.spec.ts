@@ -264,3 +264,37 @@ test("surfaces dynamic rival pressure and persists the circuit room", async ({ p
   await page.getByRole("button", { name: "Event Desk" }).click();
   await expect(page.getByText(/Rival field:/).first()).toContainText(/top threat/);
 });
+
+test("can edit advanced tactics and preserve assistant advice overrides", async ({ page }) => {
+  test.slow();
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Events" }).click();
+  await page.getByRole("button", { name: "Create Career Save" }).click();
+  await page.locator(".sidenav").getByRole("button", { name: /Tactics/ }).click();
+
+  await expect(page.getByRole("heading", { name: "Advanced Tactics Creator" })).toBeVisible();
+  await expect(page.getByText("Assistant Advice / Override")).toBeVisible();
+
+  await page.locator(".tactic-slider-row", { hasText: "Tempo" }).locator("input").fill("84");
+  await page.locator(".tactic-slider-row", { hasText: "Rear-Court Pressure" }).locator("input").fill("90");
+  await page.locator(".tactic-slider-row", { hasText: "Risk" }).locator("input").fill("76");
+  await page.getByRole("button", { name: /Body Smash/ }).click();
+
+  await expect(page.getByText(/Simulation bridge:/)).toContainText(/high risk|all out attack/);
+  await expect(page.getByText(/Winner Pressure/)).toBeVisible();
+
+  await page.getByRole("button", { name: "Apply" }).first().click();
+  await expect(page.getByRole("button", { name: "Applied" })).toBeVisible();
+
+  await page.locator('button:has-text("Override"):not([disabled])').first().click();
+  await expect(page.getByRole("button", { name: "Overridden" })).toBeVisible();
+  await expect(page.getByText(/Manager override preserved/)).toBeVisible();
+
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
+  await page.locator(".sidenav").getByRole("button", { name: /Tactics/ }).click();
+  await expect(page.getByRole("heading", { name: "Advanced Tactics Creator" })).toBeVisible();
+  await expect(page.getByText("Manager override kept Command Balance.", { exact: true }).first()).toBeVisible();
+});

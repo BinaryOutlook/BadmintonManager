@@ -3,8 +3,9 @@ import { buildWeek, daysBetween } from "../game/career/calendar";
 import { canAffordEventEntry, eventEntryCost } from "../game/career/economy";
 import { canCommissionScoutReport, roleLabel, staffModifiers } from "../game/career/ecosystem";
 import { getCareerEvent, getNextEvent } from "../game/career/events";
-import type { CareerState, PlayerPromise } from "../game/career/models";
+import type { AdvancedTacticPlan, CareerState, PlayerPromise, RallyLengthIntent, TacticModule } from "../game/career/models";
 import { managedAthlete } from "../game/career/state";
+import { activeAdvancedTacticPlan, calculateTacticEffectProfile, tacticPlanToMatchTactic } from "../game/career/tactics";
 import { trainingPlans } from "../game/career/training";
 import type { SaveRecoveryNotice } from "../game/store/store";
 
@@ -17,6 +18,7 @@ interface CareerPageProps {
   onOpenHome: () => void;
   onOpenProgram: () => void;
   onOpenRivals: () => void;
+  onOpenMatchPlanning: () => void;
   onOpenScouting: () => void;
   onOpenRecruitment: () => void;
   onOpenYouth: () => void;
@@ -37,6 +39,17 @@ interface CareerPageProps {
   onSetManagedAthletePromise: (targetType: PlayerPromise["targetType"]) => void;
   onWithdrawPromise: (promiseId: string) => void;
   onAdvanceRivalCircuit: () => void;
+  onUpdateAdvancedTacticPlan: (
+    patch: Partial<
+      Pick<
+        AdvancedTacticPlan,
+        "name" | "tempo" | "rearCourtPressure" | "netPriority" | "riskTolerance" | "rallyLengthIntent" | "modules"
+      >
+    >
+  ) => void;
+  onRefreshAssistantAdvice: () => void;
+  onApplyAssistantAdvice: (adviceId: string) => void;
+  onOverrideAssistantAdvice: (adviceId: string, reason: string) => void;
 }
 
 function money(value: number) {
@@ -153,6 +166,9 @@ export function CareerHomePage(props: CareerPageProps) {
               <button className="command-button command-button-secondary" type="button" onClick={props.onOpenRivals}>
                 Circuit Room
               </button>
+              <button className="command-button command-button-secondary" type="button" onClick={props.onOpenMatchPlanning}>
+                Match Planning
+              </button>
             </div>
           </div>
         </section>
@@ -242,6 +258,11 @@ export function CareerHomePage(props: CareerPageProps) {
               <span>Rivals</span>
               <strong>{Math.round(Math.max(...props.career.rivals.programs.map((program) => program.pressureScore)))}</strong>
               <small>{props.career.rivals.fieldPressure.length} pressured event fields</small>
+            </button>
+            <button className="career-system-tile" type="button" onClick={props.onOpenMatchPlanning}>
+              <span>Tactics</span>
+              <strong>{activeAdvancedTacticPlan(props.career).name}</strong>
+              <small>{props.career.matchPlanning.advice.filter((entry) => entry.overrideState === "pending").length} staff notes</small>
             </button>
           </div>
         </section>
@@ -1043,6 +1064,226 @@ export function CareerAthletePromisesPage(props: CareerPageProps) {
               </article>
             ))}
           </div>
+        </section>
+      </div>
+    </section>
+  );
+}
+
+const tacticModules: Array<{ id: TacticModule; label: string; detail: string }> = [
+  { id: "target_backhand", label: "Backhand Target", detail: "Biases pressure lanes toward the opponent's weaker shoulder." },
+  { id: "net_trap", label: "Net Trap", detail: "Raises net-control projection and lowers loose tape errors." },
+  { id: "rear_court_lock", label: "Rear Lock", detail: "Commits to lifts, clears, and back-court pressure." },
+  { id: "body_smash", label: "Body Smash", detail: "Adds winner pressure while increasing strain." },
+  { id: "safe_lift_release", label: "Safe Lift", detail: "Gives the plan a pressure-release valve when fatigue rises." }
+];
+
+const rallyIntentOptions: Array<{ id: RallyLengthIntent; label: string }> = [
+  { id: "shorten", label: "Shorten" },
+  { id: "balanced", label: "Balanced" },
+  { id: "extend", label: "Extend" }
+];
+
+function tacticModuleToggle(plan: AdvancedTacticPlan, moduleId: TacticModule) {
+  return plan.modules.includes(moduleId)
+    ? plan.modules.filter((entry) => entry !== moduleId)
+    : [...plan.modules, moduleId];
+}
+
+export function CareerMatchPlanningPage(props: CareerPageProps) {
+  if (!props.career) {
+    return <CareerEmpty onStartCareer={props.onStartCareer} saveRecovery={props.saveRecovery} />;
+  }
+
+  const plan = activeAdvancedTacticPlan(props.career);
+  const matchTactic = tacticPlanToMatchTactic(plan);
+  const effect = calculateTacticEffectProfile({
+    plan,
+    state: props.career,
+    opponentId: props.career.lastPreMatchBrief?.opponentId
+  });
+  const pendingAdvice = props.career.matchPlanning.advice.filter((entry) => entry.overrideState === "pending");
+
+  return (
+    <section className="screen-shell career-page">
+      <div className="screen-header">
+        <div>
+          <p className="screen-kicker">Match Planning</p>
+          <h1 className="screen-title">Advanced Tactics Creator</h1>
+          <p className="screen-copy">
+            Tune the match plan before the next managed match. The sliders translate into simulation tactics, projected strain,
+            and explainable staff advice.
+          </p>
+        </div>
+        <div className="screen-meta">
+          <span>{matchTactic.tempo}</span>
+          <span>{matchTactic.pressurePattern.replaceAll("_", " ")}</span>
+          <button className="command-button command-button-secondary" type="button" onClick={props.onRefreshAssistantAdvice}>
+            Refresh Advice
+          </button>
+          <button className="command-button command-button-secondary" type="button" onClick={props.onOpenHome}>
+            Career Home
+          </button>
+        </div>
+      </div>
+
+      <div className="match-planning-grid">
+        <section className="command-panel command-panel-wide">
+          <div className="panel-header">
+            <h2>{plan.name}</h2>
+            <span>Simulation bridge: {matchTactic.riskProfile.replace("_", " ")}</span>
+          </div>
+
+          <div className="tactic-control-stack">
+            <label className="tactic-slider-row">
+              <span>Tempo</span>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={plan.tempo}
+                onChange={(event) => props.onUpdateAdvancedTacticPlan({ tempo: Number(event.currentTarget.value) })}
+              />
+              <strong>{plan.tempo}</strong>
+            </label>
+            <label className="tactic-slider-row">
+              <span>Rear-Court Pressure</span>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={plan.rearCourtPressure}
+                onChange={(event) => props.onUpdateAdvancedTacticPlan({ rearCourtPressure: Number(event.currentTarget.value) })}
+              />
+              <strong>{plan.rearCourtPressure}</strong>
+            </label>
+            <label className="tactic-slider-row">
+              <span>Net Priority</span>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={plan.netPriority}
+                onChange={(event) => props.onUpdateAdvancedTacticPlan({ netPriority: Number(event.currentTarget.value) })}
+              />
+              <strong>{plan.netPriority}</strong>
+            </label>
+            <label className="tactic-slider-row">
+              <span>Risk</span>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={plan.riskTolerance}
+                onChange={(event) => props.onUpdateAdvancedTacticPlan({ riskTolerance: Number(event.currentTarget.value) })}
+              />
+              <strong>{plan.riskTolerance}</strong>
+            </label>
+          </div>
+
+          <div className="rally-intent-control" role="group" aria-label="Rally length intent">
+            {rallyIntentOptions.map((option) => (
+              <button
+                key={option.id}
+                className={plan.rallyLengthIntent === option.id ? "sidebar-mini-button sidebar-mini-button-active" : "sidebar-mini-button"}
+                type="button"
+                aria-pressed={plan.rallyLengthIntent === option.id}
+                onClick={() => props.onUpdateAdvancedTacticPlan({ rallyLengthIntent: option.id })}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="tactic-module-grid">
+            {tacticModules.map((module) => (
+              <button
+                key={module.id}
+                className={plan.modules.includes(module.id) ? "tactic-module-button tactic-module-button-active" : "tactic-module-button"}
+                type="button"
+                aria-pressed={plan.modules.includes(module.id)}
+                onClick={() => props.onUpdateAdvancedTacticPlan({ modules: tacticModuleToggle(plan, module.id) })}
+              >
+                <strong>{module.label}</strong>
+                <span>{module.detail}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section className="command-panel">
+          <div className="panel-header">
+            <h2>Effect Projection</h2>
+            <span>State-derived</span>
+          </div>
+          <div className="career-meter-list">
+            <CareerMeter label="Winner Pressure" value={effect.winnerPressure} />
+            <CareerMeter label="Net Control" value={effect.netControl} />
+            <CareerMeter label="Rear-Court Control" value={effect.rearCourtControl} />
+            <CareerMeter label="Error Risk" value={effect.errorRisk} danger />
+            <CareerMeter label="Stamina Load" value={effect.staminaLoad} danger />
+            <CareerMeter label="Strain Bias" value={effect.strainBias} danger />
+          </div>
+          <div className="program-log-list career-button-spaced">
+            {effect.matchupNotes.map((note) => (
+              <div key={note} className="program-log-row">
+                <span>Projection note</span>
+                <strong>{note}</strong>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="command-panel command-panel-full">
+          <div className="panel-header">
+            <h2>Assistant Advice / Override</h2>
+            <span>{pendingAdvice.length} pending</span>
+          </div>
+          <div className="advice-card-grid">
+            {props.career.matchPlanning.advice.map((advice) => (
+              <article key={advice.id} className={advice.overrideState === "pending" ? "program-decision-card advice-card" : "program-decision-card advice-card advice-card-muted"}>
+                <span>{advice.topic} / {roleLabel(advice.sourceRole)} / {advice.confidence}% confidence</span>
+                <strong>{advice.recommendation}</strong>
+                <p>{advice.rationale}</p>
+                <p>{advice.tradeoff}</p>
+                <div className="knowledge-chip-row">
+                  {advice.inputs.map((input) => (
+                    <span key={input} className="knowledge-chip knowledge-chip-estimated">{input}</span>
+                  ))}
+                </div>
+                <div className="career-action-row career-action-row-left">
+                  <button
+                    className="command-button command-button-primary"
+                    type="button"
+                    disabled={advice.overrideState !== "pending"}
+                    onClick={() => props.onApplyAssistantAdvice(advice.id)}
+                  >
+                    {advice.overrideState === "applied" ? "Applied" : "Apply"}
+                  </button>
+                  <button
+                    className="command-button command-button-secondary"
+                    type="button"
+                    disabled={advice.overrideState !== "pending"}
+                    onClick={() => props.onOverrideAssistantAdvice(advice.id, `Manager override kept ${plan.name}.`)}
+                  >
+                    {advice.overrideState === "overridden" ? "Overridden" : "Override"}
+                  </button>
+                </div>
+                {advice.overrideReason && <p>Override reason: {advice.overrideReason}</p>}
+              </article>
+            ))}
+          </div>
+          {props.career.matchPlanning.overrideLog.length > 0 && (
+            <div className="program-log-list career-button-spaced">
+              {props.career.matchPlanning.overrideLog.map((entry) => (
+                <div key={entry.id} className="program-log-row">
+                  <span>{entry.date} / {entry.topic}</span>
+                  <strong>Manager override preserved</strong>
+                  <p>{entry.reason}</p>
+                </div>
+              ))}
+            </div>
+          )}
         </section>
       </div>
     </section>
