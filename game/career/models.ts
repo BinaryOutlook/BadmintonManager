@@ -510,6 +510,27 @@ export const trainingPlanSchema = z.object({
 });
 export type TrainingPlan = z.infer<typeof trainingPlanSchema>;
 
+export const injuryEpisodeSchema = z.object({
+  status: z.enum(["healthy", "managed", "out"]),
+  label: z.string(),
+  daysRemaining: z.number().int().nonnegative(),
+  triggeredAt: z.string().nullable(),
+  returnDate: z.string().nullable(),
+  notes: z.array(z.string())
+});
+export type InjuryEpisode = z.infer<typeof injuryEpisodeSchema>;
+
+export function createHealthyInjuryState(): InjuryEpisode {
+  return {
+    status: "healthy",
+    label: "Available",
+    daysRemaining: 0,
+    triggeredAt: null,
+    returnDate: null,
+    notes: ["No active injury episode"]
+  };
+}
+
 export const athleteCareerStateSchema = z.object({
   playerId: z.string(),
   development: z.object({
@@ -522,6 +543,7 @@ export const athleteCareerStateSchema = z.object({
   injuryRisk: z.number().min(0).max(1),
   readiness: z.number().min(0).max(100),
   recoveryStatus: z.enum(["fresh", "ready", "loaded", "red_zone", "injured"]),
+  injury: injuryEpisodeSchema.default(createHealthyInjuryState),
   rankingPoints: z.number().int().nonnegative(),
   currentRank: z.number().int().positive()
 });

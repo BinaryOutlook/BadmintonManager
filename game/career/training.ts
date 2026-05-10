@@ -1,7 +1,12 @@
 import type { AthleteCareerState, ProgramEconomy, TrainingPlan } from "./models";
 import { clamp } from "./models";
 import { addLedgerEntry } from "./economy";
-import { refreshAthleteReadiness } from "./health";
+import {
+  applyMedicalRecoveryBlock,
+  canTrainWithInjury,
+  evaluateLoadInjury,
+  refreshAthleteReadiness
+} from "./health";
 
 export const trainingPlans: TrainingPlan[] = [
   {
@@ -47,6 +52,17 @@ export const trainingPlans: TrainingPlan[] = [
     fatigueDelta: -14,
     injuryRiskDelta: -0.052,
     recoveryDelta: 12
+  },
+  {
+    id: "mobility-recovery",
+    label: "Mobility Recovery",
+    focus: "recovery",
+    intensity: "recovery",
+    cost: 900,
+    attributeDelta: { smash: 0, stamina: 0, composure: 0.2, recovery: 0.9 },
+    fatigueDelta: -10,
+    injuryRiskDelta: -0.038,
+    recoveryDelta: 18
   }
 ];
 
@@ -60,7 +76,17 @@ export function applyTrainingPlan(args: {
   plan: TrainingPlan;
   date: string;
 }) {
-  const athlete = refreshAthleteReadiness({
+  const gate = canTrainWithInjury(args.athlete, args.plan.intensity);
+
+  if (!gate.allowed) {
+    return {
+      athlete: refreshAthleteReadiness(args.athlete),
+      economy: args.economy,
+      blockedReason: gate.reason
+    };
+  }
+
+  const trained = refreshAthleteReadiness({
     ...args.athlete,
     development: {
       smash: clamp(args.athlete.development.smash + args.plan.attributeDelta.smash, 1, 100),
@@ -71,6 +97,15 @@ export function applyTrainingPlan(args: {
     fatigue: clamp(args.athlete.fatigue + args.plan.fatigueDelta - args.plan.recoveryDelta * 0.35, 0, 100),
     injuryRisk: clamp(args.athlete.injuryRisk + args.plan.injuryRiskDelta, 0.02, 1)
   });
+  const athlete =
+    args.plan.intensity === "recovery"
+      ? applyMedicalRecoveryBlock(trained, Math.max(8, args.plan.recoveryDelta))
+      : evaluateLoadInjury({
+          athlete: trained,
+          date: args.date,
+          source: args.plan.label,
+          loadScore: args.plan.fatigueDelta + args.plan.injuryRiskDelta * 500
+        });
   const economy = addLedgerEntry({
     economy: args.economy,
     date: args.date,
@@ -84,6 +119,7 @@ export function applyTrainingPlan(args: {
     economy: {
       ...economy,
       trainingSpend: economy.trainingSpend + args.plan.cost
-    }
+    },
+    blockedReason: null
   };
 }

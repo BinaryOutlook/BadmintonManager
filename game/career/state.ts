@@ -2,7 +2,7 @@ import { seededPlayers } from "../content/players";
 import { careerEventCatalog } from "./events";
 import { createInitialEconomy } from "./economy";
 import { createInitialEcosystem } from "./ecosystem";
-import type { AthleteCareerState, CareerState } from "./models";
+import { createHealthyInjuryState, type AthleteCareerState, type CareerState } from "./models";
 import { createInitialRankings, rankingFor } from "./rankings";
 import { refreshAthleteReadiness } from "./health";
 import { createInitialRivalCircuit } from "./rivals";
@@ -26,6 +26,7 @@ export function createCareerAthlete(playerId: string, rank: number, points: numb
     injuryRisk: 0.06,
     readiness: 0,
     recoveryStatus: "ready" as const,
+    injury: createHealthyInjuryState(),
     rankingPoints: points,
     currentRank: rank
   };

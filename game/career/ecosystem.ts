@@ -19,7 +19,7 @@ import type {
   StaffRole,
   YouthProspect
 } from "./models";
-import { clamp } from "./models";
+import { clamp, createHealthyInjuryState } from "./models";
 import { refreshAthleteReadiness } from "./health";
 import { createInitialRivalCircuit } from "./rivals";
 import { facilityModifiers } from "./facilitiesMedia";
@@ -231,6 +231,7 @@ function createRecruitAthlete(candidate: RecruitmentCandidate, rank: number): At
     injuryRisk: clamp(0.05 + candidate.risk / 1000, 0.02, 1),
     readiness: 0,
     recoveryStatus: "ready" as const,
+    injury: createHealthyInjuryState(),
     rankingPoints: 0,
     currentRank: rank
   };

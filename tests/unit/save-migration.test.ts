@@ -222,6 +222,32 @@ describe("career save migration", () => {
     expect(persistedSaveSchema.parse(save).career).toEqual(careerStateSchema.parse(career));
   });
 
+  it("defaults medical injury episodes when loading current saves from before the health pass", () => {
+    const career = createInitialCareerState(seededPlayers[0].player.id, 462);
+    const save = {
+      version: 8,
+      selectedPlayerId: seededPlayers[0].player.id,
+      plannedTacticKey: "balancedControl",
+      seed: 462,
+      tournament: null,
+      liveMatch: null,
+      career: {
+        ...career,
+        athletes: career.athletes.map(({ injury: _injury, ...athlete }) => athlete)
+      }
+    };
+
+    const parsed = persistedSavePayloadSchema.parse(save);
+    const migrated = migratePersistedSave(parsed);
+
+    expect(migrated.career?.athletes[0]?.injury).toMatchObject({
+      status: "healthy",
+      label: "Available",
+      daysRemaining: 0
+    });
+    expect(persistedSaveSchema.parse(migrated)).toEqual(migrated);
+  });
+
   it("loads prior Phase 2 saves that predate lower-event entry records", () => {
     const career = createInitialCareerState(seededPlayers[0].player.id, 457);
     const { lowerEventEntries: _lowerEventEntries, ...ecosystemWithoutEntries } = career.ecosystem;

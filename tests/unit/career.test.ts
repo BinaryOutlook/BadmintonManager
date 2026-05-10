@@ -13,6 +13,7 @@ import {
   resolveMediaObjectives,
   upgradeFacility
 } from "../../game/career/facilitiesMedia";
+import { canCompeteWithInjury, canTrainWithInjury } from "../../game/career/health";
 import {
   commissionScoutReport,
   developYouthProspect,
@@ -66,6 +67,40 @@ describe("career core slice", () => {
     expect(result.athlete.readiness).toBeLessThan(athlete.readiness);
     expect(result.economy.cash).toBe(career.economy.cash - plan.cost);
     expect(result.economy.trainingSpend).toBe(plan.cost);
+  });
+
+  it("turns high load into a persisted injury episode and gates unsafe training", () => {
+    const career = createInitialCareerState(seededPlayers[0].player.id, 7011);
+    const athlete = {
+      ...managedAthlete(career),
+      fatigue: 70,
+      injuryRisk: 0.27
+    };
+    const plan = trainingPlans.find((entry) => entry.id === "rear-court-power")!;
+    const injured = applyTrainingPlan({
+      athlete,
+      economy: career.economy,
+      plan,
+      date: "2026-07-07"
+    });
+
+    expect(injured.athlete.injury.status).toBe("out");
+    expect(injured.athlete.injury.daysRemaining).toBeGreaterThan(0);
+    expect(injured.athlete.recoveryStatus).toBe("injured");
+    expect(canTrainWithInjury(injured.athlete, "heavy").allowed).toBe(false);
+    expect(canCompeteWithInjury(injured.athlete).allowed).toBe(false);
+
+    const recoveryPlan = trainingPlans.find((entry) => entry.id === "mobility-recovery")!;
+    const recovery = applyTrainingPlan({
+      athlete: injured.athlete,
+      economy: injured.economy,
+      plan: recoveryPlan,
+      date: "2026-07-08"
+    });
+
+    expect(recovery.blockedReason).toBeNull();
+    expect(recovery.athlete.injury.daysRemaining).toBeLessThan(injured.athlete.injury.daysRemaining);
+    expect(recovery.athlete.fatigue).toBeLessThan(injured.athlete.fatigue);
   });
 
   it("recovers passively while advancing the calendar into a pre-match event day", () => {

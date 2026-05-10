@@ -89,7 +89,7 @@ export function settleCareerMatch(args: {
   const cashDelta = event.prizeMoney[placementKey] ?? event.prizeMoney.R16;
   const staminaDrain =
     args.managedSide === "A" ? args.result.stats.staminaDrainA : args.result.stats.staminaDrainB;
-  const athleteAfterMatch = applyMatchLoad(managedAthlete(args.state), staminaDrain);
+  const athleteAfterMatch = applyMatchLoad(managedAthlete(args.state), staminaDrain, args.state.date);
   const rankings = awardRankingPoints({
     rankings: args.state.rankings,
     playerId: args.state.program.managedPlayerId,
@@ -118,7 +118,12 @@ export function settleCareerMatch(args: {
       ...tacticEvidence(args.state, args.opponentId)
     ],
     recommendations:
-      athleteAfterMatch.recoveryStatus === "red_zone" || athleteAfterMatch.recoveryStatus === "injured"
+      athleteAfterMatch.injury.status !== "healthy"
+        ? [
+            `${athleteAfterMatch.injury.label}: protect ${athleteAfterMatch.injury.daysRemaining} day(s) before loading again`,
+            "Use physio recovery and delay the next event if match day arrives early"
+          ]
+        : athleteAfterMatch.recoveryStatus === "red_zone" || athleteAfterMatch.recoveryStatus === "injured"
         ? ["Book physio recovery before the next event", "Reduce smash volume until readiness returns above 78"]
         : won
           ? ["Maintain rally-base work and enter the next tier if cash permits", "Add pressure-pattern reps to protect leads"]

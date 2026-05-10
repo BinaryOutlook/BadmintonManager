@@ -30,6 +30,7 @@ import {
   withdrawPromise
 } from "../career/ecosystem";
 import { getCareerEvent } from "../career/events";
+import { canCompeteWithInjury } from "../career/health";
 import { buildPreMatchBrief, settleCareerMatch } from "../career/hubs";
 import {
   applyDirective as queueDirective,
@@ -372,6 +373,19 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
         plan,
         date: state.career.date
       });
+
+      if (result.blockedReason) {
+        const next = {
+          ...state,
+          career: {
+            ...state.career,
+            notes: [`Training blocked: ${result.blockedReason}`, ...state.career.notes].slice(0, 6)
+          }
+        };
+        persist(next);
+        return next;
+      }
+
       const athleteWithStaff = applyFacilitiesToTraining(
         applyStaffToTraining(result.athlete, state.career.ecosystem),
         state.career.facilities
@@ -403,6 +417,23 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
 
       if (!event || state.career.completedEventIds.includes(eventId)) {
         return state;
+      }
+
+      const athlete = state.career.athletes.find(
+        (entry) => entry.playerId === state.career?.program.managedPlayerId
+      );
+      const medicalGate = athlete ? canCompeteWithInjury(athlete) : { allowed: true, reason: "Available" };
+
+      if (!medicalGate.allowed) {
+        const next = {
+          ...state,
+          career: {
+            ...state.career,
+            notes: [`Event entry blocked: ${medicalGate.reason}`, ...state.career.notes].slice(0, 6)
+          }
+        };
+        persist(next);
+        return next;
       }
 
       const entryCosts = effectiveEventEntryCosts(event, state.career.facilities);
@@ -765,6 +796,25 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
     set((state) => {
       if (!state.tournament) {
         return state;
+      }
+
+      if (state.career) {
+        const athlete = state.career.athletes.find(
+          (entry) => entry.playerId === state.career?.program.managedPlayerId
+        );
+        const medicalGate = athlete ? canCompeteWithInjury(athlete) : { allowed: true, reason: "Available" };
+
+        if (!medicalGate.allowed) {
+          const next = {
+            ...state,
+            career: {
+              ...state.career,
+              notes: [`Match entry blocked: ${medicalGate.reason}`, ...state.career.notes].slice(0, 6)
+            }
+          };
+          persist(next);
+          return next;
+        }
       }
 
       const prepared = createManagedMatchInput({

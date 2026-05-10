@@ -3,6 +3,7 @@ import { buildWeek, daysBetween } from "../game/career/calendar";
 import { canAffordEventEntry, eventEntryCost } from "../game/career/economy";
 import { canCommissionScoutReport, roleLabel, staffModifiers } from "../game/career/ecosystem";
 import { getCareerEvent, getNextEvent } from "../game/career/events";
+import { canCompeteWithInjury, canTrainWithInjury } from "../game/career/health";
 import type {
   AdvancedTacticPlan,
   CareerState,
@@ -209,6 +210,15 @@ export function CareerHomePage(props: CareerPageProps) {
             <CareerMeter label="Readiness" value={athlete.readiness} />
             <CareerMeter label="Fatigue" value={Math.round(athlete.fatigue)} danger />
             <CareerMeter label="Injury Risk" value={Math.round(athlete.injuryRisk * 100)} danger />
+          </div>
+          <div className="program-log-row career-button-spaced">
+            <span>{athlete.injury.status} / medical desk</span>
+            <strong>{athlete.injury.label}</strong>
+            <p>
+              {athlete.injury.status === "healthy"
+                ? "Available for training and event entry."
+                : `${athlete.injury.daysRemaining} day(s) remaining; return ${athlete.injury.returnDate ?? "pending"}. ${athlete.injury.notes[0]}`}
+            </p>
           </div>
         </section>
 
@@ -1648,27 +1658,38 @@ export function CareerTrainingPage(props: CareerPageProps) {
             <span>Cash {money(props.career.economy.cash)}</span>
           </div>
           <div className="career-plan-grid">
-            {trainingPlans.map((plan) => (
-              <button
-                key={plan.id}
-                className={
-                  props.career?.selectedTrainingPlanId === plan.id
-                    ? "career-plan-card career-plan-card-active"
-                    : "career-plan-card"
-                }
-                type="button"
-                aria-pressed={props.career?.selectedTrainingPlanId === plan.id}
-                onClick={() => props.onApplyTraining(plan.id)}
-              >
-                <span>{plan.intensity}</span>
-                <strong>{plan.label}</strong>
-                <p>
-                  {plan.focus} + cost {money(plan.cost)} - fatigue {plan.fatigueDelta >= 0 ? "+" : ""}
-                  {plan.fatigueDelta}, risk {plan.injuryRiskDelta >= 0 ? "+" : ""}
-                  {Math.round(plan.injuryRiskDelta * 100)} pts
-                </p>
-              </button>
-            ))}
+            {trainingPlans.map((plan) => {
+              const medicalGate = canTrainWithInjury(athlete, plan.intensity);
+              const affordable = props.career!.economy.cash >= plan.cost;
+              const disabled = !medicalGate.allowed || !affordable;
+
+              return (
+                <button
+                  key={plan.id}
+                  className={
+                    props.career?.selectedTrainingPlanId === plan.id
+                      ? "career-plan-card career-plan-card-active"
+                      : disabled
+                        ? "career-plan-card career-plan-card-blocked"
+                        : "career-plan-card"
+                  }
+                  type="button"
+                  disabled={disabled}
+                  aria-pressed={props.career?.selectedTrainingPlanId === plan.id}
+                  onClick={() => props.onApplyTraining(plan.id)}
+                >
+                  <span>{plan.intensity}</span>
+                  <strong>{plan.label}</strong>
+                  <p>
+                    {disabled
+                      ? !affordable
+                        ? `Insufficient budget for ${money(plan.cost)} block.`
+                        : medicalGate.reason
+                      : `${plan.focus} + cost ${money(plan.cost)} - fatigue ${plan.fatigueDelta >= 0 ? "+" : ""}${plan.fatigueDelta}, risk ${plan.injuryRiskDelta >= 0 ? "+" : ""}${Math.round(plan.injuryRiskDelta * 100)} pts`}
+                  </p>
+                </button>
+              );
+            })}
           </div>
         </section>
 
@@ -1700,6 +1721,11 @@ export function CareerTrainingPage(props: CareerPageProps) {
             <CareerMeter label="Fatigue" value={Math.round(athlete.fatigue)} danger />
             <CareerMeter label="Injury Risk" value={Math.round(athlete.injuryRisk * 100)} danger />
           </div>
+          <div className="program-log-row career-button-spaced">
+            <span>{athlete.injury.status} / return {athlete.injury.returnDate ?? "available"}</span>
+            <strong>{athlete.injury.label}</strong>
+            <p>{athlete.injury.notes[0]}</p>
+          </div>
         </section>
       </div>
     </section>
@@ -1712,6 +1738,8 @@ export function CareerCalendarPage(props: CareerPageProps) {
   }
 
   const week = buildWeek(props.career.date);
+  const athlete = managedAthlete(props.career);
+  const medicalGate = canCompeteWithInjury(athlete);
 
   return (
     <section className="screen-shell career-page">
@@ -1772,10 +1800,11 @@ export function CareerCalendarPage(props: CareerPageProps) {
                     entryFee: event.entryFee
                   })
                 : false;
+              const eventBlocked = !affordable || !medicalGate.allowed;
               return (
                 <article
                   key={event.id}
-                  className={affordable || entered || completed ? "career-event-card" : "career-event-card career-event-card-blocked"}
+                  className={!eventBlocked || entered || completed ? "career-event-card" : "career-event-card career-event-card-blocked"}
                 >
                   <div>
                     <span>{event.tier}</span>
@@ -1795,14 +1824,27 @@ export function CareerCalendarPage(props: CareerPageProps) {
                         Insufficient funds: program cash {money(props.career?.economy.cash ?? 0)} cannot cover entry.
                       </p>
                     )}
+                    {!medicalGate.allowed && !entered && !completed && (
+                      <p className="career-event-warning">
+                        Medical hold: {medicalGate.reason}.
+                      </p>
+                    )}
                   </div>
                   <button
                     className={entered ? "command-button command-button-secondary" : "command-button command-button-primary"}
                     type="button"
-                    disabled={entered || completed || !affordable}
+                    disabled={entered || completed || eventBlocked}
                     onClick={() => props.onEnterEvent(event.id)}
                   >
-                    {completed ? "Complete" : entered ? "Entered" : affordable ? "Enter Event" : "Insufficient Funds"}
+                    {completed
+                      ? "Complete"
+                      : entered
+                        ? "Entered"
+                        : !medicalGate.allowed
+                          ? "Medical Hold"
+                          : affordable
+                            ? "Enter Event"
+                            : "Insufficient Funds"}
                   </button>
                 </article>
               );
@@ -1823,6 +1865,7 @@ export function CareerPreMatchHubPage(props: CareerPageProps) {
   const event = activeEvent(props.career);
   const opponent = brief ? playerMap[brief.opponentId] : null;
   const planningBridge = buildPreMatchPlanningBridge(props.career);
+  const athlete = managedAthlete(props.career);
 
   return (
     <section className="screen-shell career-page">
@@ -1853,7 +1896,11 @@ export function CareerPreMatchHubPage(props: CareerPageProps) {
             </div>
             <div>
               <span>Risk Note</span>
-              <strong>{brief?.riskNote ?? "No briefing yet"}</strong>
+              <strong>
+                {athlete.injury.status === "healthy"
+                  ? brief?.riskNote ?? "No briefing yet"
+                  : `${athlete.injury.label}: ${athlete.injury.daysRemaining} day(s) remaining`}
+              </strong>
             </div>
             <div>
               <span>Tier Stakes</span>
