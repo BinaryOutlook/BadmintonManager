@@ -174,6 +174,19 @@ button {
   border-color: var(--border-strong);
 }
 
+.command-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+  transform: none;
+  box-shadow: none;
+}
+
+.command-button-primary:disabled {
+  border-color: var(--border);
+  background: rgba(35, 39, 44, 0.94);
+  color: var(--muted);
+}
+
 .command-button-primary {
   border-color: rgba(57, 255, 20, 0.18);
   background: var(--lime);

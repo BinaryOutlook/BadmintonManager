@@ -1,10 +1,13 @@
+import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 
 test("can start a tournament run and play through a managed match", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/");
 
-  await expect(page.getByRole("heading", { name: "Tournament Deployment" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Choose The Run" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Start Tournament" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Start Career" })).toBeVisible();
 
   await page.getByRole("button", { name: "Grand-Slam Southpaw", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Grand-Slam Southpaw" })).toBeVisible();
@@ -60,8 +63,7 @@ test("can complete and reload the career core slice with tactical viewer proof",
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto("/");
 
-  await page.getByRole("button", { name: "Events" }).click();
-  await page.getByRole("button", { name: "Create Career Save" }).click();
+  await page.getByRole("button", { name: "Start Career" }).click();
   await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
   await expect(page.getByText(/Rank/).first()).toBeVisible();
 
@@ -139,11 +141,11 @@ test("surfaces corrupt save recovery and blocks unaffordable event entry", async
   });
   await page.goto("/");
 
-  await page.getByRole("button", { name: "Events" }).click();
-  await expect(page.getByRole("heading", { name: "Career Save Recovery" })).toBeVisible();
-  await expect(page.getByText(/Corrupt save quarantined/)).toBeVisible();
+  await page.getByRole("button", { name: "SAVE_MANAGER" }).click();
+  await expect(page.getByRole("heading", { name: "Local Save Control" })).toBeVisible();
+  await expect(page.getByText(/Quarantine present/).first()).toBeVisible();
 
-  await page.getByRole("button", { name: "Create Career Save" }).click();
+  await page.getByRole("button", { name: "Start New Career" }).click();
   await page.evaluate(() => {
     const raw = window.localStorage.getItem("badminton-manager-save");
     if (!raw) {
@@ -163,13 +165,90 @@ test("surfaces corrupt save recovery and blocks unaffordable event entry", async
   await expect(page.getByRole("button", { name: "Insufficient Funds" }).first()).toBeDisabled();
 });
 
+test("manages export import delete and overwrite warnings from the visible Save Manager", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.addInitScript(() => {
+    window.localStorage.setItem("badminton-manager-save-corrupt", "old-corrupt-backup");
+  });
+  await page.goto("/");
+
+  await expect(page.getByRole("heading", { name: "Choose The Run" })).toBeVisible();
+  await page.getByRole("button", { name: "Start Career" }).click();
+  await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
+
+  await page.getByRole("button", { name: "SAVE_MANAGER" }).click();
+  await expect(page.getByRole("heading", { name: "Local Save Control" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Continue Career" })).toBeEnabled();
+  await expect(page.getByRole("heading", { name: "Import Save" })).toBeVisible();
+  await expect(page.getByText(/Quarantine present/).first()).toBeVisible();
+
+  await page.getByRole("button", { name: "Start Tournament" }).click();
+  await expect(page.getByRole("heading", { name: "Start tournament and replace career?" })).toBeVisible();
+  await page.getByRole("button", { name: "Cancel" }).click();
+  await page.getByRole("button", { name: "Start New Career" }).click();
+  await expect(page.getByRole("heading", { name: "Start a new career?" })).toBeVisible();
+  await page.getByRole("button", { name: "Cancel" }).click();
+
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export JSON" }).click();
+  const download = await downloadPromise;
+  const downloadPath = await download.path();
+  if (!downloadPath) {
+    throw new Error("Expected downloaded save path.");
+  }
+  const exportedSave = readFileSync(downloadPath, "utf8");
+
+  const beforeInvalid = await page.evaluate(() => ({
+    active: window.localStorage.getItem("badminton-manager-save"),
+    corrupt: window.localStorage.getItem("badminton-manager-save-corrupt")
+  }));
+  await page.getByLabel("Import Save JSON", { exact: true }).fill("{not-json");
+  await page.getByRole("button", { name: "Preview Import" }).click();
+  await expect(page.getByRole("alert")).toContainText("Malformed JSON");
+  const afterInvalid = await page.evaluate(() => ({
+    active: window.localStorage.getItem("badminton-manager-save"),
+    corrupt: window.localStorage.getItem("badminton-manager-save-corrupt")
+  }));
+  expect(afterInvalid).toEqual(beforeInvalid);
+
+  await page.getByRole("button", { name: "Delete Active Local Save" }).click();
+  await page.getByRole("button", { name: "Confirm", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Choose The Run" })).toBeVisible();
+  await page.evaluate(() => {
+    if (window.localStorage.getItem("badminton-manager-save") !== null) {
+      throw new Error("Expected active save to be deleted.");
+    }
+  });
+
+  await page.getByRole("button", { name: "SAVE_MANAGER" }).click();
+  await page.getByLabel("Import Save JSON", { exact: true }).fill(exportedSave);
+  await page.getByRole("button", { name: "Preview Import" }).click();
+  await expect(page.getByText(/Import parsed, validated, and migrated/)).toBeVisible();
+  await page.getByRole("button", { name: "Confirm Import" }).click();
+  await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
+  await page.evaluate(() => {
+    const raw = window.localStorage.getItem("badminton-manager-save");
+    if (!raw || !JSON.parse(raw).career) {
+      throw new Error("Expected imported career save.");
+    }
+  });
+
+  await page.getByRole("button", { name: "SAVE_MANAGER" }).click();
+  await page.getByRole("button", { name: "Delete Quarantined Save" }).click();
+  await page.getByRole("button", { name: "Confirm", exact: true }).click();
+  await page.evaluate(() => {
+    if (window.localStorage.getItem("badminton-manager-save-corrupt") !== null) {
+      throw new Error("Expected corrupt backup to be deleted.");
+    }
+  });
+});
+
 test("can run the Phase 2 program ecosystem flow and persist it after reload", async ({ page }) => {
   test.slow();
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto("/");
 
-  await page.getByRole("button", { name: "Events" }).click();
-  await page.getByRole("button", { name: "Create Career Save" }).click();
+  await page.getByRole("button", { name: "Start Career" }).click();
   await page.getByRole("button", { name: "Program Hub" }).click();
   await expect(page.getByRole("heading", { name: "Program Ecosystem" })).toBeVisible();
   await expect(page.getByText(/Scout capacity/)).toBeVisible();
@@ -257,8 +336,7 @@ test("surfaces dynamic rival pressure and persists the circuit room", async ({ p
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto("/");
 
-  await page.getByRole("button", { name: "Events" }).click();
-  await page.getByRole("button", { name: "Create Career Save" }).click();
+  await page.getByRole("button", { name: "Start Career" }).click();
   await page.getByRole("button", { name: "Circuit Room" }).first().click();
 
   await expect(page.getByRole("heading", { name: "Rival Programs" })).toBeVisible();
@@ -286,8 +364,7 @@ test("can edit advanced tactics and preserve assistant advice overrides", async 
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto("/");
 
-  await page.getByRole("button", { name: "Events" }).click();
-  await page.getByRole("button", { name: "Create Career Save" }).click();
+  await page.getByRole("button", { name: "Start Career" }).click();
   await page.locator(".sidenav").getByRole("button", { name: /Tactics/ }).click();
 
   await expect(page.getByRole("heading", { name: "Advanced Tactics Creator" })).toBeVisible();
@@ -332,8 +409,7 @@ test("can upgrade facilities and resolve sponsor media pressure", async ({ page 
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto("/");
 
-  await page.getByRole("button", { name: "Events" }).click();
-  await page.getByRole("button", { name: "Create Career Save" }).click();
+  await page.getByRole("button", { name: "Start Career" }).click();
   await page.getByRole("button", { name: "Program Hub" }).click();
   await page.getByRole("button", { name: "Facilities Upgrades" }).click();
 
