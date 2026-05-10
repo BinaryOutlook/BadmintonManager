@@ -32,6 +32,7 @@ import { getCareerEvent } from "../../game/career/events";
 import { settleCareerMatch } from "../../game/career/hubs";
 import { advanceRivalCircuit } from "../../game/career/rivals";
 import { createInitialCareerState, managedAthlete } from "../../game/career/state";
+import { projectTacticalViewerFromResult, projectTacticalViewerFromSession } from "../../game/career/tacticalViewer";
 import {
   activeAdvancedTacticPlan,
   applyAssistantAdvice,
@@ -43,7 +44,7 @@ import {
   updateAdvancedTacticPlan
 } from "../../game/career/tactics";
 import { applyTrainingPlan, trainingPlans } from "../../game/career/training";
-import { simulateMatch } from "../../game/core/match";
+import { createMatchSession, simulateMatch, simulateNextPoint } from "../../game/core/match";
 import { createManagedMatchInput, createTournament } from "../../game/tournament/tournament";
 
 describe("career core slice", () => {
@@ -148,6 +149,8 @@ describe("career core slice", () => {
     expect(settled.economy.prizeIncome).toBeGreaterThan(0);
     expect(settled.economy.cash).toBeGreaterThan(career.economy.cash);
     expect(managedAthlete(settled).fatigue).toBeGreaterThan(managedAthlete(career).fatigue);
+    expect(settled.lastMatchReport?.tacticalViewer?.zones).toHaveLength(9);
+    expect(settled.lastMatchReport?.tacticalViewer?.pressure).toBeGreaterThan(0);
   });
 
   it("blocks event entry charges when program cash cannot cover travel and entry", () => {
@@ -305,7 +308,8 @@ describe("program ecosystem depth", () => {
         cashDelta: 1800,
         fatigueDelta: 9,
         evidence: [],
-        recommendations: []
+        recommendations: [],
+        tacticalViewer: null
       }
     });
 
@@ -350,7 +354,7 @@ describe("dynamic rival ecosystem", () => {
   it("seeds persistent rival programs with ranked rosters and pressure metadata", () => {
     const career = createInitialCareerState(seededPlayers[0].player.id, 8201);
 
-    expect(career.version).toBe(5);
+    expect(career.version).toBe(6);
     expect(career.rivals.programs).toHaveLength(4);
     expect(career.rivals.programs[0]?.ageCurve).toMatchObject({ peakAge: 26, declineRate: 0.09 });
     expect(career.rivals.programs[0]?.roster[0]?.currentRank).toBeGreaterThan(0);
@@ -471,7 +475,7 @@ describe("advanced tactics and assistant advice", () => {
     const career = createInitialCareerState(seededPlayers[0].player.id, 8301);
     const plan = activeAdvancedTacticPlan(career);
 
-    expect(career.version).toBe(5);
+    expect(career.version).toBe(6);
     expect(plan).toMatchObject({
       tempo: 52,
       rearCourtPressure: 58,
@@ -620,6 +624,89 @@ describe("advanced tactics and assistant advice", () => {
   });
 });
 
+describe("tactical viewer evidence projection", () => {
+  function preparedCareerMatch(seed: number) {
+    const career = updateAdvancedTacticPlan(createInitialCareerState(seededPlayers[0].player.id, seed), {
+      tempo: 82,
+      rearCourtPressure: 88,
+      netPriority: 61,
+      riskTolerance: 72,
+      rallyLengthIntent: "shorten",
+      modules: ["rear_court_lock", "body_smash"]
+    });
+    const event = getCareerEvent(career.events, "metro-open-300")!;
+    const state = {
+      ...career,
+      date: event.startDate,
+      activeEventId: event.id,
+      enteredEventIds: [event.id],
+      stage: "pre_match" as const
+    };
+    const tournament = {
+      ...createTournament(seededPlayers, state.program.managedPlayerId, seed),
+      id: event.id,
+      name: event.name,
+      tier: event.tier
+    };
+    const prepared = createManagedMatchInput({
+      tournament,
+      playerMap: Object.fromEntries(seededPlayers.map((entry) => [entry.player.id, entry.player])),
+      tacticA: tacticPlanToMatchTactic(activeAdvancedTacticPlan(state))
+    })!;
+    const managedSide = prepared.context.playerAId === state.program.managedPlayerId ? ("A" as const) : ("B" as const);
+
+    return { state, prepared, managedSide };
+  }
+
+  it("projects deterministic court zones, pressure, strain, and momentum from match result evidence", () => {
+    const { state, prepared, managedSide } = preparedCareerMatch(8501);
+    const result = simulateMatch(prepared.input);
+    const frame = projectTacticalViewerFromResult({
+      matchId: prepared.context.matchId,
+      result,
+      managedSide,
+      state
+    });
+    const replay = projectTacticalViewerFromResult({
+      matchId: prepared.context.matchId,
+      result,
+      managedSide,
+      state
+    });
+
+    expect(frame).toEqual(replay);
+    expect(frame.zones).toHaveLength(9);
+    expect(frame.zones.reduce((total, zone) => total + zone.shots, 0)).toBeGreaterThan(0);
+    expect(frame.zones.some((zone) => zone.pressure > 0 && zone.strain > 0)).toBe(true);
+    expect(frame.pressure).toBeGreaterThan(0);
+    expect(frame.movementStrain).toBeGreaterThan(0);
+    expect(frame.momentumTimeline.length).toBeGreaterThan(0);
+    expect(frame.tacticMarkers.join(" ")).toContain("winner pressure");
+  });
+
+  it("updates live viewer state as match points are simulated", () => {
+    const { prepared, managedSide } = preparedCareerMatch(8502);
+    const emptySession = createMatchSession(prepared.input);
+    const emptyFrame = projectTacticalViewerFromSession({
+      session: emptySession,
+      managedSide,
+      matchId: prepared.context.matchId
+    });
+    const firstPointSession = simulateNextPoint(emptySession);
+    const firstFrame = projectTacticalViewerFromSession({
+      session: firstPointSession,
+      managedSide,
+      matchId: prepared.context.matchId
+    });
+
+    expect(emptyFrame.sequence).toBe(0);
+    expect(emptyFrame.summary).toBe("No tactical evidence captured yet");
+    expect(firstFrame.sequence).toBe(1);
+    expect(firstFrame.zones.reduce((total, zone) => total + zone.shots, 0)).toBeGreaterThan(0);
+    expect(firstFrame.pressure).toBeGreaterThan(0);
+  });
+});
+
 describe("facilities, media, sponsors, and reputation", () => {
   it("starts facility builds through the program budget and activates modifiers on the build date", () => {
     const career = createInitialCareerState(seededPlayers[0].player.id, 8401);
@@ -763,7 +850,8 @@ describe("facilities, media, sponsors, and reputation", () => {
         cashDelta: 1500,
         fatigueDelta: 8,
         evidence: [],
-        recommendations: []
+        recommendations: [],
+        tacticalViewer: null
       }
     };
     const resolved = resolveMediaObjectives(withReport);

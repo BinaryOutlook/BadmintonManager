@@ -9,6 +9,7 @@ import { awardRankingPoints } from "./rankings";
 import { managedAthlete, syncManagedAthleteFromRankings } from "./state";
 import { recordPrizeMoney } from "./economy";
 import { activeAdvancedTacticPlan, calculateTacticEffectProfile, tacticPlanToMatchTactic } from "./tactics";
+import { projectTacticalViewerFromResult } from "./tacticalViewer";
 
 export function buildPreMatchBrief(args: {
   state: CareerState;
@@ -121,7 +122,13 @@ export function settleCareerMatch(args: {
         ? ["Book physio recovery before the next event", "Reduce smash volume until readiness returns above 78"]
         : won
           ? ["Maintain rally-base work and enter the next tier if cash permits", "Add pressure-pattern reps to protect leads"]
-          : ["Schedule pressure-patterns training", "Use the pre-match briefing to lower early error rate"]
+          : ["Schedule pressure-patterns training", "Use the pre-match briefing to lower early error rate"],
+    tacticalViewer: projectTacticalViewerFromResult({
+      matchId: args.matchId,
+      result: args.result,
+      managedSide: args.managedSide,
+      state: args.state
+    })
   };
   const next = syncManagedAthleteFromRankings({
     ...args.state,

@@ -583,9 +583,57 @@ export const postMatchReportSchema = z.object({
   cashDelta: z.number().int(),
   fatigueDelta: z.number(),
   evidence: z.array(z.string()),
-  recommendations: z.array(z.string())
+  recommendations: z.array(z.string()),
+  tacticalViewer: z
+    .object({
+      matchId: z.string(),
+      sequence: z.number().int().nonnegative(),
+      zones: z.array(
+        z.object({
+          zone: z.enum([
+            "front_left",
+            "front_center",
+            "front_right",
+            "mid_left",
+            "mid_center",
+            "mid_right",
+            "back_left",
+            "back_center",
+            "back_right"
+          ]),
+          shots: z.number().int().nonnegative(),
+          managedShots: z.number().int().nonnegative(),
+          opponentShots: z.number().int().nonnegative(),
+          winners: z.number().int().nonnegative(),
+          errors: z.number().int().nonnegative(),
+          pressure: z.number().min(0).max(100),
+          strain: z.number().min(0).max(100),
+          momentumSwing: z.number().min(-100).max(100)
+        })
+      ),
+      pressure: z.number().min(0).max(100),
+      movementStrain: z.number().min(0).max(100),
+      momentum: z.number().min(0).max(100),
+      tacticMarkers: z.array(z.string()),
+      momentumTimeline: z.array(
+        z.object({
+          sequence: z.number().int().positive(),
+          score: z.string(),
+          momentum: z.number().min(0).max(100),
+          pressure: z.number().min(0).max(100),
+          strain: z.number().min(0).max(100),
+          turningPoint: z.string().nullable()
+        })
+      ),
+      turningPoint: z.string().nullable(),
+      summary: z.string()
+    })
+    .nullable()
+    .default(null)
 });
 export type PostMatchReport = z.infer<typeof postMatchReportSchema>;
+export type TacticalViewerFrame = NonNullable<PostMatchReport["tacticalViewer"]>;
+export type TacticalViewerZone = TacticalViewerFrame["zones"][number];
 
 export const careerStateV1Schema = z.object({
   version: z.literal(1),
@@ -631,10 +679,15 @@ export const careerStateV4Schema = careerStateV3Schema.extend({
 });
 export type CareerStateV4 = z.infer<typeof careerStateV4Schema>;
 
-export const careerStateSchema = careerStateV4Schema.extend({
+export const careerStateV5Schema = careerStateV4Schema.extend({
   version: z.literal(5),
   facilities: z.array(facilityStateSchema),
   media: mediaSponsorStateSchema
+});
+export type CareerStateV5 = z.infer<typeof careerStateV5Schema>;
+
+export const careerStateSchema = careerStateV5Schema.extend({
+  version: z.literal(6)
 });
 export type CareerState = z.infer<typeof careerStateSchema>;
 

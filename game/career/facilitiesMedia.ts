@@ -6,6 +6,7 @@ import type {
   CareerEventDefinition,
   CareerState,
   CareerStateV4,
+  CareerStateV5,
   FacilityModifier,
   FacilityState,
   FacilityType,
@@ -681,7 +682,7 @@ export function upgradeFacility(state: CareerState, type: FacilityType): CareerS
   };
 }
 
-export function upgradeCareerStateV4(career: CareerStateV4): CareerState {
+export function upgradeCareerStateV4(career: CareerStateV4): CareerStateV5 {
   return {
     ...career,
     version: 5,
