@@ -36,6 +36,14 @@ import { PlayerNavigationProvider } from "./playerNavigation";
 type SidebarPanel = "command" | "tactics" | "athletes" | "events" | "saves" | "settings";
 type TopMode = "LIVE" | "SQUAD" | "CAREER" | "BRACKETS" | "SAVES";
 type PendingConfirm = "resetSession" | "startTournamentReplaceCareer" | "startCareerReplaceSave";
+type CareerRouteKey =
+  | "home"
+  | "training"
+  | "calendar"
+  | "matchPlanning"
+  | "liveMatch"
+  | "postMatch"
+  | "saveManager";
 
 const THEME_STORAGE_KEY = "badminton-manager-theme-accent";
 const SIDEBAR_WIDTH_STORAGE_KEY = "sidebarWidth";
@@ -128,6 +136,46 @@ function topModeForPage(page: AppPage, fallback: TopMode, hasCareer: boolean): T
     default:
       return fallback;
   }
+}
+
+function careerRouteKeyForPage(page: AppPage, phase: string, hasCareer: boolean): CareerRouteKey | null {
+  if (page.id === "saveManager") {
+    return "saveManager";
+  }
+
+  if (!hasCareer) {
+    return null;
+  }
+
+  if (page.id === "season") {
+    return "training";
+  }
+
+  if (page.id === "calendar" || page.id === "games") {
+    return "calendar";
+  }
+
+  if (page.id === "matchPlanning") {
+    return "matchPlanning";
+  }
+
+  if (page.id === "liveMatch" || phase === "match") {
+    return "liveMatch";
+  }
+
+  if (page.id === "review") {
+    return "postMatch";
+  }
+
+  if (page.id === "bracket") {
+    return "liveMatch";
+  }
+
+  if (page.id === "home") {
+    return "home";
+  }
+
+  return null;
 }
 
 export function App() {
@@ -372,6 +420,28 @@ export function App() {
     setSidebarPanel("command");
   }
 
+  function openCareerLiveRoute() {
+    if (phase === "match") {
+      setActivePage({ id: "liveMatch" });
+      setSidebarPanel("command");
+      return;
+    }
+
+    if (career?.stage === "pre_match") {
+      setActivePage({ id: "bracket" });
+      setSidebarPanel("command");
+      return;
+    }
+
+    setActivePage({ id: "matchPlanning" });
+    setSidebarPanel("tactics");
+  }
+
+  function openCareerPostMatchRoute() {
+    setActivePage({ id: "review" });
+    setSidebarPanel("command");
+  }
+
   function handleAdvanceAfterMatch() {
     advanceAfterMatch();
     const next = useTournamentStore.getState();
@@ -467,9 +537,13 @@ export function App() {
       onOpenTraining: () => setActivePage({ id: "season" }),
       onOpenCalendar: () => setActivePage({ id: "calendar" }),
       onOpenHome: () => setActivePage({ id: "home" }),
+      onOpenLiveMatch: openCareerLiveRoute,
+      onOpenPostMatch: openCareerPostMatchRoute,
       onOpenProgram: () => setActivePage({ id: "program" }),
       onOpenRivals: () => setActivePage({ id: "rivals" }),
       onOpenMatchPlanning: () => setActivePage({ id: "matchPlanning" }),
+      onOpenSaveManager: openSaveManager,
+      onRequestNewSession: requestReset,
       onOpenFacilities: () => setActivePage({ id: "facilities" }),
       onOpenMedia: () => setActivePage({ id: "media" }),
       onOpenScouting: () => setActivePage({ id: "scouting" }),
@@ -607,6 +681,10 @@ export function App() {
       return <CareerCalendarPage {...careerPageProps} />;
     }
 
+    if (activePage.id === "review" && career) {
+      return <CareerPostMatchHubPage {...careerPageProps} />;
+    }
+
     if (phase === "setup") {
       return (
         <SetupView
@@ -675,6 +753,104 @@ export function App() {
     }
 
     return null;
+  }
+
+  function openCareerRoute(route: CareerRouteKey) {
+    switch (route) {
+      case "home":
+        setActivePage({ id: "home" });
+        setSidebarPanel("command");
+        break;
+      case "training":
+        setActivePage({ id: "season" });
+        setSidebarPanel("command");
+        break;
+      case "calendar":
+        setActivePage({ id: "calendar" });
+        setSidebarPanel("events");
+        break;
+      case "matchPlanning":
+        setActivePage({ id: "matchPlanning" });
+        setSidebarPanel("tactics");
+        break;
+      case "liveMatch":
+        openCareerLiveRoute();
+        break;
+      case "postMatch":
+        openCareerPostMatchRoute();
+        break;
+      case "saveManager":
+        openSaveManager();
+        break;
+    }
+  }
+
+  function renderCareerRouteChrome() {
+    const activeCareerRoute = careerRouteKeyForPage(activePage, phase, Boolean(career));
+
+    if (!career && activePage.id !== "saveManager") {
+      return null;
+    }
+
+    const athlete = career ? playerMap[career.program.managedPlayerId] : selectedPlayer;
+    const routeItems: Array<{ key: CareerRouteKey; label: string; contract: string; disabled?: boolean }> = [
+      { key: "home", label: "Career Home", contract: "management map", disabled: !career },
+      { key: "training", label: "Training", contract: "load and recovery", disabled: !career },
+      { key: "calendar", label: "Calendar / Event Desk", contract: "entry and date control", disabled: !career },
+      { key: "matchPlanning", label: "Match Planning", contract: "tactic plan", disabled: !career },
+      {
+        key: "liveMatch",
+        label: career?.stage === "pre_match" ? "Pre-Match / Live" : "Live Match",
+        contract: phase === "match" ? "point control" : career?.stage === "pre_match" ? "opponent briefing" : "plan first",
+        disabled: !career
+      },
+      {
+        key: "postMatch",
+        label: "Post-Match Review",
+        contract: career?.lastMatchReport ? "evidence review" : "report pending",
+        disabled: !career
+      },
+      { key: "saveManager", label: "Save Manager", contract: "local slot trust" }
+    ];
+
+    return (
+      <section className="career-route-chrome" aria-label="Career workspace navigation">
+        <div className="career-route-summary">
+          <span>Career route</span>
+          <strong>{routeItems.find((item) => item.key === activeCareerRoute)?.label ?? "Save Manager"}</strong>
+          <small>
+            {career
+              ? `${career.date} / ${athlete.name} / ${career.stage.replace("_", " ")}`
+              : activeSavePresent
+                ? "Local save controls"
+                : "No active local career"}
+          </small>
+        </div>
+        <div className="career-route-tabs" role="group" aria-label="Career route family">
+          {routeItems.map((item) => (
+            <button
+              key={item.key}
+              className={
+                item.key === activeCareerRoute
+                  ? "career-route-tab career-route-tab-active"
+                  : "career-route-tab"
+              }
+              type="button"
+              disabled={item.disabled}
+              aria-label={`Career route ${item.key}`}
+              aria-current={item.key === activeCareerRoute ? "page" : undefined}
+              onClick={() => openCareerRoute(item.key)}
+            >
+              <span>{item.label}</span>
+              <small>{item.contract}</small>
+            </button>
+          ))}
+        </div>
+        <button className="command-button command-button-secondary career-route-reset" type="button" onClick={requestReset}>
+          New Session
+        </button>
+      </section>
+    );
   }
 
   return (
@@ -872,7 +1048,10 @@ export function App() {
           />
         </aside>
 
-        <main className="main-canvas">{renderPage()}</main>
+        <main className="main-canvas">
+          {renderCareerRouteChrome()}
+          {renderPage()}
+        </main>
       </div>
 
       <TacticalIntelPanel

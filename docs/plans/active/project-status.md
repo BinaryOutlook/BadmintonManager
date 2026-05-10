@@ -46,6 +46,7 @@ What is now stable:
 - the first career core slice is implemented with a version `3` save payload, typed `game/career/*` modules, calendar/event entry, training/recovery, fatigue/injury readiness, ranking points, budget ledger, and career-aware pre/post match hubs
 - first launch now visibly presents paired `Start Tournament` and `Start Career` decisions
 - the command shell now exposes a Save Manager for the single local slot, including continue career, export JSON, import preview/confirm, active-save deletion, corrupt-backup deletion, and overwrite warnings
+- the career workspace now has visible route chrome and an in-page Career Home map for Training, Calendar/Event Desk, Match Planning, Live Match, Post-Match Review, Save Manager, and New Session actions
 
 ## Completed
 
@@ -101,6 +102,7 @@ What is now stable:
 - [x] refined setup player selection into a playstyle-first recommendation flow with a featured coach-pick layout plus full-roster search, country, tier, style, and stat sort controls
 - [x] added the Phase 1 career core vertical slice across save migration, calendar/event entry, training/recovery, health, ranking, economy, pre-match hub, post-match hub, unit tests, and Playwright reload proof
 - [x] added the first-launch dual path and Save Manager trust slice with import/export/delete/recovery coverage
+- [x] added the career workspace navigation shell and in-page management map for the core career route family
 
 ## In Progress
 
@@ -112,7 +114,7 @@ What is now stable:
 - [ ] improve commentary variety and phrasing
 - [ ] expand post-match stats and scouting reads
 - [ ] polish responsive behavior and visual details across the new shell
-- [ ] review the Phase 1 career core slice for balance, UI density, and later-wave scope boundaries before expanding into scouting, staff, rivals, facilities, media, or tactical viewer work
+- [ ] review the career workspace route shell for responsive density, route contract clarity, and later-wave scope boundaries before deeper calendar/ranking integration
 - [ ] review the first-launch and Save Manager surfaces for copy, visual density, and mobile ergonomics before larger save/history features
 
 ## Next

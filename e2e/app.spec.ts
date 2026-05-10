@@ -218,6 +218,63 @@ test("keeps first-launch save trust surfaces bounded on mobile", async ({ page }
   await expect(overwriteCancel).toHaveJSProperty("scrollWidth", await overwriteCancel.evaluate((button) => button.clientWidth));
 });
 
+test("exposes the career workspace route shell and in-page management map", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Start Career" }).click();
+  const routeChrome = page.getByRole("region", { name: "Career workspace navigation" });
+  const routeFamily = routeChrome.getByRole("group", { name: "Career route family" });
+  const workspaceMap = page.locator(".career-workspace-map");
+
+  await expect(routeChrome).toContainText("Career Home");
+  await expect(routeFamily.getByRole("button", { name: "Career route home" })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("heading", { name: "Career Workspace Map" })).toBeVisible();
+  await expect(workspaceMap.getByRole("button", { name: "Career map training workspace" })).toContainText("Training Desk");
+  await expect(workspaceMap.getByRole("button", { name: "Career map calendar workspace" })).toContainText(
+    "Calendar / Event Desk"
+  );
+  await expect(workspaceMap.getByRole("button", { name: "Career map match planning workspace" })).toContainText(
+    "Match Planning"
+  );
+  await expect(workspaceMap.getByRole("button", { name: "Career map live match workspace" })).toContainText("Live Match");
+  await expect(workspaceMap.getByRole("button", { name: "Career map post match review workspace" })).toContainText(
+    "Post-Match Review"
+  );
+  await expect(workspaceMap.getByRole("button", { name: "Career map save manager workspace" })).toContainText(
+    "Save Manager"
+  );
+  await expect(workspaceMap.getByRole("button", { name: "Career map reset new session action" })).toContainText(
+    "Reset / New Session"
+  );
+
+  await workspaceMap.getByRole("button", { name: "Career map training workspace" }).click();
+  await expect(page.getByRole("heading", { name: "Load Management" })).toBeVisible();
+  await expect(routeFamily.getByRole("button", { name: "Career route training" })).toHaveAttribute("aria-current", "page");
+
+  await routeFamily.getByRole("button", { name: "Career route calendar" }).click();
+  await expect(page.getByRole("heading", { name: "Season Week" })).toBeVisible();
+  await expect(routeFamily.getByRole("button", { name: "Career route calendar" })).toHaveAttribute("aria-current", "page");
+
+  await routeFamily.getByRole("button", { name: "Career route matchPlanning" }).click();
+  await expect(page.getByRole("heading", { name: "Advanced Tactics Creator" })).toBeVisible();
+  await expect(routeFamily.getByRole("button", { name: "Career route matchPlanning" })).toHaveAttribute(
+    "aria-current",
+    "page"
+  );
+
+  await routeFamily.getByRole("button", { name: "Career route postMatch" }).click();
+  await expect(page.getByRole("heading", { name: "Match Evidence Review" })).toBeVisible();
+  await expect(routeFamily.getByRole("button", { name: "Career route postMatch" })).toHaveAttribute("aria-current", "page");
+
+  await routeFamily.getByRole("button", { name: "Career route saveManager" }).click();
+  await expect(page.getByRole("heading", { name: "Local Save Control" })).toBeVisible();
+  await expect(routeFamily.getByRole("button", { name: "Career route saveManager" })).toHaveAttribute("aria-current", "page");
+
+  await routeChrome.getByRole("button", { name: "New Session" }).click();
+  await expect(page.getByRole("heading", { name: "Reset tournament state?" })).toBeVisible();
+});
+
 test("manages export import delete and overwrite warnings from the visible Save Manager", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.addInitScript(() => {
