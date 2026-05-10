@@ -245,13 +245,13 @@ test("surfaces dynamic rival pressure and persists the circuit room", async ({ p
   await page.getByRole("button", { name: "Circuit Room" }).first().click();
 
   await expect(page.getByRole("heading", { name: "Rival Programs" })).toBeVisible();
-  await expect(page.getByText(/Tokyo Vector Lab/)).toBeVisible();
+  await expect(page.getByText("Tokyo Vector Lab", { exact: true })).toBeVisible();
   await expect(page.getByText(/Persistent circuit events/)).toBeVisible();
 
   await page.getByRole("button", { name: "Sim Rival Day" }).click();
-  await expect(page.getByText(/Rival pressure:/)).toBeVisible();
   await expect(page.getByText(/Metro Open/).first()).toBeVisible();
-  await expect(page.getByText(/Latest selection:/).first()).toContainText(/entered|completed/);
+  await expect(page.getByText(/leads the field/).first()).toBeVisible();
+  await expect(page.getByText(/Latest selection: .*entered/).first()).toBeVisible();
 
   await page.reload();
   await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
