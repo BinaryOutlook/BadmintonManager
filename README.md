@@ -17,7 +17,7 @@ Start Career     -> single-slot local coaching program
 
 Use `SAVE_MANAGER` in the command shell to continue a career, export the active JSON save, import a validated save with preview/confirm, delete the active local slot, or clear a quarantined corrupt backup. The active browser keys remain `badminton-manager-save` and `badminton-manager-save-corrupt`.
 
-Once a career is loaded, the main canvas shows a career route strip above the workspace and Career Home acts as the management map. Training, Calendar / Event Desk, Match Planning, Live Match, Post-Match Review, Save Manager, and New Session controls are reachable from visible in-page actions instead of depending on sidebar discovery.
+Once a career is loaded, the main canvas shows a career route strip above the workspace and Career Home acts as the management map. Training, Calendar / Event Desk, Match Planning, Live Match, Post-Match Review, Save Manager, and New Session controls are reachable from visible in-page actions instead of depending on sidebar discovery. The Calendar / Event Desk now surfaces the fictional circuit tier, entry deadline, eligibility gate, ranking cutoff, seed snapshot, draw milestone, points, prize, cost, readiness, and season-race stakes while calling out that rankings and seeding are simplified presentation models.
 
 ## Quick Start
 

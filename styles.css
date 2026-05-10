@@ -805,6 +805,67 @@ button {
   gap: 0.72rem;
 }
 
+.career-quick-stakes,
+.career-event-brief,
+.career-event-stakes-grid {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.career-quick-stakes {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.career-event-brief {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.career-event-stakes-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0.7rem 0;
+}
+
+.career-quick-stakes div,
+.career-event-brief div,
+.career-event-stakes-grid div {
+  min-width: 0;
+  border: 1px solid rgba(48, 54, 61, 0.92);
+  border-radius: 0.35rem;
+  padding: 0.68rem;
+  background: rgba(12, 14, 17, 0.72);
+}
+
+.career-quick-stakes span,
+.career-event-brief span,
+.career-event-stakes-grid span,
+.deadline-chip {
+  display: block;
+  color: var(--muted-soft);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.career-quick-stakes strong,
+.career-event-brief strong,
+.career-event-stakes-grid strong {
+  display: block;
+  margin-top: 0.2rem;
+  overflow-wrap: anywhere;
+  color: var(--text);
+  line-height: 1.22;
+}
+
+.career-quick-stakes small,
+.career-event-brief small,
+.career-event-stakes-grid small {
+  display: block;
+  margin-top: 0.35rem;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
 .career-decision-block strong {
   color: var(--text);
   font-size: 1.28rem;
@@ -963,6 +1024,26 @@ button {
 .career-day-active {
   border-color: rgba(57, 255, 20, 0.42);
   background: rgba(57, 255, 20, 0.08);
+}
+
+.career-deadline-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.38rem;
+  margin: 0.55rem 0;
+}
+
+.deadline-chip {
+  border: 1px solid rgba(48, 54, 61, 0.92);
+  border-radius: 999px;
+  padding: 0.28rem 0.48rem;
+  background: rgba(12, 14, 17, 0.72);
+  letter-spacing: 0.04em;
+}
+
+.deadline-chip-past {
+  border-color: rgba(57, 255, 20, 0.25);
+  color: var(--lime-soft);
 }
 
 .metric-track-fill-danger {
@@ -4330,6 +4411,9 @@ button {
   .career-week-strip,
   .career-stat-grid,
   .career-brief-grid,
+  .career-quick-stakes,
+  .career-event-brief,
+  .career-event-stakes-grid,
   .career-evidence-grid,
   .advice-card-grid,
   .tactic-module-grid,
@@ -4370,6 +4454,15 @@ button {
   }
 
   .career-route-reset {
+    width: 100%;
+  }
+
+  .career-event-card {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .career-event-card .command-button {
     width: 100%;
   }
 

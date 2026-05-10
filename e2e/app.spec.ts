@@ -75,7 +75,7 @@ test("can complete and reload the career core slice with tactical viewer proof",
 
   await page.getByRole("button", { name: "Career Home" }).click();
   await page.getByRole("button", { name: "Event Desk" }).click();
-  await expect(page.getByRole("heading", { name: "Season Week" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Calendar / Event Desk" })).toBeVisible();
   await expect(page.getByText(/prize \$15,000/)).toBeVisible();
   await page.getByRole("button", { name: "Enter Event" }).first().click();
   await expect(page.getByRole("button", { name: "Entered" }).first()).toBeVisible();
@@ -159,7 +159,7 @@ test("surfaces corrupt save recovery and blocks unaffordable event entry", async
   await page.reload();
 
   await page.getByRole("button", { name: "Event Desk" }).click();
-  await expect(page.getByRole("heading", { name: "Season Week" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Calendar / Event Desk" })).toBeVisible();
   await expect(page.getByText(/prize \$15,000/)).toBeVisible();
   await expect(page.getByText(/Insufficient funds: program cash \$100/).first()).toBeVisible();
   await expect(page.getByRole("button", { name: "Insufficient Funds" }).first()).toBeDisabled();
@@ -253,7 +253,7 @@ test("exposes the career workspace route shell and in-page management map", asyn
   await expect(routeFamily.getByRole("button", { name: "Career route training" })).toHaveAttribute("aria-current", "page");
 
   await routeFamily.getByRole("button", { name: "Career route calendar" }).click();
-  await expect(page.getByRole("heading", { name: "Season Week" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Calendar / Event Desk" })).toBeVisible();
   await expect(routeFamily.getByRole("button", { name: "Career route calendar" })).toHaveAttribute("aria-current", "page");
 
   await routeFamily.getByRole("button", { name: "Career route matchPlanning" }).click();
@@ -273,6 +273,44 @@ test("exposes the career workspace route shell and in-page management map", asyn
 
   await routeChrome.getByRole("button", { name: "New Session" }).click();
   await expect(page.getByRole("heading", { name: "Reset tournament state?" })).toBeVisible();
+});
+
+test("integrates fictional calendar ranking stakes into career home and event desk", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Start Career" }).click();
+  await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
+  await expect(page.getByLabel("Next event stakes summary")).toContainText("Entry gate clear");
+  await expect(page.getByLabel("Next event stakes summary")).toContainText("Ranking Cutoff");
+  await expect(page.getByLabel("Next event stakes summary")).toContainText("Champion points 700 pts");
+  await expect(page.getByText(/fictional simplified circuit list/)).toBeVisible();
+
+  await page.getByRole("button", { name: "Event Desk" }).click();
+  await expect(page.getByRole("heading", { name: "Calendar / Event Desk" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Event Desk Brief" })).toBeVisible();
+  await expect(page.getByText(/Entry deadline 2026-06-01, draw milestone 2026-06-02/)).toBeVisible();
+  await expect(page.getByText(/Champion prize \$15,000/)).toBeVisible();
+  await expect(page.getByText(/Seed Snapshot/).first()).toBeVisible();
+  await expect(page.getByLabel("Metro Open deadline milestones")).toContainText("Ranking cutoff: 2026-05-29");
+  await expect(page.getByLabel("Metro Open deadline milestones")).toContainText("Draw published: 2026-06-02");
+  await expect(page.getByText(/presentation, not full draw-engine replacement/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Simplification Boundary" })).toBeVisible();
+  await expect(page.getByText(/playable match bridge remains the existing deterministic 16-player knockout/)).toBeVisible();
+
+  await page.getByRole("button", { name: "Enter Event" }).first().click();
+  await expect(page.getByRole("button", { name: "Entered" }).first()).toBeVisible();
+  await page.evaluate(() => {
+    const raw = window.localStorage.getItem("badminton-manager-save");
+    if (!raw) {
+      throw new Error("Expected a persisted career save.");
+    }
+
+    const save = JSON.parse(raw);
+    if (!save.career.enteredEventIds.includes("metro-open-300")) {
+      throw new Error("Expected Metro Open entry to persist.");
+    }
+  });
 });
 
 test("manages export import delete and overwrite warnings from the visible Save Manager", async ({ page }) => {
