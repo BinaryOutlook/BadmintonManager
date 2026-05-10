@@ -34,6 +34,8 @@ Persistence approach:
 
 - small settings in browser storage
 - tournament and run saves in browser storage first
+- a single active local save slot at `badminton-manager-save`
+- corrupt active saves quarantined at `badminton-manager-save-corrupt`
 - no required backend for the MVP
 
 ## Why This Stack
@@ -236,6 +238,8 @@ Initial persistence rules:
 - validate saves with Zod before hydration
 - include an explicit save version
 - keep saves portable JSON-shaped data
+- import saves with parse -> Zod schema validation -> migration -> preview/confirm before replacing the active slot
+- reject malformed or schema-invalid imports without mutating the active save or corrupt backup key
 
 The project should not adopt a backend or production database unless a later version clearly requires one.
 

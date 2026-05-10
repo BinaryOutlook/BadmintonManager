@@ -8,6 +8,15 @@ The player acts as the coach and match desk: selecting tactics, reading pressure
 coach intent -> tactics -> deterministic engine -> commentary + telemetry
 ```
 
+The first screen now offers both local paths:
+
+```text
+Start Tournament -> quick seeded knockout run
+Start Career     -> single-slot local coaching program
+```
+
+Use `SAVE_MANAGER` in the command shell to continue a career, export the active JSON save, import a validated save with preview/confirm, delete the active local slot, or clear a quarantined corrupt backup. The active browser keys remain `badminton-manager-save` and `badminton-manager-save-corrupt`.
+
 ## Quick Start
 
 Requirements:

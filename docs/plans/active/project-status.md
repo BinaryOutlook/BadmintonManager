@@ -1,6 +1,6 @@
 # Project Status
 
-Status date: 2026-05-10
+Status date: 2026-05-11
 Current version target: `v0.2.3 Game-algorithm`
 Overall phase: Match simulation fidelity and game-algorithm upgrade
 Chosen stack: Option A local-first SPA
@@ -44,6 +44,8 @@ What is now stable:
 - the player profile overview now fits as a compact one-screen desktop dashboard, fixes radar label clipping, and supports a resizable/collapsible persistent sidebar
 - the tournament setup athlete picker now leads with playstyle/strength recommendation modes, features the strongest choice in a `1 x 2` coach-pick card with four compact alternatives, and moves country, search, tier, style, and sort controls into the Browse All Athletes fallback
 - the first career core slice is implemented with a version `3` save payload, typed `game/career/*` modules, calendar/event entry, training/recovery, fatigue/injury readiness, ranking points, budget ledger, and career-aware pre/post match hubs
+- first launch now visibly presents paired `Start Tournament` and `Start Career` decisions
+- the command shell now exposes a Save Manager for the single local slot, including continue career, export JSON, import preview/confirm, active-save deletion, corrupt-backup deletion, and overwrite warnings
 
 ## Completed
 
@@ -98,6 +100,7 @@ What is now stable:
 - [x] compressed the player profile Overview into a one-screen dashboard at `1440 x 900`, added short-viewport compact mode for `1366 x 768`, fixed the radar safe drawing area, and made the sidebar resizable, collapsible, and locally persistent
 - [x] refined setup player selection into a playstyle-first recommendation flow with a featured coach-pick layout plus full-roster search, country, tier, style, and stat sort controls
 - [x] added the Phase 1 career core vertical slice across save migration, calendar/event entry, training/recovery, health, ranking, economy, pre-match hub, post-match hub, unit tests, and Playwright reload proof
+- [x] added the first-launch dual path and Save Manager trust slice with import/export/delete/recovery coverage
 
 ## In Progress
 
@@ -110,6 +113,7 @@ What is now stable:
 - [ ] expand post-match stats and scouting reads
 - [ ] polish responsive behavior and visual details across the new shell
 - [ ] review the Phase 1 career core slice for balance, UI density, and later-wave scope boundaries before expanding into scouting, staff, rivals, facilities, media, or tactical viewer work
+- [ ] review the first-launch and Save Manager surfaces for copy, visual density, and mobile ergonomics before larger save/history features
 
 ## Next
 
