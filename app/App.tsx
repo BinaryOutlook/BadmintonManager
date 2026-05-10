@@ -34,7 +34,7 @@ import { SquadPage } from "./pages/SquadPage";
 import { PlayerNavigationProvider } from "./playerNavigation";
 
 type SidebarPanel = "command" | "tactics" | "athletes" | "events" | "saves" | "settings";
-type TopMode = "LIVE" | "SQUAD" | "BRACKETS";
+type TopMode = "LIVE" | "SQUAD" | "CAREER" | "BRACKETS" | "SAVES";
 type PendingConfirm = "resetSession" | "startTournamentReplaceCareer" | "startCareerReplaceSave";
 
 const THEME_STORAGE_KEY = "badminton-manager-theme-accent";
@@ -96,7 +96,7 @@ function loadSidebarCollapsed() {
   return window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === "true";
 }
 
-function topModeForPage(page: AppPage, fallback: TopMode): TopMode {
+function topModeForPage(page: AppPage, fallback: TopMode, hasCareer: boolean): TopMode {
   switch (page.id) {
     case "setup":
     case "squad":
@@ -104,13 +104,11 @@ function topModeForPage(page: AppPage, fallback: TopMode): TopMode {
       return "SQUAD";
     case "liveMatch":
       return "LIVE";
-    case "bracket":
-    case "review":
-    case "games":
+    case "saveManager":
+      return "SAVES";
+    case "home":
     case "season":
     case "calendar":
-    case "saveManager":
-    case "home":
     case "program":
     case "rivals":
     case "matchPlanning":
@@ -121,6 +119,11 @@ function topModeForPage(page: AppPage, fallback: TopMode): TopMode {
     case "youth":
     case "staff":
     case "promises":
+      return "CAREER";
+    case "bracket":
+    case "review":
+      return hasCareer ? "CAREER" : "BRACKETS";
+    case "games":
       return "BRACKETS";
     default:
       return fallback;
@@ -192,7 +195,7 @@ export function App() {
   const [themeAccent, setThemeAccent] = useState<ThemeAccent>(loadThemeAccent);
   const selectedPlayer = playerMap[selectedPlayerId];
   const phaseTopMode = phase === "match" ? "LIVE" : phase === "setup" ? "SQUAD" : "BRACKETS";
-  const topMode = topModeForPage(activePage, phaseTopMode);
+  const topMode = topModeForPage(activePage, phaseTopMode, Boolean(career));
   const selectedTactic =
     tacticOptions.find((option) => option.key === plannedTacticKey) ?? tacticOptions[0];
   const canEnterManagedMatch = phase === "overview" && Boolean(tournament);
@@ -385,6 +388,17 @@ export function App() {
     if (mode === "LIVE") {
       setActivePage(phase === "match" ? { id: "liveMatch" } : pageForPhase(phase));
       setSidebarPanel("command");
+      return;
+    }
+
+    if (mode === "CAREER") {
+      setActivePage(career ? { id: "home" } : { id: "games" });
+      setSidebarPanel(career ? "command" : "events");
+      return;
+    }
+
+    if (mode === "SAVES") {
+      openSaveManager();
       return;
     }
 
@@ -673,7 +687,7 @@ export function App() {
         <div className="brand-row">
           <span className="brand-mark">SMASH_COMMAND</span>
           <nav className="topnav" aria-label="Primary">
-            {(["LIVE", "SQUAD", "BRACKETS"] as TopMode[]).map((mode) => (
+            {(["LIVE", "SQUAD", "CAREER", "BRACKETS", "SAVES"] as TopMode[]).map((mode) => (
               <button
                 key={mode}
                 type="button"

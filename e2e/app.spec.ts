@@ -165,6 +165,59 @@ test("surfaces corrupt save recovery and blocks unaffordable event entry", async
   await expect(page.getByRole("button", { name: "Insufficient Funds" }).first()).toBeDisabled();
 });
 
+test("keeps first-launch save trust surfaces bounded on mobile", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Start Tournament" }).click();
+  await expect(page.getByRole("heading", { name: "Next Opponent" })).toBeVisible();
+  await page.evaluate(() => {
+    const pageWidth = document.documentElement.scrollWidth;
+    const viewportWidth = window.innerWidth;
+    const matchup = document.querySelector(".matchup-grid");
+
+    if (pageWidth > viewportWidth + 1) {
+      throw new Error(`Unexpected document overflow: ${pageWidth} > ${viewportWidth}`);
+    }
+
+    if (matchup && matchup.scrollWidth > matchup.clientWidth + 1) {
+      throw new Error(`Unexpected matchup overflow: ${matchup.scrollWidth} > ${matchup.clientWidth}`);
+    }
+  });
+
+  await page.getByRole("banner").getByRole("button", { name: "SETTINGS" }).click();
+  await page.getByRole("button", { name: "New Session" }).click();
+  await expect(page.getByRole("heading", { name: "Start a new session?" })).toBeVisible();
+  const resetCancel = page.getByRole("button", { name: "Cancel" });
+  await expect(resetCancel).toBeVisible();
+  await expect(resetCancel).toHaveJSProperty("scrollWidth", await resetCancel.evaluate((button) => button.clientWidth));
+  await resetCancel.click();
+
+  await page.evaluate(() => {
+    window.localStorage.clear();
+    window.sessionStorage.clear();
+    window.location.reload();
+  });
+  await expect(page.getByRole("heading", { name: "Choose The Run" })).toBeVisible();
+  await page.getByRole("button", { name: "Start Career" }).click();
+  await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
+
+  const topNav = page.getByRole("navigation", { name: "Primary" });
+  await expect(topNav.getByRole("button", { name: "CAREER" })).toHaveAttribute("aria-current", "page");
+  await expect(topNav.getByRole("button", { name: "BRACKETS" })).not.toHaveAttribute("aria-current", "page");
+
+  await page.getByRole("button", { name: "SAVE_MANAGER" }).click();
+  await expect(page.getByRole("heading", { name: "Local Save Control" })).toBeVisible();
+  await expect(topNav.getByRole("button", { name: "SAVES" })).toHaveAttribute("aria-current", "page");
+  await expect(topNav.getByRole("button", { name: "BRACKETS" })).not.toHaveAttribute("aria-current", "page");
+
+  await page.getByRole("button", { name: "Start Tournament" }).click();
+  await expect(page.getByRole("heading", { name: "Start tournament and replace career?" })).toBeVisible();
+  const overwriteCancel = page.getByRole("button", { name: "Cancel" });
+  await expect(overwriteCancel).toBeVisible();
+  await expect(overwriteCancel).toHaveJSProperty("scrollWidth", await overwriteCancel.evaluate((button) => button.clientWidth));
+});
+
 test("manages export import delete and overwrite warnings from the visible Save Manager", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.addInitScript(() => {
