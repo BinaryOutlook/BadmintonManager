@@ -55,7 +55,7 @@ test("can start a tournament run and play through a managed match", async ({ pag
   ).toBeVisible();
 });
 
-test("can complete and reload the career core slice", async ({ page }) => {
+test("can complete and reload the career core slice with tactical viewer proof", async ({ page }) => {
   test.slow();
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto("/");
