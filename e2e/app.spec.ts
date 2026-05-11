@@ -226,6 +226,22 @@ async function startNewCareer(page: Page, athleteName = seededPlayers[0].player.
   await page.getByRole("button", { name: new RegExp(`Confirm ${athleteName}`) }).click();
 }
 
+async function openSettings(page: Page) {
+  await page.getByRole("banner").getByRole("button", { name: "Settings" }).click();
+}
+
+async function openSaveManager(page: Page) {
+  await page
+    .getByRole("navigation", { name: "Primary commands" })
+    .getByRole("button", { name: /Save Manager/ })
+    .click();
+}
+
+async function requestNewSession(page: Page) {
+  await openSettings(page);
+  await page.getByRole("button", { name: "New Session" }).click();
+}
+
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -235,9 +251,9 @@ test("can start a tournament run and play through a managed match", async ({ pag
   await page.goto("/");
 
   await expect(page.getByRole("heading", { name: "Start Screen" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Quick Tournament" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Quick Tournament", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Start New Career" })).toBeVisible();
-  await page.getByRole("button", { name: "Quick Tournament" }).click();
+  await page.getByRole("button", { name: "Quick Tournament", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Quick Tournament Setup" })).toBeVisible();
 
   await page.getByRole("button", { name: "Grand-Slam Southpaw", exact: true }).click();
@@ -249,7 +265,7 @@ test("can start a tournament run and play through a managed match", async ({ pag
   await expect(page.getByRole("button", { name: "Expand sidebar" })).toBeVisible();
   await page.getByRole("button", { name: "Expand sidebar" }).click();
 
-  await page.getByRole("banner").getByRole("button", { name: "SETTINGS" }).click();
+  await openSettings(page);
   await expect(page.getByRole("heading", { name: "Console Preferences" })).toBeVisible();
   await page.getByRole("button", { name: "Cyan Cool tactical display accent." }).click();
   await expect(page.getByRole("button", { name: "Cyan Cool tactical display accent." })).toHaveAttribute(
@@ -259,7 +275,7 @@ test("can start a tournament run and play through a managed match", async ({ pag
   await page.getByRole("button", { name: "Close settings" }).click();
   await page.getByRole("button", { name: "Back" }).click();
 
-  await page.getByRole("button", { name: "Quick Tournament" }).click();
+  await page.getByRole("button", { name: "Quick Tournament", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Quick Tournament Setup" })).toBeVisible();
   await page.getByRole("button", { name: "Start Tournament" }).click();
   await expect(page.getByRole("button", { name: "Enter Match" })).toBeVisible();
@@ -297,9 +313,9 @@ test("starts from a direct screen and locks a confirmed career athlete", async (
 
   await expect(page.getByRole("heading", { name: "Start Screen" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Start New Career" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Quick Tournament" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Quick Tournament", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Load Save" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Preferences" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Preferences", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Browse All Athletes" })).toHaveCount(0);
   await captureFocusedScreenshot(page, "t099-start-screen-desktop");
   await page.setViewportSize({ width: 390, height: 844 });
@@ -328,14 +344,14 @@ test("starts from a direct screen and locks a confirmed career athlete", async (
 
   await page.reload();
   await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
-  await page.getByRole("button", { name: "Athletes" }).click();
+  await page.getByRole("navigation", { name: "Primary commands" }).getByRole("button", { name: /Squad/ }).click();
   await expect(page.getByText("Career athlete locked").first()).toBeVisible();
   await expect(page.getByRole("button", { name: "Select Athlete" })).toHaveCount(0);
 
-  await page.getByRole("button", { name: "NEW_SESSION" }).click();
+  await requestNewSession(page);
   await page.getByRole("button", { name: "Start New Session" }).click();
-  await expect(page.getByRole("button", { name: "Quick Tournament" })).toBeVisible();
-  await page.getByRole("button", { name: "Quick Tournament" }).click();
+  await expect(page.getByRole("button", { name: "Quick Tournament", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Quick Tournament", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Quick Tournament Setup" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Browse All Athletes" })).toBeVisible();
 });
@@ -350,9 +366,9 @@ test("uses an active-career quick tournament draft only after replacement confir
   await startNewCareer(page, careerPlayer.name);
   await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
 
-  await page.getByRole("button", { name: "NEW_SESSION" }).click();
+  await requestNewSession(page);
   await page.getByRole("button", { name: "Start New Session" }).click();
-  await page.getByRole("button", { name: "Quick Tournament" }).click();
+  await page.getByRole("button", { name: "Quick Tournament", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Quick Tournament Setup" })).toBeVisible();
   await page.getByRole("button", { name: "Browse All Athletes" }).click();
   await page
@@ -582,7 +598,7 @@ test("surfaces corrupt save recovery and blocks unaffordable event entry", async
   });
   await page.goto("/");
 
-  await page.getByRole("button", { name: "SAVE_MANAGER" }).click();
+  await openSaveManager(page);
   await expect(page.getByRole("heading", { name: "Local Save Control" })).toBeVisible();
   await expect(page.getByText(/Quarantine present/).first()).toBeVisible();
 
@@ -611,7 +627,7 @@ test("keeps first-launch save trust surfaces bounded on mobile", async ({ page }
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
 
-  await page.getByRole("button", { name: "Quick Tournament" }).click();
+  await page.getByRole("button", { name: "Quick Tournament", exact: true }).click();
   await page.getByRole("button", { name: "Start Tournament" }).click();
   await expect(page.getByRole("heading", { name: "Next Opponent" })).toBeVisible();
   await page.evaluate(() => {
@@ -628,8 +644,7 @@ test("keeps first-launch save trust surfaces bounded on mobile", async ({ page }
     }
   });
 
-  await page.getByRole("banner").getByRole("button", { name: "SETTINGS" }).click();
-  await page.getByRole("button", { name: "New Session" }).click();
+  await requestNewSession(page);
   await expect(page.getByRole("heading", { name: "Start a new session?" })).toBeVisible();
   const resetCancel = page.getByRole("button", { name: "Cancel" });
   await expect(resetCancel).toBeVisible();
@@ -645,14 +660,14 @@ test("keeps first-launch save trust surfaces bounded on mobile", async ({ page }
   await startNewCareer(page);
   await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
 
-  const topNav = page.getByRole("navigation", { name: "Primary" });
-  await expect(topNav.getByRole("button", { name: "CAREER" })).toHaveAttribute("aria-current", "page");
-  await expect(topNav.getByRole("button", { name: "BRACKETS" })).not.toHaveAttribute("aria-current", "page");
+  const commandRail = page.getByRole("navigation", { name: "Primary commands" });
+  await expect(commandRail.getByRole("button", { name: /Portal/ })).toHaveAttribute("aria-current", "page");
+  await expect(commandRail.getByRole("button", { name: /Competitions/ })).not.toHaveAttribute("aria-current", "page");
 
-  await page.getByRole("button", { name: "SAVE_MANAGER" }).click();
+  await openSaveManager(page);
   await expect(page.getByRole("heading", { name: "Local Save Control" })).toBeVisible();
-  await expect(topNav.getByRole("button", { name: "SAVES" })).toHaveAttribute("aria-current", "page");
-  await expect(topNav.getByRole("button", { name: "BRACKETS" })).not.toHaveAttribute("aria-current", "page");
+  await expect(commandRail.getByRole("button", { name: /Save Manager/ })).toHaveAttribute("aria-current", "page");
+  await expect(commandRail.getByRole("button", { name: /Competitions/ })).not.toHaveAttribute("aria-current", "page");
 
   await page.getByRole("button", { name: "Start Tournament" }).click();
   await expect(page.getByRole("heading", { name: "Start tournament and replace career?" })).toBeVisible();
@@ -661,60 +676,39 @@ test("keeps first-launch save trust surfaces bounded on mobile", async ({ page }
   await expect(overwriteCancel).toHaveJSProperty("scrollWidth", await overwriteCancel.evaluate((button) => button.clientWidth));
 });
 
-test("exposes the career workspace route shell and in-page management map", async ({ page }) => {
+test("exposes the grouped management shell as the primary command surface", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/");
 
   await startNewCareer(page);
-  const routeChrome = page.getByRole("region", { name: "Career workspace navigation" });
-  const routeFamily = routeChrome.getByRole("group", { name: "Career route family" });
-  const workspaceMap = page.locator(".career-workspace-map");
+  const commandRail = page.getByRole("navigation", { name: "Primary commands" });
 
-  await expect(routeChrome).toContainText("Career Home");
-  await expect(routeFamily.getByRole("button", { name: "Career route home" })).toHaveAttribute("aria-current", "page");
-  await expect(page.getByRole("heading", { name: "Career Workspace Map" })).toBeVisible();
-  await expect(workspaceMap.getByRole("button", { name: "Career map training workspace" })).toContainText("Training Desk");
-  await expect(workspaceMap.getByRole("button", { name: "Career map calendar workspace" })).toContainText(
-    "Calendar / Event Desk"
-  );
-  await expect(workspaceMap.getByRole("button", { name: "Career map match planning workspace" })).toContainText(
-    "Match Planning"
-  );
-  await expect(workspaceMap.getByRole("button", { name: "Career map live match workspace" })).toContainText("Live Match");
-  await expect(workspaceMap.getByRole("button", { name: "Career map post match review workspace" })).toContainText(
-    "Post-Match Review"
-  );
-  await expect(workspaceMap.getByRole("button", { name: "Career map save manager workspace" })).toContainText(
-    "Save Manager"
-  );
-  await expect(workspaceMap.getByRole("button", { name: "Career map reset new session action" })).toContainText(
-    "Reset / New Session"
-  );
+  for (const group of ["Core", "Program", "Match", "Operations", "System"]) {
+    await expect(commandRail.getByRole("heading", { name: group })).toBeVisible();
+  }
 
-  await workspaceMap.getByRole("button", { name: "Career map training workspace" }).click();
+  await expect(commandRail.getByRole("button", { name: /Portal/ })).toHaveAttribute("aria-current", "page");
+  await expect(commandRail.getByRole("button", { name: /Inbox preview/ })).toBeDisabled();
+  await expect(page.getByRole("heading", { name: "Career Workspace Map" })).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Career workspace navigation" })).toHaveCount(0);
+
+  await commandRail.getByRole("button", { name: /Training/ }).click();
   await expect(page.getByRole("heading", { name: "Load Management" })).toBeVisible();
-  await expect(routeFamily.getByRole("button", { name: "Career route training" })).toHaveAttribute("aria-current", "page");
+  await expect(commandRail.getByRole("button", { name: /Training/ })).toHaveAttribute("aria-current", "page");
 
-  await routeFamily.getByRole("button", { name: "Career route calendar" }).click();
+  await commandRail.getByRole("button", { name: /Calendar/ }).click();
   await expect(page.getByRole("heading", { name: "Calendar / Event Desk" })).toBeVisible();
-  await expect(routeFamily.getByRole("button", { name: "Career route calendar" })).toHaveAttribute("aria-current", "page");
+  await expect(commandRail.getByRole("button", { name: /Calendar/ })).toHaveAttribute("aria-current", "page");
 
-  await routeFamily.getByRole("button", { name: "Career route matchPlanning" }).click();
+  await commandRail.getByRole("button", { name: /Tactics/ }).click();
   await expect(page.getByRole("heading", { name: "Advanced Tactics Creator" })).toBeVisible();
-  await expect(routeFamily.getByRole("button", { name: "Career route matchPlanning" })).toHaveAttribute(
-    "aria-current",
-    "page"
-  );
+  await expect(commandRail.getByRole("button", { name: /Tactics/ })).toHaveAttribute("aria-current", "page");
 
-  await routeFamily.getByRole("button", { name: "Career route postMatch" }).click();
-  await expect(page.getByRole("heading", { name: "Match Evidence Review" })).toBeVisible();
-  await expect(routeFamily.getByRole("button", { name: "Career route postMatch" })).toHaveAttribute("aria-current", "page");
-
-  await routeFamily.getByRole("button", { name: "Career route saveManager" }).click();
+  await openSaveManager(page);
   await expect(page.getByRole("heading", { name: "Local Save Control" })).toBeVisible();
-  await expect(routeFamily.getByRole("button", { name: "Career route saveManager" })).toHaveAttribute("aria-current", "page");
+  await expect(commandRail.getByRole("button", { name: /Save Manager/ })).toHaveAttribute("aria-current", "page");
 
-  await routeChrome.getByRole("button", { name: "New Session" }).click();
+  await requestNewSession(page);
   await expect(page.getByRole("heading", { name: "Reset tournament state?" })).toBeVisible();
 });
 
@@ -767,9 +761,9 @@ test("manages export import delete and overwrite warnings from the visible Save 
   await startNewCareer(page);
   await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
 
-  await page.getByRole("button", { name: "SAVE_MANAGER" }).click();
+  await openSaveManager(page);
   await expect(page.getByRole("heading", { name: "Local Save Control" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Continue Career" })).toBeEnabled();
+  await expect(page.getByRole("main").getByRole("button", { name: "Continue Career" })).toBeEnabled();
   await expect(page.getByRole("heading", { name: "Import Save" })).toBeVisible();
   await expect(page.getByText(/Quarantine present/).first()).toBeVisible();
 
@@ -783,7 +777,7 @@ test("manages export import delete and overwrite warnings from the visible Save 
   await page.getByRole("button", { name: /Confirm Adrian Koh/ }).click();
   await expect(page.getByRole("heading", { name: "Start a new career?" })).toBeVisible();
   await page.getByRole("button", { name: "Cancel" }).click();
-  await page.getByRole("button", { name: "SAVE_MANAGER" }).click();
+  await openSaveManager(page);
   await expect(page.getByRole("heading", { name: "Local Save Control" })).toBeVisible();
 
   const downloadPromise = page.waitForEvent("download");
@@ -817,7 +811,7 @@ test("manages export import delete and overwrite warnings from the visible Save 
     }
   });
 
-  await page.getByRole("button", { name: "SAVE_MANAGER" }).click();
+  await openSaveManager(page);
   await page.getByLabel("Import Save JSON", { exact: true }).fill(exportedSave);
   await page.getByRole("button", { name: "Preview Import" }).click();
   await expect(page.getByText(/Import parsed, validated, and migrated/)).toBeVisible();
@@ -830,7 +824,7 @@ test("manages export import delete and overwrite warnings from the visible Save 
     }
   });
 
-  await page.getByRole("button", { name: "SAVE_MANAGER" }).click();
+  await openSaveManager(page);
   await page.getByRole("button", { name: "Delete Quarantined Save" }).click();
   await page.getByRole("button", { name: "Confirm", exact: true }).click();
   await page.evaluate(() => {
@@ -1013,7 +1007,7 @@ test("can upgrade facilities and resolve sponsor media pressure", async ({ page 
   await expect(page.getByRole("heading", { name: "Facilities Upgrades" })).toBeVisible();
   await page.getByRole("button", { name: "Upgrade Training Hall" }).click();
   await expect(page.getByText("Training Hall level 1 build started")).toBeVisible();
-  await expect(page.getByText(/Training/).first()).toBeVisible();
+  await expect(page.getByRole("main").getByText(/Training/).first()).toBeVisible();
 
   await page.getByRole("button", { name: "Upgrade Analytics Lab" }).click();
   await expect(page.getByText("Analytics Lab level 1 build started")).toBeVisible();

@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { CompleteView } from "../components/CompleteView";
 import {
   CareerAthletePromisesPage,
@@ -33,17 +33,34 @@ import { PlayerProfilePage } from "./pages/PlayerProfilePage";
 import { SquadPage } from "./pages/SquadPage";
 import { PlayerNavigationProvider } from "./playerNavigation";
 
-type SidebarPanel = "command" | "tactics" | "athletes" | "events" | "saves" | "settings";
-type TopMode = "LIVE" | "SQUAD" | "CAREER" | "BRACKETS" | "SAVES";
-type PendingConfirm = "resetSession" | "startTournamentReplaceCareer" | "startCareerReplaceSave";
-type CareerRouteKey =
-  | "home"
+type CommandId =
+  | "portal"
+  | "inbox"
+  | "squad"
   | "training"
   | "calendar"
-  | "matchPlanning"
-  | "liveMatch"
-  | "postMatch"
-  | "saveManager";
+  | "competitions"
+  | "tactics"
+  | "live"
+  | "reports"
+  | "scouting"
+  | "staff"
+  | "facilities"
+  | "saveManager"
+  | "settings";
+type CommandGroupId = "Core" | "Program" | "Match" | "Operations" | "System";
+type PendingConfirm = "resetSession" | "startTournamentReplaceCareer" | "startCareerReplaceSave";
+
+type ShellCommand = {
+  id: CommandId;
+  group: CommandGroupId;
+  label: string;
+  short: string;
+  description: string;
+  disabled?: boolean;
+  preview?: boolean;
+  onActivate: () => void;
+};
 
 const THEME_STORAGE_KEY = "badminton-manager-theme-accent";
 const SIDEBAR_WIDTH_STORAGE_KEY = "sidebarWidth";
@@ -53,14 +70,7 @@ const SIDEBAR_DEFAULT_WIDTH = 240;
 const SIDEBAR_MAX_WIDTH = 340;
 const SIDEBAR_COLLAPSED_WIDTH = 64;
 
-const sideNavItems: Array<{ key: SidebarPanel; label: string; short: string }> = [
-  { key: "command", label: "Command", short: "CMD" },
-  { key: "tactics", label: "Tactics", short: "TAC" },
-  { key: "athletes", label: "Athletes", short: "ATH" },
-  { key: "events", label: "Events", short: "EVT" },
-  { key: "saves", label: "Saves", short: "SAV" },
-  { key: "settings", label: "Settings", short: "SET" }
-];
+const commandGroupOrder: CommandGroupId[] = ["Core", "Program", "Match", "Operations", "System"];
 
 function loadThemeAccent(): ThemeAccent {
   if (typeof window === "undefined") {
@@ -104,78 +114,44 @@ function loadSidebarCollapsed() {
   return window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === "true";
 }
 
-function topModeForPage(page: AppPage, fallback: TopMode, hasCareer: boolean): TopMode {
+function commandIdForPage(page: AppPage): CommandId {
   switch (page.id) {
-    case "setup":
+    case "saveManager":
+      return "saveManager";
     case "squad":
     case "playerProfile":
-      return "SQUAD";
-    case "liveMatch":
-      return "LIVE";
-    case "saveManager":
-      return "SAVES";
-    case "home":
+      return "squad";
     case "season":
+      return "training";
     case "calendar":
-    case "program":
-    case "rivals":
+      return "calendar";
+    case "games":
+    case "bracket":
+      return "competitions";
     case "matchPlanning":
-    case "facilities":
-    case "media":
+      return "tactics";
+    case "liveMatch":
+      return "live";
+    case "review":
+      return "reports";
     case "scouting":
     case "recruitment":
     case "youth":
+      return "scouting";
     case "staff":
     case "promises":
-      return "CAREER";
-    case "bracket":
-    case "review":
-      return hasCareer ? "CAREER" : "BRACKETS";
-    case "games":
-      return "BRACKETS";
+      return "staff";
+    case "facilities":
+    case "media":
+    case "rivals":
+      return "facilities";
+    case "program":
+      return "training";
+    case "setup":
+    case "home":
     default:
-      return fallback;
+      return "portal";
   }
-}
-
-function careerRouteKeyForPage(page: AppPage, phase: string, hasCareer: boolean): CareerRouteKey | null {
-  if (page.id === "saveManager") {
-    return "saveManager";
-  }
-
-  if (!hasCareer) {
-    return null;
-  }
-
-  if (page.id === "season") {
-    return "training";
-  }
-
-  if (page.id === "calendar" || page.id === "games") {
-    return "calendar";
-  }
-
-  if (page.id === "matchPlanning") {
-    return "matchPlanning";
-  }
-
-  if (page.id === "liveMatch" || phase === "match") {
-    return "liveMatch";
-  }
-
-  if (page.id === "review") {
-    return "postMatch";
-  }
-
-  if (page.id === "bracket") {
-    return "liveMatch";
-  }
-
-  if (page.id === "home") {
-    return "home";
-  }
-
-  return null;
 }
 
 export function App() {
@@ -239,7 +215,6 @@ export function App() {
   const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
   const [pendingCareerPlayerId, setPendingCareerPlayerId] = useState<string | null>(null);
   const [quickTournamentDraftPlayerId, setQuickTournamentDraftPlayerId] = useState<string | null>(null);
-  const [sidebarPanel, setSidebarPanel] = useState<SidebarPanel>("command");
   const [sidebarWidth, setSidebarWidth] = useState(loadSidebarWidth);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(loadSidebarCollapsed);
   const [themeAccent, setThemeAccent] = useState<ThemeAccent>(loadThemeAccent);
@@ -248,11 +223,10 @@ export function App() {
   const setupSelectedPlayerId = career
     ? quickTournamentDraftPlayerId ?? selectedPlayerId
     : selectedPlayerId;
-  const phaseTopMode = phase === "match" ? "LIVE" : phase === "setup" ? "SQUAD" : "BRACKETS";
-  const topMode = topModeForPage(activePage, phaseTopMode, Boolean(career));
   const selectedTactic =
     tacticOptions.find((option) => option.key === plannedTacticKey) ?? tacticOptions[0];
   const canEnterManagedMatch = phase === "overview" && Boolean(tournament);
+  const activeCommandId = commandIdForPage(activePage);
   const workspaceStyle = {
     "--sidebar-width": `${sidebarCollapsed ? SIDEBAR_COLLAPSED_WIDTH : sidebarWidth}px`
   } as CSSProperties;
@@ -297,7 +271,6 @@ export function App() {
 
   function openPlayerProfile(playerId: string) {
     setActivePage({ id: "playerProfile", playerId });
-    setSidebarPanel("athletes");
   }
 
   function requestReset() {
@@ -308,14 +281,12 @@ export function App() {
   function confirmReset() {
     reset();
     setActivePage({ id: "setup" });
-    setSidebarPanel("command");
   }
 
   function performStartTournament() {
     startTournament(quickTournamentDraftPlayerId ?? selectedPlayerId);
     setQuickTournamentDraftPlayerId(null);
     setActivePage({ id: "bracket" });
-    setSidebarPanel("events");
   }
 
   function selectSetupPlayer(playerId: string) {
@@ -340,7 +311,6 @@ export function App() {
   function performStartCareer(managedPlayerId?: string) {
     startCareer(managedPlayerId);
     setActivePage({ id: "home" });
-    setSidebarPanel("command");
   }
 
   function requestStartCareer(managedPlayerId?: string) {
@@ -373,7 +343,6 @@ export function App() {
   function openSaveManager() {
     setSettingsOpen(false);
     setActivePage({ id: "saveManager" });
-    setSidebarPanel("saves");
   }
 
   function continueLocalSave() {
@@ -387,7 +356,6 @@ export function App() {
       setActivePage(pageForPhase(phase));
     }
 
-    setSidebarPanel(career ? "command" : "events");
   }
 
   function continueCareer() {
@@ -396,7 +364,6 @@ export function App() {
     }
 
     setActivePage(career.stage === "post_match" ? { id: "review" } : career.stage === "pre_match" ? { id: "bracket" } : { id: "home" });
-    setSidebarPanel("command");
   }
 
   function confirmImport(save: PersistedSave) {
@@ -411,55 +378,46 @@ export function App() {
             : { id: "home" }
         : pageForPhase(next.phase)
     );
-    setSidebarPanel(next.career ? "command" : "events");
   }
 
   function handleDeleteActiveSave() {
     deleteActiveSave();
     setActivePage({ id: "setup" });
-    setSidebarPanel("command");
   }
 
   function handleAdvanceCareerDay() {
     advanceCareerDay();
     const next = useTournamentStore.getState();
     setActivePage(next.career?.stage === "pre_match" ? { id: "bracket" } : { id: "calendar" });
-    setSidebarPanel("events");
   }
 
   function handleContinueCareerAfterPostMatch() {
     continueCareerAfterPostMatch();
     const next = useTournamentStore.getState();
     setActivePage(next.career?.stage === "pre_match" ? { id: "bracket" } : { id: "home" });
-    setSidebarPanel("command");
   }
 
   function handleStartManagedMatch() {
     startManagedMatch();
     setActivePage({ id: "liveMatch" });
-    setSidebarPanel("command");
   }
 
   function openCareerLiveRoute() {
     if (phase === "match") {
       setActivePage({ id: "liveMatch" });
-      setSidebarPanel("command");
       return;
     }
 
     if (career?.stage === "pre_match") {
       setActivePage({ id: "bracket" });
-      setSidebarPanel("command");
       return;
     }
 
     setActivePage({ id: "matchPlanning" });
-    setSidebarPanel("tactics");
   }
 
   function openCareerPostMatchRoute() {
     setActivePage({ id: "review" });
-    setSidebarPanel("command");
   }
 
   function handleAdvanceAfterMatch() {
@@ -468,57 +426,188 @@ export function App() {
     setActivePage(next.career?.stage === "post_match" ? { id: "review" } : pageForPhase(next.phase));
   }
 
-  function activateTopMode(mode: TopMode) {
-    if (mode === "SQUAD") {
-      setActivePage({ id: "squad" });
-      setSidebarPanel("athletes");
-      return;
-    }
-
-    if (mode === "LIVE") {
-      setActivePage(phase === "match" ? { id: "liveMatch" } : pageForPhase(phase));
-      setSidebarPanel("command");
-      return;
-    }
-
-    if (mode === "CAREER") {
-      setActivePage(career ? { id: "home" } : { id: "games" });
-      setSidebarPanel(career ? "command" : "events");
-      return;
-    }
-
-    if (mode === "SAVES") {
-      openSaveManager();
-      return;
-    }
-
-    setActivePage(career ? { id: "home" } : pageForPhase(phase));
-    setSidebarPanel("events");
-  }
-
-  function activateSidebarPanel(panel: SidebarPanel) {
-    setSidebarPanel(panel);
-
-    switch (panel) {
-      case "command":
+  function activateCommand(commandId: CommandId) {
+    switch (commandId) {
+      case "portal":
         setActivePage(career && phase !== "match" ? { id: "home" } : pageForPhase(phase));
+        break;
+      case "inbox":
+        break;
+      case "squad":
+        setActivePage({ id: "squad" });
+        break;
+      case "training":
+        setActivePage(career ? { id: "season" } : { id: "setup" });
+        break;
+      case "calendar":
+        setActivePage(career ? { id: "calendar" } : { id: "games" });
+        break;
+      case "competitions":
+        setActivePage(career ? { id: "calendar" } : tournament ? { id: "bracket" } : { id: "games" });
         break;
       case "tactics":
         setActivePage(career && phase !== "match" ? { id: "matchPlanning" } : phase === "setup" ? { id: "setup" } : pageForPhase(phase));
         break;
-      case "athletes":
-        setActivePage({ id: "squad" });
+      case "live":
+        openCareerLiveRoute();
         break;
-      case "events":
-        setActivePage(career ? { id: "calendar" } : tournament ? { id: "bracket" } : { id: "games" });
+      case "reports":
+        openCareerPostMatchRoute();
         break;
-      case "saves":
-        setActivePage({ id: "saveManager" });
+      case "scouting":
+        setActivePage(career ? { id: "scouting" } : { id: "setup" });
+        break;
+      case "staff":
+        setActivePage(career ? { id: "staff" } : { id: "setup" });
+        break;
+      case "facilities":
+        setActivePage(career ? { id: "facilities" } : { id: "setup" });
+        break;
+      case "saveManager":
+        openSaveManager();
         break;
       case "settings":
         setSettingsOpen(true);
         break;
     }
+  }
+
+  function buildShellCommands(): ShellCommand[] {
+    return [
+      {
+        id: "portal",
+        group: "Core",
+        label: career ? "Portal" : "Start",
+        short: career ? "POR" : "STA",
+        description: career ? "Career command center" : "Start screen",
+        onActivate: () => activateCommand("portal")
+      },
+      {
+        id: "inbox",
+        group: "Core",
+        label: "Inbox",
+        short: "INB",
+        description: "Task feed preview",
+        disabled: true,
+        preview: true,
+        onActivate: () => activateCommand("inbox")
+      },
+      {
+        id: "squad",
+        group: "Program",
+        label: "Squad",
+        short: "SQU",
+        description: career ? "Inspect locked athlete" : "Browse athletes",
+        onActivate: () => activateCommand("squad")
+      },
+      {
+        id: "training",
+        group: "Program",
+        label: "Training",
+        short: "TRN",
+        description: career ? "Load and recovery" : "Career required",
+        disabled: !career,
+        onActivate: () => activateCommand("training")
+      },
+      {
+        id: "calendar",
+        group: "Program",
+        label: "Calendar",
+        short: "CAL",
+        description: career ? "Date and readiness" : "Quick event desk",
+        onActivate: () => activateCommand("calendar")
+      },
+      {
+        id: "competitions",
+        group: "Program",
+        label: "Competitions",
+        short: "CMP",
+        description: tournament ? "Active bracket" : career ? "Event entries" : "Quick tournament",
+        onActivate: () => activateCommand("competitions")
+      },
+      {
+        id: "tactics",
+        group: "Match",
+        label: "Tactics",
+        short: "TAC",
+        description: career ? "Advanced match plan" : "Quick tactic setup",
+        onActivate: () => activateCommand("tactics")
+      },
+      {
+        id: "live",
+        group: "Match",
+        label: "Live Match",
+        short: "LIV",
+        description: phase === "match" ? "Point control" : career?.stage === "pre_match" ? "Opponent briefing" : "Plan first",
+        onActivate: () => activateCommand("live")
+      },
+      {
+        id: "reports",
+        group: "Match",
+        label: "Reports",
+        short: "REP",
+        description: career?.lastMatchReport ? "Post-match evidence" : "Report pending",
+        disabled: !career?.lastMatchReport,
+        onActivate: () => activateCommand("reports")
+      },
+      {
+        id: "scouting",
+        group: "Operations",
+        label: "Scouting",
+        short: "SCT",
+        description: career ? "Assignments and reports" : "Career required",
+        disabled: !career,
+        onActivate: () => activateCommand("scouting")
+      },
+      {
+        id: "staff",
+        group: "Operations",
+        label: "Staff",
+        short: "STF",
+        description: career ? "Staff and promises" : "Career required",
+        disabled: !career,
+        onActivate: () => activateCommand("staff")
+      },
+      {
+        id: "facilities",
+        group: "Operations",
+        label: "Facilities",
+        short: "FAC",
+        description: career ? "Infrastructure" : "Career required",
+        disabled: !career,
+        onActivate: () => activateCommand("facilities")
+      },
+      {
+        id: "saveManager",
+        group: "System",
+        label: "Save Manager",
+        short: "SAV",
+        description: activeSavePresent ? "Active slot online" : "Import/export",
+        onActivate: () => activateCommand("saveManager")
+      },
+      {
+        id: "settings",
+        group: "System",
+        label: "Settings",
+        short: "SET",
+        description: "Preferences overlay",
+        onActivate: () => activateCommand("settings")
+      }
+    ];
+  }
+
+  function handleShellContinue() {
+    if (career) {
+      continueCareer();
+      return;
+    }
+
+    if (activeSavePresent) {
+      continueLocalSave();
+      return;
+    }
+
+    setActivePage(pageForPhase(phase));
   }
 
   function beginSidebarResize(event: ReactPointerEvent<HTMLButtonElement>) {
@@ -800,103 +889,24 @@ export function App() {
     return null;
   }
 
-  function openCareerRoute(route: CareerRouteKey) {
-    switch (route) {
-      case "home":
-        setActivePage({ id: "home" });
-        setSidebarPanel("command");
-        break;
-      case "training":
-        setActivePage({ id: "season" });
-        setSidebarPanel("command");
-        break;
-      case "calendar":
-        setActivePage({ id: "calendar" });
-        setSidebarPanel("events");
-        break;
-      case "matchPlanning":
-        setActivePage({ id: "matchPlanning" });
-        setSidebarPanel("tactics");
-        break;
-      case "liveMatch":
-        openCareerLiveRoute();
-        break;
-      case "postMatch":
-        openCareerPostMatchRoute();
-        break;
-      case "saveManager":
-        openSaveManager();
-        break;
-    }
-  }
-
-  function renderCareerRouteChrome() {
-    const activeCareerRoute = careerRouteKeyForPage(activePage, phase, Boolean(career));
-
-    if (!career && activePage.id !== "saveManager") {
-      return null;
-    }
-
-    const athlete = career ? playerMap[career.program.managedPlayerId] : selectedPlayer;
-    const routeItems: Array<{ key: CareerRouteKey; label: string; contract: string; disabled?: boolean }> = [
-      { key: "home", label: "Career Home", contract: "management map", disabled: !career },
-      { key: "training", label: "Training", contract: "load and recovery", disabled: !career },
-      { key: "calendar", label: "Calendar / Event Desk", contract: "entry and date control", disabled: !career },
-      { key: "matchPlanning", label: "Match Planning", contract: "tactic plan", disabled: !career },
-      {
-        key: "liveMatch",
-        label: career?.stage === "pre_match" ? "Pre-Match / Live" : "Live Match",
-        contract: phase === "match" ? "point control" : career?.stage === "pre_match" ? "opponent briefing" : "plan first",
-        disabled: !career
-      },
-      {
-        key: "postMatch",
-        label: "Post-Match Review",
-        contract: career?.lastMatchReport ? "evidence review" : "report pending",
-        disabled: !career
-      },
-      { key: "saveManager", label: "Save Manager", contract: "local slot trust" }
-    ];
-
-    return (
-      <section className="career-route-chrome" aria-label="Career workspace navigation">
-        <div className="career-route-summary">
-          <span>Career route</span>
-          <strong>{routeItems.find((item) => item.key === activeCareerRoute)?.label ?? "Save Manager"}</strong>
-          <small>
-            {career
-              ? `${career.date} / ${athlete.name} / ${career.stage.replace("_", " ")}`
-              : activeSavePresent
-                ? "Local save controls"
-                : "No active local career"}
-          </small>
-        </div>
-        <div className="career-route-tabs" role="group" aria-label="Career route family">
-          {routeItems.map((item) => (
-            <button
-              key={item.key}
-              className={
-                item.key === activeCareerRoute
-                  ? "career-route-tab career-route-tab-active"
-                  : "career-route-tab"
-              }
-              type="button"
-              disabled={item.disabled}
-              aria-label={`Career route ${item.key}`}
-              aria-current={item.key === activeCareerRoute ? "page" : undefined}
-              onClick={() => openCareerRoute(item.key)}
-            >
-              <span>{item.label}</span>
-              <small>{item.contract}</small>
-            </button>
-          ))}
-        </div>
-        <button className="command-button command-button-secondary career-route-reset" type="button" onClick={requestReset}>
-          New Session
-        </button>
-      </section>
-    );
-  }
+  const shellCommands = buildShellCommands();
+  const shellDate = career?.date ?? "Local slot";
+  const saveStatus = activeSavePresent
+    ? career
+      ? "Career save"
+      : "Quick save"
+    : corruptSavePresent
+      ? "Recovery available"
+      : "No active save";
+  const continueLabel = career
+    ? career.stage === "post_match"
+      ? "Review Match"
+      : career.stage === "pre_match"
+        ? "Open Live Desk"
+        : "Continue Career"
+    : activeSavePresent
+      ? "Continue Save"
+      : "Start";
 
   return (
     <PlayerNavigationProvider onOpenPlayerProfile={openPlayerProfile}>
@@ -904,219 +914,55 @@ export function App() {
         className={sidebarCollapsed ? "command-shell command-shell-sidebar-collapsed" : "command-shell"}
         data-accent={themeAccent}
       >
-      <header className="topbar">
-        <div className="brand-row">
-          <span className="brand-mark">SMASH_COMMAND</span>
-          <nav className="topnav" aria-label="Primary">
-            {(["LIVE", "SQUAD", "CAREER", "BRACKETS", "SAVES"] as TopMode[]).map((mode) => (
-              <button
-                key={mode}
-                type="button"
-                className={topMode === mode ? "nav-pill nav-pill-active" : "nav-pill"}
-                aria-current={topMode === mode ? "page" : undefined}
-                onClick={() => activateTopMode(mode)}
-              >
-                {mode}
-              </button>
-            ))}
-          </nav>
-        </div>
+        <TopStatusBar
+          activeAthleteName={activeAthlete.name}
+          continueLabel={continueLabel}
+          dateLabel={shellDate}
+          saveStatus={saveStatus}
+          onContinue={handleShellContinue}
+          onOpenIntel={() => setIntelOpen(true)}
+          onOpenSettings={() => setSettingsOpen(true)}
+        />
 
-        <div className="topbar-actions">
-          <button className="command-button command-button-secondary" onClick={() => setIntelOpen(true)}>
-            TACTICAL_INTEL
-          </button>
-          <button className="command-button command-button-secondary" onClick={() => setSettingsOpen(true)}>
-            SETTINGS
-          </button>
-          <button className="command-button command-button-secondary" onClick={openSaveManager}>
-            SAVE_MANAGER
-          </button>
-        </div>
-      </header>
-
-      <div className="workspace-shell" style={workspaceStyle}>
-        <aside className="sidebar">
-          <div className="sidebar-brand">
-            <div className="sidebar-logo">BM</div>
-            <div>
-              <h2>STRATEGIST_HUB</h2>
-              <p>Local-first coaching console</p>
-            </div>
-            <button
-              className="sidebar-collapse-button"
-              type="button"
-              aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-              onClick={() => setSidebarCollapsed((current) => !current)}
-            >
-              {sidebarCollapsed ? ">" : "<"}
-            </button>
-          </div>
-
-          <button className="command-button command-button-secondary sidebar-reset" onClick={requestReset}>
-            NEW_SESSION
-          </button>
-
-          <nav className="sidenav" aria-label="Section">
-            {sideNavItems.map((item) => (
-              <button
-                key={item.key}
-                type="button"
-                className={
-                  sidebarPanel === item.key ? "sidenav-item sidenav-item-active" : "sidenav-item"
-                }
-                aria-pressed={sidebarPanel === item.key}
-                data-short={item.short}
-                onClick={() => activateSidebarPanel(item.key)}
-              >
-                {item.label}
-              </button>
-            ))}
-          </nav>
-
-          <div className="sidebar-options">
-            <span className="sidebar-caption">Console Options</span>
-            {sidebarPanel === "command" && (
-              <div className="sidebar-option-stack">
-                <strong>{phase === "match" ? "Live Desk" : "Match Desk"}</strong>
-                <span>
-                  {phase === "match"
-                    ? "Point control online"
-                    : phase === "overview"
-                      ? "Opponent scouted"
-                      : phase === "complete"
-                        ? "Run archived"
-                        : "Deployment pending"}
-                </span>
-                {canEnterManagedMatch && (
-                  <button className="sidebar-mini-button" type="button" onClick={handleStartManagedMatch}>
-                    Go Live
-                  </button>
-                )}
-              </div>
-            )}
-
-            {sidebarPanel === "tactics" && (
-              <div className="sidebar-option-stack">
-                <strong>{selectedTactic.label}</strong>
-                <div className="sidebar-option-list">
-                  {tacticOptions.map((option) => (
-                    <button
-                      key={option.key}
-                      type="button"
-                      className={
-                        plannedTacticKey === option.key
-                          ? "sidebar-mini-button sidebar-mini-button-active"
-                          : "sidebar-mini-button"
-                      }
-                      aria-pressed={plannedTacticKey === option.key}
-                      onClick={() => chooseTactic(option.key)}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {sidebarPanel === "athletes" && (
-              <div className="sidebar-option-stack">
-                <strong>{activeAthlete.name}</strong>
-                <span>{career ? "Career athlete locked" : phase === "setup" ? "Quick tournament editable" : "Run athlete locked"}</span>
-                <button
-                  className="sidebar-mini-button"
-                  type="button"
-                  onClick={() => openPlayerProfile(activeAthlete.id)}
-                >
-                  Open Profile
-                </button>
-              </div>
-            )}
-
-            {sidebarPanel === "events" && (
-              <div className="sidebar-option-stack">
-                <strong>{tournament?.name ?? "Event workspace"}</strong>
-                <span>
-                  {tournament
-                    ? `${tournament.rounds.length} bracket stage${tournament.rounds.length === 1 ? "" : "s"} loaded`
-                    : "Games page scaffold ready"}
-                </span>
-                <button
-                  className="sidebar-mini-button"
-                  type="button"
-                  onClick={() => setActivePage(tournament ? { id: "bracket" } : { id: "games" })}
-                >
-                  {tournament ? "Open Bracket" : "Open Games"}
-                </button>
-              </div>
-            )}
-
-            {sidebarPanel === "saves" && (
-              <div className="sidebar-option-stack">
-                <strong>{activeSavePresent ? "Active slot online" : "No active slot"}</strong>
-                <span>{corruptSavePresent ? "Quarantine backup present" : "Import/export desk ready"}</span>
-                <button className="sidebar-mini-button" type="button" onClick={openSaveManager}>
-                  Open Save Manager
-                </button>
-              </div>
-            )}
-
-            {sidebarPanel === "settings" && (
-              <div className="sidebar-option-stack">
-                <strong>Preferences</strong>
-                <span>Theme and session controls live in one pop-up window.</span>
-                <button className="sidebar-mini-button" type="button" onClick={() => setSettingsOpen(true)}>
-                  Open Settings
-                </button>
-              </div>
-            )}
-          </div>
-
-          <div className="sidebar-athlete">
-            <span className="sidebar-caption">Managed Athlete</span>
-            <button
-              className="profile-name-button"
-              type="button"
-              onClick={() => openPlayerProfile(activeAthlete.id)}
-            >
-              {activeAthlete.name}
-            </button>
-            <span>
-              {activeAthlete.nationality} · {activeAthlete.styleLabel}
-            </span>
-          </div>
-          <button
-            className="sidebar-resize-handle"
-            type="button"
-            aria-label="Resize sidebar"
-            onPointerDown={beginSidebarResize}
+        <div className="workspace-shell" style={workspaceStyle}>
+          <CommandSidebar
+            activeAthlete={activeAthlete}
+            activeCommandId={activeCommandId}
+            canEnterManagedMatch={canEnterManagedMatch}
+            commands={shellCommands}
+            collapsed={sidebarCollapsed}
+            phaseLabel={career ? career.stage.replace("_", " ") : phase}
+            selectedTacticLabel={selectedTactic.label}
+            onChooseTactic={chooseTactic}
+            onOpenPlayerProfile={() => openPlayerProfile(activeAthlete.id)}
+            onResizeStart={beginSidebarResize}
+            onStartManagedMatch={handleStartManagedMatch}
+            onToggleCollapsed={() => setSidebarCollapsed((current) => !current)}
+            plannedTacticKey={plannedTacticKey}
           />
-        </aside>
 
-        <main className="main-canvas">
-          {renderCareerRouteChrome()}
-          {renderPage()}
-        </main>
-      </div>
+          <PageCanvas>{renderPage()}</PageCanvas>
+        </div>
 
-      <TacticalIntelPanel
-        open={intelOpen}
-        phase={phase}
-        selectedPlayerId={selectedPlayerId}
-        plannedTacticKey={plannedTacticKey}
-        tournament={tournament}
-        liveMatch={liveMatch}
-        onClose={() => setIntelOpen(false)}
-      />
+        <OverlayHost>
+          <TacticalIntelPanel
+            open={intelOpen}
+            phase={phase}
+            selectedPlayerId={selectedPlayerId}
+            plannedTacticKey={plannedTacticKey}
+            tournament={tournament}
+            liveMatch={liveMatch}
+            onClose={() => setIntelOpen(false)}
+          />
 
-      <SettingsOverlay
-        open={settingsOpen}
-        themeAccent={themeAccent}
-        onThemeAccentChange={setThemeAccentPreference}
-        onRequestReset={requestReset}
-        onOpenSaveManager={openSaveManager}
-        onClose={() => setSettingsOpen(false)}
-      />
+          <SettingsOverlay
+            open={settingsOpen}
+            themeAccent={themeAccent}
+            onThemeAccentChange={setThemeAccentPreference}
+            onRequestReset={requestReset}
+            onOpenSaveManager={openSaveManager}
+            onClose={() => setSettingsOpen(false)}
+          />
 
       <ConfirmOverlay
         open={pendingConfirm !== null}
@@ -1151,7 +997,182 @@ export function App() {
           setPendingCareerPlayerId(null);
         }}
       />
+        </OverlayHost>
       </div>
     </PlayerNavigationProvider>
   );
+}
+
+function TopStatusBar(props: {
+  activeAthleteName: string;
+  continueLabel: string;
+  dateLabel: string;
+  saveStatus: string;
+  onContinue: () => void;
+  onOpenIntel: () => void;
+  onOpenSettings: () => void;
+}) {
+  return (
+    <header className="topbar">
+      <div className="topbar-brand-block">
+        <span className="brand-mark">BM</span>
+        <label className="command-search">
+          <span>Command</span>
+          <input aria-label="Search or go to command" placeholder="Search or go to..." readOnly />
+        </label>
+      </div>
+
+      <div className="topbar-status" aria-label="Career and save status">
+        <span>{props.dateLabel}</span>
+        <span>{props.saveStatus}</span>
+        <span>{props.activeAthleteName}</span>
+      </div>
+
+      <div className="topbar-actions">
+        <button className="icon-command-button" type="button" onClick={props.onOpenIntel}>
+          Intel
+        </button>
+        <button className="icon-command-button" type="button" onClick={props.onOpenSettings}>
+          Settings
+        </button>
+        <button className="command-button command-button-primary topbar-continue" type="button" onClick={props.onContinue}>
+          {props.continueLabel}
+        </button>
+      </div>
+    </header>
+  );
+}
+
+function CommandSidebar(props: {
+  activeAthlete: { id: string; name: string; nationality: string; styleLabel: string };
+  activeCommandId: CommandId;
+  canEnterManagedMatch: boolean;
+  collapsed: boolean;
+  commands: ShellCommand[];
+  phaseLabel: string;
+  selectedTacticLabel: string;
+  plannedTacticKey: string;
+  onChooseTactic: (tacticKey: (typeof tacticOptions)[number]["key"]) => void;
+  onOpenPlayerProfile: () => void;
+  onResizeStart: (event: ReactPointerEvent<HTMLButtonElement>) => void;
+  onStartManagedMatch: () => void;
+  onToggleCollapsed: () => void;
+}) {
+  const activeCommand = props.commands.find((command) => command.id === props.activeCommandId);
+
+  return (
+    <aside className="sidebar command-sidebar" aria-label="Primary command sidebar">
+      <div className="sidebar-brand">
+        <div className="sidebar-logo">BM</div>
+        <div>
+          <h2>Command Rail</h2>
+          <p>Local-first career shell</p>
+        </div>
+        <button
+          className="sidebar-collapse-button"
+          type="button"
+          aria-label={props.collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-expanded={!props.collapsed}
+          onClick={props.onToggleCollapsed}
+        >
+          {props.collapsed ? ">" : "<"}
+        </button>
+      </div>
+
+      <nav className="sidenav command-groups" aria-label="Primary commands">
+        {commandGroupOrder.map((group) => (
+          <section className="command-group" key={group} aria-labelledby={`command-group-${group}`}>
+            <h3 id={`command-group-${group}`}>{group}</h3>
+            <div className="command-group-list">
+              {props.commands
+                .filter((command) => command.group === group)
+                .map((command) => {
+                  const active = command.id === props.activeCommandId;
+
+                  return (
+                    <button
+                      key={command.id}
+                      type="button"
+                      className={active ? "sidenav-item sidenav-item-active" : "sidenav-item"}
+                      data-short={command.short}
+                      disabled={command.disabled}
+                      aria-current={active ? "page" : undefined}
+                      aria-label={`${command.label}${command.preview ? " preview" : ""}: ${command.description}`}
+                      title={`${command.label}: ${command.description}`}
+                      onClick={command.onActivate}
+                    >
+                      <span>{command.label}</span>
+                      {command.preview && <small>Preview</small>}
+                    </button>
+                  );
+                })}
+            </div>
+          </section>
+        ))}
+      </nav>
+
+      <div className="sidebar-options" aria-label="Active command context">
+        <span className="sidebar-caption">Active Command</span>
+        <div className="sidebar-option-stack">
+          <strong>{activeCommand?.label ?? "Portal"}</strong>
+          <span>{activeCommand?.description ?? "Career command center"}</span>
+          <span>State: {props.phaseLabel}</span>
+          {props.canEnterManagedMatch && (
+            <button className="sidebar-mini-button" type="button" onClick={props.onStartManagedMatch}>
+              Go Live
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="sidebar-options sidebar-tactic-stack" aria-label="Quick tactic controls">
+        <span className="sidebar-caption">Tactic</span>
+        <div className="sidebar-option-stack">
+          <strong>{props.selectedTacticLabel}</strong>
+          <div className="sidebar-option-list">
+            {tacticOptions.map((option) => (
+              <button
+                key={option.key}
+                type="button"
+                className={
+                  props.plannedTacticKey === option.key
+                    ? "sidebar-mini-button sidebar-mini-button-active"
+                    : "sidebar-mini-button"
+                }
+                aria-pressed={props.plannedTacticKey === option.key}
+                onClick={() => props.onChooseTactic(option.key)}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="sidebar-athlete">
+        <span className="sidebar-caption">Managed Athlete</span>
+        <button className="profile-name-button" type="button" onClick={props.onOpenPlayerProfile}>
+          {props.activeAthlete.name}
+        </button>
+        <span>
+          {props.activeAthlete.nationality} - {props.activeAthlete.styleLabel}
+        </span>
+      </div>
+
+      <button
+        className="sidebar-resize-handle"
+        type="button"
+        aria-label="Resize sidebar"
+        onPointerDown={props.onResizeStart}
+      />
+    </aside>
+  );
+}
+
+function PageCanvas(props: { children: ReactNode }) {
+  return <main className="main-canvas">{props.children}</main>;
+}
+
+function OverlayHost(props: { children: ReactNode }) {
+  return <div className="overlay-host">{props.children}</div>;
 }

@@ -195,12 +195,6 @@ export function CareerHomePage(props: CareerPageProps) {
       : props.career.stage === "post_match"
         ? "Review Match"
         : "Match Plan";
-  const liveRouteDetail =
-    props.career.stage === "pre_match"
-      ? "Opponent briefing is ready; enter the managed match from the live desk."
-      : props.career.stage === "post_match"
-        ? "A match report is ready; inspect consequences before the next block."
-        : "No live match is active; tune the plan before the event opens.";
 
   return (
     <section className="screen-shell career-page">
@@ -289,54 +283,7 @@ export function CareerHomePage(props: CareerPageProps) {
               <button className="command-button command-button-secondary" type="button" onClick={props.onOpenMatchPlanning}>
                 Match Planning
               </button>
-              <button className="command-button command-button-secondary" type="button" onClick={props.onOpenSaveManager}>
-                Save Manager
-              </button>
             </div>
-          </div>
-        </section>
-
-        <section className="command-panel command-panel-full career-map-panel">
-          <div className="panel-header">
-            <h2>Career Workspace Map</h2>
-            <span>Page contracts</span>
-          </div>
-          <div className="career-workspace-map">
-            <button className="career-map-tile" type="button" aria-label="Career map training workspace" onClick={props.onOpenTraining}>
-              <span>Training Desk</span>
-              <strong>Plan load</strong>
-              <small>Readiness, fatigue, injury risk, and development.</small>
-            </button>
-            <button className="career-map-tile" type="button" aria-label="Career map calendar workspace" onClick={props.onOpenCalendar}>
-              <span>Calendar / Event Desk</span>
-              <strong>Enter events</strong>
-              <small>Dates, cost, eligibility, field pressure, and advance day.</small>
-            </button>
-            <button className="career-map-tile" type="button" aria-label="Career map match planning workspace" onClick={props.onOpenMatchPlanning}>
-              <span>Match Planning</span>
-              <strong>Set tactics</strong>
-              <small>Advanced plan sliders, modules, and staff advice.</small>
-            </button>
-            <button className="career-map-tile" type="button" aria-label="Career map live match workspace" onClick={props.onOpenLiveMatch}>
-              <span>Live Match</span>
-              <strong>{liveRouteLabel}</strong>
-              <small>{liveRouteDetail}</small>
-            </button>
-            <button className="career-map-tile" type="button" aria-label="Career map post match review workspace" onClick={props.onOpenPostMatch}>
-              <span>Post-Match Review</span>
-              <strong>{props.career.lastMatchReport ? "Inspect report" : "Report pending"}</strong>
-              <small>Points, cash, fatigue, evidence, and next training recommendation.</small>
-            </button>
-            <button className="career-map-tile" type="button" aria-label="Career map save manager workspace" onClick={props.onOpenSaveManager}>
-              <span>Save Manager</span>
-              <strong>Local slot</strong>
-              <small>Continue, export, import, delete, and corrupt-save recovery.</small>
-            </button>
-            <button className="career-map-tile career-map-tile-danger" type="button" aria-label="Career map reset new session action" onClick={props.onRequestNewSession}>
-              <span>Reset / New Session</span>
-              <strong>Confirm first</strong>
-              <small>Open the mode-aware confirmation before clearing session state.</small>
-            </button>
           </div>
         </section>
 
