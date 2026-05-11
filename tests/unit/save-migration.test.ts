@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { seededPlayers } from "../../game/content/players";
+import { getCareerEvent } from "../../game/career/events";
 import { careerStateSchema } from "../../game/career/models";
 import { createInitialCareerState } from "../../game/career/state";
+import type { MatchResult, Side } from "../../game/core/models";
 import {
   migratePersistedSave,
   persistedSavePayloadSchema,
@@ -9,6 +11,7 @@ import {
   validateImportedSaveText
 } from "../../game/store/save";
 import { CORRUPT_STORAGE_KEY, STORAGE_KEY, loadPersistedFromStorage } from "../../game/store/store";
+import { advanceTournament, createTournament, getManagedMatchContext } from "../../game/tournament/tournament";
 
 class MemoryStorage {
   private readonly values = new Map<string, string>();
@@ -27,6 +30,52 @@ class MemoryStorage {
 }
 
 describe("career save migration", () => {
+  function straightGamesResult(winner: Side): MatchResult {
+    return {
+      winner,
+      setsWonA: winner === "A" ? 2 : 0,
+      setsWonB: winner === "B" ? 2 : 0,
+      setSummaries: [
+        {
+          winner,
+          scoreA: winner === "A" ? 21 : 14,
+          scoreB: winner === "B" ? 21 : 14,
+          points: []
+        },
+        {
+          winner,
+          scoreA: winner === "A" ? 21 : 16,
+          scoreB: winner === "B" ? 21 : 16,
+          points: []
+        }
+      ],
+      stats: {
+        winnersA: winner === "A" ? 22 : 12,
+        winnersB: winner === "B" ? 22 : 12,
+        unforcedErrorsA: winner === "A" ? 8 : 17,
+        unforcedErrorsB: winner === "B" ? 8 : 17,
+        totalSmashesA: 16,
+        totalSmashesB: 15,
+        peakSmashSpeedA: 388,
+        peakSmashSpeedB: 381,
+        staminaDrainA: 8,
+        staminaDrainB: 10,
+        longestRally: 26,
+        totalPoints: 72
+      },
+      scoreline: winner === "A" ? "21-14, 21-16" : "14-21, 16-21",
+      fidelity: "detailed",
+      summaryEvents: [
+        {
+          kind: "straight_games",
+          side: winner,
+          title: "Forced deterministic result",
+          detail: "Save migration proof supplies the result instead of relying on match luck."
+        }
+      ]
+    };
+  }
+
   it("migrates version 2 tournament saves into version 8 without schema loss", () => {
     const legacy = {
       version: 2,
@@ -245,6 +294,83 @@ describe("career save migration", () => {
     expect(migrated.career?.program.managedPlayerId).toBe(seededPlayers[0].player.id);
     expect(migrated.selectedPlayerId).toBe(seededPlayers[5].player.id);
     expect(persistedSaveSchema.parse(migrated)).toEqual(migrated);
+  });
+
+  it("round-trips active between-round tournament state through export and import preview", () => {
+    const managedPlayerId = seededPlayers[0].player.id;
+    const career = createInitialCareerState(managedPlayerId, 467);
+    const event = getCareerEvent(career.events, "metro-open-300")!;
+    const tournament = {
+      ...createTournament(seededPlayers, managedPlayerId, 467),
+      id: event.id,
+      name: event.name,
+      tier: event.tier,
+      prizePoolUsd: event.prizeMoney.champion * 2
+    };
+    const context = getManagedMatchContext(tournament);
+
+    if (!context) {
+      throw new Error("Expected managed match context.");
+    }
+
+    const managedSide = context.playerAId === managedPlayerId ? "A" : "B";
+    const advancedTournament = advanceTournament({
+      tournament,
+      seededEntries: seededPlayers,
+      managedMatchId: context.matchId,
+      managedResult: straightGamesResult(managedSide)
+    });
+    const nextContext = getManagedMatchContext(advancedTournament);
+
+    if (!nextContext) {
+      throw new Error("Expected next managed match after non-final win.");
+    }
+
+    const nextOpponentId = nextContext.playerAId === managedPlayerId ? nextContext.playerBId : nextContext.playerAId;
+    const save = {
+      version: 8,
+      selectedPlayerId: managedPlayerId,
+      plannedTacticKey: "balancedControl",
+      seed: 467,
+      tournament: advancedTournament,
+      liveMatch: null,
+      career: {
+        ...career,
+        date: event.startDate,
+        stage: "post_match" as const,
+        activeEventId: event.id,
+        enteredEventIds: [event.id],
+        completedEventIds: [],
+        lastMatchReport: {
+          eventId: event.id,
+          matchId: context.matchId,
+          opponentId: context.playerAId === managedPlayerId ? context.playerBId : context.playerAId,
+          result: "win" as const,
+          scoreline: "21-14, 21-16",
+          round: context.roundName,
+          pointsDelta: 0,
+          cashDelta: 0,
+          fatigueDelta: 8,
+          evidence: ["Forced deterministic between-round import proof"],
+          recommendations: ["Continue into the next managed round"],
+          tacticalViewer: null
+        }
+      }
+    };
+
+    const preview = validateImportedSaveText(JSON.stringify(save));
+
+    expect(preview.ok).toBe(true);
+    if (preview.ok) {
+      expect(preview.save.version).toBe(8);
+      expect(preview.save.tournament?.id).toBe(event.id);
+      expect(preview.save.tournament?.currentRoundIndex).toBe(1);
+      expect(getManagedMatchContext(preview.save.tournament!)?.matchId).toBe(nextContext.matchId);
+      expect(preview.save.career?.stage).toBe("post_match");
+      expect(preview.save.career?.activeEventId).toBe(event.id);
+      expect(preview.save.career?.completedEventIds).not.toContain(event.id);
+      expect(nextOpponentId).toBeTruthy();
+    }
   });
 
   it("defaults medical injury episodes when loading current saves from before the health pass", () => {

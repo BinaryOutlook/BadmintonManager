@@ -25,10 +25,12 @@ import { managedAthlete } from "../game/career/state";
 import { activeAdvancedTacticPlan, buildPreMatchPlanningBridge, calculateTacticEffectProfile, tacticPlanToMatchTactic } from "../game/career/tactics";
 import { trainingPlans } from "../game/career/training";
 import type { SaveRecoveryNotice } from "../game/store/store";
+import { isManagedPlayerStillInEvent, type TournamentState } from "../game/tournament/tournament";
 import { TacticalMatchViewer } from "./TacticalMatchViewer";
 
 interface CareerPageProps {
   career: CareerState | null;
+  tournament: TournamentState | null;
   saveRecovery: SaveRecoveryNotice | null;
   onStartCareer: () => void;
   onOpenTraining: () => void;
@@ -2241,7 +2243,8 @@ export function CareerPostMatchHubPage(props: CareerPageProps) {
   const opponent = report ? playerMap[report.opponentId] : null;
   const eventStillActive =
     props.career.activeEventId !== null &&
-    !props.career.completedEventIds.includes(props.career.activeEventId);
+    !props.career.completedEventIds.includes(props.career.activeEventId) &&
+    Boolean(props.tournament && isManagedPlayerStillInEvent(props.tournament));
   const continueLabel = eventStillActive
     ? "Continue To Next Round"
     : report?.result === "win"

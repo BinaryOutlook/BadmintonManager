@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 import { seededPlayers, playerMap } from "../game/content/players";
 import { createInitialCareerState } from "../game/career/state";
@@ -121,6 +121,103 @@ function createBetweenRoundsCareerSave() {
     nextOpponentId,
     nextOpponentName: playerMap[nextOpponentId].name
   };
+}
+
+function createPostMatchCloseoutCareerSave(outcome: "loss" | "title") {
+  const managedPlayerId = seededPlayers[0].player.id;
+  const career = createInitialCareerState(managedPlayerId, outcome === "title" ? 62002 : 62001);
+  const event = getCareerEvent(career.events, "metro-open-300")!;
+  let tournament = {
+    ...createTournament(seededPlayers, managedPlayerId, outcome === "title" ? 62002 : 62001),
+    id: event.id,
+    name: event.name,
+    tier: event.tier,
+    prizePoolUsd: event.prizeMoney.champion * 2
+  };
+
+  while (outcome === "title" && getManagedMatchContext(tournament)?.roundName !== "F") {
+    const context = getManagedMatchContext(tournament);
+
+    if (!context) {
+      throw new Error("Expected managed match before final.");
+    }
+
+    const managedSide = context.playerAId === managedPlayerId ? "A" : "B";
+    tournament = advanceTournament({
+      tournament,
+      seededEntries: seededPlayers,
+      managedMatchId: context.matchId,
+      managedResult: forcedStraightGamesResult(managedSide)
+    });
+  }
+
+  const context = getManagedMatchContext(tournament);
+
+  if (!context) {
+    throw new Error("Expected managed closeout match.");
+  }
+
+  const managedSide = context.playerAId === managedPlayerId ? "A" : "B";
+  const opponentId = context.playerAId === managedPlayerId ? context.playerBId : context.playerAId;
+  const won = outcome === "title";
+  const winner = won ? managedSide : managedSide === "A" ? "B" : "A";
+  const advancedTournament = advanceTournament({
+    tournament,
+    seededEntries: seededPlayers,
+    managedMatchId: context.matchId,
+    managedResult: forcedStraightGamesResult(winner)
+  });
+  const placementKey = won ? "champion" : context.roundName;
+  const save = {
+    version: 8,
+    selectedPlayerId: managedPlayerId,
+    plannedTacticKey: "balancedControl",
+    seed: outcome === "title" ? 62002 : 62001,
+    tournament: advancedTournament,
+    liveMatch: null,
+    career: {
+      ...career,
+      date: event.startDate,
+      stage: "post_match" as const,
+      activeEventId: event.id,
+      enteredEventIds: [event.id],
+      completedEventIds: [event.id],
+      lastMatchReport: {
+        eventId: event.id,
+        matchId: context.matchId,
+        opponentId,
+        result: won ? "win" as const : "loss" as const,
+        scoreline: won ? "21-14, 21-16" : "14-21, 16-21",
+        round: context.roundName,
+        pointsDelta: event.rankingPoints[placementKey],
+        cashDelta: event.prizeMoney[placementKey],
+        fatigueDelta: 8,
+        evidence: [`Forced deterministic ${outcome} closeout proof`],
+        recommendations: won ? ["Collect title settlement and return home"] : ["Close the event and reset the training block"],
+        tacticalViewer: null
+      }
+    }
+  };
+
+  return {
+    save,
+    eventId: event.id,
+    expectedButton: won ? "Collect Title And Continue" : "Close Event"
+  };
+}
+
+async function captureFocusedScreenshot(page: { screenshot: (options: { path: string; fullPage: boolean }) => Promise<Buffer> }, name: string) {
+  const screenshotDir = process.env.FOCUSED_SCREENSHOT_DIR;
+
+  if (!screenshotDir) {
+    return;
+  }
+
+  mkdirSync(screenshotDir, { recursive: true });
+  await page.screenshot({
+    path: `${screenshotDir}/${name}.png`,
+    fullPage: true
+  });
 }
 
 test("can start a tournament run and play through a managed match", async ({ page }) => {
@@ -265,6 +362,7 @@ test("continues a deterministic career event from post-match into the next round
 
   await expect(page.getByRole("heading", { name: "Match Evidence Review" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Continue To Next Round" })).toBeVisible();
+  await captureFocusedScreenshot(page, "post-match-next-round-cta");
 
   await page.getByRole("button", { name: "Continue To Next Round" }).click();
 
@@ -297,6 +395,47 @@ test("continues a deterministic career event from post-match into the next round
   await page.reload();
   await expect(page.getByRole("heading", { name: "Opponent Briefing" })).toBeVisible();
   await expect(page.getByText(betweenRounds.nextOpponentName).first()).toBeVisible();
+});
+
+test("closes deterministic loss and title post-match CTA branches after reload", async ({ page }) => {
+  for (const outcome of ["loss", "title"] as const) {
+    const closeout = createPostMatchCloseoutCareerSave(outcome);
+
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("/");
+    await page.evaluate((payload) => {
+      window.localStorage.setItem("badminton-manager-save", JSON.stringify(payload.save));
+    }, closeout);
+    await page.reload();
+
+    await expect(page.getByRole("heading", { name: "Match Evidence Review" })).toBeVisible();
+    await expect(page.getByRole("button", { name: closeout.expectedButton })).toBeVisible();
+    await captureFocusedScreenshot(page, `post-match-${outcome}-cta`);
+
+    await page.getByRole("button", { name: closeout.expectedButton }).click();
+    await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
+    await page.evaluate((payload) => {
+      const raw = window.localStorage.getItem("badminton-manager-save");
+      if (!raw) {
+        throw new Error("Expected active save after closeout.");
+      }
+
+      const save = JSON.parse(raw);
+      const completedCount = save.career.completedEventIds.filter((eventId: string) => eventId === payload.eventId).length;
+
+      if (save.tournament !== null) {
+        throw new Error("Expected closeout continue to clear active tournament.");
+      }
+
+      if (save.career.activeEventId !== null || save.career.stage !== "event_complete") {
+        throw new Error("Expected closeout continue to clear active event.");
+      }
+
+      if (completedCount !== 1) {
+        throw new Error("Expected closeout continue to preserve exactly one event completion.");
+      }
+    }, closeout);
+  }
 });
 
 test("surfaces corrupt save recovery and blocks unaffordable event entry", async ({ page }) => {

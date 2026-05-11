@@ -31,6 +31,7 @@ import {
 } from "../../game/career/ecosystem";
 import { eventEligibilityFor, getCareerEvent } from "../../game/career/events";
 import { settleCareerMatch } from "../../game/career/hubs";
+import { rankingFor } from "../../game/career/rankings";
 import { advanceRivalCircuit } from "../../game/career/rivals";
 import { createInitialCareerState, managedAthlete } from "../../game/career/state";
 import { projectTacticalViewerFromResult, projectTacticalViewerFromSession } from "../../game/career/tacticalViewer";
@@ -286,6 +287,8 @@ describe("career tournament state flow", () => {
     expect(afterWin.tournament?.currentRoundIndex).toBe(1);
     expect(afterWin.career?.activeEventId).toBe(event.id);
     expect(afterWin.career?.completedEventIds).not.toContain(event.id);
+    expect(afterWin.career?.lastMatchReport?.pointsDelta).toBe(0);
+    expect(afterWin.career?.lastMatchReport?.cashDelta).toBe(0);
     expect(nextOpponentId).toBeTruthy();
 
     useTournamentStore.getState().continueCareerAfterPostMatch();
@@ -346,6 +349,74 @@ describe("career tournament state flow", () => {
     expect(useTournamentStore.getState().career?.stage).toBe("event_complete");
     expect(useTournamentStore.getState().career?.activeEventId).toBeNull();
     expect(eventCompletionCount(useTournamentStore.getState().career?.completedEventIds ?? [], finalSetup.event.id)).toBe(1);
+  });
+
+  it("settles final placement rewards only once when a completed event is replayed after reload", () => {
+    const managedPlayerId = seededPlayers[0].player.id;
+    const { career, event, tournament } = careerOnMetroEvent(managedPlayerId, 9303);
+    const context = getManagedMatchContext(tournament);
+
+    if (!context) {
+      throw new Error("Expected managed match context.");
+    }
+
+    const managedSide = context.playerAId === managedPlayerId ? "A" : "B";
+    const opponentId = managedSide === "A" ? context.playerBId : context.playerAId;
+    const result = straightGamesResult(managedSide === "A" ? "B" : "A");
+    const initialRanking = rankingFor(career.rankings, managedPlayerId)!;
+    const managedRunMatch = {
+      round: context.roundName,
+      opponentId,
+      opponentName: seededPlayers.find((entry) => entry.player.id === opponentId)!.player.name,
+      scoreline: result.scoreline,
+      won: false,
+      stats: {
+        winners: 10,
+        unforcedErrors: 19,
+        totalSmashes: 14,
+        peakSmashSpeed: 379,
+        longestRally: 25,
+        totalPoints: 70,
+        staminaDrain: 11
+      }
+    };
+    const first = settleCareerMatch({
+      state: career,
+      matchId: context.matchId,
+      opponentId,
+      managedSide,
+      managedRunMatch,
+      result,
+      eventComplete: true
+    });
+    const replayed = settleCareerMatch({
+      state: first,
+      matchId: context.matchId,
+      opponentId,
+      managedSide,
+      managedRunMatch,
+      result,
+      eventComplete: true
+    });
+    const firstRanking = rankingFor(first.rankings, managedPlayerId)!;
+    const replayedRanking = rankingFor(replayed.rankings, managedPlayerId)!;
+    const firstPrizeLedger = first.economy.ledger.filter(
+      (entry) => entry.category === "prize" && entry.label.includes(event.name)
+    );
+    const replayedPrizeLedger = replayed.economy.ledger.filter(
+      (entry) => entry.category === "prize" && entry.label.includes(event.name)
+    );
+
+    expect(firstRanking.points).toBe(initialRanking.points + event.rankingPoints.R16);
+    expect(replayedRanking.points).toBe(firstRanking.points);
+    expect(replayedRanking.eventHistory.filter((entry) => entry.eventId === event.id)).toHaveLength(1);
+    expect(first.economy.prizeIncome).toBe(career.economy.prizeIncome + event.prizeMoney.R16);
+    expect(replayed.economy.prizeIncome).toBe(first.economy.prizeIncome);
+    expect(firstPrizeLedger).toHaveLength(1);
+    expect(replayedPrizeLedger).toHaveLength(1);
+    expect(eventCompletionCount(replayed.completedEventIds, event.id)).toBe(1);
+    expect(replayed.lastMatchReport?.pointsDelta).toBe(0);
+    expect(replayed.lastMatchReport?.cashDelta).toBe(0);
   });
 });
 

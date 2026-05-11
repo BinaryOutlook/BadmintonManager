@@ -57,6 +57,9 @@ import {
   createManagedMatchInput,
   createTournament,
   getManagedMatchContext,
+  getNextManagedOpponentId,
+  isManagedPlayerStillInEvent,
+  isTournamentComplete,
   type ManagedMatchContext,
   type TournamentState
 } from "../tournament/tournament";
@@ -594,18 +597,12 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
       const activeTournament = state.tournament;
       const stillInEvent =
         activeTournament &&
-        !activeTournament.eliminated &&
-        !activeTournament.championId &&
+        isManagedPlayerStillInEvent(activeTournament) &&
         state.career.activeEventId &&
         !state.career.completedEventIds.includes(state.career.activeEventId);
 
       if (stillInEvent) {
-        const context = getManagedMatchContext(activeTournament);
-        const opponentId = context
-          ? context.playerAId === state.career.program.managedPlayerId
-            ? context.playerBId
-            : context.playerAId
-          : null;
+        const opponentId = getNextManagedOpponentId(activeTournament);
         const brief = opponentId
           ? buildPreMatchBrief({ state: state.career, opponentId })
           : state.career.lastPreMatchBrief;
@@ -1051,7 +1048,7 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
               managedSide: state.liveMatch.managedSide,
               managedRunMatch,
               result: managedResult,
-              eventComplete: tournament.eliminated || Boolean(tournament.championId)
+              eventComplete: isTournamentComplete(tournament)
             })
           : state.career;
       const careerWithPsychology = career

@@ -86,13 +86,15 @@ export function settleCareerMatch(args: {
 
   const won = args.result.winner === args.managedSide;
   const eventComplete = args.eventComplete ?? true;
+  const eventAlreadySettled = args.state.completedEventIds.includes(event.id);
+  const shouldSettleEvent = eventComplete && !eventAlreadySettled;
   const placementKey = roundKeyForPlacement(args.managedRunMatch.round, won);
-  const pointsDelta = eventComplete ? event.rankingPoints[placementKey] ?? event.rankingPoints.R16 : 0;
-  const cashDelta = eventComplete ? event.prizeMoney[placementKey] ?? event.prizeMoney.R16 : 0;
+  const pointsDelta = shouldSettleEvent ? event.rankingPoints[placementKey] ?? event.rankingPoints.R16 : 0;
+  const cashDelta = shouldSettleEvent ? event.prizeMoney[placementKey] ?? event.prizeMoney.R16 : 0;
   const staminaDrain =
     args.managedSide === "A" ? args.result.stats.staminaDrainA : args.result.stats.staminaDrainB;
   const athleteAfterMatch = applyMatchLoad(managedAthlete(args.state), staminaDrain, args.state.date);
-  const rankings = eventComplete
+  const rankings = shouldSettleEvent
     ? awardRankingPoints({
         rankings: args.state.rankings,
         playerId: args.state.program.managedPlayerId,
@@ -104,7 +106,7 @@ export function settleCareerMatch(args: {
         tier: event.tier
       })
     : args.state.rankings;
-  const economy = eventComplete
+  const economy = shouldSettleEvent
     ? recordPrizeMoney({
         economy: args.state.economy,
         date: args.state.date,
@@ -151,7 +153,7 @@ export function settleCareerMatch(args: {
     economy,
     completedEventIds: !eventComplete
       ? args.state.completedEventIds
-      : args.state.completedEventIds.includes(event.id)
+      : eventAlreadySettled
       ? args.state.completedEventIds
       : [...args.state.completedEventIds, event.id],
     athletes: args.state.athletes.map((athlete) =>
@@ -159,9 +161,11 @@ export function settleCareerMatch(args: {
     ),
     lastMatchReport: report,
     notes: [
-      eventComplete
+      shouldSettleEvent
         ? `${event.name} settled: ${pointsDelta} points, $${cashDelta}`
-        : `${event.name} ${args.managedRunMatch.round} complete: next round pending`,
+        : eventComplete
+          ? `${event.name} already settled; reward replay skipped`
+          : `${event.name} ${args.managedRunMatch.round} complete: next round pending`,
       ...args.state.notes
     ].slice(0, 6)
   });

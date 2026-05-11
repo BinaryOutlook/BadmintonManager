@@ -52,6 +52,7 @@ What is now stable:
 - the quick tournament event now uses the fictional `Harborline Open` name; legacy local/imported saves that still contain the old real event name are normalized during load/import
 - Phase 3 proof captured 36 desktop/mobile screenshots plus storage reset and import-validation evidence; no video proof is currently part of the shipped evidence pack
 - the UIUX1Change state-flow regression slice now locks career creation to an explicit managed athlete, guards active-career selection paths after reload, and keeps non-final career event wins alive into the next managed-round briefing
+- the tournament continuation hardening slice now exposes tournament completion/still-in-event/next-opponent helpers, uses them in store/UI continuation paths, prevents repeated final-placement reward settlement, and proves active between-round saves through import preview
 
 ## Completed
 
@@ -114,6 +115,7 @@ What is now stable:
 - [x] updated release/status docs for first-launch, Save Manager, career route reachability, fictional calendar/ranking, import validation, and Phase 4 residual polish decisions
 - [x] added red-first UIUX1Change regression coverage for locked career athlete identity, non-final career tournament continuation, loss/title completion, save compatibility, and deterministic post-match-to-next-round Playwright proof
 - [x] fixed the career post-match state flow so a non-final managed win preserves the tournament, active event, and next opponent briefing until elimination or title
+- [x] hardened tournament continuation helpers, post-match CTA branches, final-placement reward settlement, save/import round-trips, and deterministic reload proof for next-round, loss, and title closeout states
 
 ## In Progress
 

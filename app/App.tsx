@@ -533,6 +533,7 @@ export function App() {
   function renderPage() {
     const careerPageProps = {
       career,
+      tournament,
       saveRecovery,
       onStartCareer: requestStartCareer,
       onOpenTraining: () => setActivePage({ id: "season" }),

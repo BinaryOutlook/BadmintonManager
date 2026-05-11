@@ -266,6 +266,40 @@ export function getManagedMatchContext(tournament: TournamentState): ManagedMatc
   };
 }
 
+export function isTournamentComplete(tournament: TournamentState) {
+  return tournament.eliminated || Boolean(tournament.championId);
+}
+
+export function managedPlayerStillAlive(tournament: TournamentState) {
+  if (tournament.eliminated) {
+    return false;
+  }
+
+  return tournament.championId ? tournament.championId === tournament.managedPlayerId : true;
+}
+
+export function getNextManagedOpponentId(tournament: TournamentState) {
+  if (isTournamentComplete(tournament)) {
+    return null;
+  }
+
+  const context = getManagedMatchContext(tournament);
+
+  if (!context) {
+    return null;
+  }
+
+  return context.playerAId === tournament.managedPlayerId ? context.playerBId : context.playerAId;
+}
+
+export function isManagedPlayerStillInEvent(tournament: TournamentState) {
+  return (
+    managedPlayerStillAlive(tournament) &&
+    !isTournamentComplete(tournament) &&
+    getNextManagedOpponentId(tournament) !== null
+  );
+}
+
 export function createManagedMatchInput(args: {
   tournament: TournamentState;
   playerMap: Record<string, Player>;
