@@ -410,7 +410,8 @@ export function App() {
 
   function handleContinueCareerAfterPostMatch() {
     continueCareerAfterPostMatch();
-    setActivePage({ id: "home" });
+    const next = useTournamentStore.getState();
+    setActivePage(next.career?.stage === "pre_match" ? { id: "bracket" } : { id: "home" });
     setSidebarPanel("command");
   }
 

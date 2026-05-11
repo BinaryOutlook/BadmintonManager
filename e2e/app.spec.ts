@@ -1,5 +1,127 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
+import { seededPlayers, playerMap } from "../game/content/players";
+import { createInitialCareerState } from "../game/career/state";
+import { getCareerEvent } from "../game/career/events";
+import type { MatchResult, Side } from "../game/core/models";
+import { advanceTournament, createTournament, getManagedMatchContext } from "../game/tournament/tournament";
+
+function forcedStraightGamesResult(winner: Side): MatchResult {
+  return {
+    winner,
+    setsWonA: winner === "A" ? 2 : 0,
+    setsWonB: winner === "B" ? 2 : 0,
+    setSummaries: [
+      {
+        winner,
+        scoreA: winner === "A" ? 21 : 14,
+        scoreB: winner === "B" ? 21 : 14,
+        points: []
+      },
+      {
+        winner,
+        scoreA: winner === "A" ? 21 : 16,
+        scoreB: winner === "B" ? 21 : 16,
+        points: []
+      }
+    ],
+    stats: {
+      winnersA: winner === "A" ? 22 : 12,
+      winnersB: winner === "B" ? 22 : 12,
+      unforcedErrorsA: winner === "A" ? 8 : 17,
+      unforcedErrorsB: winner === "B" ? 8 : 17,
+      totalSmashesA: 16,
+      totalSmashesB: 15,
+      peakSmashSpeedA: 388,
+      peakSmashSpeedB: 381,
+      staminaDrainA: 8,
+      staminaDrainB: 10,
+      longestRally: 26,
+      totalPoints: 72
+    },
+    scoreline: winner === "A" ? "21-14, 21-16" : "14-21, 16-21",
+    fidelity: "detailed",
+    summaryEvents: [
+      {
+        kind: "straight_games",
+        side: winner,
+        title: "Forced deterministic result",
+        detail: "Playwright state-flow proof supplies the result instead of relying on match luck."
+      }
+    ]
+  };
+}
+
+function createBetweenRoundsCareerSave() {
+  const managedPlayerId = seededPlayers[0].player.id;
+  const career = createInitialCareerState(managedPlayerId, 61001);
+  const event = getCareerEvent(career.events, "metro-open-300")!;
+  const tournament = {
+    ...createTournament(seededPlayers, managedPlayerId, 61001),
+    id: event.id,
+    name: event.name,
+    tier: event.tier,
+    prizePoolUsd: event.prizeMoney.champion * 2
+  };
+  const context = getManagedMatchContext(tournament);
+
+  if (!context) {
+    throw new Error("Expected opening managed match.");
+  }
+
+  const managedSide = context.playerAId === managedPlayerId ? "A" : "B";
+  const advancedTournament = advanceTournament({
+    tournament,
+    seededEntries: seededPlayers,
+    managedMatchId: context.matchId,
+    managedResult: forcedStraightGamesResult(managedSide)
+  });
+  const nextContext = getManagedMatchContext(advancedTournament);
+
+  if (!nextContext) {
+    throw new Error("Expected next-round managed match.");
+  }
+
+  const nextOpponentId = nextContext.playerAId === managedPlayerId ? nextContext.playerBId : nextContext.playerAId;
+  const opponentId = context.playerAId === managedPlayerId ? context.playerBId : context.playerAId;
+  const save = {
+    version: 8,
+    selectedPlayerId: managedPlayerId,
+    plannedTacticKey: "balancedControl",
+    seed: 61001,
+    tournament: advancedTournament,
+    liveMatch: null,
+    career: {
+      ...career,
+      date: event.startDate,
+      stage: "post_match" as const,
+      activeEventId: event.id,
+      enteredEventIds: [event.id],
+      completedEventIds: [],
+      lastMatchReport: {
+        eventId: event.id,
+        matchId: context.matchId,
+        opponentId,
+        result: "win" as const,
+        scoreline: "21-14, 21-16",
+        round: context.roundName,
+        pointsDelta: 0,
+        cashDelta: 0,
+        fatigueDelta: 8,
+        evidence: ["Forced deterministic non-final win for state-flow proof"],
+        recommendations: ["Continue into the next managed round"],
+        tacticalViewer: null
+      }
+    }
+  };
+
+  return {
+    save,
+    eventId: event.id,
+    nextOpponentId,
+    nextOpponentName: playerMap[nextOpponentId].name
+  };
+}
 
 test("can start a tournament run and play through a managed match", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
@@ -129,6 +251,52 @@ test("can complete and reload the career core slice with tactical viewer proof",
   await expect(page.getByRole("heading", { name: "2D Tactical Viewer" })).toBeVisible();
   await expect(page.getByText(/Points/).first()).toBeVisible();
   await expect(page.getByText(/Cash/).first()).toBeVisible();
+});
+
+test("continues a deterministic career event from post-match into the next round after reload", async ({ page }) => {
+  const betweenRounds = createBetweenRoundsCareerSave();
+
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/");
+  await page.evaluate((payload) => {
+    window.localStorage.setItem("badminton-manager-save", JSON.stringify(payload.save));
+  }, betweenRounds);
+  await page.reload();
+
+  await expect(page.getByRole("heading", { name: "Match Evidence Review" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Continue To Next Round" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Continue To Next Round" }).click();
+
+  await expect(page.getByRole("heading", { name: "Opponent Briefing" })).toBeVisible();
+  await expect(page.getByText(betweenRounds.nextOpponentName).first()).toBeVisible();
+  await page.evaluate((payload) => {
+    const raw = window.localStorage.getItem("badminton-manager-save");
+    if (!raw) {
+      throw new Error("Expected active save.");
+    }
+
+    const save = JSON.parse(raw);
+    if (!save.tournament || save.tournament.currentRoundIndex !== 1) {
+      throw new Error("Expected next-round tournament to remain active.");
+    }
+
+    if (save.career.activeEventId !== payload.eventId) {
+      throw new Error("Expected active event to survive non-final continue.");
+    }
+
+    if (save.career.completedEventIds.includes(payload.eventId)) {
+      throw new Error("Expected non-final win to avoid event completion.");
+    }
+
+    if (save.career.lastPreMatchBrief?.opponentId !== payload.nextOpponentId) {
+      throw new Error("Expected next managed opponent briefing after continue.");
+    }
+  }, betweenRounds);
+
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Opponent Briefing" })).toBeVisible();
+  await expect(page.getByText(betweenRounds.nextOpponentName).first()).toBeVisible();
 });
 
 test("surfaces corrupt save recovery and blocks unaffordable event entry", async ({ page }) => {

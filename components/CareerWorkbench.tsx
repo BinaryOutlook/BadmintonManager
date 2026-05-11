@@ -2239,6 +2239,14 @@ export function CareerPostMatchHubPage(props: CareerPageProps) {
 
   const report = props.career.lastMatchReport;
   const opponent = report ? playerMap[report.opponentId] : null;
+  const eventStillActive =
+    props.career.activeEventId !== null &&
+    !props.career.completedEventIds.includes(props.career.activeEventId);
+  const continueLabel = eventStillActive
+    ? "Continue To Next Round"
+    : report?.result === "win"
+      ? "Collect Title And Continue"
+      : "Close Event";
 
   return (
     <section className="screen-shell career-page">
@@ -2251,7 +2259,7 @@ export function CareerPostMatchHubPage(props: CareerPageProps) {
           </p>
         </div>
         <button className="command-button command-button-primary" type="button" onClick={props.onContinueAfterPostMatch}>
-          Continue Career
+          {continueLabel}
         </button>
       </div>
 

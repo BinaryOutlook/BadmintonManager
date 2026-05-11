@@ -46,7 +46,308 @@ import {
 } from "../../game/career/tactics";
 import { applyTrainingPlan, trainingPlans } from "../../game/career/training";
 import { createMatchSession, simulateMatch, simulateNextPoint } from "../../game/core/match";
-import { createManagedMatchInput, createTournament } from "../../game/tournament/tournament";
+import type { LiveMatchSession, MatchResult, Side } from "../../game/core/models";
+import { loadPersistedFromStorage, STORAGE_KEY, useTournamentStore } from "../../game/store/store";
+import {
+  advanceTournament,
+  createManagedMatchInput,
+  createTournament,
+  getManagedMatchContext,
+  type TournamentState
+} from "../../game/tournament/tournament";
+
+class MemoryStorage {
+  private readonly values = new Map<string, string>();
+
+  clear() {
+    this.values.clear();
+  }
+
+  getItem(key: string) {
+    return this.values.get(key) ?? null;
+  }
+
+  setItem(key: string, value: string) {
+    this.values.set(key, value);
+  }
+
+  removeItem(key: string) {
+    this.values.delete(key);
+  }
+}
+
+function installWindowStorage() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  Object.defineProperty(window, "localStorage", {
+    value: new MemoryStorage(),
+    configurable: true
+  });
+}
+
+function resetStoreForCareerFlow(selectedPlayerId = seededPlayers[0].player.id) {
+  installWindowStorage();
+  useTournamentStore.setState({
+    phase: "setup",
+    selectedPlayerId,
+    plannedTacticKey: "balancedControl",
+    seed: 9001,
+    tournament: null,
+    liveMatch: null,
+    career: null,
+    saveRecovery: null,
+    activeSavePresent: false,
+    corruptSavePresent: false
+  });
+}
+
+function straightGamesResult(winner: Side): MatchResult {
+  return {
+    winner,
+    setsWonA: winner === "A" ? 2 : 0,
+    setsWonB: winner === "B" ? 2 : 0,
+    setSummaries: [
+      {
+        winner,
+        scoreA: winner === "A" ? 21 : 13,
+        scoreB: winner === "B" ? 21 : 13,
+        points: []
+      },
+      {
+        winner,
+        scoreA: winner === "A" ? 21 : 15,
+        scoreB: winner === "B" ? 21 : 15,
+        points: []
+      }
+    ],
+    stats: {
+      winnersA: winner === "A" ? 24 : 11,
+      winnersB: winner === "B" ? 24 : 11,
+      unforcedErrorsA: winner === "A" ? 7 : 18,
+      unforcedErrorsB: winner === "B" ? 7 : 18,
+      totalSmashesA: 18,
+      totalSmashesB: 16,
+      peakSmashSpeedA: 391,
+      peakSmashSpeedB: 384,
+      staminaDrainA: 9,
+      staminaDrainB: 11,
+      longestRally: 28,
+      totalPoints: 70
+    },
+    scoreline: winner === "A" ? "21-13, 21-15" : "13-21, 15-21",
+    fidelity: "detailed",
+    summaryEvents: [
+      {
+        kind: "straight_games",
+        side: winner,
+        title: "Forced deterministic result",
+        detail: "State-flow regression proof supplies the result instead of relying on match luck."
+      }
+    ]
+  };
+}
+
+function completedSession(session: LiveMatchSession, winner: Side): LiveMatchSession {
+  const result = straightGamesResult(winner);
+
+  return {
+    ...session,
+    complete: true,
+    winner,
+    setsWonA: result.setsWonA,
+    setsWonB: result.setsWonB,
+    setSummaries: result.setSummaries
+  };
+}
+
+function careerOnMetroEvent(managedPlayerId: string, seed = 9101) {
+  const initial = createInitialCareerState(managedPlayerId, seed);
+  const event = getCareerEvent(initial.events, "metro-open-300")!;
+  const career = {
+    ...initial,
+    date: event.startDate,
+    activeEventId: event.id,
+    enteredEventIds: [event.id],
+    stage: "pre_match" as const
+  };
+  const tournament = {
+    ...createTournament(seededPlayers, managedPlayerId, seed),
+    id: event.id,
+    name: event.name,
+    tier: event.tier,
+    prizePoolUsd: event.prizeMoney.champion * 2
+  };
+
+  return { career, event, tournament };
+}
+
+function startForcedStoreMatch(winnerForManagedSide: boolean) {
+  useTournamentStore.getState().startManagedMatch();
+  const liveMatch = useTournamentStore.getState().liveMatch;
+
+  if (!liveMatch) {
+    throw new Error("Expected live match to start.");
+  }
+
+  const forcedWinner =
+    winnerForManagedSide
+      ? liveMatch.managedSide
+      : liveMatch.managedSide === "A"
+        ? "B"
+        : "A";
+
+  useTournamentStore.setState({
+    liveMatch: {
+      ...liveMatch,
+      session: completedSession(liveMatch.session, forcedWinner)
+    }
+  });
+}
+
+function advanceManagedPlayerToFinal(tournament: TournamentState, managedPlayerId: string) {
+  let current = tournament;
+
+  while (getManagedMatchContext(current)?.roundName !== "F") {
+    const context = getManagedMatchContext(current);
+
+    if (!context) {
+      throw new Error("Expected managed match context before the final.");
+    }
+
+    const managedSide = context.playerAId === managedPlayerId ? "A" : "B";
+    current = advanceTournament({
+      tournament: current,
+      seededEntries: seededPlayers,
+      managedMatchId: context.matchId,
+      managedResult: straightGamesResult(managedSide)
+    });
+  }
+
+  return current;
+}
+
+function eventCompletionCount(eventIds: string[], eventId: string) {
+  return eventIds.filter((entry) => entry === eventId).length;
+}
+
+describe("career athlete identity lock", () => {
+  it("starts with an explicit managed athlete and ignores active-career selection after reload", () => {
+    const draftPlayerId = seededPlayers[0].player.id;
+    const lockedPlayerId = seededPlayers[2].player.id;
+    const attemptedSwitchId = seededPlayers[3].player.id;
+    resetStoreForCareerFlow(draftPlayerId);
+
+    (useTournamentStore.getState().startCareer as (managedPlayerId: string) => void)(lockedPlayerId);
+
+    expect(useTournamentStore.getState().career?.program.managedPlayerId).toBe(lockedPlayerId);
+    expect(useTournamentStore.getState().selectedPlayerId).toBe(lockedPlayerId);
+
+    useTournamentStore.getState().selectPlayer(attemptedSwitchId);
+
+    expect(useTournamentStore.getState().career?.program.managedPlayerId).toBe(lockedPlayerId);
+    expect(useTournamentStore.getState().selectedPlayerId).toBe(lockedPlayerId);
+
+    const save = useTournamentStore.getState().exportActiveSave();
+    const storage = new MemoryStorage();
+    storage.setItem(STORAGE_KEY, JSON.stringify(save));
+    const reloaded = loadPersistedFromStorage(storage, () => 9201);
+    useTournamentStore.setState(reloaded);
+
+    useTournamentStore.getState().selectPlayer(attemptedSwitchId);
+
+    expect(useTournamentStore.getState().career?.program.managedPlayerId).toBe(lockedPlayerId);
+    expect(useTournamentStore.getState().selectedPlayerId).toBe(lockedPlayerId);
+  });
+});
+
+describe("career tournament state flow", () => {
+  it("keeps a career event active after a forced non-final managed win and builds the next briefing", () => {
+    const managedPlayerId = seededPlayers[0].player.id;
+    const { career, event, tournament } = careerOnMetroEvent(managedPlayerId);
+    resetStoreForCareerFlow(managedPlayerId);
+    useTournamentStore.setState({
+      selectedPlayerId: managedPlayerId,
+      career,
+      tournament,
+      phase: "overview"
+    });
+
+    startForcedStoreMatch(true);
+    useTournamentStore.getState().advanceAfterMatch();
+
+    const afterWin = useTournamentStore.getState();
+    const nextContext = afterWin.tournament ? getManagedMatchContext(afterWin.tournament) : undefined;
+    const nextOpponentId =
+      nextContext?.playerAId === managedPlayerId ? nextContext.playerBId : nextContext?.playerAId;
+
+    expect(afterWin.tournament).not.toBeNull();
+    expect(afterWin.tournament?.currentRoundIndex).toBe(1);
+    expect(afterWin.career?.activeEventId).toBe(event.id);
+    expect(afterWin.career?.completedEventIds).not.toContain(event.id);
+    expect(nextOpponentId).toBeTruthy();
+
+    useTournamentStore.getState().continueCareerAfterPostMatch();
+
+    const betweenRounds = useTournamentStore.getState();
+    expect(betweenRounds.tournament).not.toBeNull();
+    expect(betweenRounds.career?.stage).toBe("pre_match");
+    expect(betweenRounds.career?.activeEventId).toBe(event.id);
+    expect(betweenRounds.career?.completedEventIds).not.toContain(event.id);
+    expect(betweenRounds.career?.lastPreMatchBrief?.opponentId).toBe(nextOpponentId);
+  });
+
+  it("marks a managed loss and a managed final win complete exactly once", () => {
+    const managedPlayerId = seededPlayers[0].player.id;
+    const lossSetup = careerOnMetroEvent(managedPlayerId, 9301);
+    resetStoreForCareerFlow(managedPlayerId);
+    useTournamentStore.setState({
+      selectedPlayerId: managedPlayerId,
+      career: lossSetup.career,
+      tournament: lossSetup.tournament,
+      phase: "overview"
+    });
+
+    startForcedStoreMatch(false);
+    useTournamentStore.getState().advanceAfterMatch();
+
+    const afterLoss = useTournamentStore.getState();
+    expect(afterLoss.tournament?.eliminated).toBe(true);
+    expect(eventCompletionCount(afterLoss.career?.completedEventIds ?? [], lossSetup.event.id)).toBe(1);
+
+    useTournamentStore.getState().continueCareerAfterPostMatch();
+
+    expect(useTournamentStore.getState().tournament).toBeNull();
+    expect(useTournamentStore.getState().career?.stage).toBe("event_complete");
+    expect(useTournamentStore.getState().career?.activeEventId).toBeNull();
+    expect(eventCompletionCount(useTournamentStore.getState().career?.completedEventIds ?? [], lossSetup.event.id)).toBe(1);
+
+    const finalSetup = careerOnMetroEvent(managedPlayerId, 9302);
+    const finalTournament = advanceManagedPlayerToFinal(finalSetup.tournament, managedPlayerId);
+    resetStoreForCareerFlow(managedPlayerId);
+    useTournamentStore.setState({
+      selectedPlayerId: managedPlayerId,
+      career: finalSetup.career,
+      tournament: finalTournament,
+      phase: "overview"
+    });
+
+    startForcedStoreMatch(true);
+    useTournamentStore.getState().advanceAfterMatch();
+
+    const afterTitle = useTournamentStore.getState();
+    expect(afterTitle.tournament?.championId).toBe(managedPlayerId);
+    expect(eventCompletionCount(afterTitle.career?.completedEventIds ?? [], finalSetup.event.id)).toBe(1);
+
+    useTournamentStore.getState().continueCareerAfterPostMatch();
+
+    expect(useTournamentStore.getState().tournament).toBeNull();
+    expect(useTournamentStore.getState().career?.stage).toBe("event_complete");
+    expect(useTournamentStore.getState().career?.activeEventId).toBeNull();
+    expect(eventCompletionCount(useTournamentStore.getState().career?.completedEventIds ?? [], finalSetup.event.id)).toBe(1);
+  });
+});
 
 describe("career core slice", () => {
   it("applies training with development, readiness, fatigue, injury risk, and cashflow trade-offs", () => {

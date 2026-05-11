@@ -76,6 +76,7 @@ export function settleCareerMatch(args: {
   managedSide: "A" | "B";
   managedRunMatch: ManagedRunMatch;
   result: MatchResult;
+  eventComplete?: boolean;
 }) {
   const event = args.state.activeEventId ? getCareerEvent(args.state.events, args.state.activeEventId) : undefined;
 
@@ -84,28 +85,33 @@ export function settleCareerMatch(args: {
   }
 
   const won = args.result.winner === args.managedSide;
+  const eventComplete = args.eventComplete ?? true;
   const placementKey = roundKeyForPlacement(args.managedRunMatch.round, won);
-  const pointsDelta = event.rankingPoints[placementKey] ?? event.rankingPoints.R16;
-  const cashDelta = event.prizeMoney[placementKey] ?? event.prizeMoney.R16;
+  const pointsDelta = eventComplete ? event.rankingPoints[placementKey] ?? event.rankingPoints.R16 : 0;
+  const cashDelta = eventComplete ? event.prizeMoney[placementKey] ?? event.prizeMoney.R16 : 0;
   const staminaDrain =
     args.managedSide === "A" ? args.result.stats.staminaDrainA : args.result.stats.staminaDrainB;
   const athleteAfterMatch = applyMatchLoad(managedAthlete(args.state), staminaDrain, args.state.date);
-  const rankings = awardRankingPoints({
-    rankings: args.state.rankings,
-    playerId: args.state.program.managedPlayerId,
-    eventId: event.id,
-    round: placementKey,
-    points: pointsDelta,
-    date: args.state.date,
-    seasonId: args.state.seasonId,
-    tier: event.tier
-  });
-  const economy = recordPrizeMoney({
-    economy: args.state.economy,
-    date: args.state.date,
-    label: `${event.name} ${won ? "win" : "placement"} prize`,
-    amount: cashDelta
-  });
+  const rankings = eventComplete
+    ? awardRankingPoints({
+        rankings: args.state.rankings,
+        playerId: args.state.program.managedPlayerId,
+        eventId: event.id,
+        round: placementKey,
+        points: pointsDelta,
+        date: args.state.date,
+        seasonId: args.state.seasonId,
+        tier: event.tier
+      })
+    : args.state.rankings;
+  const economy = eventComplete
+    ? recordPrizeMoney({
+        economy: args.state.economy,
+        date: args.state.date,
+        label: `${event.name} ${won ? "win" : "placement"} prize`,
+        amount: cashDelta
+      })
+    : args.state.economy;
   const report: PostMatchReport = {
     eventId: event.id,
     matchId: args.matchId,
@@ -143,14 +149,21 @@ export function settleCareerMatch(args: {
     stage: "post_match",
     rankings,
     economy,
-    completedEventIds: args.state.completedEventIds.includes(event.id)
+    completedEventIds: !eventComplete
+      ? args.state.completedEventIds
+      : args.state.completedEventIds.includes(event.id)
       ? args.state.completedEventIds
       : [...args.state.completedEventIds, event.id],
     athletes: args.state.athletes.map((athlete) =>
       athlete.playerId === args.state.program.managedPlayerId ? athleteAfterMatch : athlete
     ),
     lastMatchReport: report,
-    notes: [`${event.name} settled: ${pointsDelta} points, $${cashDelta}`, ...args.state.notes].slice(0, 6)
+    notes: [
+      eventComplete
+        ? `${event.name} settled: ${pointsDelta} points, $${cashDelta}`
+        : `${event.name} ${args.managedRunMatch.round} complete: next round pending`,
+      ...args.state.notes
+    ].slice(0, 6)
   });
 
   return next;

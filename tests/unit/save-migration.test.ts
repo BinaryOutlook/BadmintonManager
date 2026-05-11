@@ -227,6 +227,26 @@ describe("career save migration", () => {
     expect(persistedSaveSchema.parse(save).career).toEqual(careerStateSchema.parse(career));
   });
 
+  it("preserves locked career identity when draft selection metadata differs", () => {
+    const career = createInitialCareerState(seededPlayers[0].player.id, 466);
+    const save = {
+      version: 8,
+      selectedPlayerId: seededPlayers[5].player.id,
+      plannedTacticKey: "balancedControl",
+      seed: 466,
+      tournament: null,
+      liveMatch: null,
+      career
+    };
+
+    const parsed = persistedSavePayloadSchema.parse(save);
+    const migrated = migratePersistedSave(parsed);
+
+    expect(migrated.career?.program.managedPlayerId).toBe(seededPlayers[0].player.id);
+    expect(migrated.selectedPlayerId).toBe(seededPlayers[5].player.id);
+    expect(persistedSaveSchema.parse(migrated)).toEqual(migrated);
+  });
+
   it("defaults medical injury episodes when loading current saves from before the health pass", () => {
     const career = createInitialCareerState(seededPlayers[0].player.id, 462);
     const save = {
