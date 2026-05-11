@@ -127,7 +127,7 @@ export interface TournamentStoreState {
   overrideAssistantAdvice: (adviceId: string, reason: string) => void;
   selectPlayer: (playerId: string) => void;
   chooseTactic: (tacticKey: TacticKey) => void;
-  startTournament: () => void;
+  startTournament: (managedPlayerId?: string) => void;
   startManagedMatch: () => void;
   applyDirective: (directive: LiveDirective) => void;
   applyTalk: (teamTalk: TeamTalk) => void;
@@ -878,12 +878,16 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
       return next;
     });
   },
-  startTournament: () => {
+  startTournament: (managedPlayerId) => {
     set((state) => {
       const seed = randomSeed();
-      const tournament = createTournament(seededPlayers, state.selectedPlayerId, seed);
+      const tournamentPlayerId = managedPlayerId && playerMap[managedPlayerId]
+        ? managedPlayerId
+        : state.selectedPlayerId;
+      const tournament = createTournament(seededPlayers, tournamentPlayerId, seed);
       const next = {
         ...state,
+        selectedPlayerId: tournamentPlayerId,
         seed,
         tournament,
         liveMatch: null,

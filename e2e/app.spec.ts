@@ -226,6 +226,10 @@ async function startNewCareer(page: Page, athleteName = seededPlayers[0].player.
   await page.getByRole("button", { name: new RegExp(`Confirm ${athleteName}`) }).click();
 }
 
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 test("can start a tournament run and play through a managed match", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/");
@@ -334,6 +338,77 @@ test("starts from a direct screen and locks a confirmed career athlete", async (
   await page.getByRole("button", { name: "Quick Tournament" }).click();
   await expect(page.getByRole("heading", { name: "Quick Tournament Setup" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Browse All Athletes" })).toBeVisible();
+});
+
+test("uses an active-career quick tournament draft only after replacement confirmation", async ({ page }) => {
+  const careerPlayer = seededPlayers[0].player;
+  const quickDraftPlayer = seededPlayers[1].player;
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+
+  await startNewCareer(page, careerPlayer.name);
+  await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
+
+  await page.getByRole("button", { name: "NEW_SESSION" }).click();
+  await page.getByRole("button", { name: "Start New Session" }).click();
+  await page.getByRole("button", { name: "Quick Tournament" }).click();
+  await expect(page.getByRole("heading", { name: "Quick Tournament Setup" })).toBeVisible();
+  await page.getByRole("button", { name: "Browse All Athletes" }).click();
+  await page
+    .getByRole("button", { name: new RegExp(`Select ${escapeRegExp(quickDraftPlayer.name)}`) })
+    .click();
+  await expect(page.getByText(quickDraftPlayer.name).first()).toBeVisible();
+
+  await page.getByRole("button", { name: "Start Tournament" }).click();
+  await expect(page.getByRole("heading", { name: "Start tournament and replace career?" })).toBeVisible();
+
+  await page.evaluate((expectedCareerPlayerId) => {
+    const raw = window.localStorage.getItem("badminton-manager-save");
+    if (!raw) {
+      throw new Error("Expected active career save before replacement.");
+    }
+
+    const save = JSON.parse(raw);
+    if (save.career?.program.managedPlayerId !== expectedCareerPlayerId) {
+      throw new Error(
+        `Expected career save to remain ${expectedCareerPlayerId}, received ${save.career?.program.managedPlayerId}`
+      );
+    }
+    if (save.selectedPlayerId !== expectedCareerPlayerId) {
+      throw new Error(
+        `Expected selected player in career save to remain ${expectedCareerPlayerId}, received ${save.selectedPlayerId}`
+      );
+    }
+  }, careerPlayer.id);
+
+  await page
+    .getByRole("dialog", { name: "Start tournament and replace career?" })
+    .getByRole("button", { name: "Start Tournament" })
+    .click();
+  await expect(page.getByRole("heading", { name: "Next Opponent" })).toBeVisible();
+
+  await page.evaluate((expectedQuickDraftPlayerId) => {
+    const raw = window.localStorage.getItem("badminton-manager-save");
+    if (!raw) {
+      throw new Error("Expected replacement quick tournament save.");
+    }
+
+    const save = JSON.parse(raw);
+    if (save.career !== null) {
+      throw new Error("Expected quick tournament replacement to clear the career save.");
+    }
+    if (save.selectedPlayerId !== expectedQuickDraftPlayerId) {
+      throw new Error(
+        `Expected quick draft selected player ${expectedQuickDraftPlayerId}, received ${save.selectedPlayerId}`
+      );
+    }
+    if (save.tournament?.managedPlayerId !== expectedQuickDraftPlayerId) {
+      throw new Error(
+        `Expected tournament managed player ${expectedQuickDraftPlayerId}, received ${save.tournament?.managedPlayerId}`
+      );
+    }
+  }, quickDraftPlayer.id);
 });
 
 test("can complete and reload the career core slice with tactical viewer proof", async ({ page }) => {

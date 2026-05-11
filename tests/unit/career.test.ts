@@ -261,6 +261,28 @@ describe("career athlete identity lock", () => {
     expect(useTournamentStore.getState().career?.program.managedPlayerId).toBe(lockedPlayerId);
     expect(useTournamentStore.getState().selectedPlayerId).toBe(lockedPlayerId);
   });
+
+  it("starts a replacement quick tournament from an explicit draft without editing the active career save", () => {
+    const careerPlayerId = seededPlayers[0].player.id;
+    const quickDraftPlayerId = seededPlayers[1].player.id;
+    resetStoreForCareerFlow(careerPlayerId);
+
+    (useTournamentStore.getState().startCareer as (managedPlayerId: string) => void)(careerPlayerId);
+    useTournamentStore.getState().selectPlayer(quickDraftPlayerId);
+
+    const exportedCareerSave = useTournamentStore.getState().exportActiveSave();
+
+    expect(exportedCareerSave?.career?.program.managedPlayerId).toBe(careerPlayerId);
+    expect(exportedCareerSave?.selectedPlayerId).toBe(careerPlayerId);
+    expect(useTournamentStore.getState().career?.program.managedPlayerId).toBe(careerPlayerId);
+    expect(useTournamentStore.getState().selectedPlayerId).toBe(careerPlayerId);
+
+    useTournamentStore.getState().startTournament(quickDraftPlayerId);
+
+    expect(useTournamentStore.getState().career).toBeNull();
+    expect(useTournamentStore.getState().selectedPlayerId).toBe(quickDraftPlayerId);
+    expect(useTournamentStore.getState().tournament?.managedPlayerId).toBe(quickDraftPlayerId);
+  });
 });
 
 describe("career tournament state flow", () => {

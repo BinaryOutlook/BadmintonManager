@@ -238,12 +238,16 @@ export function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
   const [pendingCareerPlayerId, setPendingCareerPlayerId] = useState<string | null>(null);
+  const [quickTournamentDraftPlayerId, setQuickTournamentDraftPlayerId] = useState<string | null>(null);
   const [sidebarPanel, setSidebarPanel] = useState<SidebarPanel>("command");
   const [sidebarWidth, setSidebarWidth] = useState(loadSidebarWidth);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(loadSidebarCollapsed);
   const [themeAccent, setThemeAccent] = useState<ThemeAccent>(loadThemeAccent);
   const selectedPlayer = playerMap[selectedPlayerId];
   const activeAthlete = career ? playerMap[career.program.managedPlayerId] : selectedPlayer;
+  const setupSelectedPlayerId = career
+    ? quickTournamentDraftPlayerId ?? selectedPlayerId
+    : selectedPlayerId;
   const phaseTopMode = phase === "match" ? "LIVE" : phase === "setup" ? "SQUAD" : "BRACKETS";
   const topMode = topModeForPage(activePage, phaseTopMode, Boolean(career));
   const selectedTactic =
@@ -308,9 +312,20 @@ export function App() {
   }
 
   function performStartTournament() {
-    startTournament();
+    startTournament(quickTournamentDraftPlayerId ?? selectedPlayerId);
+    setQuickTournamentDraftPlayerId(null);
     setActivePage({ id: "bracket" });
     setSidebarPanel("events");
+  }
+
+  function selectSetupPlayer(playerId: string) {
+    if (career) {
+      setQuickTournamentDraftPlayerId(playerId);
+      return;
+    }
+
+    selectPlayer(playerId);
+    setQuickTournamentDraftPlayerId(playerId);
   }
 
   function requestStartTournament() {
@@ -583,9 +598,9 @@ export function App() {
     if (activePage.id === "setup") {
       return (
         <SetupView
-          selectedPlayerId={selectedPlayerId}
+          selectedPlayerId={setupSelectedPlayerId}
           plannedTacticKey={plannedTacticKey}
-          onSelectPlayer={selectPlayer}
+          onSelectPlayer={selectSetupPlayer}
           onOpenPlayerProfile={openPlayerProfile}
           onChooseTactic={chooseTactic}
           onStartTournament={requestStartTournament}
@@ -716,9 +731,9 @@ export function App() {
     if (phase === "setup") {
       return (
         <SetupView
-          selectedPlayerId={selectedPlayerId}
+          selectedPlayerId={setupSelectedPlayerId}
           plannedTacticKey={plannedTacticKey}
-          onSelectPlayer={selectPlayer}
+          onSelectPlayer={selectSetupPlayer}
           onOpenPlayerProfile={openPlayerProfile}
           onChooseTactic={chooseTactic}
           onStartTournament={requestStartTournament}

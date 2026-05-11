@@ -54,6 +54,7 @@ What is now stable:
 - the UIUX1Change state-flow regression slice now locks career creation to an explicit managed athlete, guards active-career selection paths after reload, and keeps non-final career event wins alive into the next managed-round briefing
 - the tournament continuation hardening slice now exposes tournament completion/still-in-event/next-opponent helpers, uses them in store/UI continuation paths, prevents repeated final-placement reward settlement, and proves active between-round saves through import preview
 - the UIUX1Change start-screen slice now opens on a direct Start Screen, routes Quick Tournament through the editable setup path, requires a career-athlete confirmation dialog before writing `career.program.managedPlayerId`, and keeps active-career squad/profile views inspect-only
+- the active-career Quick Tournament path now keeps its draft athlete local until explicit replacement confirmation, preserving the career save's `career.program.managedPlayerId` while starting the replacement quick run with the drafted athlete
 
 ## Completed
 
@@ -118,6 +119,7 @@ What is now stable:
 - [x] fixed the career post-match state flow so a non-final managed win preserves the tournament, active event, and next opponent briefing until elimination or title
 - [x] hardened tournament continuation helpers, post-match CTA branches, final-placement reward settlement, save/import round-trips, and deterministic reload proof for next-round, loss, and title closeout states
 - [x] replaced the clean-launch athlete-directory loop with a direct Start Screen plus explicit career-athlete lock confirmation, while preserving Quick Tournament editability and active-career squad/profile inspection
+- [x] remediated the active-career Quick Tournament draft path so draft athlete selection no longer mutates or no-ops against the locked career identity before replacement confirmation
 
 ## In Progress
 
