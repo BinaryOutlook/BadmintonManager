@@ -307,6 +307,50 @@ test("can start a tournament run and play through a managed match", async ({ pag
   ).toBeVisible();
 });
 
+test("traps overlay focus and cancels safe dialogs on Escape", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+
+  const settingsButton = page.getByRole("banner").getByRole("button", { name: "Settings" });
+  await settingsButton.click();
+
+  const settingsDialog = page.getByRole("dialog", { name: "Console Preferences" });
+  await expect(settingsDialog).toBeVisible();
+  await expect(settingsDialog.getByRole("button", { name: "Close settings" })).toBeFocused();
+
+  await page.keyboard.press("Shift+Tab");
+  await expect(settingsDialog.getByRole("button", { name: "Open Save Manager" })).toBeFocused();
+
+  await page.keyboard.press("Tab");
+  await expect(settingsDialog.getByRole("button", { name: "Close settings" })).toBeFocused();
+
+  await page.keyboard.press("Escape");
+  await expect(settingsDialog).toHaveCount(0);
+  await expect(settingsButton).toBeFocused();
+
+  await page.getByRole("button", { name: "Quick Tournament", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Quick Tournament Setup" })).toBeVisible();
+  await page.getByRole("button", { name: "Start Tournament" }).click();
+
+  const resetRunButton = page.getByRole("button", { name: "Reset Run" });
+  await expect(resetRunButton).toBeVisible();
+  await resetRunButton.click();
+
+  const confirmDialog = page.getByRole("dialog", { name: "Start a new session?" });
+  await expect(confirmDialog).toBeVisible();
+  await expect(confirmDialog.getByRole("button", { name: "Cancel" })).toBeFocused();
+
+  await page.keyboard.press("Shift+Tab");
+  await expect(confirmDialog.getByRole("button", { name: "Start New Session" })).toBeFocused();
+
+  await page.keyboard.press("Tab");
+  await expect(confirmDialog.getByRole("button", { name: "Cancel" })).toBeFocused();
+
+  await page.keyboard.press("Escape");
+  await expect(confirmDialog).toHaveCount(0);
+  await expect(resetRunButton).toBeFocused();
+});
+
 test("starts from a direct screen and locks a confirmed career athlete", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/");

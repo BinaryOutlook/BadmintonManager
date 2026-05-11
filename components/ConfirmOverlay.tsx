@@ -1,3 +1,5 @@
+import { useModalFocus } from "./useModalFocus";
+
 interface ConfirmOverlayProps {
   open: boolean;
   title: string;
@@ -8,6 +10,8 @@ interface ConfirmOverlayProps {
 }
 
 export function ConfirmOverlay(props: ConfirmOverlayProps) {
+  const { modalRef, handleModalKeyDown } = useModalFocus(props.open, props.onCancel);
+
   if (!props.open) {
     return null;
   }
@@ -15,10 +19,14 @@ export function ConfirmOverlay(props: ConfirmOverlayProps) {
   return (
     <div className="modal-backdrop" role="presentation">
       <section
+        ref={modalRef}
         className="confirm-modal"
         role="dialog"
         aria-modal="true"
         aria-labelledby="confirm-title"
+        aria-describedby="confirm-message"
+        tabIndex={-1}
+        onKeyDown={handleModalKeyDown}
       >
         <div className="modal-header">
           <div>
@@ -26,7 +34,7 @@ export function ConfirmOverlay(props: ConfirmOverlayProps) {
             <h2 id="confirm-title">{props.title}</h2>
           </div>
         </div>
-        <p>{props.message}</p>
+        <p id="confirm-message">{props.message}</p>
         <div className="confirm-actions">
           <button className="command-button command-button-secondary" type="button" onClick={props.onCancel}>
             Cancel

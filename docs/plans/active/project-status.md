@@ -56,6 +56,7 @@ What is now stable:
 - the UIUX1Change start-screen slice now opens on a direct Start Screen, routes Quick Tournament through the editable setup path, requires a career-athlete confirmation dialog before writing `career.program.managedPlayerId`, and keeps active-career squad/profile views inspect-only
 - the active-career Quick Tournament path now keeps its draft athlete local until explicit replacement confirmation, preserving the career save's `career.program.managedPlayerId` while starting the replacement quick run with the drafted athlete
 - the UIUX1Change shell-standardization slice now uses one grouped command rail with Core, Program, Match, Operations, and System commands; the former top nav and global career route strip are removed, while Settings and Save Manager stay reachable through shell system controls
+- the shell overlay remediation now moves focus into Settings and confirmation dialogs, traps Tab and Shift+Tab inside the active modal, closes Settings on Escape, cancels confirmations on Escape, and restores focus to the invoking control after close
 
 ## Completed
 
@@ -122,6 +123,7 @@ What is now stable:
 - [x] replaced the clean-launch athlete-directory loop with a direct Start Screen plus explicit career-athlete lock confirmation, while preserving Quick Tournament editability and active-career squad/profile inspection
 - [x] remediated the active-career Quick Tournament draft path so draft athlete selection no longer mutates or no-ops against the locked career identity before replacement confirmation
 - [x] standardized the management shell around a minimal top status bar, grouped primary command sidebar, page canvas, and overlay host while preserving Save Manager, Settings, locked identity, and tournament continuation reachability
+- [x] remediated Settings and confirmation overlay keyboard behavior with initial focus, focus containment, safe Escape handling, focus restoration, and focused Playwright proof
 
 ## In Progress
 

@@ -1,3 +1,5 @@
+import { useModalFocus } from "./useModalFocus";
+
 export type ThemeAccent = "lime" | "cyan" | "rose" | "slate";
 
 interface SettingsOverlayProps {
@@ -17,6 +19,8 @@ const themeOptions: Array<{ id: ThemeAccent; label: string; description: string 
 ];
 
 export function SettingsOverlay(props: SettingsOverlayProps) {
+  const { modalRef, handleModalKeyDown } = useModalFocus(props.open, props.onClose);
+
   if (!props.open) {
     return null;
   }
@@ -24,10 +28,13 @@ export function SettingsOverlay(props: SettingsOverlayProps) {
   return (
     <div className="modal-backdrop" role="presentation">
       <section
+        ref={modalRef}
         className="settings-modal"
         role="dialog"
         aria-modal="true"
         aria-labelledby="settings-title"
+        tabIndex={-1}
+        onKeyDown={handleModalKeyDown}
       >
         <div className="modal-header">
           <div>
