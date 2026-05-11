@@ -24,7 +24,7 @@ import { effectiveEventEntryCosts, facilityModifiers } from "../game/career/faci
 import { managedAthlete } from "../game/career/state";
 import { activeAdvancedTacticPlan, buildPreMatchPlanningBridge, calculateTacticEffectProfile, tacticPlanToMatchTactic } from "../game/career/tactics";
 import { trainingPlans } from "../game/career/training";
-import type { SaveRecoveryNotice } from "../game/store/store";
+import { STORAGE_KEY, type SaveRecoveryNotice } from "../game/store/store";
 import { isManagedPlayerStillInEvent, type TournamentState } from "../game/tournament/tournament";
 import { TacticalMatchViewer } from "./TacticalMatchViewer";
 
@@ -32,6 +32,8 @@ interface CareerPageProps {
   career: CareerState | null;
   tournament: TournamentState | null;
   saveRecovery: SaveRecoveryNotice | null;
+  activeSavePresent: boolean;
+  corruptSavePresent: boolean;
   onStartCareer: () => void;
   onOpenTraining: () => void;
   onOpenCalendar: () => void;
@@ -189,28 +191,77 @@ export function CareerHomePage(props: CareerPageProps) {
   const eventStatus = event ? eventStatusFor(props.career, event) : null;
   const seedingSnapshot = event ? buildEventSeedingSnapshot({ state: props.career, event }) : null;
   const recentLedger = props.career.economy.ledger.slice(-4).reverse();
+  const week = buildWeek(props.career.date);
+  const taskRows = [
+    {
+      label: props.career.stage === "post_match" ? "Review desk" : props.career.stage === "pre_match" ? "Match day" : "Program desk",
+      value:
+        props.career.stage === "post_match"
+          ? "Post-match report waiting"
+          : props.career.stage === "pre_match"
+            ? "Opponent briefing ready"
+            : event
+              ? `${event.name} planning`
+              : "Season planning",
+      action:
+        props.career.stage === "post_match"
+          ? "Review"
+          : props.career.stage === "pre_match"
+            ? "Open briefing"
+            : "Open calendar"
+    },
+    {
+      label: "Training",
+      value: `${(props.career.selectedTrainingPlanId ?? "No training").replace(/-/g, " ")} block selected`,
+      action: athlete.fatigue >= 65 ? "Reduce load" : "Monitor load"
+    },
+    {
+      label: "Save state",
+      value: props.activeSavePresent ? "Active browser slot online" : "No active slot detected",
+      action: props.corruptSavePresent ? "Review quarantine" : "Export when ready"
+    }
+  ];
   const liveRouteLabel =
     props.career.stage === "pre_match"
       ? "Open Pre-Match"
       : props.career.stage === "post_match"
         ? "Review Match"
         : "Match Plan";
+  const continueActionLabel =
+    props.career.stage === "post_match"
+      ? "Review Match"
+      : props.career.stage === "pre_match"
+        ? "Open Pre-Match Brief"
+        : eventStatus && eventStatus !== "entered"
+          ? "Open Event Desk"
+          : "Open Match Plan";
+  const continueAction =
+    props.career.stage === "post_match"
+      ? props.onOpenPostMatch
+      : props.career.stage === "pre_match"
+        ? props.onOpenLiveMatch
+        : eventStatus && eventStatus !== "entered"
+          ? props.onOpenCalendar
+          : props.onOpenMatchPlanning;
 
   return (
-    <section className="screen-shell career-page">
+    <section className="screen-shell career-page" aria-label="Portal Home" data-page-contract="portal-home">
       <div className="screen-header">
         <div>
-          <p className="screen-kicker">Career Home</p>
+          <p className="screen-kicker">Portal Home</p>
           <h1 className="screen-title">Career Command Center</h1>
           <p className="screen-copy">
             {props.career.date} - {player.name} sits circuit rank {athlete.currentRank} with{" "}
             {points(athlete.rankingPoints)} and {points(ranking?.seasonPoints ?? 0)} in the season race.
           </p>
         </div>
-        <div className="screen-meta">
+        <div className="screen-meta screen-meta-actions">
           <span>Cash {money(props.career.economy.cash)}</span>
           <span>Readiness {athlete.readiness}</span>
           <span>{props.career.stage.replace("_", " ")}</span>
+          <button className="command-button command-button-primary" type="button" title={continueActionLabel} onClick={continueAction}>
+            Continue
+          </button>
         </div>
       </div>
 
@@ -231,9 +282,29 @@ export function CareerHomePage(props: CareerPageProps) {
           <span>Next action</span>
           <strong>{eventStatus ? statusLabel(eventStatus) : liveRouteLabel}</strong>
         </div>
+        <div>
+          <span>Save state</span>
+          <strong>{props.activeSavePresent ? `Active ${STORAGE_KEY}` : "No active slot"}</strong>
+        </div>
       </section>
 
       <div className="career-dashboard-grid">
+        <section className="command-panel">
+          <div className="panel-header">
+            <h2>Tasks / Inbox</h2>
+            <span>{taskRows.length} live items</span>
+          </div>
+          <div className="management-table" aria-label="Portal tasks inbox">
+            {taskRows.map((task) => (
+              <div key={task.label} className="management-table-row">
+                <span>{task.label}</span>
+                <strong>{task.value}</strong>
+                <small>{task.action}</small>
+              </div>
+            ))}
+          </div>
+        </section>
+
         <section className="command-panel career-priority-panel">
           <div className="panel-header">
             <h2>Next Decision</h2>
@@ -349,6 +420,37 @@ export function CareerHomePage(props: CareerPageProps) {
               <div key={entry.id} className="career-ledger-row">
                 <span>{entry.label}</span>
                 <strong>{signedMoney(entry.amount)}</strong>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="command-panel">
+          <div className="panel-header">
+            <h2>Calendar Snapshot</h2>
+            <span>{props.career.date}</span>
+          </div>
+          <div className="career-week-strip career-week-strip-compact" aria-label="Portal calendar snapshot">
+            {week.map((day) => (
+              <div key={day} className={day === props.career?.date ? "career-day career-day-active" : "career-day"}>
+                <span>{day.slice(5)}</span>
+                <strong>{props.career?.events.find((entry) => entry.startDate === day)?.tier ?? "Train"}</strong>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="command-panel">
+          <div className="panel-header">
+            <h2>Recent Match Evidence</h2>
+            <span>{props.career.lastMatchReport ? props.career.lastMatchReport.round : "No report"}</span>
+          </div>
+          <div className="management-table" aria-label="Recent match evidence">
+            {(props.career.lastMatchReport?.evidence ?? ["No managed match evidence yet."]).slice(0, 3).map((entry, index) => (
+              <div key={`${entry}-${index}`} className="management-table-row">
+                <span>Evidence {index + 1}</span>
+                <strong>{entry}</strong>
+                <small>{props.career?.lastMatchReport?.scoreline ?? "Pending"}</small>
               </div>
             ))}
           </div>
@@ -1562,6 +1664,29 @@ export function CareerMatchPlanningPage(props: CareerPageProps) {
         </div>
       </div>
 
+      <section className="management-status-strip" aria-label="Match planning status">
+        <div>
+          <span>Plan</span>
+          <strong>{plan.name}</strong>
+        </div>
+        <div>
+          <span>Tempo</span>
+          <strong>{plan.tempo}</strong>
+        </div>
+        <div>
+          <span>Risk</span>
+          <strong>{plan.riskTolerance}</strong>
+        </div>
+        <div>
+          <span>Advice</span>
+          <strong>{pendingAdvice.length} pending</strong>
+        </div>
+        <div>
+          <span>Next action</span>
+          <strong>{props.career.stage === "pre_match" ? "Enter briefing" : "Lock plan"}</strong>
+        </div>
+      </section>
+
       <div className="match-planning-grid">
         <section className="command-panel command-panel-wide">
           <div className="panel-header">
@@ -1747,6 +1872,29 @@ export function CareerTrainingPage(props: CareerPageProps) {
         </button>
       </div>
 
+      <section className="management-status-strip" aria-label="Training status">
+        <div>
+          <span>Selected block</span>
+          <strong>{(props.career.selectedTrainingPlanId ?? "No training").replace(/-/g, " ")}</strong>
+        </div>
+        <div>
+          <span>Readiness</span>
+          <strong>{athlete.readiness}</strong>
+        </div>
+        <div>
+          <span>Fatigue</span>
+          <strong>{Math.round(athlete.fatigue)}</strong>
+        </div>
+        <div>
+          <span>Injury risk</span>
+          <strong>{Math.round(athlete.injuryRisk * 100)}%</strong>
+        </div>
+        <div>
+          <span>Next action</span>
+          <strong>{athlete.fatigue >= 65 ? "Reduce load" : "Commit block"}</strong>
+        </div>
+      </section>
+
       <div className="career-training-grid">
         <section className="command-panel command-panel-wide">
           <div className="panel-header">
@@ -1863,6 +2011,29 @@ export function CareerCalendarPage(props: CareerPageProps) {
           </button>
         </div>
       </div>
+
+      <section className="management-status-strip" aria-label="Calendar and competition status">
+        <div>
+          <span>Today</span>
+          <strong>{careerDate}</strong>
+        </div>
+        <div>
+          <span>Next fixture</span>
+          <strong>{nextEvent?.name ?? "No event"}</strong>
+        </div>
+        <div>
+          <span>Desk status</span>
+          <strong>{nextStatus ? statusLabel(nextStatus) : "planning"}</strong>
+        </div>
+        <div>
+          <span>Readiness</span>
+          <strong>{athlete.readiness}</strong>
+        </div>
+        <div>
+          <span>Next action</span>
+          <strong>{nextGate?.allowed ? "Enter or inspect" : "Resolve gate"}</strong>
+        </div>
+      </section>
 
       <div className="career-calendar-grid">
         <section className="command-panel command-panel-full">
@@ -2109,6 +2280,29 @@ export function CareerPreMatchHubPage(props: CareerPageProps) {
         </button>
       </div>
 
+      <section className="management-status-strip" aria-label="Pre-match briefing status">
+        <div>
+          <span>Event</span>
+          <strong>{event?.name ?? "No event"}</strong>
+        </div>
+        <div>
+          <span>Opponent</span>
+          <strong>{opponent?.name ?? "Pending"}</strong>
+        </div>
+        <div>
+          <span>Readiness</span>
+          <strong>{athlete.readiness}</strong>
+        </div>
+        <div>
+          <span>Plan</span>
+          <strong>{planningBridge.planName}</strong>
+        </div>
+        <div>
+          <span>Next action</span>
+          <strong>Enter match</strong>
+        </div>
+      </section>
+
       <div className="career-hub-grid">
         <section className="command-panel command-panel-wide">
           <div className="panel-header">
@@ -2197,6 +2391,7 @@ export function CareerPostMatchHubPage(props: CareerPageProps) {
     : report?.result === "win"
       ? "Collect Title And Continue"
       : "Close Event";
+  const event = activeEvent(props.career);
 
   return (
     <section className="screen-shell career-page">
@@ -2212,6 +2407,29 @@ export function CareerPostMatchHubPage(props: CareerPageProps) {
           {continueLabel}
         </button>
       </div>
+
+      <section className="management-status-strip" aria-label="Post-match review status">
+        <div>
+          <span>Event</span>
+          <strong>{event?.name ?? report?.eventId ?? "No event"}</strong>
+        </div>
+        <div>
+          <span>Round</span>
+          <strong>{report?.round ?? "Pending"}</strong>
+        </div>
+        <div>
+          <span>Result</span>
+          <strong>{report?.result ?? "Pending"}</strong>
+        </div>
+        <div>
+          <span>Event state</span>
+          <strong>{eventStillActive ? "Still alive" : "Closeout"}</strong>
+        </div>
+        <div>
+          <span>Next action</span>
+          <strong>{continueLabel}</strong>
+        </div>
+      </section>
 
       <div className="career-hub-grid">
         <section className="command-panel">

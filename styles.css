@@ -646,9 +646,9 @@ textarea:focus-visible {
 
 .screen-title {
   margin: 0.15rem 0 0.55rem;
-  font-size: clamp(2.2rem, 4vw, 3.4rem);
-  line-height: 0.96;
-  letter-spacing: -0.04em;
+  font-size: 2rem;
+  line-height: 1.05;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
@@ -657,6 +657,10 @@ textarea:focus-visible {
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 0.75rem;
+}
+
+.screen-meta-actions {
+  align-items: center;
 }
 
 .screen-meta span,
@@ -675,7 +679,9 @@ textarea:focus-visible {
   text-transform: uppercase;
 }
 
-.career-status-strip span {
+.career-status-strip span,
+.management-status-strip span,
+.management-table-row span {
   color: var(--muted-soft);
   font-size: 0.66rem;
   font-weight: 800;
@@ -683,29 +689,55 @@ textarea:focus-visible {
   text-transform: uppercase;
 }
 
-.career-status-strip {
+.career-status-strip,
+.management-status-strip {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
   gap: 0.65rem;
 }
 
-.career-status-strip div {
+.career-status-strip div,
+.management-status-strip div,
+.management-table-row {
   min-width: 0;
   border: 1px solid rgba(48, 54, 61, 0.92);
   border-radius: 0.35rem;
   background: rgba(12, 14, 17, 0.72);
 }
 
-.career-status-strip div {
+.career-status-strip div,
+.management-status-strip div {
   display: grid;
   gap: 0.22rem;
   padding: 0.72rem;
 }
 
-.career-status-strip strong {
+.career-status-strip strong,
+.management-status-strip strong,
+.management-table-row strong {
   overflow-wrap: anywhere;
   color: var(--text);
   line-height: 1.2;
+}
+
+.management-table {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.management-table-row {
+  display: grid;
+  grid-template-columns: minmax(7rem, 0.52fr) minmax(0, 1fr) minmax(5rem, 0.42fr);
+  gap: 0.65rem;
+  align-items: center;
+  padding: 0.62rem 0.68rem;
+}
+
+.management-table-row small {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-align: right;
 }
 
 .chip-primary {
@@ -4569,6 +4601,15 @@ textarea:focus-visible {
 
   .career-status-strip {
     grid-template-columns: 1fr;
+  }
+
+  .management-status-strip,
+  .management-table-row {
+    grid-template-columns: 1fr;
+  }
+
+  .management-table-row small {
+    text-align: left;
   }
 
   .career-event-card {

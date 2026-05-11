@@ -125,6 +125,12 @@ function summarizeRuntime(props: SaveManagerViewProps): SaveSummary {
       detail: `${props.phase} phase loaded from the active slot.`,
       rows: [
         { label: "Top version", value: "8" },
+        ...(props.career
+          ? [
+              { label: "Career version", value: String(props.career.version) },
+              { label: "Managed athlete", value: playerName(props.career.program.managedPlayerId) }
+            ]
+          : []),
         { label: "Selected athlete", value: playerName(props.selectedPlayerId) },
         { label: "Tactic", value: props.plannedTacticKey },
         { label: "Storage key", value: STORAGE_KEY },
@@ -163,6 +169,11 @@ export function SaveManagerView(props: SaveManagerViewProps) {
   const [pendingDanger, setPendingDanger] = useState<PendingDanger>(null);
   const activeSummary = useMemo(() => summarizeRuntime(props), [props]);
   const previewSummary = importResult?.ok ? summarizeSave(importResult.save) : null;
+  const managedAthleteName = props.career ? playerName(props.career.program.managedPlayerId) : "No career athlete";
+  const saveVersion =
+    activeSummary.rows.find((row) => row.label === "Top version")?.value ??
+    activeSummary.rows.find((row) => row.label === "Save version")?.value ??
+    "8";
 
   function previewImport(raw = importText) {
     const result = validateImportedSaveText(raw);
@@ -243,6 +254,33 @@ export function SaveManagerView(props: SaveManagerViewProps) {
           <span>{props.corruptSavePresent ? "Quarantine present" : "No quarantine"}</span>
         </div>
       </div>
+
+      <section className="management-status-strip save-status-strip" aria-label="Active save slot metadata">
+        <div>
+          <span>Slot</span>
+          <strong>{props.activeSavePresent ? "Active local slot" : "Empty local slot"}</strong>
+        </div>
+        <div>
+          <span>Mode</span>
+          <strong>{activeSummary.mode}</strong>
+        </div>
+        <div>
+          <span>Managed athlete</span>
+          <strong>{managedAthleteName}</strong>
+        </div>
+        <div>
+          <span>Save version</span>
+          <strong>v{saveVersion}</strong>
+        </div>
+        <div>
+          <span>Import preview</span>
+          <strong>{previewSummary ? "Ready" : importResult && !importResult.ok ? "Rejected" : "Empty"}</strong>
+        </div>
+        <div>
+          <span>Quarantine</span>
+          <strong>{props.corruptSavePresent ? "Present" : "Clear"}</strong>
+        </div>
+      </section>
 
       <div className="save-manager-grid">
         <section className="command-panel save-slot-panel">

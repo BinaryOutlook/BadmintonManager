@@ -756,6 +756,63 @@ test("exposes the grouped management shell as the primary command surface", asyn
   await expect(page.getByRole("heading", { name: "Reset tournament state?" })).toBeVisible();
 });
 
+test("surfaces dense page contracts and Save Manager metadata", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+
+  await startNewCareer(page);
+  await expect(page.getByLabel("Portal Home")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Tasks / Inbox" })).toBeVisible();
+  await expect(page.getByLabel("Portal tasks inbox")).toContainText("Save state");
+  await expect(page.getByRole("heading", { name: "Calendar Snapshot" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Recent Match Evidence" })).toBeVisible();
+  await expect(page.getByRole("main").getByRole("button", { name: "Continue" })).toBeVisible();
+
+  const commandRail = page.getByRole("navigation", { name: "Primary commands" });
+
+  await commandRail.getByRole("button", { name: /Training/ }).click();
+  await expect(page.getByRole("heading", { name: "Load Management" })).toBeVisible();
+  await expect(page.getByLabel("Training status")).toContainText("Selected block");
+  await expect(page.getByLabel("Training status")).toContainText("Next action");
+
+  await commandRail.getByRole("button", { name: /Calendar/ }).click();
+  await expect(page.getByRole("heading", { name: "Calendar / Event Desk" })).toBeVisible();
+  await expect(page.getByLabel("Calendar and competition status")).toContainText("Next fixture");
+  await expect(page.getByLabel("Calendar and competition status")).toContainText("Next action");
+
+  await commandRail.getByRole("button", { name: /Tactics/ }).click();
+  await expect(page.getByRole("heading", { name: "Advanced Tactics Creator" })).toBeVisible();
+  await expect(page.getByLabel("Match planning status")).toContainText("Advice");
+  await expect(page.getByLabel("Match planning status")).toContainText("Next action");
+
+  await openSaveManager(page);
+  await expect(page.getByRole("heading", { name: "Local Save Control" })).toBeVisible();
+  await expect(page.getByLabel("Active save slot metadata")).toContainText("Active local slot");
+  await expect(page.getByLabel("Active save slot metadata")).toContainText("Managed athlete");
+  await expect(page.getByLabel("Active save slot metadata")).toContainText("Save version");
+  await expect(page.getByRole("heading", { name: "Danger Zone" })).toBeVisible();
+
+  const betweenRounds = createBetweenRoundsCareerSave();
+  await page.evaluate((payload) => {
+    window.localStorage.setItem("badminton-manager-save", JSON.stringify(payload.save));
+  }, betweenRounds);
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Match Evidence Review" })).toBeVisible();
+  await expect(page.getByLabel("Post-match review status")).toContainText("Continue To Next Round");
+  await expect(page.getByRole("button", { name: "Continue To Next Round" })).toBeVisible();
+
+  await page.evaluate(() => {
+    window.localStorage.clear();
+    window.sessionStorage.clear();
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Quick Tournament", exact: true }).click();
+  await page.getByRole("button", { name: "Start Tournament" }).click();
+  await page.getByRole("button", { name: "Enter Match" }).click();
+  await expect(page.getByRole("heading", { name: "Match Command Center" })).toBeVisible();
+  await expect(page.getByLabel("Live match status")).toContainText("Next action");
+});
+
 test("integrates fictional calendar ranking stakes into career home and event desk", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/");

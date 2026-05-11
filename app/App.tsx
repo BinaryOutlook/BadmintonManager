@@ -643,6 +643,8 @@ export function App() {
       career,
       tournament,
       saveRecovery,
+      activeSavePresent,
+      corruptSavePresent,
       onStartCareer: requestStartCareer,
       onOpenTraining: () => setActivePage({ id: "season" }),
       onOpenCalendar: () => setActivePage({ id: "calendar" }),

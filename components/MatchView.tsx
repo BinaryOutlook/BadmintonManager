@@ -68,6 +68,29 @@ export function MatchView(props: MatchViewProps) {
         </div>
       </div>
 
+      <section className="management-status-strip" aria-label="Live match status">
+        <div>
+          <span>Set</span>
+          <strong>{props.session.currentSetNumber}</strong>
+        </div>
+        <div>
+          <span>Score</span>
+          <strong>{props.session.currentScoreA}-{props.session.currentScoreB}</strong>
+        </div>
+        <div>
+          <span>Match</span>
+          <strong>{props.session.setsWonA}-{props.session.setsWonB}</strong>
+        </div>
+        <div>
+          <span>Directive</span>
+          <strong>{activeDirective ?? "None"}</strong>
+        </div>
+        <div>
+          <span>Next action</span>
+          <strong>{props.session.complete ? "Advance bracket" : props.session.intermission ? "Open next set" : "Simulate point"}</strong>
+        </div>
+      </section>
+
       <div className="match-command-layout">
         <section className="scoreboard-panel">
           <div className="scoreboard-topline">

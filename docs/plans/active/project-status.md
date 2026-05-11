@@ -57,6 +57,9 @@ What is now stable:
 - the active-career Quick Tournament path now keeps its draft athlete local until explicit replacement confirmation, preserving the career save's `career.program.managedPlayerId` while starting the replacement quick run with the drafted athlete
 - the UIUX1Change shell-standardization slice now uses one grouped command rail with Core, Program, Match, Operations, and System commands; the former top nav and global career route strip are removed, while Settings and Save Manager stay reachable through shell system controls
 - the shell overlay remediation now moves focus into Settings and confirmation dialogs, traps Tab and Shift+Tab inside the active modal, closes Settings on Escape, cancels confirmations on Escape, and restores focus to the invoking control after close
+- the UIUX1Change dense-page fidelity slice now makes Portal Home the active-career operations hub with tasks/inbox, next event, calendar snapshot, readiness/ranking pressure, recent match evidence, save state, and a visible Continue action
+- training, calendar/competition, match planning, live match, and post-match review now expose compact management status strips above their grids, tables, telemetry, and decision panels
+- Save Manager now leads with active slot metadata for slot state, mode, managed athlete, save version, import preview, and quarantine state while preserving export, import preview/confirm, active-save deletion, and corrupt-backup deletion safety
 
 ## Completed
 
@@ -124,6 +127,7 @@ What is now stable:
 - [x] remediated the active-career Quick Tournament draft path so draft athlete selection no longer mutates or no-ops against the locked career identity before replacement confirmation
 - [x] standardized the management shell around a minimal top status bar, grouped primary command sidebar, page canvas, and overlay host while preserving Save Manager, Settings, locked identity, and tournament continuation reachability
 - [x] remediated Settings and confirmation overlay keyboard behavior with initial focus, focus containment, safe Escape handling, focus restoration, and focused Playwright proof
+- [x] converted the active Portal, training, calendar/competition, tactics, live match, post-match review, and Save Manager surfaces toward compact management-page contracts with focused Playwright coverage
 
 ## In Progress
 
@@ -137,6 +141,7 @@ What is now stable:
 - [ ] polish responsive behavior and visual details across the new shell
 - [ ] track mobile Calendar/Event Desk compactness as non-blocking polish debt; current proof shows reachability without horizontal clipping or critical-action loss
 - [ ] track dense live-match directive labels as non-blocking polish debt; current proof does not require a Phase 4 source change
+- [ ] complete the broader Phase 5 screenshot matrix and visual review beyond the focused builder proof
 
 ## Next
 
@@ -155,6 +160,7 @@ What is now stable:
 - [ ] tighten save migration coverage for future `v0.2.x` changes
 - [ ] tune Phase 1 career economy values, event tier rewards, and training load numbers after review feedback
 - [ ] consider a compact mobile Calendar/Event Desk layout after final release packaging, without reopening the accepted Phase 3 reachability proof
+- [ ] run the Phase 5 QC screenshot matrix and visual review against Portal, dense page, post-match, final closeout, and Save Manager states at the required viewports
 
 ## Blockers
 

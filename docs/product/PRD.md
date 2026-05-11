@@ -87,6 +87,8 @@ For the first serious version, the product should:
 - stay readable enough for future maintainers and future AI sessions to re-enter quickly
 - make a quick tournament run and a saved career program discoverable from clean first launch
 - keep save ownership visible through local export/import/delete/reset and corrupt-save recovery
+- make the active career home behave as a dense operations portal with tasks, next fixture, calendar context, readiness/ranking pressure, recent match evidence, save state, and one obvious Continue action
+- keep local save management inspectable through slot metadata, mode, managed athlete, save version, import preview, safe actions, and a separated danger zone
 
 ## 6. Non-Goals
 
@@ -181,6 +183,18 @@ That means:
 - clear module boundaries
 - stable docs
 - versioned iteration packets
+
+### 8.6 Management pages should be compact and decision-led
+
+Major app pages should read as operational desks rather than landing pages.
+
+The recurring shape is:
+
+```text
+compact header -> status strip -> table/grid -> detail or decision panel -> next action
+```
+
+Training, calendar/competition, tactics, live match, post-match review, Portal, and Save Manager should all make the next useful decision visible without reintroducing duplicate global navigation.
 
 ## 9. MVP Scope
 
