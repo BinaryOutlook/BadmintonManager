@@ -11,6 +11,7 @@ interface PlayerProfilePageProps {
   playerId: string;
   selectedPlayerId: string;
   phase: AppPhase;
+  careerPresent: boolean;
   tournament: TournamentState | null;
   liveMatchSession?: LiveMatchSession | null;
   onBack: () => void;
@@ -235,7 +236,7 @@ export function PlayerProfilePage(props: PlayerProfilePageProps) {
   }
 
   const { player, derived } = model;
-  const canSelect = props.phase === "setup" && player.id !== props.selectedPlayerId;
+  const canSelect = !props.careerPresent && props.phase === "setup" && player.id !== props.selectedPlayerId;
   const technicalRows = [
     { label: "Smash", value: player.ratings.technical.smash },
     { label: "Net Play", value: player.ratings.technical.netPlay },

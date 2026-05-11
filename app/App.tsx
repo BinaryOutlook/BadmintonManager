@@ -237,11 +237,13 @@ export function App() {
   const [intelOpen, setIntelOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
+  const [pendingCareerPlayerId, setPendingCareerPlayerId] = useState<string | null>(null);
   const [sidebarPanel, setSidebarPanel] = useState<SidebarPanel>("command");
   const [sidebarWidth, setSidebarWidth] = useState(loadSidebarWidth);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(loadSidebarCollapsed);
   const [themeAccent, setThemeAccent] = useState<ThemeAccent>(loadThemeAccent);
   const selectedPlayer = playerMap[selectedPlayerId];
+  const activeAthlete = career ? playerMap[career.program.managedPlayerId] : selectedPlayer;
   const phaseTopMode = phase === "match" ? "LIVE" : phase === "setup" ? "SQUAD" : "BRACKETS";
   const topMode = topModeForPage(activePage, phaseTopMode, Boolean(career));
   const selectedTactic =
@@ -320,19 +322,20 @@ export function App() {
     performStartTournament();
   }
 
-  function performStartCareer() {
-    startCareer();
+  function performStartCareer(managedPlayerId?: string) {
+    startCareer(managedPlayerId);
     setActivePage({ id: "home" });
     setSidebarPanel("command");
   }
 
-  function requestStartCareer() {
+  function requestStartCareer(managedPlayerId?: string) {
     if (career || tournament || liveMatch) {
+      setPendingCareerPlayerId(managedPlayerId ?? selectedPlayerId);
       setPendingConfirm("startCareerReplaceSave");
       return;
     }
 
-    performStartCareer();
+    performStartCareer(managedPlayerId);
   }
 
   function confirmPendingAction() {
@@ -345,10 +348,11 @@ export function App() {
     }
 
     if (pendingConfirm === "startCareerReplaceSave") {
-      performStartCareer();
+      performStartCareer(pendingCareerPlayerId ?? selectedPlayerId);
     }
 
     setPendingConfirm(null);
+    setPendingCareerPlayerId(null);
   }
 
   function openSaveManager() {
@@ -576,6 +580,26 @@ export function App() {
       onOverrideAssistantAdvice: overrideAssistantAdvice
     };
 
+    if (activePage.id === "setup") {
+      return (
+        <SetupView
+          selectedPlayerId={selectedPlayerId}
+          plannedTacticKey={plannedTacticKey}
+          onSelectPlayer={selectPlayer}
+          onOpenPlayerProfile={openPlayerProfile}
+          onChooseTactic={chooseTactic}
+          onStartTournament={requestStartTournament}
+          onStartCareer={requestStartCareer}
+          onContinueLocalSave={continueLocalSave}
+          onOpenSaveManager={openSaveManager}
+          onOpenPreferences={() => setSettingsOpen(true)}
+          activeSavePresent={activeSavePresent}
+          careerPresent={Boolean(career)}
+          corruptSavePresent={corruptSavePresent}
+        />
+      );
+    }
+
     if (activePage.id === "saveManager") {
       return (
         <SaveManagerView
@@ -591,7 +615,7 @@ export function App() {
           onContinueLocalSave={continueLocalSave}
           onContinueCareer={continueCareer}
           onStartTournament={requestStartTournament}
-          onStartNewCareer={requestStartCareer}
+          onStartNewCareer={() => setActivePage({ id: "setup" })}
           onExportSave={exportActiveSave}
           onConfirmImport={confirmImport}
           onDeleteActiveSave={handleDeleteActiveSave}
@@ -648,8 +672,9 @@ export function App() {
       return (
         <PlayerProfilePage
           playerId={activePage.playerId}
-          selectedPlayerId={selectedPlayerId}
+          selectedPlayerId={career ? career.program.managedPlayerId : selectedPlayerId}
           phase={phase}
+          careerPresent={Boolean(career)}
           tournament={tournament}
           liveMatchSession={liveMatch?.session}
           onBack={() => setActivePage(pageForPhase(phase))}
@@ -661,8 +686,9 @@ export function App() {
     if (activePage.id === "squad") {
       return (
         <SquadPage
-          selectedPlayerId={selectedPlayerId}
+          selectedPlayerId={career ? career.program.managedPlayerId : selectedPlayerId}
           phase={phase}
+          careerPresent={Boolean(career)}
           tournament={tournament}
           liveMatchSession={liveMatch?.session}
           onOpenPlayerProfile={openPlayerProfile}
@@ -697,7 +723,9 @@ export function App() {
           onChooseTactic={chooseTactic}
           onStartTournament={requestStartTournament}
           onStartCareer={requestStartCareer}
+          onContinueLocalSave={continueLocalSave}
           onOpenSaveManager={openSaveManager}
+          onOpenPreferences={() => setSettingsOpen(true)}
           activeSavePresent={activeSavePresent}
           careerPresent={Boolean(career)}
           corruptSavePresent={corruptSavePresent}
@@ -978,12 +1006,12 @@ export function App() {
 
             {sidebarPanel === "athletes" && (
               <div className="sidebar-option-stack">
-                <strong>{selectedPlayer.name}</strong>
-                <span>{phase === "setup" ? "Selection editable" : "Run athlete locked"}</span>
+                <strong>{activeAthlete.name}</strong>
+                <span>{career ? "Career athlete locked" : phase === "setup" ? "Quick tournament editable" : "Run athlete locked"}</span>
                 <button
                   className="sidebar-mini-button"
                   type="button"
-                  onClick={() => openPlayerProfile(selectedPlayer.id)}
+                  onClick={() => openPlayerProfile(activeAthlete.id)}
                 >
                   Open Profile
                 </button>
@@ -1034,12 +1062,12 @@ export function App() {
             <button
               className="profile-name-button"
               type="button"
-              onClick={() => openPlayerProfile(selectedPlayer.id)}
+              onClick={() => openPlayerProfile(activeAthlete.id)}
             >
-              {selectedPlayer.name}
+              {activeAthlete.name}
             </button>
             <span>
-              {selectedPlayer.nationality} · {selectedPlayer.styleLabel}
+              {activeAthlete.nationality} · {activeAthlete.styleLabel}
             </span>
           </div>
           <button
@@ -1103,7 +1131,10 @@ export function App() {
               : "Start New Session"
         }
         onConfirm={confirmPendingAction}
-        onCancel={() => setPendingConfirm(null)}
+        onCancel={() => {
+          setPendingConfirm(null);
+          setPendingCareerPlayerId(null);
+        }}
       />
       </div>
     </PlayerNavigationProvider>

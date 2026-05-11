@@ -1488,6 +1488,37 @@ button {
   align-items: stretch;
 }
 
+.start-action-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.9rem;
+  align-items: stretch;
+}
+
+.start-action-panel {
+  display: grid;
+  gap: 1rem;
+  align-content: space-between;
+  min-height: 15rem;
+}
+
+.start-action-panel-primary {
+  grid-column: span 2;
+}
+
+.start-action-panel h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: 1.28rem;
+  letter-spacing: 0;
+}
+
+.start-action-panel p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
 .launch-decision-panel,
 .launch-save-strip {
   display: grid;
@@ -2093,6 +2124,68 @@ button {
   padding: 1.2rem;
   background: rgba(17, 19, 22, 0.99);
   box-shadow: var(--shadow);
+}
+
+.athlete-lock-modal {
+  width: min(64rem, 100%);
+}
+
+.athlete-lock-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(18rem, 0.85fr);
+  gap: 1rem;
+  align-items: stretch;
+}
+
+.athlete-lock-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.athlete-lock-choice {
+  display: grid;
+  gap: 0.32rem;
+  min-height: 7.4rem;
+  border: 1px solid rgba(48, 54, 61, 0.9);
+  border-radius: 0.35rem;
+  padding: 0.75rem;
+  background: rgba(12, 14, 17, 0.76);
+  color: var(--text);
+  text-align: left;
+}
+
+.athlete-lock-choice:hover,
+.athlete-lock-choice-active {
+  border-color: rgba(57, 255, 20, 0.45);
+  background: rgba(27, 78, 20, 0.22);
+}
+
+.athlete-lock-choice span,
+.athlete-lock-choice small,
+.athlete-lock-choice em {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-style: normal;
+}
+
+.athlete-lock-choice strong {
+  font-size: 1rem;
+}
+
+.athlete-lock-preview {
+  display: grid;
+  gap: 0.75rem;
+  align-content: start;
+  border: 1px solid rgba(48, 54, 61, 0.9);
+  border-radius: 0.35rem;
+  padding: 1rem;
+  background: rgba(12, 14, 17, 0.7);
+}
+
+.athlete-lock-preview h3,
+.athlete-lock-preview p {
+  margin: 0;
 }
 
 .browse-controls {
@@ -4394,6 +4487,7 @@ button {
   .roster-grid-modal,
   .matchup-grid,
   .matchup-key-grid,
+  .start-action-grid,
   .launch-decision-grid,
   .save-manager-grid,
   .save-metadata-grid,
@@ -4436,6 +4530,15 @@ button {
   .path-grid,
   .bracket-columns,
   .telemetry-mini-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .start-action-panel-primary {
+    grid-column: auto;
+  }
+
+  .athlete-lock-layout,
+  .athlete-lock-list {
     grid-template-columns: 1fr;
   }
 

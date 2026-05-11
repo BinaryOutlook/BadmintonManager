@@ -9,8 +9,10 @@ test("mobile setup recommendation card keeps featured content within bounds", as
   });
   await page.reload();
 
+  await expect(page.getByRole("button", { name: "Quick Tournament" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Start New Career" })).toBeVisible();
+  await page.getByRole("button", { name: "Quick Tournament" }).click();
   await expect(page.getByRole("button", { name: "Start Tournament" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Start Career" })).toBeVisible();
 
   const featuredCard = page.getByLabel(/Featured recommendation:/);
   await featuredCard.scrollIntoViewIfNeeded();

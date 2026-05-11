@@ -7,6 +7,7 @@ import type { TournamentState } from "../../game/tournament/tournament";
 interface SquadPageProps {
   selectedPlayerId: string;
   phase: AppPhase;
+  careerPresent: boolean;
   tournament: TournamentState | null;
   liveMatchSession?: LiveMatchSession | null;
   onOpenPlayerProfile: (playerId: string) => void;
@@ -40,7 +41,7 @@ export function SquadPage(props: SquadPageProps) {
         </div>
         <div className="screen-meta">
           <span>{roster.length} athletes</span>
-          <span>{props.phase === "setup" ? "Selection editable" : "Run athlete locked"}</span>
+          <span>{props.careerPresent ? "Career athlete locked" : props.phase === "setup" ? "Quick tournament editable" : "Run athlete locked"}</span>
         </div>
       </div>
 
@@ -73,7 +74,7 @@ export function SquadPage(props: SquadPageProps) {
                 <span>{entry.player.styleLabel}</span>
                 <span>OVR {profile.overall}</span>
               </div>
-              {props.phase === "setup" && entry.player.id !== props.selectedPlayerId && (
+              {!props.careerPresent && props.phase === "setup" && entry.player.id !== props.selectedPlayerId && (
                 <button
                   className="sidebar-mini-button athlete-select-button"
                   type="button"

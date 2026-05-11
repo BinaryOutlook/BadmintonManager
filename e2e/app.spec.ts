@@ -1,5 +1,5 @@
 import { mkdirSync, readFileSync } from "node:fs";
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { seededPlayers, playerMap } from "../game/content/players";
 import { createInitialCareerState } from "../game/career/state";
 import { getCareerEvent } from "../game/career/events";
@@ -220,13 +220,21 @@ async function captureFocusedScreenshot(page: { screenshot: (options: { path: st
   });
 }
 
+async function startNewCareer(page: Page, athleteName = seededPlayers[0].player.name) {
+  await page.getByRole("button", { name: "Start New Career" }).click();
+  await expect(page.getByRole("dialog", { name: "Confirm Career Athlete" })).toBeVisible();
+  await page.getByRole("button", { name: new RegExp(`Confirm ${athleteName}`) }).click();
+}
+
 test("can start a tournament run and play through a managed match", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/");
 
-  await expect(page.getByRole("heading", { name: "Choose The Run" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Start Tournament" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Start Career" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Start Screen" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Quick Tournament" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Start New Career" })).toBeVisible();
+  await page.getByRole("button", { name: "Quick Tournament" }).click();
+  await expect(page.getByRole("heading", { name: "Quick Tournament Setup" })).toBeVisible();
 
   await page.getByRole("button", { name: "Grand-Slam Southpaw", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Grand-Slam Southpaw" })).toBeVisible();
@@ -247,6 +255,8 @@ test("can start a tournament run and play through a managed match", async ({ pag
   await page.getByRole("button", { name: "Close settings" }).click();
   await page.getByRole("button", { name: "Back" }).click();
 
+  await page.getByRole("button", { name: "Quick Tournament" }).click();
+  await expect(page.getByRole("heading", { name: "Quick Tournament Setup" })).toBeVisible();
   await page.getByRole("button", { name: "Start Tournament" }).click();
   await expect(page.getByRole("button", { name: "Enter Match" })).toBeVisible();
 
@@ -277,12 +287,61 @@ test("can start a tournament run and play through a managed match", async ({ pag
   ).toBeVisible();
 });
 
+test("starts from a direct screen and locks a confirmed career athlete", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+
+  await expect(page.getByRole("heading", { name: "Start Screen" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Start New Career" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Quick Tournament" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Load Save" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Preferences" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Browse All Athletes" })).toHaveCount(0);
+  await captureFocusedScreenshot(page, "t099-start-screen-desktop");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await captureFocusedScreenshot(page, "t099-start-screen-mobile");
+  await page.setViewportSize({ width: 1440, height: 900 });
+
+  await page.getByRole("button", { name: "Start New Career" }).click();
+  await expect(page.getByRole("dialog", { name: "Confirm Career Athlete" })).toBeVisible();
+  await expect(page.getByText(/This athlete becomes the locked managed identity/)).toBeVisible();
+  await captureFocusedScreenshot(page, "t099-athlete-lock-dialog-desktop");
+  await page.getByRole("button", { name: /Choose Grand-Slam Southpaw/ }).click();
+  await page.getByRole("button", { name: /Confirm Grand-Slam Southpaw/ }).click();
+  await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
+
+  await page.evaluate(() => {
+    const raw = window.localStorage.getItem("badminton-manager-save");
+    if (!raw) {
+      throw new Error("Expected career save.");
+    }
+
+    const save = JSON.parse(raw);
+    if (save.career.program.managedPlayerId !== "player-17") {
+      throw new Error(`Expected locked player-17, received ${save.career.program.managedPlayerId}`);
+    }
+  });
+
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
+  await page.getByRole("button", { name: "Athletes" }).click();
+  await expect(page.getByText("Career athlete locked").first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Select Athlete" })).toHaveCount(0);
+
+  await page.getByRole("button", { name: "NEW_SESSION" }).click();
+  await page.getByRole("button", { name: "Start New Session" }).click();
+  await expect(page.getByRole("button", { name: "Quick Tournament" })).toBeVisible();
+  await page.getByRole("button", { name: "Quick Tournament" }).click();
+  await expect(page.getByRole("heading", { name: "Quick Tournament Setup" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Browse All Athletes" })).toBeVisible();
+});
+
 test("can complete and reload the career core slice with tactical viewer proof", async ({ page }) => {
   test.slow();
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto("/");
 
-  await page.getByRole("button", { name: "Start Career" }).click();
+  await startNewCareer(page);
   await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
   await expect(page.getByText(/Rank/).first()).toBeVisible();
 
@@ -453,6 +512,7 @@ test("surfaces corrupt save recovery and blocks unaffordable event entry", async
   await expect(page.getByText(/Quarantine present/).first()).toBeVisible();
 
   await page.getByRole("button", { name: "Start New Career" }).click();
+  await startNewCareer(page);
   await page.evaluate(() => {
     const raw = window.localStorage.getItem("badminton-manager-save");
     if (!raw) {
@@ -476,6 +536,7 @@ test("keeps first-launch save trust surfaces bounded on mobile", async ({ page }
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
 
+  await page.getByRole("button", { name: "Quick Tournament" }).click();
   await page.getByRole("button", { name: "Start Tournament" }).click();
   await expect(page.getByRole("heading", { name: "Next Opponent" })).toBeVisible();
   await page.evaluate(() => {
@@ -505,8 +566,8 @@ test("keeps first-launch save trust surfaces bounded on mobile", async ({ page }
     window.sessionStorage.clear();
     window.location.reload();
   });
-  await expect(page.getByRole("heading", { name: "Choose The Run" })).toBeVisible();
-  await page.getByRole("button", { name: "Start Career" }).click();
+  await expect(page.getByRole("heading", { name: "Start Screen" })).toBeVisible();
+  await startNewCareer(page);
   await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
 
   const topNav = page.getByRole("navigation", { name: "Primary" });
@@ -529,7 +590,7 @@ test("exposes the career workspace route shell and in-page management map", asyn
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/");
 
-  await page.getByRole("button", { name: "Start Career" }).click();
+  await startNewCareer(page);
   const routeChrome = page.getByRole("region", { name: "Career workspace navigation" });
   const routeFamily = routeChrome.getByRole("group", { name: "Career route family" });
   const workspaceMap = page.locator(".career-workspace-map");
@@ -586,7 +647,7 @@ test("integrates fictional calendar ranking stakes into career home and event de
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/");
 
-  await page.getByRole("button", { name: "Start Career" }).click();
+  await startNewCareer(page);
   await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
   await expect(page.getByLabel("Next event stakes summary")).toContainText("Entry gate clear");
   await expect(page.getByLabel("Next event stakes summary")).toContainText("Ranking Cutoff");
@@ -627,8 +688,8 @@ test("manages export import delete and overwrite warnings from the visible Save 
   });
   await page.goto("/");
 
-  await expect(page.getByRole("heading", { name: "Choose The Run" })).toBeVisible();
-  await page.getByRole("button", { name: "Start Career" }).click();
+  await expect(page.getByRole("heading", { name: "Start Screen" })).toBeVisible();
+  await startNewCareer(page);
   await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
 
   await page.getByRole("button", { name: "SAVE_MANAGER" }).click();
@@ -641,8 +702,14 @@ test("manages export import delete and overwrite warnings from the visible Save 
   await expect(page.getByRole("heading", { name: "Start tournament and replace career?" })).toBeVisible();
   await page.getByRole("button", { name: "Cancel" }).click();
   await page.getByRole("button", { name: "Start New Career" }).click();
+  await expect(page.getByRole("heading", { name: "Start Screen" })).toBeVisible();
+  await page.getByRole("button", { name: "Start New Career" }).click();
+  await expect(page.getByRole("dialog", { name: "Confirm Career Athlete" })).toBeVisible();
+  await page.getByRole("button", { name: /Confirm Adrian Koh/ }).click();
   await expect(page.getByRole("heading", { name: "Start a new career?" })).toBeVisible();
   await page.getByRole("button", { name: "Cancel" }).click();
+  await page.getByRole("button", { name: "SAVE_MANAGER" }).click();
+  await expect(page.getByRole("heading", { name: "Local Save Control" })).toBeVisible();
 
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Export JSON" }).click();
@@ -668,7 +735,7 @@ test("manages export import delete and overwrite warnings from the visible Save 
 
   await page.getByRole("button", { name: "Delete Active Local Save" }).click();
   await page.getByRole("button", { name: "Confirm", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Choose The Run" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Start Screen" })).toBeVisible();
   await page.evaluate(() => {
     if (window.localStorage.getItem("badminton-manager-save") !== null) {
       throw new Error("Expected active save to be deleted.");
@@ -703,7 +770,7 @@ test("can run the Phase 2 program ecosystem flow and persist it after reload", a
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto("/");
 
-  await page.getByRole("button", { name: "Start Career" }).click();
+  await startNewCareer(page);
   await page.getByRole("button", { name: "Program Hub" }).click();
   await expect(page.getByRole("heading", { name: "Program Ecosystem" })).toBeVisible();
   await expect(page.getByText(/Scout capacity/)).toBeVisible();
@@ -791,7 +858,7 @@ test("surfaces dynamic rival pressure and persists the circuit room", async ({ p
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto("/");
 
-  await page.getByRole("button", { name: "Start Career" }).click();
+  await startNewCareer(page);
   await page.getByRole("button", { name: "Circuit Room" }).first().click();
 
   await expect(page.getByRole("heading", { name: "Rival Programs" })).toBeVisible();
@@ -819,7 +886,7 @@ test("can edit advanced tactics and preserve assistant advice overrides", async 
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto("/");
 
-  await page.getByRole("button", { name: "Start Career" }).click();
+  await startNewCareer(page);
   await page.locator(".sidenav").getByRole("button", { name: /Tactics/ }).click();
 
   await expect(page.getByRole("heading", { name: "Advanced Tactics Creator" })).toBeVisible();
@@ -864,7 +931,7 @@ test("can upgrade facilities and resolve sponsor media pressure", async ({ page 
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto("/");
 
-  await page.getByRole("button", { name: "Start Career" }).click();
+  await startNewCareer(page);
   await page.getByRole("button", { name: "Program Hub" }).click();
   await page.getByRole("button", { name: "Facilities Upgrades" }).click();
 

@@ -11,8 +11,10 @@ interface SetupViewProps {
   onOpenPlayerProfile: (playerId: string) => void;
   onChooseTactic: (tacticKey: TacticKey) => void;
   onStartTournament: () => void;
-  onStartCareer: () => void;
+  onStartCareer: (managedPlayerId: string) => void;
+  onContinueLocalSave: () => void;
   onOpenSaveManager: () => void;
+  onOpenPreferences: () => void;
   activeSavePresent: boolean;
   careerPresent: boolean;
   corruptSavePresent: boolean;
@@ -328,7 +330,10 @@ function buildFeaturedRecommendationCopy(
 }
 
 export function SetupView(props: SetupViewProps) {
+  const [setupMode, setSetupMode] = useState<"start" | "quick">("start");
   const [rosterModalOpen, setRosterModalOpen] = useState(false);
+  const [careerDialogOpen, setCareerDialogOpen] = useState(false);
+  const [careerCandidateId, setCareerCandidateId] = useState(props.selectedPlayerId);
   const [activeModeKey, setActiveModeKey] = useState<RecommendationModeKey>("best");
   const [browseQuery, setBrowseQuery] = useState("");
   const [countryFilter, setCountryFilter] = useState("all");
@@ -402,6 +407,11 @@ export function SetupView(props: SetupViewProps) {
     setRosterModalOpen(false);
   }
 
+  function confirmCareerCandidate() {
+    props.onStartCareer(careerCandidateId);
+    setCareerDialogOpen(false);
+  }
+
   function resetBrowseFilters() {
     setBrowseQuery("");
     setCountryFilter("all");
@@ -456,14 +466,194 @@ export function SetupView(props: SetupViewProps) {
     );
   }
 
+  function renderNewCareerAthleteDialog() {
+    if (!careerDialogOpen) {
+      return null;
+    }
+
+    const candidate =
+      rankedRoster.find((item) => item.entry.player.id === careerCandidateId) ?? rankedRoster[0];
+    const recommended = rankedRoster.slice(0, 6);
+
+    return (
+      <div className="modal-backdrop" role="presentation">
+        <section
+          className="settings-modal athlete-lock-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="career-athlete-dialog-title"
+        >
+          <div className="modal-header">
+            <div>
+              <p className="screen-kicker">New Career</p>
+              <h2 id="career-athlete-dialog-title">Confirm Career Athlete</h2>
+            </div>
+            <button
+              className="modal-close-button"
+              type="button"
+              aria-label="Close career athlete dialog"
+              onClick={() => setCareerDialogOpen(false)}
+            >
+              x
+            </button>
+          </div>
+
+          <p className="modal-subcopy">
+            This athlete becomes the locked managed identity for the local career save. After confirmation,
+            squad and profile pages stay inspect-only for this career.
+          </p>
+
+          <div className="athlete-lock-layout">
+            <div className="athlete-lock-list" aria-label="Recommended career athletes">
+              {recommended.map((item) => (
+                <button
+                  key={item.entry.player.id}
+                  className={
+                    item.entry.player.id === candidate.entry.player.id
+                      ? "athlete-lock-choice athlete-lock-choice-active"
+                      : "athlete-lock-choice"
+                  }
+                  type="button"
+                  aria-pressed={item.entry.player.id === candidate.entry.player.id}
+                  onClick={() => setCareerCandidateId(item.entry.player.id)}
+                >
+                  <span>{item.entry.player.nationality}</span>
+                  <strong>{item.entry.player.name}</strong>
+                  <small>OVR {item.overall} / {archetypeLabels[getArchetype(item)]}</small>
+                  <em>Choose {item.entry.player.name}</em>
+                </button>
+              ))}
+            </div>
+
+            <aside className="athlete-lock-preview" aria-label="Selected career athlete preview">
+              <span className="athlete-avatar">{candidate.entry.player.nationality}</span>
+              <h3>{candidate.entry.player.name}</h3>
+              <p>{candidate.entry.player.styleLabel}</p>
+              <div className="featured-stat-grid">
+                <div className="featured-stat">
+                  <span>Power</span>
+                  <strong>{candidate.dossier.power}</strong>
+                </div>
+                <div className="featured-stat">
+                  <span>Speed</span>
+                  <strong>{candidate.dossier.speed}</strong>
+                </div>
+                <div className="featured-stat">
+                  <span>Stamina</span>
+                  <strong>{candidate.dossier.stamina}</strong>
+                </div>
+                <div className="featured-stat">
+                  <span>Control</span>
+                  <strong>{candidate.dossier.control}</strong>
+                </div>
+              </div>
+              <p className="dossier-note-title">{candidate.dossier.formHeadline}</p>
+              <p>{candidate.dossier.formSummary}</p>
+            </aside>
+          </div>
+
+          <div className="confirm-actions">
+            <button className="command-button command-button-secondary" type="button" onClick={() => setCareerDialogOpen(false)}>
+              Cancel
+            </button>
+            <button className="command-button command-button-primary" type="button" onClick={confirmCareerCandidate}>
+              Confirm {candidate.entry.player.name}
+            </button>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
+  if (setupMode === "start") {
+    return (
+      <section className="screen-shell start-screen">
+        <div className="screen-header">
+          <div>
+            <p className="screen-kicker">Launch Control</p>
+            <h1 className="screen-title">Start Screen</h1>
+            <p className="screen-copy">
+              Continue the local slot, create one locked career athlete, or open a disposable quick tournament setup.
+            </p>
+          </div>
+          <div className="screen-meta">
+            <span>{localSlotLabel}</span>
+            {props.corruptSavePresent && <span>Quarantine present</span>}
+          </div>
+        </div>
+
+        <section className="start-action-grid" aria-label="Start screen actions">
+          {props.activeSavePresent && (
+            <article className="command-panel start-action-panel start-action-panel-primary">
+              <div>
+                <p className="screen-kicker">Active Slot</p>
+                <h2>Continue</h2>
+                <p>Resume the compatible local save exactly where it was left.</p>
+              </div>
+              <button className="command-button command-button-primary" type="button" onClick={props.onContinueLocalSave}>
+                Continue
+              </button>
+            </article>
+          )}
+
+          <article className="command-panel start-action-panel">
+            <div>
+              <p className="screen-kicker">Career Save</p>
+              <h2>Start New Career</h2>
+              <p>Choose and confirm the one managed athlete for a local career program.</p>
+            </div>
+            <button className="command-button command-button-primary" type="button" onClick={() => setCareerDialogOpen(true)}>
+              Start New Career
+            </button>
+          </article>
+
+          <article className="command-panel start-action-panel">
+            <div>
+              <p className="screen-kicker">Disposable Run</p>
+              <h2>Quick Tournament</h2>
+              <p>Open the editable athlete and tactic setup for a one-off knockout run.</p>
+            </div>
+            <button className="command-button command-button-secondary" type="button" onClick={() => setSetupMode("quick")}>
+              Quick Tournament
+            </button>
+          </article>
+
+          <article className="command-panel start-action-panel">
+            <div>
+              <p className="screen-kicker">Local Slot</p>
+              <h2>Load Save</h2>
+              <p>Preview imports, export the current slot, or recover a quarantined local file.</p>
+            </div>
+            <button className="command-button command-button-secondary" type="button" onClick={props.onOpenSaveManager}>
+              Load Save
+            </button>
+          </article>
+
+          <article className="command-panel start-action-panel">
+            <div>
+              <p className="screen-kicker">System</p>
+              <h2>Preferences</h2>
+              <p>Adjust display accent and session-level controls before starting.</p>
+            </div>
+            <button className="command-button command-button-secondary" type="button" onClick={props.onOpenPreferences}>
+              Preferences
+            </button>
+          </article>
+        </section>
+
+        {renderNewCareerAthleteDialog()}
+      </section>
+    );
+  }
+
   return (
     <section className="screen-shell">
       <div className="screen-header">
         <div>
           <p className="screen-kicker">Launch Control</p>
-          <h1 className="screen-title">Choose The Run</h1>
+          <h1 className="screen-title">Quick Tournament Setup</h1>
           <p className="screen-copy">
-            Start a quick seeded tournament or open a saved career program from the same local-first command desk.
+            Select a disposable tournament athlete and tactic. This setup path never changes a locked career identity.
           </p>
         </div>
         <div className="screen-meta">
@@ -476,7 +666,7 @@ export function SetupView(props: SetupViewProps) {
         <article className="command-panel launch-decision-panel">
           <div>
             <p className="screen-kicker">Tournament Run</p>
-            <h2>Start Tournament</h2>
+            <h2>Quick Tournament</h2>
             <p>
               Use the selected athlete and tactic to enter the seeded knockout bracket immediately.
             </p>
@@ -493,17 +683,17 @@ export function SetupView(props: SetupViewProps) {
         <article className="command-panel launch-decision-panel">
           <div>
             <p className="screen-kicker">Career Save</p>
-            <h2>Start Career</h2>
+            <h2>Start New Career</h2>
             <p>
-              Create a local coaching program with training, calendar entry, ranking pressure, and Save Manager controls.
+              Return to the start screen and confirm a locked career athlete before creating a save.
             </p>
           </div>
           <div className="launch-decision-meta">
             <span>Single local slot</span>
             <span>{props.activeSavePresent ? "Overwrite warning armed" : "Clean slot ready"}</span>
           </div>
-          <button className="command-button command-button-primary" type="button" onClick={props.onStartCareer}>
-            Start Career
+          <button className="command-button command-button-secondary" type="button" onClick={() => setSetupMode("start")}>
+            Start New Career
           </button>
         </article>
 

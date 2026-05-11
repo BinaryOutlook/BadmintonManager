@@ -53,6 +53,7 @@ What is now stable:
 - Phase 3 proof captured 36 desktop/mobile screenshots plus storage reset and import-validation evidence; no video proof is currently part of the shipped evidence pack
 - the UIUX1Change state-flow regression slice now locks career creation to an explicit managed athlete, guards active-career selection paths after reload, and keeps non-final career event wins alive into the next managed-round briefing
 - the tournament continuation hardening slice now exposes tournament completion/still-in-event/next-opponent helpers, uses them in store/UI continuation paths, prevents repeated final-placement reward settlement, and proves active between-round saves through import preview
+- the UIUX1Change start-screen slice now opens on a direct Start Screen, routes Quick Tournament through the editable setup path, requires a career-athlete confirmation dialog before writing `career.program.managedPlayerId`, and keeps active-career squad/profile views inspect-only
 
 ## Completed
 
@@ -116,6 +117,7 @@ What is now stable:
 - [x] added red-first UIUX1Change regression coverage for locked career athlete identity, non-final career tournament continuation, loss/title completion, save compatibility, and deterministic post-match-to-next-round Playwright proof
 - [x] fixed the career post-match state flow so a non-final managed win preserves the tournament, active event, and next opponent briefing until elimination or title
 - [x] hardened tournament continuation helpers, post-match CTA branches, final-placement reward settlement, save/import round-trips, and deterministic reload proof for next-round, loss, and title closeout states
+- [x] replaced the clean-launch athlete-directory loop with a direct Start Screen plus explicit career-athlete lock confirmation, while preserving Quick Tournament editability and active-career squad/profile inspection
 
 ## In Progress
 
@@ -139,6 +141,7 @@ What is now stable:
 - [ ] add optional stat-composition assertions behind `STAT_COMPOSITION_ASSERT=1`
 - [ ] keep `docs/product/versions/v0.2.4/v0.2.4.md` as the active UI/career/save packet while algorithm tuning continues against the `v0.2.3` baseline
 - [ ] use `docs/product/versions/v0.2.4/player-profile-and-shell-amendment.md` as the implementation guide for the player profile page and shell/settings cleanup
+- [ ] keep Phase 4 shell standardization separate from the accepted Phase 3 Start Screen and locked-athlete slice
 - [ ] decide whether `v0.2.4` should keep internal SPA page state or introduce URL routes
 - [ ] confirm whether the future `32` selectable items should be called games, events, competitions, or tournaments in player-facing UI
 - [ ] deepen the tactical intel layer with richer contextual explanations
