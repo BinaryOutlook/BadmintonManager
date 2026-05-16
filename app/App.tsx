@@ -689,7 +689,6 @@ export function App() {
       onOpenPlayerProfile: openPlayerProfile,
       onApplyTraining: applyCareerTraining,
       onEnterEvent: enterCareerEvent,
-      onAdvanceDay: handleAdvanceCareerDay,
       onStartManagedMatch: handleStartManagedMatch,
       onContinueAfterPostMatch: handleContinueCareerAfterPostMatch,
       onCommissionScoutReport: commissionScoutReport,

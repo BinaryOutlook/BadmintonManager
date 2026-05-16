@@ -138,7 +138,6 @@ function buildCareerPageProps(
     onOpenPlayerProfile,
     onApplyTraining: noop,
     onEnterEvent: noop,
-    onAdvanceDay: noop,
     onStartManagedMatch: noop,
     onContinueAfterPostMatch: noop,
     onCommissionScoutReport: noop,
