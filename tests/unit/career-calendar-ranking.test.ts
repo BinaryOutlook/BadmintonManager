@@ -26,10 +26,18 @@ describe("fictional career calendar and ranking model", () => {
 
       expect(event.weekNumber).toBeGreaterThan(0);
       expect(milestones).toEqual([...milestones].sort());
-      expect(event.entryDeadline <= event.startDate).toBe(true);
-      expect(event.drawDate <= event.startDate).toBe(true);
+      expect(event.durationDays).toBeGreaterThanOrEqual(4);
+      expect(event.entryDeadline <= event.withdrawalDeadline).toBe(true);
+      expect(event.withdrawalDeadline <= event.drawDate).toBe(true);
+      expect(event.drawDate < event.startDate).toBe(true);
+      expect(event.rankingCutoffDate <= event.seedingDate).toBe(true);
+      expect(event.seedingDate <= event.entryDeadline).toBe(true);
+      expect(event.seedingDate <= event.drawDate).toBe(true);
+      expect(addDays(event.startDate, 3) <= addDays(event.startDate, event.durationDays - 1)).toBe(true);
       expect(event.name).not.toMatch(/BWF|World Tour|Yonex|HSBC/i);
     }
+
+    expect(career.events[0]?.startDate).toBe("2026-06-03");
   });
 
   it("returns deterministic missed-deadline states before charging entry costs", () => {
@@ -147,7 +155,7 @@ describe("fictional career calendar and ranking model", () => {
       )
     };
     const save = {
-      version: 8,
+      version: 9,
       selectedPlayerId: seededPlayers[0].player.id,
       plannedTacticKey: "balancedControl",
       seed: 6806,

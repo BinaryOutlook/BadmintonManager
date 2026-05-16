@@ -57,7 +57,7 @@ export function createInitialCareerState(selectedPlayerId: string, seed: number)
   const ranking = rankingFor(rankings, selectedPlayerId) ?? rankings[0];
 
   const career: CareerState = {
-    version: 6,
+    version: 7,
     seed,
     date: "2026-06-01",
     seasonId: "2026",
@@ -71,6 +71,7 @@ export function createInitialCareerState(selectedPlayerId: string, seed: number)
     events: careerEventCatalog,
     enteredEventIds: [],
     completedEventIds: [],
+    eventHistory: [],
     activeEventId: null,
     rankings,
     economy: createInitialEconomy(),

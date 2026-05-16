@@ -64,6 +64,7 @@ What is now stable:
 - the rescue MVP Workstreams A/C slice now centralizes valid career day advancement in the topbar, removes the Calendar/Event Desk-only Advance Day control, and routes match-day advances into the career pre-match hub without bypassing pre/post/live competition states
 - the disposable-run knockout tree is now a reusable `KnockoutTree` component shared by Overview, Career Pre-Match, and Career Post-Match hubs while preserving clickable player names, placeholders, scorelines, managed-path highlighting, champion styling, and background match summaries
 - the live Match Command Center now uses a compact horizontal command surface with the primary point action beside the scoreboard, the tactical feed/viewer/telemetry/options visible across desktop viewports, and focused regression proof for duplicate action prevention
+- the Rescue MVP Plan 1 domain foundation now enforces schedule-aware career day advancement, spaces managed R16/QF/SF/F rounds across separate event dates, persists `eventHistory`, and migrates older saves safely
 
 ## Completed
 
@@ -136,6 +137,7 @@ What is now stable:
 - [x] moved normal-stage career day advancement to the persistent topbar CTA and removed the Calendar/Event Desk special header-level Advance Day button
 - [x] extracted the bracket tree into a reusable component and rendered it in career pre-match and post-match event hubs
 - [x] rebuilt the live Match Command Center into a horizontal scoreboard/action/feed/viewer/telemetry/options command surface with focused unit and Playwright viewport coverage
+- [x] added the Rescue MVP Plan 1 schedule-aware career calendar foundation with direct store guards, `between_rounds`, event-history recording, save migration, and catalog invariant coverage
 
 ## In Progress
 

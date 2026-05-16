@@ -76,6 +76,7 @@ const commandGroupOrder: CommandGroupId[] = ["Core", "Program", "Match", "Operat
 const advanceableCareerStages: ReadonlySet<CareerStage> = new Set([
   "planning",
   "event_entered",
+  "between_rounds",
   "event_complete"
 ]);
 
