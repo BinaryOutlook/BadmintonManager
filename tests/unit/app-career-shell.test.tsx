@@ -76,7 +76,9 @@ describe("career shell day advancement", () => {
     fireEvent.click(within(screen.getByRole("banner")).getByRole("button", { name: "Advance Day" }));
 
     expect(useTournamentStore.getState().career?.date).toBe("2026-06-02");
-    expect(screen.getByRole("heading", { name: "Calendar / Event Desk" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Calendar" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Upcoming" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Past Events" })).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "Advance Day" })).toHaveLength(1);
   });
 

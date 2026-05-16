@@ -533,7 +533,7 @@ export function App() {
         group: "Program",
         label: "Calendar",
         short: "CAL",
-        description: career ? "Date and readiness" : "Quick event desk",
+        description: career ? "Date and readiness" : "Career calendar",
         onActivate: () => activateCommand("calendar")
       },
       {

@@ -220,6 +220,30 @@ async function captureFocusedScreenshot(page: { screenshot: (options: { path: st
   });
 }
 
+async function expectCalendarViewportBounded(page: Page) {
+  await page.evaluate(() => {
+    const pageWidth = document.documentElement.scrollWidth;
+    const viewportWidth = window.innerWidth;
+
+    if (pageWidth > viewportWidth + 1) {
+      throw new Error(`Unexpected Calendar document overflow: ${pageWidth} > ${viewportWidth}`);
+    }
+
+    const checkedElements = Array.from(
+      document.querySelectorAll<HTMLElement>(
+        ".calendar-subnav, .calendar-status-strip, .calendar-event-row, .calendar-secondary-grid, .career-week-strip"
+      )
+    );
+
+    for (const element of checkedElements) {
+      if (element.scrollWidth > element.clientWidth + 1) {
+        const label = element.className || element.tagName;
+        throw new Error(`Unexpected Calendar element overflow for ${label}: ${element.scrollWidth} > ${element.clientWidth}`);
+      }
+    }
+  });
+}
+
 async function selectAthleteInSelectionModal(page: Page, athleteName: string) {
   const dialog = page.getByRole("dialog", { name: "Pick Your Playstyle" });
   const directSelect = dialog
@@ -524,11 +548,11 @@ test("can complete and reload the career core slice with tactical viewer proof",
   await expect(rallyBase).toHaveAttribute("aria-pressed", "true");
 
   await page.getByRole("button", { name: "Career Home" }).click();
-  await page.getByRole("button", { name: "Event Desk" }).click();
-  await expect(page.getByRole("heading", { name: "Calendar / Event Desk" })).toBeVisible();
+  await page.getByRole("main").getByRole("button", { name: "Calendar" }).click();
+  await expect(page.getByRole("heading", { name: "Calendar" })).toBeVisible();
   await expect(page.getByText(/prize \$15,000/)).toBeVisible();
   await page.getByRole("button", { name: "Enter Event" }).first().click();
-  await expect(page.getByRole("button", { name: "Entered" }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Await Draw" }).first()).toBeVisible();
 
   await page.getByRole("button", { name: "Advance Day" }).click();
   await page.getByRole("button", { name: "Advance Day" }).click();
@@ -697,8 +721,8 @@ test("surfaces corrupt save recovery and blocks unaffordable event entry", async
   });
   await page.reload();
 
-  await page.getByRole("button", { name: "Event Desk" }).click();
-  await expect(page.getByRole("heading", { name: "Calendar / Event Desk" })).toBeVisible();
+  await page.getByRole("main").getByRole("button", { name: "Calendar" }).click();
+  await expect(page.getByRole("heading", { name: "Calendar" })).toBeVisible();
   await expect(page.getByText(/prize \$15,000/)).toBeVisible();
   await expect(page.getByText(/Insufficient funds: program cash \$100/).first()).toBeVisible();
   await expect(page.getByRole("button", { name: "Insufficient Funds" }).first()).toBeDisabled();
@@ -777,7 +801,7 @@ test("exposes the grouped management shell as the primary command surface", asyn
   await expect(commandRail.getByRole("button", { name: /Training/ })).toHaveAttribute("aria-current", "page");
 
   await commandRail.getByRole("button", { name: /Calendar/ }).click();
-  await expect(page.getByRole("heading", { name: "Calendar / Event Desk" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Calendar" })).toBeVisible();
   await expect(commandRail.getByRole("button", { name: /Calendar/ })).toHaveAttribute("aria-current", "page");
 
   await commandRail.getByRole("button", { name: /Tactics/ }).click();
@@ -812,9 +836,9 @@ test("surfaces dense page contracts and Save Manager metadata", async ({ page })
   await expect(page.getByLabel("Training status")).toContainText("Next action");
 
   await commandRail.getByRole("button", { name: /Calendar/ }).click();
-  await expect(page.getByRole("heading", { name: "Calendar / Event Desk" })).toBeVisible();
-  await expect(page.getByLabel("Calendar and competition status")).toContainText("Next fixture");
-  await expect(page.getByLabel("Calendar and competition status")).toContainText("Next action");
+  await expect(page.getByRole("heading", { name: "Calendar" })).toBeVisible();
+  await expect(page.getByLabel("Calendar status")).toContainText("Active event");
+  await expect(page.getByLabel("Calendar status")).toContainText("Next match/draw/deadline");
 
   await commandRail.getByRole("button", { name: /Tactics/ }).click();
   await expect(page.getByRole("heading", { name: "Advanced Tactics Creator" })).toBeVisible();
@@ -848,7 +872,7 @@ test("surfaces dense page contracts and Save Manager metadata", async ({ page })
   await expect(page.getByLabel("Live match status")).toContainText("Next action");
 });
 
-test("integrates fictional calendar ranking stakes into career home and event desk", async ({ page }) => {
+test("integrates fictional calendar ranking stakes into career home and Calendar", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/");
 
@@ -859,9 +883,12 @@ test("integrates fictional calendar ranking stakes into career home and event de
   await expect(page.getByLabel("Next event stakes summary")).toContainText("Champion points 700 pts");
   await expect(page.getByText(/fictional simplified circuit list/)).toBeVisible();
 
-  await page.getByRole("button", { name: "Event Desk" }).click();
-  await expect(page.getByRole("heading", { name: "Calendar / Event Desk" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Event Desk Brief" })).toBeVisible();
+  await page.getByRole("main").getByRole("button", { name: "Calendar" }).click();
+  await expect(page.getByRole("heading", { name: "Calendar" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Upcoming" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Past Events" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Schedule Brief" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Upcoming Event Schedule" })).toBeVisible();
   await expect(page.getByText(/Entry deadline 2026-06-01, draw milestone 2026-06-02/)).toBeVisible();
   await expect(page.getByText(/Champion prize \$15,000/)).toBeVisible();
   await expect(page.getByText(/Seed Snapshot/).first()).toBeVisible();
@@ -870,9 +897,14 @@ test("integrates fictional calendar ranking stakes into career home and event de
   await expect(page.getByText(/presentation, not full draw-engine replacement/)).toBeVisible();
   await expect(page.getByRole("heading", { name: "Simplification Boundary" })).toBeVisible();
   await expect(page.getByText(/playable match bridge remains the existing deterministic 16-player knockout/)).toBeVisible();
+  await page.getByRole("tab", { name: "Past Events" }).click();
+  await expect(page.getByRole("heading", { name: "Past Events" })).toBeVisible();
+  await expect(page.getByText(/safe coming state/)).toBeVisible();
+  await page.getByRole("tab", { name: "Upcoming" }).click();
+  await expect(page.getByRole("heading", { name: "Upcoming Event Schedule" })).toBeVisible();
 
   await page.getByRole("button", { name: "Enter Event" }).first().click();
-  await expect(page.getByRole("button", { name: "Entered" }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Await Draw" }).first()).toBeVisible();
   await page.evaluate(() => {
     const raw = window.localStorage.getItem("badminton-manager-save");
     if (!raw) {
@@ -884,6 +916,35 @@ test("integrates fictional calendar ranking stakes into career home and event de
       throw new Error("Expected Metro Open entry to persist.");
     }
   });
+});
+
+test("keeps the Calendar layout bounded across target viewports", async ({ page }) => {
+  for (const viewport of [
+    { width: 1366, height: 768, name: "calendar-1366x768" },
+    { width: 1440, height: 900, name: "calendar-1440x900" },
+    { width: 390, height: 844, name: "calendar-mobile" }
+  ]) {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    await page.goto("/");
+    await page.evaluate(() => {
+      window.localStorage.clear();
+      window.sessionStorage.clear();
+    });
+    await page.reload();
+
+    await startNewCareer(page);
+    await page.getByRole("main").getByRole("button", { name: "Calendar" }).click();
+    await expect(page.getByRole("heading", { name: "Calendar" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Upcoming Event Schedule" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Past Events" })).toBeVisible();
+    await expectCalendarViewportBounded(page);
+    await captureFocusedScreenshot(page, `${viewport.name}-upcoming`);
+
+    await page.getByRole("tab", { name: "Past Events" }).click();
+    await expect(page.getByRole("heading", { name: "Past Events" })).toBeVisible();
+    await expectCalendarViewportBounded(page);
+    await captureFocusedScreenshot(page, `${viewport.name}-past-events`);
+  }
 });
 
 test("manages export import delete and overwrite warnings from the visible Save Manager", async ({ page }) => {
@@ -1084,7 +1145,7 @@ test("surfaces dynamic rival pressure and persists the circuit room", async ({ p
   await expect(page.getByText(/Metro Open/).first()).toBeVisible();
 
   await page.getByRole("button", { name: "Career Home" }).click();
-  await page.getByRole("button", { name: "Event Desk" }).click();
+  await page.getByRole("main").getByRole("button", { name: "Calendar" }).click();
   await expect(page.getByText(/Rival field:/).first()).toContainText(/top threat/);
 });
 
@@ -1121,7 +1182,7 @@ test("can edit advanced tactics and preserve assistant advice overrides", async 
   await expect(page.getByText("Manager override kept Command Balance.", { exact: true }).first()).toBeVisible();
 
   await page.getByRole("button", { name: "Career Home" }).click();
-  await page.getByRole("button", { name: "Event Desk" }).click();
+  await page.getByRole("main").getByRole("button", { name: "Calendar" }).click();
   await page.getByRole("button", { name: "Enter Event" }).first().click();
   await page.getByRole("button", { name: "Advance Day" }).click();
   await page.getByRole("button", { name: "Advance Day" }).click();
