@@ -62,10 +62,11 @@ What is now stable:
 - training, calendar/competition, match planning, live match, and post-match review now expose compact management status strips above their grids, tables, telemetry, and decision panels
 - Save Manager now leads with active slot metadata for slot state, mode, managed athlete, save version, import preview, and quarantine state while preserving export, import preview/confirm, active-save deletion, and corrupt-backup deletion safety
 - the rescue MVP Workstreams A/C slice now centralizes valid career day advancement in the topbar, removes the Calendar-only Advance Day control, and routes match-day advances into the career pre-match hub without bypassing pre/post/live competition states
-- the rescue MVP Workstreams E/F UI slice now renames the runtime page to `Calendar`, removes the legacy mixed Calendar naming, expands the Calendar into a full-width Upcoming layout, and adds a safe `Past Events` coming-state without changing the domain history schema
+- the rescue MVP Workstreams E/F UI slice now renames the runtime page to `Calendar`, removes the legacy mixed Calendar naming, and expands the Calendar into a full-width Upcoming layout
 - the disposable-run knockout tree is now a reusable `KnockoutTree` component shared by Overview, Career Pre-Match, and Career Post-Match hubs while preserving clickable player names, placeholders, scorelines, managed-path highlighting, champion styling, and background match summaries
 - the live Match Command Center now uses a compact horizontal command surface with the primary point action beside the scoreboard, the tactical feed/viewer/telemetry/options visible across desktop viewports, and focused regression proof for duplicate action prevention
 - the Rescue MVP Plan 1 domain foundation now enforces schedule-aware career day advancement, spaces managed R16/QF/SF/F rounds across separate event dates, persists `eventHistory`, and migrates older saves safely
+- the Rescue MVP Plan 1 Calendar integration now maps event rows to schedule-aware actions and renders the real `career.eventHistory` Past Events archive with results, scorelines, points, prize/cost/net economy, and achievement tags
 
 ## Completed
 
@@ -140,6 +141,7 @@ What is now stable:
 - [x] extracted the bracket tree into a reusable component and rendered it in career pre-match and post-match event hubs
 - [x] rebuilt the live Match Command Center into a horizontal scoreboard/action/feed/viewer/telemetry/options command surface with focused unit and Playwright viewport coverage
 - [x] added the Rescue MVP Plan 1 schedule-aware career calendar foundation with direct store guards, `between_rounds`, event-history recording, save migration, and catalog invariant coverage
+- [x] completed the Rescue MVP Plan 1 Calendar UI integration with schedule-aware event actions, playable entered-event affordances, and real Past Events history rendering
 
 ## In Progress
 
@@ -151,7 +153,6 @@ What is now stable:
 - [ ] improve commentary variety and phrasing
 - [ ] expand post-match stats and scouting reads
 - [ ] polish responsive behavior and visual details across the new shell
-- [ ] add real Past Events records after the domain history model lands; the current Calendar tab is intentionally a safe coming-state
 - [ ] track dense live-match directive labels as non-blocking polish debt; current proof does not require a Phase 4 source change
 - [ ] complete the broader Phase 5 screenshot matrix and visual review beyond the focused builder proof
 

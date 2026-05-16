@@ -410,6 +410,15 @@ export function App() {
     setActivePage(next.career?.stage === "pre_match" ? { id: "bracket" } : { id: "calendar" });
   }
 
+  function handleEnterCareerEvent(eventId: string) {
+    enterCareerEvent(eventId);
+    const next = useTournamentStore.getState();
+
+    if (next.career?.stage === "pre_match") {
+      setActivePage({ id: "bracket" });
+    }
+  }
+
   function handleContinueCareerAfterPostMatch() {
     continueCareerAfterPostMatch();
     const next = useTournamentStore.getState();
@@ -689,7 +698,7 @@ export function App() {
       onOpenPromises: () => setActivePage({ id: "promises" }),
       onOpenPlayerProfile: openPlayerProfile,
       onApplyTraining: applyCareerTraining,
-      onEnterEvent: enterCareerEvent,
+      onEnterEvent: handleEnterCareerEvent,
       onStartManagedMatch: handleStartManagedMatch,
       onContinueAfterPostMatch: handleContinueCareerAfterPostMatch,
       onCommissionScoutReport: commissionScoutReport,

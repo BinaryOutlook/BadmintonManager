@@ -968,6 +968,119 @@ textarea:focus-visible {
   gap: 0.55rem;
 }
 
+.calendar-history-list {
+  display: grid;
+  gap: 0.72rem;
+}
+
+.calendar-history-card {
+  display: grid;
+  grid-template-columns:
+    minmax(13rem, 1.25fr)
+    minmax(7rem, 0.58fr)
+    minmax(8rem, 0.72fr)
+    minmax(6rem, 0.5fr)
+    minmax(9rem, 0.7fr)
+    minmax(6rem, 0.52fr);
+  gap: 0.72rem;
+  align-items: center;
+  min-width: 0;
+  border: 1px solid rgba(48, 54, 61, 0.92);
+  border-left: 4px solid rgba(39, 211, 178, 0.5);
+  border-radius: 0.38rem;
+  padding: 0.85rem;
+  background: rgba(12, 14, 17, 0.72);
+}
+
+.calendar-history-card > div {
+  min-width: 0;
+}
+
+.calendar-history-card span,
+.calendar-history-card small {
+  display: block;
+  color: var(--muted-soft);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+.calendar-history-card small {
+  margin-top: 0.25rem;
+  color: var(--muted);
+  font-size: 0.7rem;
+  letter-spacing: 0.03em;
+  text-transform: none;
+}
+
+.calendar-history-card strong {
+  display: block;
+  margin-top: 0.22rem;
+  overflow-wrap: anywhere;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+.calendar-history-card p {
+  margin: 0.35rem 0 0;
+  overflow-wrap: anywhere;
+  color: var(--muted);
+  line-height: 1.38;
+}
+
+.calendar-history-event strong {
+  font-size: 1.02rem;
+}
+
+.calendar-history-achievements {
+  grid-column: 1 / -1;
+  padding-top: 0.62rem;
+  border-top: 1px solid rgba(48, 54, 61, 0.82);
+}
+
+.calendar-history-champion {
+  border-left-color: rgba(242, 193, 78, 0.92);
+  background: linear-gradient(90deg, rgba(242, 193, 78, 0.12), rgba(12, 14, 17, 0.72) 30%);
+}
+
+.calendar-history-runner-up {
+  border-left-color: rgba(39, 211, 178, 0.82);
+}
+
+.calendar-history-semi-final,
+.calendar-history-quarter-final,
+.calendar-history-round-of-16 {
+  border-left-color: rgba(57, 255, 20, 0.48);
+}
+
+.calendar-history-skipped,
+.calendar-history-missed-deadline,
+.calendar-history-withdrawn {
+  border-left-color: rgba(255, 140, 140, 0.72);
+  background: linear-gradient(90deg, rgba(255, 140, 140, 0.1), rgba(12, 14, 17, 0.72) 28%);
+}
+
+.calendar-history-empty {
+  border: 1px dashed rgba(48, 54, 61, 0.95);
+  border-radius: 0.38rem;
+  padding: 1rem;
+  background: rgba(12, 14, 17, 0.54);
+}
+
+.calendar-history-empty strong {
+  display: block;
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.calendar-history-empty p {
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
 .career-action-row {
   display: flex;
   flex-wrap: wrap;
@@ -4469,6 +4582,7 @@ textarea:focus-visible {
   }
 
   .calendar-event-row,
+  .calendar-history-card,
   .calendar-secondary-grid,
   .calendar-cost-grid,
   .calendar-past-summary,

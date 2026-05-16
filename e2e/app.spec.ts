@@ -85,7 +85,7 @@ function createBetweenRoundsCareerSave() {
   const nextOpponentId = nextContext.playerAId === managedPlayerId ? nextContext.playerBId : nextContext.playerAId;
   const opponentId = context.playerAId === managedPlayerId ? context.playerBId : context.playerAId;
   const save = {
-    version: 8,
+    version: 9,
     selectedPlayerId: managedPlayerId,
     plannedTacticKey: "balancedControl",
     seed: 61001,
@@ -169,7 +169,7 @@ function createPostMatchCloseoutCareerSave(outcome: "loss" | "title") {
   });
   const placementKey = won ? "champion" : context.roundName;
   const save = {
-    version: 8,
+    version: 9,
     selectedPlayerId: managedPlayerId,
     plannedTacticKey: "balancedControl",
     seed: outcome === "title" ? 62002 : 62001,
@@ -206,6 +206,69 @@ function createPostMatchCloseoutCareerSave(outcome: "loss" | "title") {
   };
 }
 
+function createCalendarHistoryCareerSave() {
+  const managedPlayerId = seededPlayers[0].player.id;
+  const career = createInitialCareerState(managedPlayerId, 63001);
+  const event = getCareerEvent(career.events, "metro-open-300")!;
+
+  return {
+    version: 9,
+    selectedPlayerId: managedPlayerId,
+    plannedTacticKey: "balancedControl",
+    seed: 63001,
+    tournament: null,
+    liveMatch: null,
+    career: {
+      ...career,
+      date: "2026-06-18",
+      stage: "event_complete" as const,
+      activeEventId: null,
+      enteredEventIds: [event.id],
+      completedEventIds: [event.id],
+      eventHistory: [
+        {
+          eventId: event.id,
+          eventName: event.name,
+          tier: event.tier,
+          startDate: event.startDate,
+          endDate: "2026-06-07",
+          status: "champion" as const,
+          entered: true,
+          resultRound: "champion",
+          pointsAwarded: event.rankingPoints.champion,
+          prizeMoney: event.prizeMoney.champion,
+          entryCost: event.entryFee,
+          travelCost: event.travelCost,
+          netCash: event.prizeMoney.champion - event.entryFee - event.travelCost,
+          completedAt: "2026-06-06",
+          matchIds: ["metro-final"],
+          scorelines: ["21-14, 21-16"],
+          achievements: ["First Title", "Points Finish"]
+        },
+        {
+          eventId: "harbor-masters-500",
+          eventName: "Harbor Masters",
+          tier: "Circuit 500" as const,
+          startDate: "2026-06-12",
+          endDate: "2026-06-17",
+          status: "missed_deadline" as const,
+          entered: false,
+          resultRound: null,
+          pointsAwarded: 0,
+          prizeMoney: 0,
+          entryCost: 0,
+          travelCost: 0,
+          netCash: 0,
+          completedAt: "2026-06-18",
+          matchIds: [],
+          scorelines: [],
+          achievements: []
+        }
+      ]
+    }
+  };
+}
+
 async function captureFocusedScreenshot(page: { screenshot: (options: { path: string; fullPage: boolean }) => Promise<Buffer> }, name: string) {
   const screenshotDir = process.env.FOCUSED_SCREENSHOT_DIR;
 
@@ -231,7 +294,7 @@ async function expectCalendarViewportBounded(page: Page) {
 
     const checkedElements = Array.from(
       document.querySelectorAll<HTMLElement>(
-        ".calendar-subnav, .calendar-status-strip, .calendar-event-row, .calendar-secondary-grid, .career-week-strip"
+        ".calendar-subnav, .calendar-status-strip, .calendar-event-row, .calendar-history-card, .calendar-secondary-grid, .career-week-strip"
       )
     );
 
@@ -621,8 +684,8 @@ test("continues a deterministic career event from post-match into the next round
 
   await page.getByRole("button", { name: "Continue To Next Round" }).click();
 
-  await expect(page.getByRole("heading", { name: "Opponent Briefing" })).toBeVisible();
-  await expect(page.getByText(betweenRounds.nextOpponentName).first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Advance Day" })).toBeVisible();
   await page.evaluate((payload) => {
     const raw = window.localStorage.getItem("badminton-manager-save");
     if (!raw) {
@@ -632,6 +695,10 @@ test("continues a deterministic career event from post-match into the next round
     const save = JSON.parse(raw);
     if (!save.tournament || save.tournament.currentRoundIndex !== 1) {
       throw new Error("Expected next-round tournament to remain active.");
+    }
+
+    if (save.career.stage !== "between_rounds" || save.career.date !== "2026-06-03") {
+      throw new Error(`Expected between-round wait on 2026-06-03, received ${save.career.stage} ${save.career.date}`);
     }
 
     if (save.career.activeEventId !== payload.eventId) {
@@ -646,6 +713,10 @@ test("continues a deterministic career event from post-match into the next round
       throw new Error("Expected next managed opponent briefing after continue.");
     }
   }, betweenRounds);
+
+  await page.getByRole("button", { name: "Advance Day" }).click();
+  await expect(page.getByRole("heading", { name: "Opponent Briefing" })).toBeVisible();
+  await expect(page.getByText(betweenRounds.nextOpponentName).first()).toBeVisible();
 
   await page.reload();
   await expect(page.getByRole("heading", { name: "Opponent Briefing" })).toBeVisible();
@@ -899,7 +970,8 @@ test("integrates fictional calendar ranking stakes into career home and Calendar
   await expect(page.getByText(/playable match bridge remains the existing deterministic 16-player knockout/)).toBeVisible();
   await page.getByRole("tab", { name: "Past Events" }).click();
   await expect(page.getByRole("heading", { name: "Past Events" })).toBeVisible();
-  await expect(page.getByText(/safe coming state/)).toBeVisible();
+  await expect(page.getByText("No past events yet")).toBeVisible();
+  await expect(page.getByText(/safe coming state/)).toHaveCount(0);
   await page.getByRole("tab", { name: "Upcoming" }).click();
   await expect(page.getByRole("heading", { name: "Upcoming Event Schedule" })).toBeVisible();
 
@@ -916,6 +988,50 @@ test("integrates fictional calendar ranking stakes into career home and Calendar
       throw new Error("Expected Metro Open entry to persist.");
     }
   });
+});
+
+test("Calendar actions progress entered events to match day and render actual Past Events", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+
+  await startNewCareer(page);
+  const commandRail = page.getByRole("navigation", { name: "Primary commands" });
+  await commandRail.getByRole("button", { name: /Calendar/ }).click();
+  await expect(page.getByRole("heading", { name: "Calendar" })).toBeVisible();
+  await expect(page.getByText(/Event\s+Desk/)).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Enter Event" }).first().click();
+  await expect(page.getByRole("button", { name: "Await Draw" }).first()).toBeVisible();
+
+  await page.getByRole("button", { name: "Advance Day" }).click();
+  await expect(page.getByRole("heading", { name: "Calendar" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "View Draw" }).first()).toBeVisible();
+
+  await page.getByRole("button", { name: "Advance Day" }).click();
+  await expect(page.getByRole("heading", { name: "Opponent Briefing" })).toBeVisible();
+
+  await commandRail.getByRole("button", { name: /Calendar/ }).click();
+  await expect(page.getByRole("button", { name: "Play Match" }).first()).toBeVisible();
+  await page.getByRole("button", { name: "Play Match" }).first().click();
+  await expect(page.getByRole("heading", { name: "Opponent Briefing" })).toBeVisible();
+
+  const historySave = createCalendarHistoryCareerSave();
+  await page.evaluate((payload) => {
+    window.localStorage.setItem("badminton-manager-save", JSON.stringify(payload));
+  }, historySave);
+  await page.reload();
+
+  await commandRail.getByRole("button", { name: /Calendar/ }).click();
+  await page.getByRole("tab", { name: "Past Events" }).click();
+  await expect(page.getByLabel("Past event history")).toContainText("Metro Open");
+  await expect(page.getByLabel("Past event history")).toContainText("Champion");
+  await expect(page.getByLabel("Past event history")).toContainText("21-14, 21-16");
+  await expect(page.getByLabel("Past event history")).toContainText("700 pts");
+  await expect(page.getByLabel("Past event history")).toContainText("$15,000");
+  await expect(page.getByLabel("Past event history")).toContainText("First Title");
+  await expect(page.getByLabel("Past event history")).toContainText("Harbor Masters");
+  await expect(page.getByLabel("Past event history")).toContainText("Missed");
+  await expect(page.getByText(/Event\s+Desk/)).toHaveCount(0);
 });
 
 test("keeps the Calendar layout bounded across target viewports", async ({ page }) => {

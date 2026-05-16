@@ -12,6 +12,7 @@ import {
   getNextEvent
 } from "../game/career/events";
 import { canCompeteWithInjury, canTrainWithInjury } from "../game/career/health";
+import { currentManagedMatchSchedule } from "../game/career/matchSchedule";
 import type {
   AdvancedTacticPlan,
   CareerState,
@@ -161,50 +162,193 @@ function nextCalendarMilestone(career: CareerState, event: CareerState["events"]
   return `Window closed ${endDate}`;
 }
 
-function calendarEventActionLabel(args: {
+export type CalendarEventActionType = "enter" | "openBracket" | "openReview" | "openHistory" | "none";
+
+export interface CalendarEventAction {
+  label: string;
+  disabled: boolean;
+  variant: "primary" | "secondary";
+  action: CalendarEventActionType;
+  detail: string;
+}
+
+function historyStatusLabel(status: CareerState["eventHistory"][number]["status"]) {
+  switch (status) {
+    case "champion":
+      return "Champion";
+    case "runner_up":
+      return "Finalist";
+    case "semi_final":
+      return "Semi-finalist";
+    case "quarter_final":
+      return "Quarter-finalist";
+    case "round_of_16":
+      return "R16 exit";
+    case "skipped":
+      return "Skipped";
+    case "missed_deadline":
+      return "Missed";
+    case "withdrawn":
+      return "Withdrawn";
+  }
+}
+
+function completedHistoryRecord(career: CareerState, eventId: string) {
+  return career.eventHistory.find((record) => record.eventId === eventId) ?? null;
+}
+
+export function eventActionForCareer(args: {
   career: CareerState;
+  tournament: TournamentState | null;
   event: CareerState["events"][number];
   affordable: boolean;
   medicalAllowed: boolean;
   tierAllowed: boolean;
-}) {
-  const completed = args.career.completedEventIds.includes(args.event.id);
+}): CalendarEventAction {
+  const historyRecord = completedHistoryRecord(args.career, args.event.id);
   const entered = args.career.enteredEventIds.includes(args.event.id);
+  const completed = args.career.completedEventIds.includes(args.event.id);
+  const active = args.career.activeEventId === args.event.id;
   const status = eventStatusFor(args.career, args.event);
+  const endDate = addDays(args.event.startDate, args.event.durationDays - 1);
+  const schedule = active
+    ? currentManagedMatchSchedule({
+        career: args.career,
+        tournament: args.tournament
+      })
+    : null;
 
-  if (completed) {
-    return "Completed";
+  if (active && args.career.stage === "post_match") {
+    return {
+      label: "Review Match",
+      disabled: false,
+      variant: "primary",
+      action: "openReview",
+      detail: "Post-match review must be closed before the event flow can continue."
+    };
+  }
+
+  if (active && (args.career.stage === "pre_match" || schedule?.playable)) {
+    return {
+      label: schedule?.overdue ? "Open Match" : "Play Match",
+      disabled: false,
+      variant: "primary",
+      action: "openBracket",
+      detail: schedule
+        ? `${schedule.round} scheduled ${schedule.scheduledDate}; open the pre-match hub.`
+        : "Match briefing is ready; open the pre-match hub."
+    };
+  }
+
+  if (active && args.career.stage === "between_rounds" && schedule && !schedule.playable) {
+    return {
+      label: `Next Match ${schedule.scheduledDate}`,
+      disabled: true,
+      variant: "secondary",
+      action: "none",
+      detail: `${schedule.round} is scheduled for a future event day. Advance the career date when ready.`
+    };
+  }
+
+  if (historyRecord?.status === "skipped" || historyRecord?.status === "missed_deadline") {
+    return {
+      label: historyRecord.status === "skipped" ? "Skipped" : "Missed",
+      disabled: false,
+      variant: "secondary",
+      action: "openHistory",
+      detail: `${historyStatusLabel(historyRecord.status)} record is available in Past Events.`
+    };
+  }
+
+  if (historyRecord || completed) {
+    return {
+      label: "View Result",
+      disabled: false,
+      variant: "secondary",
+      action: "openHistory",
+      detail: "Completed event record is available in Past Events."
+    };
+  }
+
+  if (args.career.date > endDate) {
+    return {
+      label: entered ? "Skipped" : "Missed",
+      disabled: true,
+      variant: "secondary",
+      action: "none",
+      detail: entered
+        ? "This entered event window has passed without an active match record."
+        : "The event window has passed without an entry."
+    };
+  }
+
+  if (!entered && status === "missed_deadline") {
+    return {
+      label: "Missed",
+      disabled: true,
+      variant: "secondary",
+      action: "none",
+      detail: `Entry deadline passed on ${args.event.entryDeadline}.`
+    };
   }
 
   if (entered) {
-    if (args.career.activeEventId === args.event.id && args.career.stage === "pre_match") {
-      return "Match Ready";
+    if (status === "draw_published" || args.career.date >= args.event.drawDate) {
+      return {
+        label: "View Draw",
+        disabled: false,
+        variant: "secondary",
+        action: "openBracket",
+        detail: `Draw published ${args.event.drawDate}; first managed match is ${args.event.startDate}.`
+      };
     }
 
-    if (args.career.activeEventId === args.event.id && args.career.stage === "post_match") {
-      return "Review Ready";
-    }
-
-    if (status === "in_progress") {
-      return "Event Active";
-    }
-
-    if (status === "draw_published") {
-      return "Draw Published";
-    }
-
-    return "Await Draw";
+    return {
+      label: "Await Draw",
+      disabled: true,
+      variant: "secondary",
+      action: "none",
+      detail: `Entered. Draw publishes ${args.event.drawDate}.`
+    };
   }
 
   if (!args.medicalAllowed) {
-    return "Medical Hold";
+    return {
+      label: "Medical Hold",
+      disabled: true,
+      variant: "secondary",
+      action: "none",
+      detail: "Medical staff have blocked competition entry."
+    };
   }
 
   if (!args.tierAllowed) {
-    return "Tier Locked";
+    return {
+      label: "Tier Locked",
+      disabled: true,
+      variant: "secondary",
+      action: "none",
+      detail: "Ranking, readiness, or event-count gate is not clear."
+    };
   }
 
-  return args.affordable ? "Enter Event" : "Insufficient Funds";
+  if (!args.affordable) {
+    return {
+      label: "Insufficient Funds",
+      disabled: true,
+      variant: "secondary",
+      action: "none",
+      detail: "Program cash cannot cover travel and entry costs."
+    };
+  }
+
+  return {
+    label: "Enter Event",
+    disabled: false,
+    variant: "primary",
+    action: "enter",
+    detail: `Eligible now. Entry deadline ${args.event.entryDeadline}.`
+  };
 }
 
 function pressureForEvent(career: CareerState, eventId: string) {
@@ -2079,7 +2223,31 @@ export function CareerCalendarPage(props: CareerPageProps) {
   const nextEntryCosts = nextEvent ? effectiveEventEntryCosts(nextEvent, career.facilities) : null;
   const nextTotalCost = nextEntryCosts ? eventEntryCost(nextEntryCosts) : 0;
   const activeEventLabel = career.activeEventId ? nextEvent?.name ?? "Active entry" : "No active entry";
-  const completedEventCount = career.completedEventIds.length;
+  const pastEventCount = career.eventHistory.length;
+  const sortedEventHistory = [...career.eventHistory].sort((left, right) => {
+    const completedOrder = right.completedAt.localeCompare(left.completedAt);
+
+    return completedOrder !== 0 ? completedOrder : right.startDate.localeCompare(left.startDate);
+  });
+
+  function handleCalendarEventAction(action: CalendarEventAction, eventId: string) {
+    switch (action.action) {
+      case "enter":
+        props.onEnterEvent(eventId);
+        break;
+      case "openBracket":
+        props.onOpenLiveMatch();
+        break;
+      case "openReview":
+        props.onOpenPostMatch();
+        break;
+      case "openHistory":
+        setActiveSection("past");
+        break;
+      case "none":
+        break;
+    }
+  }
 
   return (
     <section className="screen-shell career-page">
@@ -2228,7 +2396,15 @@ export function CareerCalendarPage(props: CareerPageProps) {
                   entryFee: entryCosts.entryFee
                 });
                 const tierAllowed = tierGate.allowed;
-                const eventBlocked = !affordable || !medicalGate.allowed || !tierAllowed;
+                const action = eventActionForCareer({
+                  career,
+                  tournament: props.tournament,
+                  event,
+                  affordable,
+                  medicalAllowed: medicalGate.allowed,
+                  tierAllowed
+                });
+                const eventBlocked = action.disabled && !entered && !completed;
                 const milestones = eventDeadlineMilestones(event);
                 const endDate = addDays(event.startDate, event.durationDays - 1);
                 const rowClassName =
@@ -2265,19 +2441,18 @@ export function CareerCalendarPage(props: CareerPageProps) {
                     </div>
                     <div className="calendar-event-actions">
                       <button
-                        className={entered ? "command-button command-button-secondary" : "command-button command-button-primary"}
+                        className={
+                          action.variant === "primary"
+                            ? "command-button command-button-primary"
+                            : "command-button command-button-secondary"
+                        }
                         type="button"
-                        disabled={entered || completed || eventBlocked}
-                        onClick={() => props.onEnterEvent(event.id)}
+                        disabled={action.disabled}
+                        onClick={() => handleCalendarEventAction(action, event.id)}
                       >
-                        {calendarEventActionLabel({
-                          career,
-                          event,
-                          affordable,
-                          medicalAllowed: medicalGate.allowed,
-                          tierAllowed
-                        })}
+                        {action.label}
                       </button>
+                      <small>{action.detail}</small>
                     </div>
                     <div className="calendar-event-row-details">
                       <div className="career-deadline-row" aria-label={`${event.name} deadline milestones`}>
@@ -2412,30 +2587,79 @@ export function CareerCalendarPage(props: CareerPageProps) {
           <section className="command-panel command-panel-full calendar-past-state">
             <div className="panel-header">
               <h2>Past Events</h2>
-              <span>safe coming state</span>
+              <span>{pastEventCount} recorded</span>
             </div>
-            <div className="career-event-brief calendar-past-summary">
-              <div>
-                <span>Completed IDs</span>
-                <strong>{completedEventCount}</strong>
-                <small>Existing save field only; no new history schema is written here.</small>
+            {sortedEventHistory.length > 0 ? (
+              <div className="calendar-history-list" aria-label="Past event history">
+                {sortedEventHistory.map((record) => {
+                  const event = getCareerEvent(career.events, record.eventId);
+                  const location = event
+                    ? `${event.location.city}, ${event.location.country} - ${event.location.venue}`
+                    : "Archived event location";
+                  const costTotal = record.entryCost + record.travelCost;
+
+                  return (
+                    <article
+                      key={`${record.eventId}-${record.completedAt}`}
+                      className={`calendar-history-card calendar-history-${record.status.replaceAll("_", "-")}`}
+                    >
+                      <div className="calendar-history-event">
+                        <span>{record.tier} / {record.startDate} - {record.endDate}</span>
+                        <strong>{record.eventName}</strong>
+                        <p>{location}</p>
+                      </div>
+                      <div>
+                        <span>Status</span>
+                        <strong>{historyStatusLabel(record.status)}</strong>
+                        <small>{record.entered ? "Entered event" : "Not entered"}</small>
+                      </div>
+                      <div>
+                        <span>Result</span>
+                        <strong>{record.resultRound ? record.resultRound.replace("_", " ") : "No match"}</strong>
+                        <small>{record.scorelines.length > 0 ? record.scorelines.join(" / ") : "No scoreline recorded"}</small>
+                      </div>
+                      <div>
+                        <span>Points</span>
+                        <strong>{points(record.pointsAwarded)}</strong>
+                        <small>Completed {record.completedAt}</small>
+                      </div>
+                      <div>
+                        <span>Prize</span>
+                        <strong>{money(record.prizeMoney)}</strong>
+                        <small>Costs {money(costTotal)} ({money(record.entryCost)} entry, {money(record.travelCost)} travel)</small>
+                      </div>
+                      <div>
+                        <span>Net</span>
+                        <strong>{signedMoney(record.netCash)}</strong>
+                        <small>{record.matchIds.length} managed match record(s)</small>
+                      </div>
+                      <div className="calendar-history-achievements">
+                        <span>Achievements</span>
+                        <div className="career-deadline-row">
+                          {record.achievements.length > 0 ? (
+                            record.achievements.map((achievement) => (
+                              <span key={achievement} className="deadline-chip deadline-chip-past">
+                                {achievement}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="deadline-chip">No tags</span>
+                          )}
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
               </div>
-              <div>
-                <span>Archive Model</span>
-                <strong>Pending</strong>
-                <small>No completed-event archive fields are read or written by this UI slice.</small>
+            ) : (
+              <div className="calendar-history-empty">
+                <strong>No past events yet</strong>
+                <p>
+                  Complete, skip, or miss a circuit event and it will appear here with result, scoreline, points,
+                  prize, travel, entry cost, net cash, and achievement context.
+                </p>
               </div>
-              <div>
-                <span>Latest Match</span>
-                <strong>{career.lastMatchReport?.scoreline ?? "No result yet"}</strong>
-                <small>{career.lastMatchReport ? `${career.lastMatchReport.round} / ${career.lastMatchReport.result}` : "Play an event to create review evidence."}</small>
-              </div>
-            </div>
-            <p className="panel-summary">
-              A detailed past-event archive will list completed, skipped, rewarded, and costed event records after the
-              domain history model lands. This placeholder keeps the Calendar navigation stable without adding or
-              guessing persistence fields.
-            </p>
+            )}
           </section>
         </div>
       )}
