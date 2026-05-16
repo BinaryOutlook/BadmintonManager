@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { playerMap } from "../game/content/players";
-import { buildWeek, daysBetween } from "../game/career/calendar";
+import { addDays, buildWeek, daysBetween } from "../game/career/calendar";
 import { canAffordEventEntry, eventEntryCost } from "../game/career/economy";
 import { canCommissionScoutReport, roleLabel, staffModifiers } from "../game/career/ecosystem";
 import {
@@ -119,6 +120,93 @@ function activeEvent(career: CareerState) {
     : getNextEvent(career.events, career.date);
 }
 
+type CalendarSection = "upcoming" | "past";
+
+function nextCalendarMilestone(career: CareerState, event: CareerState["events"][number] | undefined) {
+  if (career.stage === "pre_match") {
+    return "Match briefing ready today";
+  }
+
+  if (career.stage === "post_match") {
+    return "Match review pending";
+  }
+
+  if (!event) {
+    return "No scheduled event";
+  }
+
+  const endDate = addDays(event.startDate, event.durationDays - 1);
+  const status = eventStatusFor(career, event);
+
+  if (status === "completed") {
+    return `Completed ${endDate}`;
+  }
+
+  if (status === "in_progress") {
+    return `Event window active until ${endDate}`;
+  }
+
+  if (career.date <= event.entryDeadline) {
+    return `Entry deadline ${event.entryDeadline}`;
+  }
+
+  if (career.date <= event.drawDate) {
+    return `Draw published ${event.drawDate}`;
+  }
+
+  if (career.date <= event.startDate) {
+    return `Main draw ${event.startDate}`;
+  }
+
+  return `Window closed ${endDate}`;
+}
+
+function calendarEventActionLabel(args: {
+  career: CareerState;
+  event: CareerState["events"][number];
+  affordable: boolean;
+  medicalAllowed: boolean;
+  tierAllowed: boolean;
+}) {
+  const completed = args.career.completedEventIds.includes(args.event.id);
+  const entered = args.career.enteredEventIds.includes(args.event.id);
+  const status = eventStatusFor(args.career, args.event);
+
+  if (completed) {
+    return "Completed";
+  }
+
+  if (entered) {
+    if (args.career.activeEventId === args.event.id && args.career.stage === "pre_match") {
+      return "Match Ready";
+    }
+
+    if (args.career.activeEventId === args.event.id && args.career.stage === "post_match") {
+      return "Review Ready";
+    }
+
+    if (status === "in_progress") {
+      return "Event Active";
+    }
+
+    if (status === "draw_published") {
+      return "Draw Published";
+    }
+
+    return "Await Draw";
+  }
+
+  if (!args.medicalAllowed) {
+    return "Medical Hold";
+  }
+
+  if (!args.tierAllowed) {
+    return "Tier Locked";
+  }
+
+  return args.affordable ? "Enter Event" : "Insufficient Funds";
+}
+
 function pressureForEvent(career: CareerState, eventId: string) {
   return career.rivals.fieldPressure.find((entry) => entry.eventId === eventId);
 }
@@ -234,7 +322,7 @@ export function CareerHomePage(props: CareerPageProps) {
       : props.career.stage === "pre_match"
         ? "Open Pre-Match Brief"
         : eventStatus && eventStatus !== "entered"
-          ? "Open Event Desk"
+          ? "Open Calendar"
           : "Open Match Plan";
   const continueAction =
     props.career.stage === "post_match"
@@ -277,7 +365,7 @@ export function CareerHomePage(props: CareerPageProps) {
         </div>
         <div>
           <span>Entry deadline</span>
-          <strong>{event ? `${event.entryDeadline} (${daysUntilLabel(props.career.date, event.entryDeadline)})` : "No open desk"}</strong>
+          <strong>{event ? `${event.entryDeadline} (${daysUntilLabel(props.career.date, event.entryDeadline)})` : "No open event"}</strong>
         </div>
         <div>
           <span>Next action</span>
@@ -341,7 +429,7 @@ export function CareerHomePage(props: CareerPageProps) {
             )}
             <div className="career-action-row">
               <button className="command-button command-button-primary" type="button" onClick={props.onOpenCalendar}>
-                Event Desk
+                Calendar
               </button>
               <button className="command-button command-button-secondary" type="button" onClick={props.onOpenTraining}>
                 Training Desk
@@ -1972,29 +2060,36 @@ export function CareerTrainingPage(props: CareerPageProps) {
 }
 
 export function CareerCalendarPage(props: CareerPageProps) {
+  const [activeSection, setActiveSection] = useState<CalendarSection>("upcoming");
+
   if (!props.career) {
     return <CareerEmpty onStartCareer={props.onStartCareer} saveRecovery={props.saveRecovery} />;
   }
 
-  const careerDate = props.career.date;
-  const week = buildWeek(props.career.date);
-  const athlete = managedAthlete(props.career);
+  const career = props.career;
+  const careerDate = career.date;
+  const week = buildWeek(career.date);
+  const athlete = managedAthlete(career);
   const medicalGate = canCompeteWithInjury(athlete);
-  const ranking = props.career.rankings.find((entry) => entry.playerId === props.career?.program.managedPlayerId);
-  const nextEvent = activeEvent(props.career);
-  const nextGate = nextEvent ? eventEligibilityFor(props.career, nextEvent) : null;
-  const nextStatus = nextEvent ? eventStatusFor(props.career, nextEvent) : null;
-  const nextSnapshot = nextEvent ? buildEventSeedingSnapshot({ state: props.career, event: nextEvent }) : null;
+  const ranking = career.rankings.find((entry) => entry.playerId === career.program.managedPlayerId);
+  const nextEvent = activeEvent(career);
+  const nextGate = nextEvent ? eventEligibilityFor(career, nextEvent) : null;
+  const nextStatus = nextEvent ? eventStatusFor(career, nextEvent) : null;
+  const nextSnapshot = nextEvent ? buildEventSeedingSnapshot({ state: career, event: nextEvent }) : null;
+  const nextEntryCosts = nextEvent ? effectiveEventEntryCosts(nextEvent, career.facilities) : null;
+  const nextTotalCost = nextEntryCosts ? eventEntryCost(nextEntryCosts) : 0;
+  const activeEventLabel = career.activeEventId ? nextEvent?.name ?? "Active entry" : "No active entry";
+  const completedEventCount = career.completedEventIds.length;
 
   return (
     <section className="screen-shell career-page">
       <div className="screen-header">
         <div>
-          <p className="screen-kicker">Calendar / Event Entry</p>
-          <h1 className="screen-title">Calendar / Event Desk</h1>
+          <p className="screen-kicker">Career Calendar</p>
+          <h1 className="screen-title">Calendar</h1>
           <p className="screen-copy">
-            Enter fictional circuit events with visible deadlines, eligibility gates, ranking cutoffs, seed snapshots,
-            draw timing, costs, and season-race stakes.
+            Track fictional circuit events, entry deadlines, draw timing, eligibility gates, costs, readiness, and the
+            next schedule milestone without leaving the career workspace.
           </p>
         </div>
         <div className="career-action-row">
@@ -2004,244 +2099,346 @@ export function CareerCalendarPage(props: CareerPageProps) {
         </div>
       </div>
 
-      <section className="management-status-strip" aria-label="Calendar and competition status">
+      <div className="calendar-subnav" role="tablist" aria-label="Calendar sections">
+        <button
+          id="calendar-tab-upcoming"
+          className={activeSection === "upcoming" ? "calendar-subnav-tab calendar-subnav-tab-active" : "calendar-subnav-tab"}
+          type="button"
+          role="tab"
+          aria-selected={activeSection === "upcoming"}
+          aria-controls="calendar-panel-upcoming"
+          onClick={() => setActiveSection("upcoming")}
+        >
+          Upcoming
+        </button>
+        <button
+          id="calendar-tab-past"
+          className={activeSection === "past" ? "calendar-subnav-tab calendar-subnav-tab-active" : "calendar-subnav-tab"}
+          type="button"
+          role="tab"
+          aria-selected={activeSection === "past"}
+          aria-controls="calendar-panel-past"
+          onClick={() => setActiveSection("past")}
+        >
+          Past Events
+        </button>
+      </div>
+
+      <section className="management-status-strip calendar-status-strip" aria-label="Calendar status">
         <div>
           <span>Today</span>
           <strong>{careerDate}</strong>
         </div>
         <div>
-          <span>Next fixture</span>
-          <strong>{nextEvent?.name ?? "No event"}</strong>
+          <span>Active event</span>
+          <strong>{activeEventLabel}</strong>
         </div>
         <div>
-          <span>Desk status</span>
-          <strong>{nextStatus ? statusLabel(nextStatus) : "planning"}</strong>
+          <span>Next match/draw/deadline</span>
+          <strong>{nextCalendarMilestone(career, nextEvent)}</strong>
         </div>
         <div>
           <span>Readiness</span>
           <strong>{athlete.readiness}</strong>
         </div>
         <div>
-          <span>Next action</span>
-          <strong>{nextGate?.allowed ? "Enter or inspect" : "Resolve gate"}</strong>
+          <span>Deadline</span>
+          <strong>{nextEvent ? `${nextEvent.entryDeadline} (${daysUntilLabel(careerDate, nextEvent.entryDeadline)})` : "No deadline"}</strong>
         </div>
       </section>
 
-      <div className="career-calendar-grid">
-        <section className="command-panel command-panel-full">
-          <div className="panel-header">
-            <h2>Event Desk Brief</h2>
-            <span>{props.career.seasonId} circuit season</span>
-          </div>
-          {nextEvent && nextGate && nextSnapshot ? (
-            <div className="career-event-brief">
-              <div>
-                <span>Current Event</span>
-                <strong>{nextEvent.name}</strong>
-                <small>
-                  {nextEvent.tier} / week {nextEvent.weekNumber} / {nextEvent.location.venue}
-                </small>
-              </div>
-              <div>
-                <span>Desk Status</span>
-                <strong>{statusLabel(nextStatus ?? "scheduled")}</strong>
-                <small>Entry deadline {nextEvent.entryDeadline}, draw milestone {nextEvent.drawDate}.</small>
-              </div>
-              <div>
-                <span>Eligibility</span>
-                <strong>{nextGate.allowed ? "Entry gate clear" : "Blocked"}</strong>
-                <small>
-                  Rank {nextGate.rank}, total {points(nextGate.points)}, readiness {nextGate.readiness}.
-                </small>
-              </div>
-              <div>
-                <span>Ranking Stakes</span>
-                <strong>{points(nextEvent.rankingPoints.champion)}</strong>
-                <small>Champion prize {money(nextEvent.prizeMoney.champion)}; season race {points(ranking?.seasonPoints ?? 0)}.</small>
-              </div>
-              <div>
-                <span>Seed Snapshot</span>
-                <strong>{nextSnapshot.managedSeed ? `Seed ${nextSnapshot.managedSeed.seed}` : "Outside top seeds"}</strong>
-                <small>
-                  {nextSnapshot.status} from fictional circuit ranking; this is presentation, not full draw-engine
-                  replacement.
-                </small>
-              </div>
+      {activeSection === "upcoming" ? (
+        <div
+          id="calendar-panel-upcoming"
+          className="career-calendar-layout"
+          role="tabpanel"
+          aria-labelledby="calendar-tab-upcoming"
+        >
+          <section className="command-panel command-panel-full">
+            <div className="panel-header">
+              <h2>Schedule Brief</h2>
+              <span>{career.seasonId} circuit season</span>
             </div>
-          ) : (
-            <p className="panel-summary">No remaining event is available in the current fictional circuit catalog.</p>
-          )}
-        </section>
-
-        <section className="command-panel">
-          <div className="panel-header">
-            <h2>Week Strip</h2>
-            <span>{props.career.date}</span>
-          </div>
-          <div className="career-week-strip">
-            {week.map((day) => (
-              <div key={day} className={day === props.career?.date ? "career-day career-day-active" : "career-day"}>
-                <span>{day.slice(5)}</span>
-                <strong>
-                  {props.career?.events.find((event) => event.startDate === day)?.tier ?? "Train"}
-                </strong>
+            {nextEvent && nextGate && nextSnapshot ? (
+              <div className="career-event-brief calendar-brief-grid">
+                <div>
+                  <span>Current Event</span>
+                  <strong>{nextEvent.name}</strong>
+                  <small>
+                    {nextEvent.tier} / week {nextEvent.weekNumber} / {nextEvent.location.venue}
+                  </small>
+                </div>
+                <div>
+                  <span>Schedule Status</span>
+                  <strong>{statusLabel(nextStatus ?? "scheduled")}</strong>
+                  <small>Entry deadline {nextEvent.entryDeadline}, draw milestone {nextEvent.drawDate}.</small>
+                </div>
+                <div>
+                  <span>Eligibility</span>
+                  <strong>{nextGate.allowed ? "Entry gate clear" : "Blocked"}</strong>
+                  <small>
+                    Rank {nextGate.rank}, total {points(nextGate.points)}, readiness {nextGate.readiness}.
+                  </small>
+                </div>
+                <div>
+                  <span>Ranking Stakes</span>
+                  <strong>{points(nextEvent.rankingPoints.champion)}</strong>
+                  <small>Champion prize {money(nextEvent.prizeMoney.champion)}; season race {points(ranking?.seasonPoints ?? 0)}.</small>
+                </div>
+                <div>
+                  <span>Seed Snapshot</span>
+                  <strong>{nextSnapshot.managedSeed ? `Seed ${nextSnapshot.managedSeed.seed}` : "Outside top seeds"}</strong>
+                  <small>
+                    {nextSnapshot.status} from fictional circuit ranking; this is presentation, not full draw-engine
+                    replacement.
+                  </small>
+                </div>
               </div>
-            ))}
-          </div>
-        </section>
+            ) : (
+              <p className="panel-summary">No remaining event is available in the current fictional circuit catalog.</p>
+            )}
+          </section>
 
-        <section className="command-panel command-panel-wide">
-          <div className="panel-header">
-            <h2>Event Tiers</h2>
-            <span>fictional calendar data</span>
-          </div>
-          <div className="career-event-list">
-            {props.career.events.map((event) => {
-              const entered = props.career?.enteredEventIds.includes(event.id);
-              const completed = props.career?.completedEventIds.includes(event.id);
-              const fieldPressure = props.career ? pressureForEvent(props.career, event.id) : undefined;
-              const tierGate = props.career ? eventEligibilityFor(props.career, event) : null;
-              const status = props.career ? eventStatusFor(props.career, event) : event.status;
-              const seedingSnapshot = props.career ? buildEventSeedingSnapshot({ state: props.career, event }) : null;
-              const entryCosts = props.career ? effectiveEventEntryCosts(event, props.career.facilities) : event;
-              const totalCost = eventEntryCost(entryCosts);
-              const affordable = props.career
-                ? canAffordEventEntry({
-                    economy: props.career.economy,
-                    travelCost: entryCosts.travelCost,
-                    entryFee: entryCosts.entryFee
-                  })
-                : false;
-              const tierAllowed = tierGate?.allowed ?? false;
-              const eventBlocked = !affordable || !medicalGate.allowed || !tierAllowed;
-              const milestones = eventDeadlineMilestones(event);
-              return (
-                <article
-                  key={event.id}
-                  className={!eventBlocked || entered || completed ? "career-event-card" : "career-event-card career-event-card-blocked"}
-                >
-                  <div>
-                    <span>{event.tier} / week {event.weekNumber} / {statusLabel(status)}</span>
-                    <strong>{event.name}</strong>
-                    <p>{event.location.city}, {event.location.country} - {event.location.venue}. {event.stakesLabel}.</p>
-                    <div className="career-event-stakes-grid">
-                      <div>
-                        <span>Entry Deadline</span>
-                        <strong>{event.entryDeadline}</strong>
-                        <small>{daysUntilLabel(careerDate, event.entryDeadline)}</small>
-                      </div>
-                      <div>
-                        <span>Ranking Cutoff</span>
-                        <strong>{event.rankingCutoffDate}</strong>
-                        <small>Seed snapshot {event.seedingDate}</small>
-                      </div>
-                      <div>
-                        <span>Draw Timing</span>
-                        <strong>{event.drawDate}</strong>
-                        <small>{event.drawSize}-player bridge / {event.seedCount} seeds</small>
-                      </div>
-                      <div>
-                        <span>Points</span>
-                        <strong>{points(event.rankingPoints.champion)}</strong>
-                        <small>Champion result</small>
-                      </div>
-                      <div>
-                        <span>Prize / Cost</span>
-                        <strong>{money(event.prizeMoney.champion)} / {money(totalCost)}</strong>
-                        <small>
-                          Travel {money(entryCosts.travelCost)}, entry {money(entryCosts.entryFee)}
-                        </small>
-                      </div>
-                      <div>
-                        <span>Readiness Floor</span>
-                        <strong>{event.eligibility.readinessFloor || "Open"}</strong>
-                        <small>Current {tierGate?.readiness ?? athlete.readiness}</small>
-                      </div>
+          <section className="command-panel command-panel-full calendar-schedule-panel">
+            <div className="panel-header">
+              <h2>Upcoming Event Schedule</h2>
+              <span>{career.events.length} catalog events</span>
+            </div>
+            <div className="calendar-event-table" aria-label="Upcoming event schedule">
+              <div className="calendar-event-row calendar-event-row-head" aria-hidden="true">
+                <span>Event</span>
+                <span>Window</span>
+                <span>Deadline</span>
+                <span>Eligibility</span>
+                <span>Stakes</span>
+                <span>Action</span>
+              </div>
+              {career.events.map((event) => {
+                const entered = career.enteredEventIds.includes(event.id);
+                const completed = career.completedEventIds.includes(event.id);
+                const fieldPressure = pressureForEvent(career, event.id);
+                const tierGate = eventEligibilityFor(career, event);
+                const status = eventStatusFor(career, event);
+                const seedingSnapshot = buildEventSeedingSnapshot({ state: career, event });
+                const entryCosts = effectiveEventEntryCosts(event, career.facilities);
+                const totalCost = eventEntryCost(entryCosts);
+                const affordable = canAffordEventEntry({
+                  economy: career.economy,
+                  travelCost: entryCosts.travelCost,
+                  entryFee: entryCosts.entryFee
+                });
+                const tierAllowed = tierGate.allowed;
+                const eventBlocked = !affordable || !medicalGate.allowed || !tierAllowed;
+                const milestones = eventDeadlineMilestones(event);
+                const endDate = addDays(event.startDate, event.durationDays - 1);
+                const rowClassName =
+                  eventBlocked && !entered && !completed
+                    ? "calendar-event-row calendar-event-row-blocked"
+                    : "calendar-event-row";
+
+                return (
+                  <article key={event.id} className={rowClassName}>
+                    <div className="calendar-event-main">
+                      <span>{event.tier} / week {event.weekNumber} / {statusLabel(status)}</span>
+                      <strong>{event.name}</strong>
+                      <p>{event.location.city}, {event.location.country} - {event.location.venue}. {event.stakesLabel}.</p>
                     </div>
-                    <div className="career-deadline-row" aria-label={`${event.name} deadline milestones`}>
-                      {milestones.map((milestone) => (
-                        <span
-                          key={milestone.key}
-                          className={careerDate >= milestone.date ? "deadline-chip deadline-chip-past" : "deadline-chip"}
-                        >
-                          {milestone.label}: {milestone.date}
-                        </span>
-                      ))}
+                    <div>
+                      <span>Window</span>
+                      <strong>{event.startDate} - {endDate}</strong>
+                      <small>{event.durationDays} day event</small>
                     </div>
-                    <p>
-                      Rival field:{" "}
-                      {fieldPressure
-                        ? `${fieldPressure.rivalCount} programs, ${Math.round(fieldPressure.pressureScore)} pressure, top threat ${fieldPressure.topThreatName}`
-                        : "open scouting field"}
-                    </p>
-                    {tierGate && (
+                    <div>
+                      <span>Entry Deadline</span>
+                      <strong>{event.entryDeadline}</strong>
+                      <small>{daysUntilLabel(careerDate, event.entryDeadline)}</small>
+                    </div>
+                    <div>
+                      <span>Eligibility</span>
+                      <strong>{tierGate.allowed ? "Gate clear" : "Gate blocked"}</strong>
+                      <small>Rank {tierGate.rank}, readiness {tierGate.readiness}</small>
+                    </div>
+                    <div>
+                      <span>Prize / Cost</span>
+                      <strong>{money(event.prizeMoney.champion)} / {money(totalCost)}</strong>
+                      <small>{points(event.rankingPoints.champion)} champion result</small>
+                    </div>
+                    <div className="calendar-event-actions">
+                      <button
+                        className={entered ? "command-button command-button-secondary" : "command-button command-button-primary"}
+                        type="button"
+                        disabled={entered || completed || eventBlocked}
+                        onClick={() => props.onEnterEvent(event.id)}
+                      >
+                        {calendarEventActionLabel({
+                          career,
+                          event,
+                          affordable,
+                          medicalAllowed: medicalGate.allowed,
+                          tierAllowed
+                        })}
+                      </button>
+                    </div>
+                    <div className="calendar-event-row-details">
+                      <div className="career-deadline-row" aria-label={`${event.name} deadline milestones`}>
+                        {milestones.map((milestone) => (
+                          <span
+                            key={milestone.key}
+                            className={careerDate >= milestone.date ? "deadline-chip deadline-chip-past" : "deadline-chip"}
+                          >
+                            {milestone.label}: {milestone.date}
+                          </span>
+                        ))}
+                      </div>
                       <p>
-                        Eligibility: rank {tierGate.rank}, total {points(tierGate.points)}, season race{" "}
-                        {points(tierGate.seasonPoints)}, readiness {tierGate.readiness},{" "}
-                        {tierGate.completedEvents} completed event(s). {tierGate.reason}.
+                        Rival field: {fieldPressure
+                          ? `${fieldPressure.rivalCount} programs, ${Math.round(fieldPressure.pressureScore)} pressure, top threat ${fieldPressure.topThreatName}`
+                          : "open scouting field"}
                       </p>
-                    )}
-                    {seedingSnapshot && (
                       <p>
-                        Seed snapshot:{" "}
-                        {seedingSnapshot.managedSeed
+                        Eligibility: rank {tierGate.rank}, total {points(tierGate.points)}, season race {points(tierGate.seasonPoints)},
+                        readiness {tierGate.readiness}, {tierGate.completedEvents} completed event(s). {tierGate.reason}.
+                      </p>
+                      <p>
+                        Seed snapshot: {seedingSnapshot.managedSeed
                           ? `projected seed ${seedingSnapshot.managedSeed.seed} from rank ${seedingSnapshot.managedSeed.rank}`
                           : `outside the top ${event.seedCount} seeds`}
                         . This calendar preview does not replace the current playable knockout draw engine.
                       </p>
-                    )}
-                    {!affordable && !entered && !completed && (
-                      <p className="career-event-warning">
-                        Insufficient funds: program cash {money(props.career?.economy.cash ?? 0)} cannot cover entry.
-                      </p>
-                    )}
-                    {!tierAllowed && !entered && !completed && (
-                      <p className="career-event-warning">
-                        Tier gate: {tierGate?.requirements.join(", ")}.
-                      </p>
-                    )}
-                    {!medicalGate.allowed && !entered && !completed && (
-                      <p className="career-event-warning">
-                        Medical hold: {medicalGate.reason}.
-                      </p>
-                    )}
-                  </div>
-                  <button
-                    className={entered ? "command-button command-button-secondary" : "command-button command-button-primary"}
-                    type="button"
-                    disabled={entered || completed || eventBlocked}
-                    onClick={() => props.onEnterEvent(event.id)}
-                  >
-                    {completed
-                      ? "Complete"
-                      : entered
-                        ? "Entered"
-                        : !medicalGate.allowed
-                          ? "Medical Hold"
-                          : !tierAllowed
-                            ? "Tier Locked"
-                          : affordable
-                            ? "Enter Event"
-                            : "Insufficient Funds"}
-                  </button>
-                </article>
-              );
-            })}
-          </div>
-        </section>
+                      {!affordable && !entered && !completed && (
+                        <p className="career-event-warning">
+                          Insufficient funds: program cash {money(career.economy.cash)} cannot cover entry.
+                        </p>
+                      )}
+                      {!tierAllowed && !entered && !completed && (
+                        <p className="career-event-warning">Tier gate: {tierGate.requirements.join(", ")}.</p>
+                      )}
+                      {!medicalGate.allowed && !entered && !completed && (
+                        <p className="career-event-warning">Medical hold: {medicalGate.reason}.</p>
+                      )}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
 
-        <section className="command-panel command-panel-full">
-          <div className="panel-header">
-            <h2>Simplification Boundary</h2>
-            <span>honest calendar copy</span>
+          <div className="calendar-secondary-grid">
+            <section className="command-panel calendar-week-panel">
+              <div className="panel-header">
+                <h2>Week Strip</h2>
+                <span>{career.date}</span>
+              </div>
+              <div className="career-week-strip">
+                {week.map((day) => (
+                  <div key={day} className={day === career.date ? "career-day career-day-active" : "career-day"}>
+                    <span>{day.slice(5)}</span>
+                    <strong>{career.events.find((event) => event.startDate === day)?.tier ?? "Train"}</strong>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section className="command-panel">
+              <div className="panel-header">
+                <h2>Milestones &amp; Seeding</h2>
+                <span>{nextEvent ? nextEvent.name : "No event"}</span>
+              </div>
+              {nextEvent && nextSnapshot ? (
+                <div className="career-decision-block calendar-secondary-panel-body">
+                  <div className="career-deadline-row" aria-label={`${nextEvent.name} active milestones`}>
+                    {eventDeadlineMilestones(nextEvent).map((milestone) => (
+                      <span
+                        key={milestone.key}
+                        className={careerDate >= milestone.date ? "deadline-chip deadline-chip-past" : "deadline-chip"}
+                      >
+                        {milestone.label}: {milestone.date}
+                      </span>
+                    ))}
+                  </div>
+                  <p>
+                    Seed snapshot is {nextSnapshot.status} on {nextEvent.seedingDate}; draw publication is {nextEvent.drawDate} for a
+                    {" "}{nextEvent.drawSize}-player bridge with {nextEvent.seedCount} seeds.
+                  </p>
+                </div>
+              ) : (
+                <p className="panel-summary">No active milestone set is available.</p>
+              )}
+            </section>
+
+            <section className="command-panel">
+              <div className="panel-header">
+                <h2>Eligibility &amp; Costs</h2>
+                <span>{nextGate?.allowed ? "Entry gate clear" : "Check requirements"}</span>
+              </div>
+              {nextEvent && nextGate && nextEntryCosts ? (
+                <div className="career-quick-stakes calendar-cost-grid" aria-label="Calendar eligibility and cost summary">
+                  <div>
+                    <span>Gate</span>
+                    <strong>{nextGate.allowed ? "Clear" : "Blocked"}</strong>
+                    <small>{nextGate.reason}.</small>
+                  </div>
+                  <div>
+                    <span>Readiness</span>
+                    <strong>{athlete.readiness}</strong>
+                    <small>{medicalGate.allowed ? "Medical gate clear" : medicalGate.reason}</small>
+                  </div>
+                  <div>
+                    <span>Total Cost</span>
+                    <strong>{money(nextTotalCost)}</strong>
+                    <small>Travel {money(nextEntryCosts.travelCost)}, entry {money(nextEntryCosts.entryFee)}</small>
+                  </div>
+                </div>
+              ) : (
+                <p className="panel-summary">No eligibility or cost preview is available.</p>
+              )}
+            </section>
           </div>
-          <p className="panel-summary">
-            Badminton Manager uses a fictional single circuit ranking with total points and a season race. Deadlines,
-            ranking cutoffs, seed snapshots, and draw publication dates are modeled for event planning, while the
-            playable match bridge remains the existing deterministic 16-player knockout.
-          </p>
-        </section>
-      </div>
+
+          <section className="command-panel command-panel-full">
+            <div className="panel-header">
+              <h2>Simplification Boundary</h2>
+              <span>honest calendar copy</span>
+            </div>
+            <p className="panel-summary">
+              Badminton Manager uses a fictional single circuit ranking with total points and a season race. Deadlines,
+              ranking cutoffs, seed snapshots, and draw publication dates are modeled for event planning, while the
+              playable match bridge remains the existing deterministic 16-player knockout.
+            </p>
+          </section>
+        </div>
+      ) : (
+        <div id="calendar-panel-past" className="career-calendar-layout" role="tabpanel" aria-labelledby="calendar-tab-past">
+          <section className="command-panel command-panel-full calendar-past-state">
+            <div className="panel-header">
+              <h2>Past Events</h2>
+              <span>safe coming state</span>
+            </div>
+            <div className="career-event-brief calendar-past-summary">
+              <div>
+                <span>Completed IDs</span>
+                <strong>{completedEventCount}</strong>
+                <small>Existing save field only; no new history schema is written here.</small>
+              </div>
+              <div>
+                <span>Archive Model</span>
+                <strong>Pending</strong>
+                <small>No completed-event archive fields are read or written by this UI slice.</small>
+              </div>
+              <div>
+                <span>Latest Match</span>
+                <strong>{career.lastMatchReport?.scoreline ?? "No result yet"}</strong>
+                <small>{career.lastMatchReport ? `${career.lastMatchReport.round} / ${career.lastMatchReport.result}` : "Play an event to create review evidence."}</small>
+              </div>
+            </div>
+            <p className="panel-summary">
+              A detailed past-event archive will list completed, skipped, rewarded, and costed event records after the
+              domain history model lands. This placeholder keeps the Calendar navigation stable without adding or
+              guessing persistence fields.
+            </p>
+          </section>
+        </div>
+      )}
     </section>
   );
 }

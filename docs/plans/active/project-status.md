@@ -46,8 +46,8 @@ What is now stable:
 - the first career core slice is implemented with a version `3` save payload, typed `game/career/*` modules, calendar/event entry, training/recovery, fatigue/injury readiness, ranking points, budget ledger, and career-aware pre/post match hubs
 - first launch now visibly presents paired `Start Tournament` and `Start Career` decisions
 - the command shell now exposes a Save Manager for the single local slot, including continue career, export JSON, import preview/confirm, active-save deletion, corrupt-backup deletion, and overwrite warnings
-- the career workspace now has visible route chrome and an in-page Career Home map for Training, Calendar/Event Desk, Match Planning, Live Match, Post-Match Review, Save Manager, and New Session actions
-- the Career Home and Calendar/Event Desk now surface the fictional circuit calendar/ranking model: event tiers, entry deadlines, eligibility gates, ranking cutoffs, seed snapshots, draw milestones, points, prize/cost, readiness, and season-race stakes with a simplification boundary
+- the career workspace now has visible route chrome and an in-page Career Home map for Training, Calendar, Match Planning, Live Match, Post-Match Review, Save Manager, and New Session actions
+- the Career Home and Calendar now surface the fictional circuit calendar/ranking model: event tiers, entry deadlines, eligibility gates, ranking cutoffs, seed snapshots, draw milestones, points, prize/cost, readiness, and season-race stakes with a simplification boundary
 - public event tiers now use fictional `Circuit 300`, `Circuit 500`, `Circuit 750`, and `Circuit 1000` labels while legacy save imports normalize the previous tier text safely
 - the quick tournament event now uses the fictional `Harborline Open` name; legacy local/imported saves that still contain the old real event name are normalized during load/import
 - Phase 3 proof captured 36 desktop/mobile screenshots plus storage reset and import-validation evidence; no video proof is currently part of the shipped evidence pack
@@ -61,7 +61,8 @@ What is now stable:
 - the UIUX1Change dense-page fidelity slice now makes Portal Home the active-career operations hub with tasks/inbox, next event, calendar snapshot, readiness/ranking pressure, recent match evidence, save state, and a visible Continue action
 - training, calendar/competition, match planning, live match, and post-match review now expose compact management status strips above their grids, tables, telemetry, and decision panels
 - Save Manager now leads with active slot metadata for slot state, mode, managed athlete, save version, import preview, and quarantine state while preserving export, import preview/confirm, active-save deletion, and corrupt-backup deletion safety
-- the rescue MVP Workstreams A/C slice now centralizes valid career day advancement in the topbar, removes the Calendar/Event Desk-only Advance Day control, and routes match-day advances into the career pre-match hub without bypassing pre/post/live competition states
+- the rescue MVP Workstreams A/C slice now centralizes valid career day advancement in the topbar, removes the Calendar-only Advance Day control, and routes match-day advances into the career pre-match hub without bypassing pre/post/live competition states
+- the rescue MVP Workstreams E/F UI slice now renames the runtime page to `Calendar`, removes the legacy mixed Calendar naming, expands the Calendar into a full-width Upcoming layout, and adds a safe `Past Events` coming-state without changing the domain history schema
 - the disposable-run knockout tree is now a reusable `KnockoutTree` component shared by Overview, Career Pre-Match, and Career Post-Match hubs while preserving clickable player names, placeholders, scorelines, managed-path highlighting, champion styling, and background match summaries
 - the live Match Command Center now uses a compact horizontal command surface with the primary point action beside the scoreboard, the tactical feed/viewer/telemetry/options visible across desktop viewports, and focused regression proof for duplicate action prevention
 
@@ -120,7 +121,7 @@ What is now stable:
 - [x] added the Phase 1 career core vertical slice across save migration, calendar/event entry, training/recovery, health, ranking, economy, pre-match hub, post-match hub, unit tests, and Playwright reload proof
 - [x] added the first-launch dual path and Save Manager trust slice with import/export/delete/recovery coverage
 - [x] added the career workspace navigation shell and in-page management map for the core career route family
-- [x] integrated the fictional calendar/ranking domain data into Career Home and Calendar/Event Desk UI copy
+- [x] integrated the fictional calendar/ranking domain data into Career Home and Calendar UI copy
 - [x] remediated the public tier-label boundary by replacing active runtime/docs/tests with fictional Circuit labels and preserving legacy save compatibility
 - [x] fictionalized the active quick-tournament event name and normalized legacy tournament saves during load/import
 - [x] updated release/status docs for first-launch, Save Manager, career route reachability, fictional calendar/ranking, import validation, and Phase 4 residual polish decisions
@@ -133,7 +134,8 @@ What is now stable:
 - [x] standardized the management shell around a minimal top status bar, grouped primary command sidebar, page canvas, and overlay host while preserving Save Manager, Settings, locked identity, and tournament continuation reachability
 - [x] remediated Settings and confirmation overlay keyboard behavior with initial focus, focus containment, safe Escape handling, focus restoration, and focused Playwright proof
 - [x] converted the active Portal, training, calendar/competition, tactics, live match, post-match review, and Save Manager surfaces toward compact management-page contracts with focused Playwright coverage
-- [x] moved normal-stage career day advancement to the persistent topbar CTA and removed the Calendar/Event Desk special header-level Advance Day button
+- [x] moved normal-stage career day advancement to the persistent topbar CTA and removed the Calendar special header-level Advance Day button
+- [x] renamed the Calendar runtime UI, added Upcoming/Past Events subnavigation, and rebuilt the Calendar content into a full-page schedule-led layout without touching scheduling or history persistence
 - [x] extracted the bracket tree into a reusable component and rendered it in career pre-match and post-match event hubs
 - [x] rebuilt the live Match Command Center into a horizontal scoreboard/action/feed/viewer/telemetry/options command surface with focused unit and Playwright viewport coverage
 
@@ -147,7 +149,7 @@ What is now stable:
 - [ ] improve commentary variety and phrasing
 - [ ] expand post-match stats and scouting reads
 - [ ] polish responsive behavior and visual details across the new shell
-- [ ] track mobile Calendar/Event Desk compactness as non-blocking polish debt; current proof shows reachability without horizontal clipping or critical-action loss
+- [ ] add real Past Events records after the domain history model lands; the current Calendar tab is intentionally a safe coming-state
 - [ ] track dense live-match directive labels as non-blocking polish debt; current proof does not require a Phase 4 source change
 - [ ] complete the broader Phase 5 screenshot matrix and visual review beyond the focused builder proof
 
@@ -167,7 +169,7 @@ What is now stable:
 - [ ] add more differentiated live directives and opponent pattern reads
 - [ ] tighten save migration coverage for future `v0.2.x` changes
 - [ ] tune Phase 1 career economy values, event tier rewards, and training load numbers after review feedback
-- [ ] consider a compact mobile Calendar/Event Desk layout after final release packaging, without reopening the accepted Phase 3 reachability proof
+- [ ] consider a compact mobile Calendar layout after final release packaging, without reopening the accepted Phase 3 reachability proof
 - [ ] run the Phase 5 QC screenshot matrix and visual review against Portal, dense page, post-match, final closeout, and Save Manager states at the required viewports
 
 ## Blockers

@@ -139,7 +139,7 @@ Goal:
 - expose `Start Tournament` and `Start Career` as paired clean-launch decisions
 - expose a single-slot local Save Manager with export, import preview/confirm, active-slot delete,
   corrupt-backup delete, and reset/new-session trust flows
-- expose career route-map access to Training, Calendar / Event Desk, Match Planning, Live Match,
+- expose career route-map access to Training, Calendar, Match Planning, Live Match,
   Post-Match Review, Save Manager, and New Session
 - present fictional Circuit calendar/ranking data without licensed event branding or official tables
 - prepare the interface for around `32` available games or events
