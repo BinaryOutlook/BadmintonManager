@@ -4728,3 +4728,779 @@ textarea:focus-visible {
     padding: 1rem;
   }
 }
+
+/* Workstream D: compact horizontal live-match command surface. */
+.match-screen {
+  gap: 0.8rem;
+}
+
+.match-screen-header {
+  align-items: center;
+  padding-bottom: 0.75rem;
+}
+
+.match-screen .screen-title {
+  margin: 0.05rem 0 0.28rem;
+  font-size: clamp(1.55rem, 2vw, 2rem);
+}
+
+.match-screen .screen-copy {
+  max-width: 64rem;
+  line-height: 1.32;
+}
+
+.match-command-layout-v2 {
+  display: grid;
+  grid-template-columns: minmax(17rem, 0.9fr) minmax(23rem, 1.15fr) minmax(18rem, 0.95fr);
+  grid-template-areas:
+    "score score action"
+    "status status status"
+    "feed viewer side";
+  gap: 0.75rem;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.match-scoreboard-panel {
+  grid-area: score;
+  padding: 0.85rem;
+}
+
+.match-scoreboard-panel .scoreboard-topline {
+  padding-bottom: 0.42rem;
+  margin-bottom: 0.55rem;
+}
+
+.match-scoreboard-panel .scoreboard-main {
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 0.65rem;
+}
+
+.match-scoreboard-panel .scoreboard-athlete {
+  display: grid;
+  gap: 0.18rem;
+  align-content: center;
+  min-width: 0;
+  min-height: 4.2rem;
+  margin-top: 0;
+  padding: 0.58rem 0.68rem;
+}
+
+.match-scoreboard-panel .scoreboard-athlete .profile-name-button {
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  font-size: clamp(0.94rem, 1.1vw, 1.2rem);
+  line-height: 1.12;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.match-scoreboard-panel .scoreboard-athlete span {
+  font-size: 0.76rem;
+  line-height: 1.1;
+}
+
+.match-scoreboard-panel .scoreboard-points {
+  gap: 0.55rem;
+  align-self: center;
+}
+
+.match-scoreboard-panel .score-value {
+  font-size: 2.85rem;
+  line-height: 0.92;
+}
+
+.match-scoreboard-panel .score-divider {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.match-scoreboard-panel .set-summary-row {
+  gap: 0.45rem;
+  margin-top: 0.55rem;
+}
+
+.match-scoreboard-panel .set-result-chip {
+  padding: 0.44rem 0.58rem;
+}
+
+.match-scoreboard-panel .set-result-chip strong {
+  margin-top: 0.14rem;
+  font-size: 0.88rem;
+}
+
+.primary-match-action {
+  grid-area: action;
+  display: grid;
+  gap: 0.65rem;
+  align-content: space-between;
+  padding: 0.85rem;
+  background:
+    linear-gradient(135deg, rgba(57, 255, 20, 0.1), transparent 50%),
+    rgba(26, 29, 33, 0.96);
+}
+
+.action-kicker,
+.tactical-option-group h3 {
+  color: var(--muted-soft);
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.primary-match-action h2 {
+  margin: 0.15rem 0 0;
+  color: var(--text);
+  font-size: clamp(1.08rem, 1.45vw, 1.45rem);
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+}
+
+.primary-match-action p {
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.3;
+}
+
+.primary-match-action .command-button {
+  width: 100%;
+  min-height: 3.1rem;
+  padding: 0.76rem 0.82rem;
+  font-size: 0.82rem;
+}
+
+.primary-action-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.38rem;
+}
+
+.primary-action-meta span {
+  display: inline-flex;
+  min-height: 1.45rem;
+  align-items: center;
+  border: 1px solid rgba(48, 54, 61, 0.92);
+  border-radius: 0.22rem;
+  padding: 0.18rem 0.38rem;
+  background: rgba(12, 14, 17, 0.62);
+  color: var(--muted);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.match-status-strip {
+  grid-area: status;
+  grid-template-columns: minmax(4.8rem, 0.42fr) minmax(4.8rem, 0.42fr) minmax(8rem, 0.9fr) minmax(9rem, 1fr) minmax(8rem, 0.9fr);
+  gap: 0.5rem;
+}
+
+.match-status-strip div {
+  padding: 0.48rem 0.6rem;
+}
+
+.match-status-strip strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.match-feed-panel {
+  grid-area: feed;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+  overflow: hidden;
+  padding: 0.9rem;
+}
+
+.match-feed-panel .feed-list {
+  min-height: 0;
+  max-height: none;
+  overflow: auto;
+  padding-right: 0.15rem;
+}
+
+.match-command-viewer {
+  grid-area: viewer;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0.9rem;
+}
+
+.match-command-viewer .tactical-viewer {
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 0.65rem;
+  height: 100%;
+  min-height: 0;
+}
+
+.match-command-viewer .panel-header,
+.match-feed-panel .panel-header,
+.telemetry-card .panel-header,
+.tactical-options-panel > .panel-header {
+  gap: 0.45rem;
+  padding-bottom: 0.48rem;
+  margin-bottom: 0.55rem;
+}
+
+.match-command-viewer .panel-header h2,
+.match-feed-panel .panel-header h2,
+.telemetry-card .panel-header h2,
+.tactical-options-panel > .panel-header h2 {
+  font-size: 1rem;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+}
+
+.match-command-viewer .tactical-viewer-layout {
+  grid-template-columns: minmax(15rem, 0.95fr) minmax(7rem, 0.62fr);
+  gap: 0.65rem;
+  min-height: 0;
+}
+
+.match-command-viewer .tactical-court {
+  aspect-ratio: 1.34 / 1;
+  min-height: 13.6rem;
+  max-height: 100%;
+  padding: 0.42rem;
+}
+
+.match-command-viewer .tactical-court::after {
+  right: 0.42rem;
+  left: 0.42rem;
+}
+
+.match-command-viewer .tactical-court-zone {
+  gap: 0.12rem;
+  padding: 0.25rem;
+}
+
+.match-command-viewer .tactical-court-zone span,
+.match-command-viewer .tactical-metric-grid span,
+.match-command-viewer .tactical-summary-block span {
+  font-size: 0.58rem;
+}
+
+.match-command-viewer .tactical-court-zone strong,
+.match-command-viewer .tactical-metric-grid strong {
+  font-size: 1.02rem;
+}
+
+.match-command-viewer .tactical-court-zone small,
+.match-command-viewer .tactical-metric-grid small {
+  font-size: 0.62rem;
+}
+
+.match-command-viewer .tactical-viewer-rail {
+  gap: 0.5rem;
+  align-content: stretch;
+  min-height: 0;
+}
+
+.match-command-viewer .tactical-metric-grid {
+  grid-template-columns: 1fr;
+  gap: 0.42rem;
+}
+
+.match-command-viewer .tactical-metric-grid > div,
+.match-command-viewer .tactical-summary-block {
+  padding: 0.5rem;
+}
+
+.match-command-viewer .tactical-summary-block p {
+  font-size: 0.76rem;
+  line-height: 1.28;
+}
+
+.match-command-viewer .tactical-timeline {
+  min-height: 2.35rem;
+  padding: 0.38rem;
+}
+
+.match-side-column {
+  grid-area: side;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 0.65rem;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 0.12rem;
+}
+
+.match-side-column > .command-panel {
+  min-height: 0;
+  padding: 0.78rem;
+}
+
+.telemetry-card {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.telemetry-card .telemetry-block + .telemetry-block {
+  margin-top: 0;
+}
+
+.telemetry-card .metric-track {
+  height: 0.44rem;
+}
+
+.telemetry-card .momentum-bars {
+  gap: 0.26rem;
+  margin-top: 0.35rem;
+}
+
+.telemetry-card .momentum-bar {
+  height: 0.78rem;
+}
+
+.telemetry-card .telemetry-mini-grid {
+  gap: 0.45rem;
+  margin-top: 0;
+}
+
+.telemetry-card .telemetry-mini-card {
+  padding: 0.5rem;
+}
+
+.telemetry-card .telemetry-mini-card span {
+  font-size: 0.6rem;
+}
+
+.telemetry-card .telemetry-mini-card strong {
+  margin-top: 0.16rem;
+  font-size: 0.9rem;
+}
+
+.tactical-options-panel {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.tactical-option-group {
+  display: grid;
+  gap: 0.45rem;
+  min-height: 0;
+}
+
+.tactical-option-group + .tactical-option-group {
+  margin-top: 0.55rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid rgba(48, 54, 61, 0.78);
+}
+
+.tactical-option-group h3 {
+  margin: 0;
+}
+
+.directive-list-compact {
+  gap: 0.42rem;
+}
+
+.tactical-options-panel .directive-card {
+  display: grid;
+  gap: 0.16rem;
+  padding: 0.52rem 0.58rem;
+}
+
+.tactical-options-panel .directive-card strong {
+  font-size: 0.82rem;
+  line-height: 1.15;
+}
+
+.tactical-options-panel .directive-card span,
+.tactical-options-panel .panel-summary {
+  font-size: 0.72rem;
+  line-height: 1.25;
+}
+
+.tactical-options-panel .panel-header-compact {
+  padding-bottom: 0;
+  margin: 0;
+  border-bottom: 0;
+}
+
+.tactical-options-panel .panel-header-compact h3 {
+  font-size: 0.82rem;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.team-talk-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (min-width: 1101px) {
+  .match-screen {
+    height: calc(100vh - 5.85rem);
+    min-height: 38rem;
+    overflow: hidden;
+  }
+
+  .match-command-layout-v2 {
+    grid-template-rows: auto auto minmax(0, 1fr);
+    min-height: 0;
+  }
+}
+
+@media (max-height: 800px) and (min-width: 1101px) {
+  .match-screen {
+    height: calc(100vh - 4.25rem);
+    min-height: 0;
+    gap: 0.55rem;
+  }
+
+  .match-screen-header {
+    padding-bottom: 0.48rem;
+  }
+
+  .match-screen .screen-title {
+    margin-bottom: 0.16rem;
+    font-size: 1.42rem;
+  }
+
+  .match-screen .screen-copy {
+    font-size: 0.8rem;
+    line-height: 1.22;
+  }
+
+  .match-screen .screen-kicker {
+    font-size: 0.62rem;
+  }
+
+  .match-screen .screen-meta span {
+    padding: 0.28rem 0.46rem;
+    font-size: 0.66rem;
+  }
+
+  .match-command-layout-v2 {
+    gap: 0.55rem;
+    grid-template-columns: minmax(16rem, 0.88fr) minmax(21rem, 1.18fr) minmax(17rem, 0.94fr);
+  }
+
+  .match-scoreboard-panel,
+  .primary-match-action,
+  .match-feed-panel,
+  .match-command-viewer,
+  .match-side-column > .command-panel {
+    padding: 0.62rem;
+  }
+
+  .match-scoreboard-panel .scoreboard-athlete {
+    min-height: 3.55rem;
+    padding: 0.42rem 0.52rem;
+  }
+
+  .match-scoreboard-panel .score-value {
+    font-size: 2.25rem;
+  }
+
+  .match-scoreboard-panel .set-summary-row {
+    margin-top: 0.38rem;
+  }
+
+  .match-scoreboard-panel .set-result-chip {
+    padding: 0.32rem 0.45rem;
+  }
+
+  .primary-match-action {
+    gap: 0.42rem;
+  }
+
+  .primary-match-action p {
+    display: none;
+  }
+
+  .primary-match-action .command-button {
+    min-height: 2.62rem;
+    padding: 0.58rem 0.64rem;
+    font-size: 0.74rem;
+  }
+
+  .primary-action-meta span {
+    min-height: 1.24rem;
+    font-size: 0.56rem;
+  }
+
+  .match-status-strip div {
+    padding: 0.34rem 0.46rem;
+  }
+
+  .match-command-viewer .tactical-court {
+    min-height: 11.4rem;
+  }
+
+  .match-command-viewer .tactical-timeline,
+  .match-command-viewer .tactical-summary-block p {
+    display: none;
+  }
+
+  .telemetry-card {
+    gap: 0.38rem;
+  }
+
+  .telemetry-card .telemetry-mini-card {
+    padding: 0.38rem;
+  }
+
+  .tactical-option-group + .tactical-option-group {
+    margin-top: 0.42rem;
+    padding-top: 0.42rem;
+  }
+
+  .tactical-options-panel .directive-card {
+    padding: 0.42rem 0.5rem;
+  }
+}
+
+@media (max-width: 1100px) {
+  .match-screen {
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+  }
+
+  .match-command-layout-v2 {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "score"
+      "action"
+      "status"
+      "viewer"
+      "feed"
+      "side";
+  }
+
+  .match-side-column {
+    overflow: visible;
+  }
+
+  .match-command-viewer .tactical-viewer-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .match-command-viewer .tactical-court {
+    aspect-ratio: 1 / 1.08;
+  }
+
+  .match-command-viewer .tactical-metric-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 780px) {
+  .match-scoreboard-panel .scoreboard-main {
+    grid-template-columns: 1fr;
+  }
+
+  .match-scoreboard-panel .scoreboard-athlete-right {
+    text-align: left;
+  }
+
+  .match-scoreboard-panel .scoreboard-points {
+    justify-content: center;
+    order: -1;
+  }
+
+  .match-status-strip,
+  .team-talk-grid,
+  .match-command-viewer .tactical-metric-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .primary-action-meta {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 1101px) {
+  .match-screen {
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .match-command-layout-v2 {
+    height: 100%;
+  }
+}
+
+@media (min-width: 1101px) {
+  .match-screen-header > div:first-child {
+    min-width: 0;
+  }
+
+  .match-screen-header .screen-copy {
+    max-width: 58rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .match-screen-header .screen-meta {
+    flex: 0 0 auto;
+  }
+
+  .primary-match-action h2,
+  .primary-match-action p {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .primary-match-action {
+    align-content: center;
+  }
+
+  .match-scoreboard-panel .scoreboard-athlete {
+    min-height: 3.45rem;
+    padding: 0.42rem 0.55rem;
+  }
+
+  .match-scoreboard-panel .score-value {
+    font-size: 2.45rem;
+  }
+
+  .match-status-strip div {
+    padding-top: 0.38rem;
+    padding-bottom: 0.38rem;
+  }
+
+  .match-side-column {
+    grid-template-rows: auto auto minmax(12rem, 1fr);
+    overflow: hidden;
+  }
+
+  .telemetry-card {
+    gap: 0.36rem;
+  }
+
+  .telemetry-card .telemetry-block {
+    display: grid;
+    gap: 0.2rem;
+  }
+
+  .telemetry-card .telemetry-mini-card {
+    padding: 0.34rem 0.42rem;
+  }
+
+  .telemetry-card .panel-header h2 {
+    font-size: 0.86rem;
+  }
+
+  .telemetry-card .metric-row > span,
+  .telemetry-card .metric-row > strong {
+    font-size: 0.76rem;
+  }
+
+  .tactical-options-panel {
+    min-height: 0;
+    overflow: auto;
+  }
+}
+
+@media (max-height: 800px) and (min-width: 1101px) {
+  .match-screen-header .screen-copy {
+    max-width: 48rem;
+  }
+
+  .primary-match-action h2,
+  .primary-match-action p {
+    display: none;
+  }
+
+  .match-side-column {
+    grid-template-rows: auto auto minmax(10rem, 1fr);
+  }
+
+  .telemetry-card .telemetry-mini-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.match-feed-panel,
+.match-side-column .tactical-options-panel {
+  align-self: stretch;
+}
+
+@media (min-width: 1101px) {
+  .tactical-options-panel {
+    gap: 0.42rem;
+  }
+
+  .tactical-options-panel .tactical-option-group h3 {
+    font-size: 0.58rem;
+  }
+
+  .tactical-options-panel .directive-list-compact {
+    gap: 0.3rem;
+  }
+
+  .tactical-options-panel .directive-card {
+    grid-template-columns: minmax(6.2rem, 0.46fr) minmax(0, 1fr);
+    align-items: center;
+    column-gap: 0.45rem;
+    padding: 0.36rem 0.48rem;
+  }
+
+  .tactical-options-panel .directive-card strong {
+    font-size: 0.76rem;
+  }
+
+  .tactical-options-panel .directive-card span {
+    overflow: hidden;
+    font-size: 0.66rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .tactical-options-panel .panel-summary {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+@media (min-width: 1101px) {
+  .tactical-options-panel > .panel-header {
+    flex-wrap: nowrap;
+    gap: 0.35rem;
+    padding-bottom: 0.32rem;
+    margin-bottom: 0.36rem;
+  }
+
+  .tactical-options-panel > .panel-header span {
+    font-size: 0.56rem;
+    white-space: nowrap;
+  }
+}
+
+@media (min-width: 1101px) {
+  .match-side-column .telemetry-card {
+    overflow: hidden;
+  }
+
+  .match-side-column .telemetry-mini-grid {
+    display: none;
+  }
+}
+
+@media (min-width: 1101px) {
+  .match-side-column .momentum-bar {
+    height: 0.48rem;
+  }
+
+  .match-side-column .momentum-bars {
+    margin-top: 0.2rem;
+  }
+}
