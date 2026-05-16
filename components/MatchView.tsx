@@ -1,8 +1,8 @@
-import { liveDirectiveOptions } from "../game/content/tactics";
-import { telemetryForCompetitor } from "../game/core/intel";
-import type { LiveDirective, LiveMatchSession, Side, TeamTalk } from "../game/core/models";
-import { projectTacticalViewerFromSession } from "../game/career/tacticalViewer";
-import { TacticalMatchViewer } from "./TacticalMatchViewer";
+import { liveDirectiveOptions } from "../game/content/tactics.js";
+import { telemetryForCompetitor } from "../game/core/intel.js";
+import type { LiveDirective, LiveMatchSession, Side, TeamTalk } from "../game/core/models.js";
+import { projectTacticalViewerFromSession } from "../game/career/tacticalViewer.js";
+import { TacticalMatchViewer } from "./TacticalMatchViewer.js";
 
 interface MatchViewProps {
   session: LiveMatchSession;
@@ -16,12 +16,349 @@ interface MatchViewProps {
   onOpenPlayerProfile: (playerId: string) => void;
 }
 
+type CompetitorTelemetry = ReturnType<typeof telemetryForCompetitor>;
+type MatchActionLabel = "Advance Bracket" | "Apply Talk + Open Next Set" | "Open Next Set" | "Simulate Next Point";
+
 const teamTalks: Array<{ id: TeamTalk; label: string; copy: string }> = [
   { id: "encourage", label: "Encourage", copy: "Lift composure and stop the match from speeding away." },
   { id: "demand_focus", label: "Demand Focus", copy: "Sharpen concentration for the first exchanges of the next set." },
   { id: "increase_tempo", label: "Increase Tempo", copy: "Take the initiative back with earlier attacking intent." },
   { id: "calm_down", label: "Calm Down", copy: "Reduce volatility and cut the cheap misses." }
 ];
+
+function matchActionLabel(session: LiveMatchSession, pendingTeamTalk?: TeamTalk): MatchActionLabel {
+  if (session.complete) {
+    return "Advance Bracket";
+  }
+
+  if (session.intermission && pendingTeamTalk) {
+    return "Apply Talk + Open Next Set";
+  }
+
+  if (session.intermission) {
+    return "Open Next Set";
+  }
+
+  return "Simulate Next Point";
+}
+
+function statusActionLabel(session: LiveMatchSession) {
+  if (session.complete) {
+    return "Advance bracket";
+  }
+
+  if (session.intermission) {
+    return "Open next set";
+  }
+
+  return "Simulate point";
+}
+
+interface ScoreboardPanelProps {
+  session: LiveMatchSession;
+  onOpenPlayerProfile: (playerId: string) => void;
+}
+
+function ScoreboardPanel(props: ScoreboardPanelProps) {
+  const shouldShowSetSummary = props.session.setSummaries.length > 0 || (!props.session.complete && props.session.intermission);
+
+  return (
+    <section className="scoreboard-panel match-scoreboard-panel" aria-label="Compact scoreboard">
+      <div className="scoreboard-topline">
+        <span>Set {props.session.currentSetNumber}</span>
+        <span>
+          Match {props.session.setsWonA}-{props.session.setsWonB}
+        </span>
+      </div>
+
+      <div className="scoreboard-main">
+        <div className="scoreboard-athlete">
+          <button
+            className="profile-name-button profile-name-button-large"
+            type="button"
+            onClick={() => props.onOpenPlayerProfile(props.session.input.playerA.id)}
+          >
+            {props.session.input.playerA.name}
+          </button>
+          <span>{props.session.currentServer === "A" ? "Serving" : "Receiving"}</span>
+        </div>
+
+        <div className="scoreboard-points" aria-label="Current point score">
+          <span className="score-value score-value-home">{props.session.currentScoreA}</span>
+          <span className="score-divider">-</span>
+          <span className="score-value">{props.session.currentScoreB}</span>
+        </div>
+
+        <div className="scoreboard-athlete scoreboard-athlete-right">
+          <button
+            className="profile-name-button profile-name-button-large"
+            type="button"
+            onClick={() => props.onOpenPlayerProfile(props.session.input.playerB.id)}
+          >
+            {props.session.input.playerB.name}
+          </button>
+          <span>{props.session.currentServer === "B" ? "Serving" : "Receiving"}</span>
+        </div>
+      </div>
+
+      {shouldShowSetSummary && (
+        <div className="set-summary-row" aria-label="Set summary">
+          {props.session.setSummaries.map((set, index) => (
+            <article key={`${set.scoreA}-${set.scoreB}-${index}`} className="set-result-chip">
+              <span>Set {index + 1}</span>
+              <strong>
+                {set.scoreA}-{set.scoreB}
+              </strong>
+            </article>
+          ))}
+          {!props.session.complete && props.session.intermission && (
+            <article className="set-result-chip set-result-chip-live">
+              <span>Intermission</span>
+              <strong>Set {props.session.currentSetNumber} loading</strong>
+            </article>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
+interface PrimaryMatchActionProps {
+  session: LiveMatchSession;
+  pendingTeamTalk?: TeamTalk;
+  activeDirective?: LiveDirective;
+  opponentName: string;
+  onSimulateNextPoint: () => void;
+  onAdvanceAfterMatch: () => void;
+}
+
+function PrimaryMatchAction(props: PrimaryMatchActionProps) {
+  const label = matchActionLabel(props.session, props.pendingTeamTalk);
+  const onClick = props.session.complete ? props.onAdvanceAfterMatch : props.onSimulateNextPoint;
+  const helperCopy = props.session.complete
+    ? "Match complete. Return to the bracket path."
+    : props.session.intermission
+      ? props.pendingTeamTalk
+        ? "Queued talk applies as the next set opens."
+        : "Open the next set when the interval read is complete."
+      : `Resolve the next rally window against ${props.opponentName}.`;
+
+  return (
+    <section className="command-panel primary-match-action" aria-label="Primary match action">
+      <div>
+        <span className="action-kicker">Next Command</span>
+        <h2>{label}</h2>
+        <p>{helperCopy}</p>
+      </div>
+      <button className="command-button command-button-primary" type="button" onClick={onClick}>
+        {label}
+      </button>
+      <div className="primary-action-meta" aria-label="Primary action context">
+        <span>Set {props.session.currentSetNumber}</span>
+        <span>
+          Match {props.session.setsWonA}-{props.session.setsWonB}
+        </span>
+        <span>{props.activeDirective ?? "No directive"}</span>
+      </div>
+    </section>
+  );
+}
+
+interface MatchStatusStripProps {
+  session: LiveMatchSession;
+  activeDirective?: LiveDirective;
+}
+
+function MatchStatusStrip(props: MatchStatusStripProps) {
+  return (
+    <section className="management-status-strip match-status-strip" aria-label="Live match status">
+      <div>
+        <span>Score</span>
+        <strong>{props.session.currentScoreA}-{props.session.currentScoreB}</strong>
+      </div>
+      <div>
+        <span>Match</span>
+        <strong>{props.session.setsWonA}-{props.session.setsWonB}</strong>
+      </div>
+      <div>
+        <span>Directive</span>
+        <strong>{props.activeDirective ?? "None"}</strong>
+      </div>
+      <div>
+        <span>Server</span>
+        <strong>{props.session.currentServer === "A" ? props.session.input.playerA.name : props.session.input.playerB.name}</strong>
+      </div>
+      <div>
+        <span>Next action</span>
+        <strong>{statusActionLabel(props.session)}</strong>
+      </div>
+    </section>
+  );
+}
+
+interface LiveFeedPanelProps {
+  session: LiveMatchSession;
+}
+
+function LiveFeedPanel(props: LiveFeedPanelProps) {
+  const feed = [...props.session.feed].reverse().slice(0, 12);
+
+  return (
+    <section className="command-panel feed-panel match-feed-panel">
+      <div className="panel-header">
+        <h2>Live Tactical Feed</h2>
+        <span>{feed.length} recent events</span>
+      </div>
+
+      <div className="feed-list">
+        {feed.length > 0 ? (
+          feed.map((entry) => (
+            <article key={entry.id} className={`feed-card feed-card-${entry.emphasis}`}>
+              <div className="feed-card-top">
+                <span>{entry.clockLabel}</span>
+                <span className="feed-kind">{entry.kind}</span>
+              </div>
+              <strong>{entry.title}</strong>
+              {entry.detail && <p>{entry.detail}</p>}
+            </article>
+          ))
+        ) : (
+          <p className="panel-summary">The first point will seed the live tactical feed.</p>
+        )}
+      </div>
+    </section>
+  );
+}
+
+interface TelemetryPanelProps {
+  telemetry: CompetitorTelemetry;
+  tone: "managed" | "opponent";
+}
+
+function TelemetryPanel(props: TelemetryPanelProps) {
+  return (
+    <section className={`command-panel telemetry-card telemetry-card-${props.tone}`}>
+      <div className="panel-header telemetry-card-header">
+        <h2>{props.telemetry.playerName} Telemetry</h2>
+        <span>{props.telemetry.momentumLabel}</span>
+      </div>
+
+      <div className="telemetry-block">
+        <div className="metric-row">
+          <span>Stamina</span>
+          <strong>{props.telemetry.stamina}%</strong>
+        </div>
+        <div className="metric-track">
+          <div
+            className={`metric-track-fill ${props.tone === "opponent" ? "metric-track-fill-soft" : ""}`}
+            style={{ width: `${props.telemetry.stamina}%` }}
+          />
+        </div>
+      </div>
+
+      <div className="telemetry-block">
+        <div className="metric-row">
+          <span>Momentum</span>
+          <strong>{props.telemetry.momentumLabel}</strong>
+        </div>
+        <div className="momentum-bars">
+          {Array.from({ length: 5 }).map((_, index) => {
+            const threshold = (index + 1) * 20;
+            return (
+              <span
+                key={threshold}
+                className={`momentum-bar ${
+                  props.telemetry.momentum >= threshold
+                    ? props.tone === "opponent"
+                      ? "momentum-bar-opponent"
+                      : "momentum-bar-active"
+                    : ""
+                }`}
+              />
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="telemetry-mini-grid">
+        <div className="telemetry-mini-card">
+          <span>Peak Smash</span>
+          <strong>{props.telemetry.smashPeakKph > 0 ? `${props.telemetry.smashPeakKph} km/h` : "N/A"}</strong>
+        </div>
+        <div className="telemetry-mini-card">
+          <span>Errors</span>
+          <strong>{props.telemetry.errors}</strong>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+interface TacticalOptionsPanelProps {
+  session: LiveMatchSession;
+  activeDirective?: LiveDirective;
+  pendingTeamTalk?: TeamTalk;
+  onApplyDirective: (directive: LiveDirective) => void;
+  onApplyTalk: (teamTalk: TeamTalk) => void;
+}
+
+function TacticalOptionsPanel(props: TacticalOptionsPanelProps) {
+  const teamTalkUnlocked = props.session.intermission && !props.session.complete;
+
+  return (
+    <section className="command-panel directive-panel tactical-options-panel" aria-label="Tactical options">
+      <div className="panel-header">
+        <h2>Tactical Options</h2>
+        <span>{props.activeDirective ? "Directive armed" : "No live directive queued"}</span>
+      </div>
+
+      <div className="tactical-option-group">
+        <h3>Directives</h3>
+        <div className="directive-list directive-list-compact">
+          {liveDirectiveOptions.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              className={`directive-card ${props.activeDirective === option.id ? "directive-card-active" : ""}`}
+              onClick={() => props.onApplyDirective(option.id)}
+            >
+              <strong>{option.label}</strong>
+              <span>{option.summary}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="tactical-option-group tactical-option-group-talk">
+        <div className="panel-header panel-header-inline panel-header-compact">
+          <h3>Between-Set Team Talk</h3>
+          <span>{teamTalkUnlocked ? (props.pendingTeamTalk ? "Talk queued" : "Live") : "Locked"}</span>
+        </div>
+
+        {teamTalkUnlocked ? (
+          <div className="directive-list directive-list-compact team-talk-grid">
+            {teamTalks.map((talk) => (
+              <button
+                key={talk.id}
+                type="button"
+                className={`directive-card directive-card-talk ${
+                  props.pendingTeamTalk === talk.id ? "directive-card-active" : ""
+                }`}
+                aria-pressed={props.pendingTeamTalk === talk.id}
+                onClick={() => props.onApplyTalk(talk.id)}
+              >
+                <strong>{talk.label}</strong>
+                <span>{talk.copy}</span>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <p className="panel-summary">Team talks unlock only between sets.</p>
+        )}
+      </div>
+    </section>
+  );
+}
 
 export function MatchView(props: MatchViewProps) {
   const managedPlayer =
@@ -38,7 +375,6 @@ export function MatchView(props: MatchViewProps) {
     props.managedSide === "A" ? props.session.competitorB : props.session.competitorA,
     props.managedSide === "A" ? props.session.setsWonB : props.session.setsWonA
   );
-  const feed = [...props.session.feed].reverse().slice(0, 12);
   const activeDirective =
     props.managedSide === "A"
       ? props.session.competitorA.directive
@@ -51,8 +387,8 @@ export function MatchView(props: MatchViewProps) {
   });
 
   return (
-    <section className="screen-shell">
-      <div className="screen-header">
+    <section className="screen-shell match-screen">
+      <div className="screen-header match-screen-header">
         <div>
           <p className="screen-kicker">Live</p>
           <h1 className="screen-title">Match Command Center</h1>
@@ -68,87 +404,23 @@ export function MatchView(props: MatchViewProps) {
         </div>
       </div>
 
-      <section className="management-status-strip" aria-label="Live match status">
-        <div>
-          <span>Set</span>
-          <strong>{props.session.currentSetNumber}</strong>
-        </div>
-        <div>
-          <span>Score</span>
-          <strong>{props.session.currentScoreA}-{props.session.currentScoreB}</strong>
-        </div>
-        <div>
-          <span>Match</span>
-          <strong>{props.session.setsWonA}-{props.session.setsWonB}</strong>
-        </div>
-        <div>
-          <span>Directive</span>
-          <strong>{activeDirective ?? "None"}</strong>
-        </div>
-        <div>
-          <span>Next action</span>
-          <strong>{props.session.complete ? "Advance bracket" : props.session.intermission ? "Open next set" : "Simulate point"}</strong>
-        </div>
-      </section>
+      <div className="match-command-layout match-command-layout-v2" aria-label="Match command surface">
+        <ScoreboardPanel session={props.session} onOpenPlayerProfile={props.onOpenPlayerProfile} />
 
-      <div className="match-command-layout">
-        <section className="scoreboard-panel">
-          <div className="scoreboard-topline">
-            <span>Set {props.session.currentSetNumber}</span>
-            <span>
-              Match Score {props.session.setsWonA}-{props.session.setsWonB}
-            </span>
-          </div>
+        <PrimaryMatchAction
+          session={props.session}
+          pendingTeamTalk={pendingTeamTalk}
+          activeDirective={activeDirective}
+          opponentName={props.opponentName}
+          onSimulateNextPoint={props.onSimulateNextPoint}
+          onAdvanceAfterMatch={props.onAdvanceAfterMatch}
+        />
 
-          <div className="scoreboard-main">
-            <div className="scoreboard-athlete">
-              <button
-                className="profile-name-button profile-name-button-large"
-                type="button"
-                onClick={() => props.onOpenPlayerProfile(props.session.input.playerA.id)}
-              >
-                {props.session.input.playerA.name}
-              </button>
-              <span>{props.session.currentServer === "A" ? "Serving" : "Receiving"}</span>
-            </div>
+        <MatchStatusStrip session={props.session} activeDirective={activeDirective} />
 
-            <div className="scoreboard-points">
-              <span className="score-value score-value-home">{props.session.currentScoreA}</span>
-              <span className="score-divider">-</span>
-              <span className="score-value">{props.session.currentScoreB}</span>
-            </div>
+        <LiveFeedPanel session={props.session} />
 
-            <div className="scoreboard-athlete scoreboard-athlete-right">
-              <button
-                className="profile-name-button profile-name-button-large"
-                type="button"
-                onClick={() => props.onOpenPlayerProfile(props.session.input.playerB.id)}
-              >
-                {props.session.input.playerB.name}
-              </button>
-              <span>{props.session.currentServer === "B" ? "Serving" : "Receiving"}</span>
-            </div>
-          </div>
-
-          <div className="set-summary-row">
-            {props.session.setSummaries.map((set, index) => (
-              <article key={`${set.scoreA}-${set.scoreB}-${index}`} className="set-result-chip">
-                <span>Set {index + 1}</span>
-                <strong>
-                  {set.scoreA}-{set.scoreB}
-                </strong>
-              </article>
-            ))}
-            {!props.session.complete && props.session.intermission && (
-              <article className="set-result-chip set-result-chip-live">
-                <span>Intermission</span>
-                <strong>Set {props.session.currentSetNumber} loading</strong>
-              </article>
-            )}
-          </div>
-        </section>
-
-        <section className="command-panel command-panel-full tactical-viewer-live-panel">
+        <section className="command-panel tactical-viewer-live-panel match-command-viewer">
           <TacticalMatchViewer
             frame={tacticalFrame}
             title="2D Tactical Viewer"
@@ -156,188 +428,17 @@ export function MatchView(props: MatchViewProps) {
           />
         </section>
 
-        <div className="match-columns">
-          <section className="command-panel telemetry-stack">
-            <div className="panel-header">
-              <h2>{managedTelemetry.playerName} Telemetry</h2>
-              <span>{managedTelemetry.momentumLabel}</span>
-            </div>
-
-            <div className="telemetry-block">
-              <div className="metric-row">
-                <span>Stamina</span>
-                <strong>{managedTelemetry.stamina}%</strong>
-              </div>
-              <div className="metric-track">
-                <div className="metric-track-fill" style={{ width: `${managedTelemetry.stamina}%` }} />
-              </div>
-            </div>
-
-            <div className="telemetry-block">
-              <div className="metric-row">
-                <span>Momentum</span>
-                <strong>{managedTelemetry.momentumLabel}</strong>
-              </div>
-              <div className="momentum-bars">
-                {Array.from({ length: 5 }).map((_, index) => {
-                  const threshold = (index + 1) * 20;
-                  return (
-                    <span
-                      key={threshold}
-                      className={`momentum-bar ${
-                        managedTelemetry.momentum >= threshold ? "momentum-bar-active" : ""
-                      }`}
-                    />
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="telemetry-mini-grid">
-              <div className="telemetry-mini-card">
-                <span>Peak Smash</span>
-                <strong>{managedTelemetry.smashPeakKph > 0 ? `${managedTelemetry.smashPeakKph} km/h` : "N/A"}</strong>
-              </div>
-              <div className="telemetry-mini-card">
-                <span>Errors</span>
-                <strong>{managedTelemetry.errors}</strong>
-              </div>
-            </div>
-
-            <div className="panel-header panel-header-inline">
-              <h2>{opponentTelemetry.playerName} Telemetry</h2>
-              <span>{opponentTelemetry.momentumLabel}</span>
-            </div>
-
-            <div className="telemetry-block">
-              <div className="metric-row">
-                <span>Stamina</span>
-                <strong>{opponentTelemetry.stamina}%</strong>
-              </div>
-              <div className="metric-track">
-                <div
-                  className="metric-track-fill metric-track-fill-soft"
-                  style={{ width: `${opponentTelemetry.stamina}%` }}
-                />
-              </div>
-            </div>
-
-            <div className="telemetry-block">
-              <div className="metric-row">
-                <span>Momentum</span>
-                <strong>{opponentTelemetry.momentumLabel}</strong>
-              </div>
-              <div className="momentum-bars">
-                {Array.from({ length: 5 }).map((_, index) => {
-                  const threshold = (index + 1) * 20;
-                  return (
-                    <span
-                      key={threshold}
-                      className={`momentum-bar ${
-                        opponentTelemetry.momentum >= threshold ? "momentum-bar-opponent" : ""
-                      }`}
-                    />
-                  );
-                })}
-              </div>
-            </div>
-          </section>
-
-          <section className="command-panel feed-panel">
-            <div className="panel-header">
-              <h2>Live Tactical Feed</h2>
-              <span>{feed.length} recent events</span>
-            </div>
-
-            <div className="feed-list">
-              {feed.length > 0 ? (
-                feed.map((entry) => (
-                  <article key={entry.id} className={`feed-card feed-card-${entry.emphasis}`}>
-                    <div className="feed-card-top">
-                      <span>{entry.clockLabel}</span>
-                      <span className="feed-kind">{entry.kind}</span>
-                    </div>
-                    <strong>{entry.title}</strong>
-                    {entry.detail && <p>{entry.detail}</p>}
-                  </article>
-                ))
-              ) : (
-                <p className="panel-summary">The first point will seed the live tactical feed.</p>
-              )}
-            </div>
-          </section>
-
-          <section className="command-panel directive-panel">
-            <div className="panel-header">
-              <h2>Directives</h2>
-              <span>{activeDirective ? "Directive armed" : "No live directive queued"}</span>
-            </div>
-
-            <div className="directive-list">
-              {liveDirectiveOptions.map((option) => (
-                <button
-                  key={option.id}
-                  type="button"
-                  className={`directive-card ${activeDirective === option.id ? "directive-card-active" : ""}`}
-                  onClick={() => props.onApplyDirective(option.id)}
-                >
-                  <strong>{option.label}</strong>
-                  <span>{option.summary}</span>
-                </button>
-              ))}
-            </div>
-
-            <div className="panel-header panel-header-inline">
-              <h2>Between-Set Team Talk</h2>
-              <span>
-                {props.session.intermission && !props.session.complete
-                  ? pendingTeamTalk
-                    ? "Talk queued"
-                    : "Live"
-                  : "Locked"}
-              </span>
-            </div>
-
-            {props.session.intermission && !props.session.complete ? (
-              <div className="directive-list">
-                {teamTalks.map((talk) => (
-                  <button
-                    key={talk.id}
-                    type="button"
-                    className={`directive-card directive-card-talk ${
-                      pendingTeamTalk === talk.id ? "directive-card-active" : ""
-                    }`}
-                    aria-pressed={pendingTeamTalk === talk.id}
-                    onClick={() => props.onApplyTalk(talk.id)}
-                  >
-                    <strong>{talk.label}</strong>
-                    <span>{talk.copy}</span>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <p className="panel-summary">
-                Team talks unlock only after a set has closed and before the next one begins.
-              </p>
-            )}
-
-            <div className="directive-actions">
-              {!props.session.complete ? (
-                <button className="command-button command-button-primary" onClick={props.onSimulateNextPoint}>
-                  {props.session.intermission && pendingTeamTalk
-                    ? "Apply Talk + Open Next Set"
-                    : props.session.intermission
-                      ? "Open Next Set"
-                      : "Simulate Next Point"}
-                </button>
-              ) : (
-                <button className="command-button command-button-primary" onClick={props.onAdvanceAfterMatch}>
-                  Advance Bracket
-                </button>
-              )}
-            </div>
-          </section>
-        </div>
+        <aside className="match-side-column" aria-label="Managed and opponent telemetry with tactical options">
+          <TelemetryPanel telemetry={managedTelemetry} tone="managed" />
+          <TelemetryPanel telemetry={opponentTelemetry} tone="opponent" />
+          <TacticalOptionsPanel
+            session={props.session}
+            activeDirective={activeDirective}
+            pendingTeamTalk={pendingTeamTalk}
+            onApplyDirective={props.onApplyDirective}
+            onApplyTalk={props.onApplyTalk}
+          />
+        </aside>
       </div>
     </section>
   );

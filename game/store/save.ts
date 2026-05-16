@@ -16,6 +16,7 @@ import {
   careerStateV3Schema,
   careerStateV4Schema,
   careerStateV5Schema,
+  careerStateV6Schema,
   normalizeCareerTierLabel
 } from "../career/models";
 import { upgradeCareerStateV3 } from "../career/tactics";
@@ -230,13 +231,19 @@ export const phase3FacilitiesPersistedSaveSchema = legacyPersistedSaveSchema.ext
   career: careerStateV5Schema.nullable()
 });
 
-export const persistedSaveSchema = legacyPersistedSaveSchema.extend({
+export const phase4CareerHistoryPersistedSaveSchema = legacyPersistedSaveSchema.extend({
   version: z.literal(8),
+  career: careerStateV6Schema.nullable()
+});
+
+export const persistedSaveSchema = legacyPersistedSaveSchema.extend({
+  version: z.literal(9),
   career: careerStateSchema.nullable()
 });
 
 export const persistedSavePayloadSchema = z.union([
   persistedSaveSchema,
+  phase4CareerHistoryPersistedSaveSchema,
   phase3FacilitiesPersistedSaveSchema,
   phase3TacticsPersistedSaveSchema,
   phase3RivalPersistedSaveSchema,
@@ -270,15 +277,23 @@ function refreshMigratedCareer(career: PersistedSave["career"]) {
 }
 
 export function migratePersistedSave(payload: PersistedSavePayload): PersistedSave {
-  if (payload.version === 7) {
+  if (payload.version === 8) {
     return {
       ...payload,
-      version: 8,
-      career: payload.career ? refreshMigratedCareer({ ...payload.career, version: 6 }) : null
+      version: 9,
+      career: payload.career ? refreshMigratedCareer({ ...payload.career, version: 7, eventHistory: [] }) : null
     };
   }
 
-  if (payload.version === 8) {
+  if (payload.version === 7) {
+    return {
+      ...payload,
+      version: 9,
+      career: payload.career ? refreshMigratedCareer({ ...payload.career, version: 7, eventHistory: [] }) : null
+    };
+  }
+
+  if (payload.version === 9) {
     return {
       ...payload,
       career: refreshMigratedCareer(payload.career)
@@ -288,9 +303,13 @@ export function migratePersistedSave(payload: PersistedSavePayload): PersistedSa
   if (payload.version === 3) {
     return {
       ...payload,
-      version: 8,
+      version: 9,
       career: payload.career
-        ? refreshMigratedCareer({ ...upgradeCareerStateV4(upgradeCareerStateV3(upgradeCareerStateV1(payload.career))), version: 6 })
+        ? refreshMigratedCareer({
+            ...upgradeCareerStateV4(upgradeCareerStateV3(upgradeCareerStateV1(payload.career))),
+            version: 7,
+            eventHistory: []
+          })
         : null
     };
   }
@@ -298,9 +317,13 @@ export function migratePersistedSave(payload: PersistedSavePayload): PersistedSa
   if (payload.version === 4) {
     return {
       ...payload,
-      version: 8,
+      version: 9,
       career: payload.career
-        ? refreshMigratedCareer({ ...upgradeCareerStateV4(upgradeCareerStateV3(upgradeCareerStateV2(payload.career))), version: 6 })
+        ? refreshMigratedCareer({
+            ...upgradeCareerStateV4(upgradeCareerStateV3(upgradeCareerStateV2(payload.career))),
+            version: 7,
+            eventHistory: []
+          })
         : null
     };
   }
@@ -308,9 +331,13 @@ export function migratePersistedSave(payload: PersistedSavePayload): PersistedSa
   if (payload.version === 5) {
     return {
       ...payload,
-      version: 8,
+      version: 9,
       career: payload.career
-        ? refreshMigratedCareer({ ...upgradeCareerStateV4(upgradeCareerStateV3(payload.career)), version: 6 })
+        ? refreshMigratedCareer({
+            ...upgradeCareerStateV4(upgradeCareerStateV3(payload.career)),
+            version: 7,
+            eventHistory: []
+          })
         : null
     };
   }
@@ -318,14 +345,16 @@ export function migratePersistedSave(payload: PersistedSavePayload): PersistedSa
   if (payload.version === 6) {
     return {
       ...payload,
-      version: 8,
-      career: payload.career ? refreshMigratedCareer({ ...upgradeCareerStateV4(payload.career), version: 6 }) : null
+      version: 9,
+      career: payload.career
+        ? refreshMigratedCareer({ ...upgradeCareerStateV4(payload.career), version: 7, eventHistory: [] })
+        : null
     };
   }
 
   return {
     ...payload,
-    version: 8,
+    version: 9,
     career: null
   };
 }

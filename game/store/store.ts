@@ -29,7 +29,7 @@ import {
   trainRosterAthlete,
   withdrawPromise
 } from "../career/ecosystem";
-import { eventEligibilityFor, getCareerEvent } from "../career/events";
+import { eventEligibilityFor, getCareerEvent, recordPastCareerEvents } from "../career/events";
 import { canCompeteWithInjury } from "../career/health";
 import { buildPreMatchBrief, settleCareerMatch } from "../career/hubs";
 import {
@@ -193,7 +193,7 @@ function createPersistedSavePayload(
   >
 ): PersistedSave {
   return {
-    version: 8,
+    version: 9,
     selectedPlayerId: state.selectedPlayerId,
     plannedTacticKey: state.plannedTacticKey,
     seed: state.seed,
@@ -360,29 +360,42 @@ function tournamentForCareerEvent(career: CareerState, seed: number) {
   };
 }
 
+function buildPreMatchBriefForTournament(career: CareerState, tournament: TournamentState) {
+  const context = getManagedMatchContext(tournament);
+
+  if (!context) {
+    return career.lastPreMatchBrief;
+  }
+
+  const opponentId =
+    context.playerAId === career.program.managedPlayerId ? context.playerBId : context.playerAId;
+
+  return buildPreMatchBrief({ state: career, opponentId }) ?? career.lastPreMatchBrief;
+}
+
 function addCareerTournamentIfReady(state: TournamentStoreState, career: CareerState) {
-  if (career.stage !== "pre_match" || state.tournament) {
+  if (career.stage !== "pre_match") {
     return { career, tournament: state.tournament, phase: state.phase };
+  }
+
+  if (state.tournament) {
+    return {
+      career: {
+        ...career,
+        lastPreMatchBrief: buildPreMatchBriefForTournament(career, state.tournament)
+      },
+      tournament: state.tournament,
+      phase: "overview" as AppPhase
+    };
   }
 
   const seed = randomSeed();
   const tournament = tournamentForCareerEvent(career, seed);
-  const prepared = createManagedMatchInput({
-    tournament,
-    playerMap,
-    tacticA: currentManagedTactic(state)
-  });
-  const opponentId = prepared
-    ? prepared.context.playerAId === career.program.managedPlayerId
-      ? prepared.context.playerBId
-      : prepared.context.playerAId
-    : "";
-  const brief = opponentId ? buildPreMatchBrief({ state: career, opponentId }) : null;
 
   return {
     career: {
       ...career,
-      lastPreMatchBrief: brief
+      lastPreMatchBrief: buildPreMatchBriefForTournament(career, tournament)
     },
     tournament,
     phase: "overview" as AppPhase
@@ -392,7 +405,7 @@ function addCareerTournamentIfReady(state: TournamentStoreState, career: CareerS
 function prependCareerNote(career: CareerState, note: string) {
   return {
     ...career,
-    notes: [note, ...career.notes].slice(0, 6)
+    notes: career.notes[0] === note ? career.notes : [note, ...career.notes].slice(0, 6)
   };
 }
 
@@ -604,11 +617,19 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
       }
 
       const career = refreshAssistantAdvice(
-        resolveMediaObjectives(
-          chargeFacilityUpkeep(
-            applyFacilityDailyRecovery(
-              advanceFacilityBuilds(
-                advanceRivalCircuit(resolvePromises(expireScoutReports(resolveDueScoutReports(advanceCareerCalendar(state.career)))))
+        recordPastCareerEvents(
+          resolveMediaObjectives(
+            chargeFacilityUpkeep(
+              applyFacilityDailyRecovery(
+                advanceFacilityBuilds(
+                  advanceRivalCircuit(
+                    resolvePromises(
+                      expireScoutReports(
+                        resolveDueScoutReports(advanceCareerCalendar(state.career, { tournament: state.tournament }))
+                      )
+                    )
+                  )
+                )
               )
             )
           )

@@ -96,9 +96,9 @@ function renderCalendarPage(overrides: Partial<Parameters<typeof CareerCalendarP
       onOpenYouth={vi.fn()}
       onOpenStaff={vi.fn()}
       onOpenPromises={vi.fn()}
+      onOpenPlayerProfile={vi.fn()}
       onApplyTraining={vi.fn()}
       onEnterEvent={vi.fn()}
-      onAdvanceDay={vi.fn()}
       onOpenScheduledCareerMatch={vi.fn()}
       onStartManagedMatch={vi.fn()}
       onContinueAfterPostMatch={vi.fn()}

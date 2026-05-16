@@ -76,7 +76,7 @@ describe("career save migration", () => {
     };
   }
 
-  it("migrates version 2 tournament saves into version 8 without schema loss", () => {
+  it("migrates version 2 tournament saves into version 9 without schema loss", () => {
     const legacy = {
       version: 2,
       selectedPlayerId: seededPlayers[0].player.id,
@@ -88,7 +88,7 @@ describe("career save migration", () => {
     const parsed = persistedSavePayloadSchema.parse(legacy);
     const migrated = migratePersistedSave(parsed);
 
-    expect(migrated.version).toBe(8);
+    expect(migrated.version).toBe(9);
     expect(migrated.selectedPlayerId).toBe(legacy.selectedPlayerId);
     expect(migrated.career).toBeNull();
     expect(persistedSaveSchema.parse(migrated)).toEqual(migrated);
@@ -114,8 +114,8 @@ describe("career save migration", () => {
     const parsed = persistedSavePayloadSchema.parse(save);
     const migrated = migratePersistedSave(parsed);
 
-    expect(migrated.version).toBe(8);
-    expect(migrated.career?.version).toBe(6);
+    expect(migrated.version).toBe(9);
+    expect(migrated.career?.version).toBe(7);
     expect(migrated.career?.ecosystem.recruitment.roster).toHaveLength(1);
     expect(migrated.career?.ecosystem.staff.candidates).toHaveLength(5);
     expect(migrated.career?.ecosystem.psychology[0]?.athleteId).toBe(seededPlayers[0].player.id);
@@ -151,8 +151,8 @@ describe("career save migration", () => {
     const parsed = persistedSavePayloadSchema.parse(save);
     const migrated = migratePersistedSave(parsed);
 
-    expect(migrated.version).toBe(8);
-    expect(migrated.career?.version).toBe(6);
+    expect(migrated.version).toBe(9);
+    expect(migrated.career?.version).toBe(7);
     expect(migrated.career?.ecosystem.lowerEventEntries).toEqual([]);
     expect(migrated.career?.rivals.programs[0]?.eventEntries).toEqual([]);
     expect(migrated.career?.rivals.circuitLog.some((entry) => entry.type === "form")).toBe(true);
@@ -187,8 +187,8 @@ describe("career save migration", () => {
     const parsed = persistedSavePayloadSchema.parse(save);
     const migrated = migratePersistedSave(parsed);
 
-    expect(migrated.version).toBe(8);
-    expect(migrated.career?.version).toBe(6);
+    expect(migrated.version).toBe(9);
+    expect(migrated.career?.version).toBe(7);
     expect(migrated.career?.rivals.programs).toHaveLength(4);
     expect(migrated.career?.matchPlanning.advice).toHaveLength(4);
     expect(migrated.career?.facilities).toHaveLength(5);
@@ -215,8 +215,8 @@ describe("career save migration", () => {
     const parsed = persistedSavePayloadSchema.parse(save);
     const migrated = migratePersistedSave(parsed);
 
-    expect(migrated.version).toBe(8);
-    expect(migrated.career?.version).toBe(6);
+    expect(migrated.version).toBe(9);
+    expect(migrated.career?.version).toBe(7);
     expect(migrated.career?.matchPlanning.activePlanId).toBe("plan-command-balance");
     expect(migrated.career?.facilities.find((entry) => entry.type === "analytics_lab")?.nextUpgradeCost).toBe(19500);
     expect(migrated.career?.media.sponsors[0]?.sponsorName).toBe("Aero String Labs");
@@ -255,16 +255,16 @@ describe("career save migration", () => {
     const parsed = persistedSavePayloadSchema.parse(save);
     const migrated = migratePersistedSave(parsed);
 
-    expect(migrated.version).toBe(8);
-    expect(migrated.career?.version).toBe(6);
+    expect(migrated.version).toBe(9);
+    expect(migrated.career?.version).toBe(7);
     expect(migrated.career?.lastMatchReport?.tacticalViewer).toBeNull();
     expect(persistedSaveSchema.parse(migrated)).toEqual(migrated);
   });
 
-  it("persists a career payload through the version 8 schema", () => {
+  it("persists a career payload through the version 9 schema", () => {
     const career = createInitialCareerState(seededPlayers[0].player.id, 456);
     const save = {
-      version: 8,
+      version: 9,
       selectedPlayerId: seededPlayers[0].player.id,
       plannedTacticKey: "balancedControl",
       seed: 456,
@@ -276,10 +276,35 @@ describe("career save migration", () => {
     expect(persistedSaveSchema.parse(save).career).toEqual(careerStateSchema.parse(career));
   });
 
+  it("migrates version 8 career saves with an empty event history", () => {
+    const career = createInitialCareerState(seededPlayers[0].player.id, 4561);
+    const { eventHistory: _eventHistory, ...careerWithoutHistory } = career;
+    const oldSave = {
+      version: 8,
+      selectedPlayerId: seededPlayers[0].player.id,
+      plannedTacticKey: "balancedControl",
+      seed: 4561,
+      tournament: null,
+      liveMatch: null,
+      career: {
+        ...careerWithoutHistory,
+        version: 6 as const
+      }
+    };
+
+    const parsed = persistedSavePayloadSchema.parse(oldSave);
+    const migrated = migratePersistedSave(parsed);
+
+    expect(migrated.version).toBe(9);
+    expect(migrated.career?.version).toBe(7);
+    expect(migrated.career?.eventHistory).toEqual([]);
+    expect(persistedSaveSchema.parse(migrated)).toEqual(migrated);
+  });
+
   it("preserves locked career identity when draft selection metadata differs", () => {
     const career = createInitialCareerState(seededPlayers[0].player.id, 466);
     const save = {
-      version: 8,
+      version: 9,
       selectedPlayerId: seededPlayers[5].player.id,
       plannedTacticKey: "balancedControl",
       seed: 466,
@@ -328,7 +353,7 @@ describe("career save migration", () => {
 
     const nextOpponentId = nextContext.playerAId === managedPlayerId ? nextContext.playerBId : nextContext.playerAId;
     const save = {
-      version: 8,
+      version: 9,
       selectedPlayerId: managedPlayerId,
       plannedTacticKey: "balancedControl",
       seed: 467,
@@ -362,7 +387,7 @@ describe("career save migration", () => {
 
     expect(preview.ok).toBe(true);
     if (preview.ok) {
-      expect(preview.save.version).toBe(8);
+      expect(preview.save.version).toBe(9);
       expect(preview.save.tournament?.id).toBe(event.id);
       expect(preview.save.tournament?.currentRoundIndex).toBe(1);
       expect(getManagedMatchContext(preview.save.tournament!)?.matchId).toBe(nextContext.matchId);
@@ -376,7 +401,7 @@ describe("career save migration", () => {
   it("defaults medical injury episodes when loading current saves from before the health pass", () => {
     const career = createInitialCareerState(seededPlayers[0].player.id, 462);
     const save = {
-      version: 8,
+      version: 9,
       selectedPlayerId: seededPlayers[0].player.id,
       plannedTacticKey: "balancedControl",
       seed: 462,
@@ -466,7 +491,7 @@ describe("career save migration", () => {
   it("previews a current exported save without mutating storage", () => {
     const career = createInitialCareerState(seededPlayers[0].player.id, 464);
     const save = {
-      version: 8,
+      version: 9,
       selectedPlayerId: seededPlayers[0].player.id,
       plannedTacticKey: "balancedControl",
       seed: 464,
@@ -482,8 +507,8 @@ describe("career save migration", () => {
 
     expect(preview.ok).toBe(true);
     if (preview.ok) {
-      expect(preview.save.version).toBe(8);
-      expect(preview.save.career?.version).toBe(6);
+      expect(preview.save.version).toBe(9);
+      expect(preview.save.career?.version).toBe(7);
     }
     expect(storage.getItem(STORAGE_KEY)).toBe(JSON.stringify(save));
     expect(storage.getItem(CORRUPT_STORAGE_KEY)).toBe("previous-corrupt-backup");
@@ -493,7 +518,7 @@ describe("career save migration", () => {
     const legacyPrefix = "Super";
     const career = createInitialCareerState(seededPlayers[0].player.id, 465);
     const save = {
-      version: 8,
+      version: 9,
       selectedPlayerId: seededPlayers[0].player.id,
       plannedTacticKey: "balancedControl",
       seed: 465,
@@ -558,7 +583,7 @@ describe("career save migration", () => {
 
     expect(preview.ok).toBe(true);
     if (preview.ok) {
-      expect(preview.save.version).toBe(8);
+      expect(preview.save.version).toBe(9);
       expect(preview.save.selectedPlayerId).toBe(legacy.selectedPlayerId);
       expect(preview.save.career).toBeNull();
     }

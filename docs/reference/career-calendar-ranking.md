@@ -50,6 +50,17 @@ $$
 \le \text{withdrawal deadline} \le \text{draw date} \le \text{start date}
 $$
 
+Every playable `16`-player career event must have at least four event days. The managed main-draw cadence is schedule-aware:
+
+| Managed round | Career date |
+| --- | --- |
+| `R16` | `event.startDate + 0` |
+| `QF` | `event.startDate + 1` |
+| `SF` | `event.startDate + 2` |
+| `F` | `event.startDate + 3` |
+
+The source of truth is `game/career/matchSchedule.ts`. Store-level day advancement must consult that helper so a due or overdue managed match cannot be skipped by a direct `advanceCareerDay()` call.
+
 ## Entry Eligibility
 
 `eventEligibilityFor(state, event)` is the entry gate used by store actions and tests.
@@ -72,11 +83,20 @@ If an event has not been entered and the career date moves past `entryDeadline`,
 ```text
 completed
 entered -> draw_published -> in_progress
+between_rounds -> next scheduled round date
 missed_deadline
 entry_open / scheduled
 ```
 
 This is intentionally derived rather than hand-mutated. The same save and date always produce the same event status.
+
+Career stage semantics:
+
+- `event_entered`: the event is entered, but no managed match is playable today.
+- `pre_match`: the next scheduled managed match is due or overdue.
+- `post_match`: a just-finished match needs review.
+- `between_rounds`: a non-final managed win has been reviewed; the next round is scheduled for a future career date.
+- `event_complete`: the active event has closed.
 
 ## Seeding Snapshot
 
@@ -112,6 +132,19 @@ $$
 
 This is a deliberate simplification. The model does not implement official rolling-week windows, exact official point tables, or separate official tour lists.
 
+## Career Event History
+
+`CareerState.eventHistory` stores one persistent record per event. Played closeouts are recorded when the managed run ends by title, final loss, or earlier elimination. Skipped or missed events are recorded after their event end date passes.
+
+History statuses are:
+
+```text
+champion | runner_up | semi_final | quarter_final | round_of_16
+skipped | missed_deadline | withdrawn
+```
+
+Records include event dates, tier, result status, awarded points, prize money, entry/travel costs, net cash, match ids, scorelines, and lightweight achievements such as `First Title`.
+
 ## Persistence
 
 Older current saves that predate event operations fields and `seasonPoints` remain valid.
@@ -120,6 +153,7 @@ Migration safety works in two layers:
 
 - Zod defaults let old ranking/event rows parse.
 - `migratePersistedSave` hydrates saved event rows from the fictional catalog so deadlines, locations, draw dates, and eligibility metadata are present after load/import.
+- version `8` career saves migrate to version `9` with `eventHistory: []`.
 - legacy quick-tournament saves that contain the previous real event name are normalized to the fictional `Harborline Open` name during load/import.
 
 The active local storage key remains `badminton-manager-save`.
