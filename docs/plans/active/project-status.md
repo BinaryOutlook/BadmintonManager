@@ -66,6 +66,8 @@ What is now stable:
 - the disposable-run knockout tree is now a reusable `KnockoutTree` component shared by Overview, Career Pre-Match, and Career Post-Match hubs while preserving clickable player names, placeholders, scorelines, managed-path highlighting, champion styling, and background match summaries
 - the live Match Command Center now uses a compact horizontal command surface with the primary point action beside the scoreboard, the tactical feed/viewer/telemetry/options visible across desktop viewports, and focused regression proof for duplicate action prevention
 - the Rescue MVP Plan 1 domain foundation now enforces schedule-aware career day advancement, spaces managed R16/QF/SF/F rounds across separate event dates, persists `eventHistory`, and migrates older saves safely
+- Rescue MVP Plan 2 now adds a shared career daily-action resolver: the topbar turns red for required `Play`, `Resume Match`, or `Review Match` work and stays green only when `Advance Day` is safe
+- entered Calendar rows now expose playable due-event actions instead of becoming disabled after entry
 
 ## Completed
 
@@ -140,6 +142,7 @@ What is now stable:
 - [x] extracted the bracket tree into a reusable component and rendered it in career pre-match and post-match event hubs
 - [x] rebuilt the live Match Command Center into a horizontal scoreboard/action/feed/viewer/telemetry/options command surface with focused unit and Playwright viewport coverage
 - [x] added the Rescue MVP Plan 1 schedule-aware career calendar foundation with direct store guards, `between_rounds`, event-history recording, save migration, and catalog invariant coverage
+- [x] implemented the Rescue MVP Plan 2 daily-action resolver, scheduled-match route, red/green topbar routing, playable entered-event Calendar actions, and explicit athlete selection gate coverage
 
 ## In Progress
 
@@ -154,6 +157,7 @@ What is now stable:
 - [ ] add real Past Events records after the domain history model lands; the current Calendar tab is intentionally a safe coming-state
 - [ ] track dense live-match directive labels as non-blocking polish debt; current proof does not require a Phase 4 source change
 - [ ] complete the broader Phase 5 screenshot matrix and visual review beyond the focused builder proof
+- [ ] run a manual playtest of the full Rescue MVP Plan 2 loop from explicit athlete selection through entered event, red match action, post-match review, next-day round spacing, and the next red match action
 
 ## Next
 

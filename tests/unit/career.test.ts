@@ -360,6 +360,34 @@ describe("career tournament state flow", () => {
     expect(nextRoundDay.tournament).toBe(betweenRounds.tournament);
   });
 
+  it("opens a due scheduled career match without advancing the saved career date", () => {
+    const managedPlayerId = seededPlayers[0].player.id;
+    const { career, event } = careerOnMetroEvent(managedPlayerId, 9304);
+    const dueCareer = {
+      ...career,
+      stage: "event_entered" as const,
+      lastPreMatchBrief: null
+    };
+    resetStoreForCareerFlow(managedPlayerId);
+    useTournamentStore.setState({
+      selectedPlayerId: managedPlayerId,
+      career: dueCareer,
+      tournament: null,
+      phase: "setup"
+    });
+
+    useTournamentStore.getState().openScheduledCareerMatch();
+
+    const afterOpen = useTournamentStore.getState();
+    const saved = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? "null");
+
+    expect(afterOpen.career?.date).toBe(event.startDate);
+    expect(afterOpen.career?.stage).toBe("pre_match");
+    expect(afterOpen.tournament?.id).toBe(event.id);
+    expect(afterOpen.phase).toBe("overview");
+    expect(saved?.career?.date).toBe(event.startDate);
+  });
+
   it("marks a managed loss and a managed final win complete exactly once", () => {
     const managedPlayerId = seededPlayers[0].player.id;
     const lossSetup = careerOnMetroEvent(managedPlayerId, 9301);

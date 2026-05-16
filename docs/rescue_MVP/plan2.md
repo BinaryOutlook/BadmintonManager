@@ -1,8 +1,8 @@
 # Rescue MVP Plan 2: Smart Advance Day and Full Athlete Selection
 
-Status: Draft technical brief  
-Target project: `BadmintonManager`  
-Builds on: `docs/rescue_MVP/plan0.md` and `docs/rescue_MVP/plan1.md`  
+Status: Draft technical brief
+Target project: `BadmintonManager`
+Builds on: `docs/rescue_MVP/plan0.md` and `docs/rescue_MVP/plan1.md`
 Prepared on: 2026-05-16
 
 ## 1. Executive Summary

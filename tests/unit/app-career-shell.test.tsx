@@ -1,9 +1,11 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
-import { App, canAdvanceCareerDate } from "../../app/App";
-import { seededPlayers } from "../../game/content/players";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import { App } from "../../app/App";
+import { CareerCalendarPage } from "../../components/CareerWorkbench";
+import { addDays } from "../../game/career/calendar";
+import { getCareerEvent } from "../../game/career/events";
 import { createInitialCareerState } from "../../game/career/state";
-import type { CareerState } from "../../game/career/models";
+import { seededPlayers } from "../../game/content/players";
 import { useTournamentStore } from "../../game/store/store";
 
 class MemoryStorage {
@@ -33,13 +35,14 @@ function installWindowStorage() {
   });
 }
 
-function resetStoreWithCareer(career: CareerState) {
+function resetStoreForCareer(career = createInitialCareerState(seededPlayers[0].player.id, 9901)) {
   installWindowStorage();
+
   useTournamentStore.setState({
     phase: "setup",
     selectedPlayerId: career.program.managedPlayerId,
     plannedTacticKey: "balancedControl",
-    seed: 7701,
+    seed: 9901,
     tournament: null,
     liveMatch: null,
     career,
@@ -49,111 +52,123 @@ function resetStoreWithCareer(career: CareerState) {
   });
 }
 
-describe("career shell day advancement", () => {
-  it("centralizes which career stages can advance the calendar", () => {
-    const managedPlayerId = seededPlayers[0].player.id;
-    const baseCareer = createInitialCareerState(managedPlayerId, 7701);
+function careerEnteredOnMetroStart() {
+  const career = createInitialCareerState(seededPlayers[0].player.id, 9902);
+  const event = getCareerEvent(career.events, "metro-open-300")!;
 
-    expect(canAdvanceCareerDate({ ...baseCareer, stage: "planning" }, "setup")).toBe(true);
-    expect(canAdvanceCareerDate({ ...baseCareer, stage: "event_entered" }, "overview")).toBe(true);
-    expect(canAdvanceCareerDate({ ...baseCareer, stage: "between_rounds" }, "overview")).toBe(true);
-    expect(canAdvanceCareerDate({ ...baseCareer, stage: "event_complete" }, "setup")).toBe(true);
-    expect(canAdvanceCareerDate({ ...baseCareer, stage: "pre_match" }, "overview")).toBe(false);
-    expect(canAdvanceCareerDate({ ...baseCareer, stage: "post_match" }, "overview")).toBe(false);
-    expect(canAdvanceCareerDate({ ...baseCareer, stage: "event_entered" }, "match")).toBe(false);
-    expect(canAdvanceCareerDate(null, "setup")).toBe(false);
-  });
-
-  it("advances the career date from the global topbar outside the calendar page", () => {
-    const managedPlayerId = seededPlayers[0].player.id;
-    const career = createInitialCareerState(managedPlayerId, 7702);
-    resetStoreWithCareer(career);
-
-    render(<App />);
-
-    expect(screen.getByRole("heading", { name: "Career Command Center" })).toBeInTheDocument();
-
-    fireEvent.click(within(screen.getByRole("banner")).getByRole("button", { name: "Advance Day" }));
-
-    expect(useTournamentStore.getState().career?.date).toBe("2026-06-02");
-    expect(screen.getByRole("heading", { name: "Calendar" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Upcoming" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Past Events" })).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: "Advance Day" })).toHaveLength(1);
-  });
-
-  it("keeps normal career pages free of duplicate in-page Advance Day buttons", () => {
-    const managedPlayerId = seededPlayers[0].player.id;
-    const career = createInitialCareerState(managedPlayerId, 7704);
-    resetStoreWithCareer(career);
-
-    render(<App />);
-
-    expect(screen.getAllByRole("button", { name: "Advance Day" })).toHaveLength(1);
-
-    fireEvent.click(within(screen.getByRole("main")).getByRole("button", { name: "Program Hub" }));
-    expect(screen.getByRole("heading", { name: "Program Ecosystem" })).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: "Advance Day" })).toHaveLength(1);
-    expect(within(screen.getByRole("main")).queryByRole("button", { name: "Advance Day" })).not.toBeInTheDocument();
-
-    fireEvent.click(within(screen.getByRole("main")).getByRole("button", { name: /Scouting Network/ }));
-    expect(screen.getByRole("heading", { name: "Reduce Uncertainty" })).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: "Advance Day" })).toHaveLength(1);
-    expect(within(screen.getByRole("main")).queryByRole("button", { name: "Advance Day" })).not.toBeInTheDocument();
-
-    fireEvent.click(within(screen.getByRole("main")).getByRole("button", { name: "Program Hub" }));
-    fireEvent.click(within(screen.getByRole("main")).getByRole("button", { name: /Facilities Upgrades/ }));
-    expect(screen.getByRole("heading", { name: "Facilities Upgrades" })).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: "Advance Day" })).toHaveLength(1);
-    expect(within(screen.getByRole("main")).queryByRole("button", { name: "Advance Day" })).not.toBeInTheDocument();
-  });
-
-  it("routes into the pre-match hub when a topbar day advance reaches match day", () => {
-    const managedPlayerId = seededPlayers[0].player.id;
-    const career = {
-      ...createInitialCareerState(managedPlayerId, 7703),
-      date: "2026-06-02",
-      activeEventId: "metro-open-300",
-      enteredEventIds: ["metro-open-300"],
+  return {
+    event,
+    career: {
+      ...career,
+      date: event.startDate,
+      activeEventId: event.id,
+      enteredEventIds: [event.id],
       stage: "event_entered" as const
-    };
-    resetStoreWithCareer(career);
+    }
+  };
+}
+
+function renderCalendarPage(overrides: Partial<Parameters<typeof CareerCalendarPage>[0]> = {}) {
+  const { career } = careerEnteredOnMetroStart();
+
+  return render(
+    <CareerCalendarPage
+      career={career}
+      tournament={null}
+      saveRecovery={null}
+      activeSavePresent={true}
+      corruptSavePresent={false}
+      onStartCareer={vi.fn()}
+      onOpenTraining={vi.fn()}
+      onOpenCalendar={vi.fn()}
+      onOpenHome={vi.fn()}
+      onOpenLiveMatch={vi.fn()}
+      onOpenPostMatch={vi.fn()}
+      onOpenProgram={vi.fn()}
+      onOpenRivals={vi.fn()}
+      onOpenMatchPlanning={vi.fn()}
+      onOpenSaveManager={vi.fn()}
+      onRequestNewSession={vi.fn()}
+      onOpenFacilities={vi.fn()}
+      onOpenMedia={vi.fn()}
+      onOpenScouting={vi.fn()}
+      onOpenRecruitment={vi.fn()}
+      onOpenYouth={vi.fn()}
+      onOpenStaff={vi.fn()}
+      onOpenPromises={vi.fn()}
+      onOpenPlayerProfile={vi.fn()}
+      onApplyTraining={vi.fn()}
+      onEnterEvent={vi.fn()}
+      onOpenScheduledCareerMatch={vi.fn()}
+      onStartManagedMatch={vi.fn()}
+      onContinueAfterPostMatch={vi.fn()}
+      onCommissionScoutReport={vi.fn()}
+      onMakeRecruitmentOffer={vi.fn()}
+      onTrainRosterAthlete={vi.fn()}
+      onEnterRosterAthleteLowerEvent={vi.fn()}
+      onDevelopYouthProspect={vi.fn()}
+      onEnterYouthLowerEvent={vi.fn()}
+      onHireStaffMember={vi.fn()}
+      onSetManagedAthletePromise={vi.fn()}
+      onWithdrawPromise={vi.fn()}
+      onAdvanceRivalCircuit={vi.fn()}
+      onUpgradeFacility={vi.fn()}
+      onResolveMediaObjectives={vi.fn()}
+      onUpdateAdvancedTacticPlan={vi.fn()}
+      onRefreshAssistantAdvice={vi.fn()}
+      onApplyAssistantAdvice={vi.fn()}
+      onOverrideAssistantAdvice={vi.fn()}
+      {...overrides}
+    />
+  );
+}
+
+describe("career shell daily action", () => {
+  it("shows a red topbar action for a due scheduled match and opens it without advancing the date", () => {
+    const { career, event } = careerEnteredOnMetroStart();
+    resetStoreForCareer(career);
 
     render(<App />);
 
-    fireEvent.click(within(screen.getByRole("banner")).getByRole("button", { name: "Advance Day" }));
+    const playButton = screen.getByRole("button", { name: `Play ${event.name} R16` });
+    expect(playButton).toHaveAttribute("data-tone", "required");
 
-    expect(useTournamentStore.getState().career?.date).toBe("2026-06-03");
-    expect(useTournamentStore.getState().career?.stage).toBe("pre_match");
-    expect(useTournamentStore.getState().tournament).not.toBeNull();
-    expect(screen.getByRole("heading", { name: "Opponent Briefing" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Knockout tree")).toBeInTheDocument();
+    fireEvent.click(playButton);
 
-    fireEvent.click(within(screen.getByRole("banner")).getByRole("button", { name: "Open Live Desk" }));
-
-    expect(useTournamentStore.getState().career?.date).toBe("2026-06-03");
+    const afterOpen = useTournamentStore.getState();
+    expect(afterOpen.career?.date).toBe(event.startDate);
+    expect(afterOpen.career?.stage).toBe("pre_match");
+    expect(afterOpen.tournament?.id).toBe(event.id);
     expect(screen.getByRole("heading", { name: "Opponent Briefing" })).toBeInTheDocument();
   });
 
-  it("blocks topbar day advancement when an unplayed match is already due", () => {
-    const managedPlayerId = seededPlayers[0].player.id;
-    const career = {
-      ...createInitialCareerState(managedPlayerId, 7705),
-      date: "2026-06-03",
-      activeEventId: "metro-open-300",
-      enteredEventIds: ["metro-open-300"],
-      stage: "event_entered" as const
-    };
-    resetStoreWithCareer(career);
+  it("shows a green topbar action and advances exactly one day when no daily blocker remains", () => {
+    const career = createInitialCareerState(seededPlayers[0].player.id, 9903);
+    resetStoreForCareer(career);
 
     render(<App />);
 
-    fireEvent.click(within(screen.getByRole("banner")).getByRole("button", { name: "Advance Day" }));
+    const advanceButton = screen.getByRole("button", { name: "Advance Day" });
+    expect(advanceButton).toHaveAttribute("data-tone", "ready");
 
-    expect(useTournamentStore.getState().career?.date).toBe("2026-06-03");
-    expect(useTournamentStore.getState().career?.stage).toBe("pre_match");
-    expect(useTournamentStore.getState().career?.notes[0]).toContain("Match day blocked");
-    expect(useTournamentStore.getState().tournament).not.toBeNull();
-    expect(screen.getByRole("heading", { name: "Opponent Briefing" })).toBeInTheDocument();
+    fireEvent.click(advanceButton);
+
+    expect(useTournamentStore.getState().career?.date).toBe(addDays(career.date, 1));
+  });
+});
+
+describe("career calendar event actions", () => {
+  it("keeps an entered due event playable from the calendar row", () => {
+    const { career, event } = careerEnteredOnMetroStart();
+    const onOpenScheduledCareerMatch = vi.fn();
+
+    renderCalendarPage({ career, onOpenScheduledCareerMatch });
+
+    const playButton = screen.getByRole("button", { name: `Play ${event.name} R16` });
+    expect(playButton).toBeEnabled();
+
+    fireEvent.click(playButton);
+
+    expect(onOpenScheduledCareerMatch).toHaveBeenCalledWith(event.id);
   });
 });

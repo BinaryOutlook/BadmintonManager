@@ -265,6 +265,33 @@ textarea:focus-visible {
   color: var(--text);
 }
 
+.command-button-required {
+  border-color: rgba(255, 91, 110, 0.45);
+  background: #ff5b6e;
+  color: #170407;
+  box-shadow: 0 0 24px rgba(255, 91, 110, 0.16);
+}
+
+.topbar-continue-ready {
+  border-color: rgba(57, 255, 20, 0.18);
+  background: var(--lime);
+  color: #061004;
+  box-shadow: 0 0 24px rgba(57, 255, 20, 0.18);
+}
+
+.topbar-continue-required {
+  border-color: rgba(255, 91, 110, 0.48);
+  background: #ff5b6e;
+  color: #170407;
+  box-shadow: 0 0 24px rgba(255, 91, 110, 0.18);
+}
+
+.topbar-continue-disabled {
+  border-color: var(--border);
+  background: rgba(35, 39, 44, 0.94);
+  color: var(--muted);
+}
+
 .workspace-shell {
   --sidebar-width: 15rem;
   display: grid;

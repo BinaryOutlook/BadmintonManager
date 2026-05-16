@@ -105,6 +105,7 @@ export interface TournamentStoreState {
   applyCareerTraining: (planId: string) => void;
   enterCareerEvent: (eventId: string) => void;
   advanceCareerDay: () => void;
+  openScheduledCareerMatch: () => void;
   continueCareerAfterPostMatch: () => void;
   commissionScoutReport: (subjectId: string, subjectType: "candidate" | "prospect" | "opponent") => void;
   makeRecruitmentOffer: (candidateId: string) => void;
@@ -640,6 +641,37 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
         career: withTournament.career,
         tournament: withTournament.tournament,
         phase: withTournament.phase
+      };
+      persist(next);
+      return next;
+    });
+  },
+  openScheduledCareerMatch: () => {
+    set((state) => {
+      if (!state.career) {
+        return state;
+      }
+
+      const schedule = currentManagedMatchSchedule({
+        career: state.career,
+        tournament: state.tournament
+      });
+
+      if (!schedule?.playable) {
+        return state;
+      }
+
+      const career = {
+        ...state.career,
+        stage: "pre_match" as const
+      };
+      const withTournament = addCareerTournamentIfReady(state, career);
+      const next = {
+        ...state,
+        career: withTournament.career,
+        tournament: withTournament.tournament,
+        liveMatch: null,
+        phase: "overview" as AppPhase
       };
       persist(next);
       return next;

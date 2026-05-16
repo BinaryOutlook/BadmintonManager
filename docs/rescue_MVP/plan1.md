@@ -1,8 +1,8 @@
 # Rescue MVP Plan 1: Schedule-Aware Career Calendar and Realistic Event Flow
 
-Status: Draft technical brief  
-Target project: `BadmintonManager`  
-Builds on: `docs/rescue_MVP/plan0.md`  
+Status: Draft technical brief
+Target project: `BadmintonManager`
+Builds on: `docs/rescue_MVP/plan0.md`
 Prepared on: 2026-05-16
 
 ## 1. Executive Summary
