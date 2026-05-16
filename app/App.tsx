@@ -283,8 +283,8 @@ export function App() {
     setActivePage({ id: "setup" });
   }
 
-  function performStartTournament() {
-    startTournament(quickTournamentDraftPlayerId ?? selectedPlayerId);
+  function performStartTournament(playerId?: string) {
+    startTournament(playerId ?? quickTournamentDraftPlayerId ?? selectedPlayerId);
     setQuickTournamentDraftPlayerId(null);
     setActivePage({ id: "bracket" });
   }
@@ -299,13 +299,16 @@ export function App() {
     setQuickTournamentDraftPlayerId(playerId);
   }
 
-  function requestStartTournament() {
+  function requestStartTournament(playerId?: string) {
+    const requestedPlayerId = playerId ?? quickTournamentDraftPlayerId ?? selectedPlayerId;
+
     if (career) {
+      setQuickTournamentDraftPlayerId(requestedPlayerId);
       setPendingConfirm("startTournamentReplaceCareer");
       return;
     }
 
-    performStartTournament();
+    performStartTournament(requestedPlayerId);
   }
 
   function performStartCareer(managedPlayerId?: string) {
