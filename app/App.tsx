@@ -26,7 +26,8 @@ import { SetupView } from "../components/SetupView";
 import { TacticalIntelPanel } from "../components/TacticalIntelPanel";
 import { playerMap } from "../game/content/players";
 import { tacticOptions } from "../game/content/tactics";
-import { useTournamentStore } from "../game/store/store";
+import { useTournamentStore, type AppPhase } from "../game/store/store";
+import type { CareerStage, CareerState } from "../game/career/models";
 import type { PersistedSave } from "../game/store/save";
 import { isPhaseBoundPage, pageForPhase, type AppPage } from "./pages";
 import { PlayerProfilePage } from "./pages/PlayerProfilePage";
@@ -71,6 +72,17 @@ const SIDEBAR_MAX_WIDTH = 340;
 const SIDEBAR_COLLAPSED_WIDTH = 64;
 
 const commandGroupOrder: CommandGroupId[] = ["Core", "Program", "Match", "Operations", "System"];
+
+const advanceableCareerStages: ReadonlySet<CareerStage> = new Set([
+  "planning",
+  "event_entered",
+  "event_complete"
+]);
+
+export function canAdvanceCareerDate(career: CareerState | null, phase: AppPhase) {
+  return Boolean(career && phase !== "match" && advanceableCareerStages.has(career.stage));
+}
+
 
 function loadThemeAccent(): ThemeAccent {
   if (typeof window === "undefined") {
@@ -346,16 +358,12 @@ export function App() {
   }
 
   function continueLocalSave() {
-    if (career?.stage === "post_match") {
-      setActivePage({ id: "review" });
-    } else if (career?.stage === "pre_match") {
-      setActivePage({ id: "bracket" });
-    } else if (career) {
-      setActivePage({ id: "home" });
-    } else {
-      setActivePage(pageForPhase(phase));
+    if (career) {
+      continueCareer();
+      return;
     }
 
+    setActivePage(pageForPhase(phase));
   }
 
   function continueCareer() {
@@ -363,7 +371,14 @@ export function App() {
       return;
     }
 
-    setActivePage(career.stage === "post_match" ? { id: "review" } : career.stage === "pre_match" ? { id: "bracket" } : { id: "home" });
+    if (phase === "match") {
+      setActivePage({ id: "liveMatch" });
+      return;
+    }
+
+    setActivePage(
+      career.stage === "post_match" ? { id: "review" } : career.stage === "pre_match" ? { id: "bracket" } : { id: "home" }
+    );
   }
 
   function confirmImport(save: PersistedSave) {
@@ -597,6 +612,11 @@ export function App() {
   }
 
   function handleShellContinue() {
+    if (canAdvanceCareerDate(career, phase)) {
+      handleAdvanceCareerDay();
+      return;
+    }
+
     if (career) {
       continueCareer();
       return;
@@ -663,6 +683,7 @@ export function App() {
       onOpenYouth: () => setActivePage({ id: "youth" }),
       onOpenStaff: () => setActivePage({ id: "staff" }),
       onOpenPromises: () => setActivePage({ id: "promises" }),
+      onOpenPlayerProfile: openPlayerProfile,
       onApplyTraining: applyCareerTraining,
       onEnterEvent: enterCareerEvent,
       onAdvanceDay: handleAdvanceCareerDay,
@@ -900,12 +921,17 @@ export function App() {
     : corruptSavePresent
       ? "Recovery available"
       : "No active save";
+  const careerCanAdvanceDate = canAdvanceCareerDate(career, phase);
   const continueLabel = career
-    ? career.stage === "post_match"
-      ? "Review Match"
-      : career.stage === "pre_match"
-        ? "Open Live Desk"
-        : "Continue Career"
+    ? phase === "match"
+      ? "Resume Match"
+      : careerCanAdvanceDate
+        ? "Advance Day"
+        : career.stage === "post_match"
+          ? "Review Match"
+          : career.stage === "pre_match"
+            ? "Open Live Desk"
+            : "Continue Career"
     : activeSavePresent
       ? "Continue Save"
       : "Start";
