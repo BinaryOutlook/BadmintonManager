@@ -26,6 +26,7 @@ import { activeAdvancedTacticPlan, buildPreMatchPlanningBridge, calculateTacticE
 import { trainingPlans } from "../game/career/training";
 import { STORAGE_KEY, type SaveRecoveryNotice } from "../game/store/store";
 import { isManagedPlayerStillInEvent, type TournamentState } from "../game/tournament/tournament";
+import { KnockoutTree } from "./KnockoutTree";
 import { TacticalMatchViewer } from "./TacticalMatchViewer";
 
 interface CareerPageProps {
@@ -52,6 +53,7 @@ interface CareerPageProps {
   onOpenYouth: () => void;
   onOpenStaff: () => void;
   onOpenPromises: () => void;
+  onOpenPlayerProfile: (playerId: string) => void;
   onApplyTraining: (planId: string) => void;
   onEnterEvent: (eventId: string) => void;
   onAdvanceDay: () => void;
@@ -2006,9 +2008,6 @@ export function CareerCalendarPage(props: CareerPageProps) {
           <button className="command-button command-button-secondary" type="button" onClick={props.onOpenHome}>
             Career Home
           </button>
-          <button className="command-button command-button-primary" type="button" onClick={props.onAdvanceDay}>
-            Advance Day
-          </button>
         </div>
       </div>
 
@@ -2370,6 +2369,16 @@ export function CareerPreMatchHubPage(props: CareerPageProps) {
             Adjust Match Plan
           </button>
         </section>
+
+        {props.tournament ? (
+          <KnockoutTree
+            tournament={props.tournament}
+            selectedPlayerId={props.career.program.managedPlayerId}
+            title="Current Event Bracket"
+            subtitle="Managed path, pending match, and background results"
+            onOpenPlayerProfile={props.onOpenPlayerProfile}
+          />
+        ) : null}
       </div>
     </section>
   );
@@ -2432,6 +2441,16 @@ export function CareerPostMatchHubPage(props: CareerPageProps) {
       </section>
 
       <div className="career-hub-grid">
+        {props.tournament ? (
+          <KnockoutTree
+            tournament={props.tournament}
+            selectedPlayerId={props.career.program.managedPlayerId}
+            title="Current Event Bracket"
+            subtitle="Latest result, live path, and background match summaries"
+            onOpenPlayerProfile={props.onOpenPlayerProfile}
+          />
+        ) : null}
+
         <section className="command-panel">
           <div className="panel-header">
             <h2>{report ? `${report.result.toUpperCase()} vs ${opponent?.name}` : "No report"}</h2>
