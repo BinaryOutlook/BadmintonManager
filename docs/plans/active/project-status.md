@@ -1,6 +1,6 @@
 # Project Status
 
-Status date: 2026-05-11
+Status date: 2026-05-16
 Current version target: `v0.2.4 UI Framework and Season-Ready Layout`
 Overall phase: UI/career/save trust and release polish on top of the `v0.2.3` match-algorithm baseline
 Chosen stack: Option A local-first SPA
@@ -60,6 +60,7 @@ What is now stable:
 - the UIUX1Change dense-page fidelity slice now makes Portal Home the active-career operations hub with tasks/inbox, next event, calendar snapshot, readiness/ranking pressure, recent match evidence, save state, and a visible Continue action
 - training, calendar/competition, match planning, live match, and post-match review now expose compact management status strips above their grids, tables, telemetry, and decision panels
 - Save Manager now leads with active slot metadata for slot state, mode, managed athlete, save version, import preview, and quarantine state while preserving export, import preview/confirm, active-save deletion, and corrupt-backup deletion safety
+- the live Match Command Center now uses a compact horizontal command surface with the primary point action beside the scoreboard, the tactical feed/viewer/telemetry/options visible across desktop viewports, and focused regression proof for duplicate action prevention
 
 ## Completed
 
@@ -128,6 +129,7 @@ What is now stable:
 - [x] standardized the management shell around a minimal top status bar, grouped primary command sidebar, page canvas, and overlay host while preserving Save Manager, Settings, locked identity, and tournament continuation reachability
 - [x] remediated Settings and confirmation overlay keyboard behavior with initial focus, focus containment, safe Escape handling, focus restoration, and focused Playwright proof
 - [x] converted the active Portal, training, calendar/competition, tactics, live match, post-match review, and Save Manager surfaces toward compact management-page contracts with focused Playwright coverage
+- [x] rebuilt the live Match Command Center into a horizontal scoreboard/action/feed/viewer/telemetry/options command surface with focused unit and Playwright viewport coverage
 
 ## In Progress
 
