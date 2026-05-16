@@ -31,6 +31,7 @@ import {
 } from "../../game/career/ecosystem";
 import { eventEligibilityFor, getCareerEvent } from "../../game/career/events";
 import { settleCareerMatch } from "../../game/career/hubs";
+import { scheduledDateForRound } from "../../game/career/matchSchedule";
 import { rankingFor } from "../../game/career/rankings";
 import { advanceRivalCircuit } from "../../game/career/rivals";
 import { createInitialCareerState, managedAthlete } from "../../game/career/state";
@@ -286,6 +287,34 @@ describe("career athlete identity lock", () => {
 });
 
 describe("career tournament state flow", () => {
+  it("blocks direct day advancement when an active managed match is due and prepares the tournament", () => {
+    const managedPlayerId = seededPlayers[0].player.id;
+    const initial = createInitialCareerState(managedPlayerId, 9202);
+    const event = getCareerEvent(initial.events, "metro-open-300")!;
+    resetStoreForCareerFlow(managedPlayerId);
+    useTournamentStore.setState({
+      selectedPlayerId: managedPlayerId,
+      career: {
+        ...initial,
+        date: event.startDate,
+        activeEventId: event.id,
+        enteredEventIds: [event.id],
+        stage: "event_entered" as const
+      },
+      tournament: null,
+      phase: "setup"
+    });
+
+    useTournamentStore.getState().advanceCareerDay();
+
+    const blocked = useTournamentStore.getState();
+    expect(blocked.career?.date).toBe(event.startDate);
+    expect(blocked.career?.stage).toBe("pre_match");
+    expect(blocked.tournament?.id).toBe(event.id);
+    expect(blocked.phase).toBe("overview");
+    expect(blocked.career?.notes[0]).toContain(`play ${event.name} R16 before advancing`);
+  });
+
   it("keeps a career event active after a forced non-final managed win and builds the next briefing", () => {
     const managedPlayerId = seededPlayers[0].player.id;
     const { career, event, tournament } = careerOnMetroEvent(managedPlayerId);
@@ -317,10 +346,18 @@ describe("career tournament state flow", () => {
 
     const betweenRounds = useTournamentStore.getState();
     expect(betweenRounds.tournament).not.toBeNull();
-    expect(betweenRounds.career?.stage).toBe("pre_match");
+    expect(betweenRounds.career?.date).toBe(event.startDate);
+    expect(betweenRounds.career?.stage).toBe("between_rounds");
     expect(betweenRounds.career?.activeEventId).toBe(event.id);
     expect(betweenRounds.career?.completedEventIds).not.toContain(event.id);
     expect(betweenRounds.career?.lastPreMatchBrief?.opponentId).toBe(nextOpponentId);
+
+    useTournamentStore.getState().advanceCareerDay();
+
+    const nextRoundDay = useTournamentStore.getState();
+    expect(nextRoundDay.career?.date).toBe(scheduledDateForRound(event, "QF"));
+    expect(nextRoundDay.career?.stage).toBe("pre_match");
+    expect(nextRoundDay.tournament).toBe(betweenRounds.tournament);
   });
 
   it("marks a managed loss and a managed final win complete exactly once", () => {
@@ -340,6 +377,13 @@ describe("career tournament state flow", () => {
     const afterLoss = useTournamentStore.getState();
     expect(afterLoss.tournament?.eliminated).toBe(true);
     expect(eventCompletionCount(afterLoss.career?.completedEventIds ?? [], lossSetup.event.id)).toBe(1);
+    expect(afterLoss.career?.eventHistory).toHaveLength(1);
+    expect(afterLoss.career?.eventHistory[0]).toMatchObject({
+      eventId: lossSetup.event.id,
+      status: "round_of_16",
+      pointsAwarded: lossSetup.event.rankingPoints.R16,
+      prizeMoney: lossSetup.event.prizeMoney.R16
+    });
 
     useTournamentStore.getState().continueCareerAfterPostMatch();
 
@@ -353,7 +397,10 @@ describe("career tournament state flow", () => {
     resetStoreForCareerFlow(managedPlayerId);
     useTournamentStore.setState({
       selectedPlayerId: managedPlayerId,
-      career: finalSetup.career,
+      career: {
+        ...finalSetup.career,
+        date: scheduledDateForRound(finalSetup.event, "F")
+      },
       tournament: finalTournament,
       phase: "overview"
     });
@@ -364,6 +411,12 @@ describe("career tournament state flow", () => {
     const afterTitle = useTournamentStore.getState();
     expect(afterTitle.tournament?.championId).toBe(managedPlayerId);
     expect(eventCompletionCount(afterTitle.career?.completedEventIds ?? [], finalSetup.event.id)).toBe(1);
+    expect(afterTitle.career?.eventHistory.filter((record) => record.eventId === finalSetup.event.id)).toHaveLength(1);
+    expect(afterTitle.career?.eventHistory.find((record) => record.eventId === finalSetup.event.id)).toMatchObject({
+      status: "champion",
+      pointsAwarded: finalSetup.event.rankingPoints.champion,
+      prizeMoney: finalSetup.event.prizeMoney.champion
+    });
 
     useTournamentStore.getState().continueCareerAfterPostMatch();
 
@@ -371,6 +424,78 @@ describe("career tournament state flow", () => {
     expect(useTournamentStore.getState().career?.stage).toBe("event_complete");
     expect(useTournamentStore.getState().career?.activeEventId).toBeNull();
     expect(eventCompletionCount(useTournamentStore.getState().career?.completedEventIds ?? [], finalSetup.event.id)).toBe(1);
+    expect(useTournamentStore.getState().career?.eventHistory.filter((record) => record.eventId === finalSetup.event.id)).toHaveLength(1);
+  });
+
+  it("spaces R16, QF, SF, and final managed rounds across separate career dates", () => {
+    const managedPlayerId = seededPlayers[0].player.id;
+    const { career, event, tournament } = careerOnMetroEvent(managedPlayerId, 9304);
+    resetStoreForCareerFlow(managedPlayerId);
+    useTournamentStore.setState({
+      selectedPlayerId: managedPlayerId,
+      career,
+      tournament,
+      phase: "overview"
+    });
+
+    for (const round of ["R16", "QF", "SF"] as const) {
+      expect(useTournamentStore.getState().career?.date).toBe(scheduledDateForRound(event, round));
+      expect(useTournamentStore.getState().career?.stage).toBe("pre_match");
+      expect(getManagedMatchContext(useTournamentStore.getState().tournament!)?.roundName).toBe(round);
+
+      startForcedStoreMatch(true);
+      useTournamentStore.getState().advanceAfterMatch();
+
+      expect(useTournamentStore.getState().career?.date).toBe(scheduledDateForRound(event, round));
+      expect(useTournamentStore.getState().career?.stage).toBe("post_match");
+
+      useTournamentStore.getState().continueCareerAfterPostMatch();
+
+      expect(useTournamentStore.getState().career?.stage).toBe("between_rounds");
+      expect(useTournamentStore.getState().career?.date).toBe(scheduledDateForRound(event, round));
+
+      useTournamentStore.getState().startManagedMatch();
+      expect(useTournamentStore.getState().liveMatch).toBeNull();
+
+      useTournamentStore.getState().advanceCareerDay();
+    }
+
+    expect(useTournamentStore.getState().career?.date).toBe(scheduledDateForRound(event, "F"));
+    expect(useTournamentStore.getState().career?.stage).toBe("pre_match");
+    expect(getManagedMatchContext(useTournamentStore.getState().tournament!)?.roundName).toBe("F");
+
+    startForcedStoreMatch(true);
+    useTournamentStore.getState().advanceAfterMatch();
+
+    expect(useTournamentStore.getState().career?.eventHistory.filter((record) => record.eventId === event.id)).toHaveLength(1);
+    expect(useTournamentStore.getState().career?.eventHistory.find((record) => record.eventId === event.id)?.status).toBe("champion");
+  });
+
+  it("records missed past events with zero rewards when their end date passes", () => {
+    const managedPlayerId = seededPlayers[0].player.id;
+    const career = createInitialCareerState(managedPlayerId, 9305);
+    const event = getCareerEvent(career.events, "metro-open-300")!;
+    resetStoreForCareerFlow(managedPlayerId);
+    useTournamentStore.setState({
+      selectedPlayerId: managedPlayerId,
+      career: {
+        ...career,
+        date: addDays(event.startDate, event.durationDays - 1)
+      },
+      tournament: null,
+      phase: "setup"
+    });
+
+    useTournamentStore.getState().advanceCareerDay();
+
+    const record = useTournamentStore.getState().career?.eventHistory.find((entry) => entry.eventId === event.id);
+    expect(record).toMatchObject({
+      status: "missed_deadline",
+      entered: false,
+      pointsAwarded: 0,
+      prizeMoney: 0,
+      netCash: 0
+    });
   });
 
   it("settles final placement rewards only once when a completed event is replayed after reload", () => {
@@ -437,6 +562,7 @@ describe("career tournament state flow", () => {
     expect(firstPrizeLedger).toHaveLength(1);
     expect(replayedPrizeLedger).toHaveLength(1);
     expect(eventCompletionCount(replayed.completedEventIds, event.id)).toBe(1);
+    expect(replayed.eventHistory.filter((entry) => entry.eventId === event.id)).toHaveLength(1);
     expect(replayed.lastMatchReport?.pointsDelta).toBe(0);
     expect(replayed.lastMatchReport?.cashDelta).toBe(0);
   });
@@ -821,7 +947,7 @@ describe("dynamic rival ecosystem", () => {
   it("seeds persistent rival programs with ranked rosters and pressure metadata", () => {
     const career = createInitialCareerState(seededPlayers[0].player.id, 8201);
 
-    expect(career.version).toBe(6);
+    expect(career.version).toBe(7);
     expect(career.rivals.programs).toHaveLength(4);
     expect(career.rivals.programs[0]?.ageCurve).toMatchObject({ peakAge: 26, declineRate: 0.09 });
     expect(career.rivals.programs[0]?.roster[0]?.currentRank).toBeGreaterThan(0);
@@ -942,7 +1068,7 @@ describe("advanced tactics and assistant advice", () => {
     const career = createInitialCareerState(seededPlayers[0].player.id, 8301);
     const plan = activeAdvancedTacticPlan(career);
 
-    expect(career.version).toBe(6);
+    expect(career.version).toBe(7);
     expect(plan).toMatchObject({
       tempo: 52,
       rearCourtPressure: 58,

@@ -56,6 +56,7 @@ describe("career shell day advancement", () => {
 
     expect(canAdvanceCareerDate({ ...baseCareer, stage: "planning" }, "setup")).toBe(true);
     expect(canAdvanceCareerDate({ ...baseCareer, stage: "event_entered" }, "overview")).toBe(true);
+    expect(canAdvanceCareerDate({ ...baseCareer, stage: "between_rounds" }, "overview")).toBe(true);
     expect(canAdvanceCareerDate({ ...baseCareer, stage: "event_complete" }, "setup")).toBe(true);
     expect(canAdvanceCareerDate({ ...baseCareer, stage: "pre_match" }, "overview")).toBe(false);
     expect(canAdvanceCareerDate({ ...baseCareer, stage: "post_match" }, "overview")).toBe(false);
@@ -129,6 +130,28 @@ describe("career shell day advancement", () => {
     fireEvent.click(within(screen.getByRole("banner")).getByRole("button", { name: "Open Live Desk" }));
 
     expect(useTournamentStore.getState().career?.date).toBe("2026-06-03");
+    expect(screen.getByRole("heading", { name: "Opponent Briefing" })).toBeInTheDocument();
+  });
+
+  it("blocks topbar day advancement when an unplayed match is already due", () => {
+    const managedPlayerId = seededPlayers[0].player.id;
+    const career = {
+      ...createInitialCareerState(managedPlayerId, 7705),
+      date: "2026-06-03",
+      activeEventId: "metro-open-300",
+      enteredEventIds: ["metro-open-300"],
+      stage: "event_entered" as const
+    };
+    resetStoreWithCareer(career);
+
+    render(<App />);
+
+    fireEvent.click(within(screen.getByRole("banner")).getByRole("button", { name: "Advance Day" }));
+
+    expect(useTournamentStore.getState().career?.date).toBe("2026-06-03");
+    expect(useTournamentStore.getState().career?.stage).toBe("pre_match");
+    expect(useTournamentStore.getState().career?.notes[0]).toContain("Match day blocked");
+    expect(useTournamentStore.getState().tournament).not.toBeNull();
     expect(screen.getByRole("heading", { name: "Opponent Briefing" })).toBeInTheDocument();
   });
 });

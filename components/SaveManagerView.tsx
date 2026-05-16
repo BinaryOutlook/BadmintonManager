@@ -124,7 +124,7 @@ function summarizeRuntime(props: SaveManagerViewProps): SaveSummary {
       headline: "Match in progress",
       detail: `${props.phase} phase loaded from the active slot.`,
       rows: [
-        { label: "Top version", value: "8" },
+        { label: "Top version", value: "9" },
         ...(props.career
           ? [
               { label: "Career version", value: String(props.career.version) },
@@ -140,7 +140,7 @@ function summarizeRuntime(props: SaveManagerViewProps): SaveSummary {
   }
 
   return summarizeSave({
-    version: 8,
+    version: 9,
     selectedPlayerId: props.selectedPlayerId,
     plannedTacticKey: props.plannedTacticKey,
     seed: props.seed,

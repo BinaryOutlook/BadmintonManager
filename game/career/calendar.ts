@@ -1,5 +1,7 @@
 import type { CareerState } from "./models";
 import { applyPassiveRecovery } from "./health";
+import { currentManagedMatchSchedule } from "./matchSchedule";
+import type { TournamentState } from "../tournament/tournament";
 
 const DAY_MS = 86_400_000;
 
@@ -22,15 +24,24 @@ export function buildWeek(date: string) {
   return Array.from({ length: 7 }).map((_, index) => addDays(date, index));
 }
 
-export function advanceCareerCalendar(state: CareerState): CareerState {
+export function advanceCareerCalendar(
+  state: CareerState,
+  options: {
+    tournament?: TournamentState | null;
+  } = {}
+): CareerState {
   const date = addDays(state.date, 1);
-  const activeEvent = state.activeEventId
-    ? state.events.find((event) => event.id === state.activeEventId)
-    : undefined;
+  const datedState = { ...state, date };
+  const schedule = currentManagedMatchSchedule({
+    career: datedState,
+    tournament: options.tournament ?? null
+  });
   const stage =
-    activeEvent && state.enteredEventIds.includes(activeEvent.id) && date >= activeEvent.startDate
+    state.stage !== "post_match" && schedule?.playable
       ? "pre_match"
-      : state.stage;
+      : state.stage === "between_rounds" && schedule
+        ? "between_rounds"
+        : state.stage;
 
   return {
     ...state,
@@ -39,7 +50,7 @@ export function advanceCareerCalendar(state: CareerState): CareerState {
     athletes: state.athletes.map(applyPassiveRecovery),
     notes:
       stage === "pre_match" && state.stage !== "pre_match"
-        ? [`${activeEvent?.name ?? "Event"} match day opened`, ...state.notes].slice(0, 6)
+        ? [`${schedule?.event.name ?? "Event"} ${schedule?.round ?? "match"} day opened`, ...state.notes].slice(0, 6)
         : state.notes
   };
 }

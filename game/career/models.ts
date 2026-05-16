@@ -38,11 +38,24 @@ export type CareerEventStatus = z.infer<typeof careerEventStatusSchema>;
 export const careerStageSchema = z.enum([
   "planning",
   "event_entered",
+  "between_rounds",
   "pre_match",
   "post_match",
   "event_complete"
 ]);
 export type CareerStage = z.infer<typeof careerStageSchema>;
+
+export const careerEventHistoryStatusSchema = z.enum([
+  "champion",
+  "runner_up",
+  "semi_final",
+  "quarter_final",
+  "round_of_16",
+  "skipped",
+  "missed_deadline",
+  "withdrawn"
+]);
+export type CareerEventHistoryStatus = z.infer<typeof careerEventHistoryStatusSchema>;
 
 export const ledgerCategorySchema = z.enum([
   "contract",
@@ -627,6 +640,27 @@ export const programEconomySchema = z.object({
 });
 export type ProgramEconomy = z.infer<typeof programEconomySchema>;
 
+export const careerEventHistoryRecordSchema = z.object({
+  eventId: z.string(),
+  eventName: z.string(),
+  tier: careerTierSchema,
+  startDate: z.string(),
+  endDate: z.string(),
+  status: careerEventHistoryStatusSchema,
+  entered: z.boolean(),
+  resultRound: z.string().nullable(),
+  pointsAwarded: z.number().int().nonnegative(),
+  prizeMoney: z.number().int().nonnegative(),
+  entryCost: z.number().int().nonnegative(),
+  travelCost: z.number().int().nonnegative(),
+  netCash: z.number().int(),
+  completedAt: z.string(),
+  matchIds: z.array(z.string()),
+  scorelines: z.array(z.string()),
+  achievements: z.array(z.string())
+});
+export type CareerEventHistoryRecord = z.infer<typeof careerEventHistoryRecordSchema>;
+
 export const rankingEntrySchema = z.object({
   playerId: z.string(),
   rank: z.number().int().positive(),
@@ -770,8 +804,14 @@ export const careerStateV5Schema = careerStateV4Schema.extend({
 });
 export type CareerStateV5 = z.infer<typeof careerStateV5Schema>;
 
-export const careerStateSchema = careerStateV5Schema.extend({
+export const careerStateV6Schema = careerStateV5Schema.extend({
   version: z.literal(6)
+});
+export type CareerStateV6 = z.infer<typeof careerStateV6Schema>;
+
+export const careerStateSchema = careerStateV5Schema.extend({
+  version: z.literal(7),
+  eventHistory: z.array(careerEventHistoryRecordSchema)
 });
 export type CareerState = z.infer<typeof careerStateSchema>;
 

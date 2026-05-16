@@ -1,6 +1,15 @@
 import { addDays, daysBetween } from "./calendar";
 import { normalizeCareerTierLabel } from "./models";
-import type { CareerEventDefinition, CareerEventStatus, CareerState, CareerTier, RankingEntry } from "./models";
+import type {
+  CareerEventDefinition,
+  CareerEventHistoryRecord,
+  CareerEventHistoryStatus,
+  CareerEventStatus,
+  CareerState,
+  CareerTier,
+  ProgramEconomy,
+  RankingEntry
+} from "./models";
 
 export type CalendarEventStatus =
   | CareerEventStatus
@@ -447,4 +456,157 @@ export function roundKeyForPlacement(round: string, won: boolean) {
   }
 
   return round;
+}
+
+function eventEndDate(event: CareerEventDefinition) {
+  return addDays(event.startDate, event.durationDays - 1);
+}
+
+function eventHistoryStatusForPlacement(placementKey: string): CareerEventHistoryStatus {
+  switch (placementKey) {
+    case "champion":
+      return "champion";
+    case "F":
+      return "runner_up";
+    case "SF":
+      return "semi_final";
+    case "QF":
+      return "quarter_final";
+    default:
+      return "round_of_16";
+  }
+}
+
+function eventLedgerCost(args: {
+  economy: ProgramEconomy;
+  eventName: string;
+  category: "entry" | "travel";
+}) {
+  return args.economy.ledger
+    .filter((entry) => entry.category === args.category && entry.label.startsWith(args.eventName))
+    .reduce((total, entry) => total + Math.abs(Math.min(0, entry.amount)), 0);
+}
+
+function historyAchievements(args: {
+  state: CareerState;
+  status: CareerEventHistoryStatus;
+  pointsAwarded: number;
+}) {
+  const achievements: string[] = [];
+
+  if (args.status === "champion" && !args.state.eventHistory.some((record) => record.status === "champion")) {
+    achievements.push("First Title");
+  }
+
+  if (args.status === "runner_up") {
+    achievements.push("Finalist");
+  }
+
+  if (args.pointsAwarded > 0) {
+    achievements.push("Points Finish");
+  }
+
+  return achievements;
+}
+
+export function appendPlayedCareerEventHistory(args: {
+  state: CareerState;
+  event: CareerEventDefinition;
+  placementKey: string;
+  pointsAwarded: number;
+  prizeMoney: number;
+  matchId: string;
+  scoreline: string;
+}): CareerState {
+  if (args.state.eventHistory.some((record) => record.eventId === args.event.id)) {
+    return args.state;
+  }
+
+  const status = eventHistoryStatusForPlacement(args.placementKey);
+  const travelCost = eventLedgerCost({
+    economy: args.state.economy,
+    eventName: args.event.name,
+    category: "travel"
+  });
+  const entryCost = eventLedgerCost({
+    economy: args.state.economy,
+    eventName: args.event.name,
+    category: "entry"
+  });
+  const record: CareerEventHistoryRecord = {
+    eventId: args.event.id,
+    eventName: args.event.name,
+    tier: args.event.tier,
+    startDate: args.event.startDate,
+    endDate: eventEndDate(args.event),
+    status,
+    entered: args.state.enteredEventIds.includes(args.event.id),
+    resultRound: args.placementKey,
+    pointsAwarded: args.pointsAwarded,
+    prizeMoney: args.prizeMoney,
+    entryCost,
+    travelCost,
+    netCash: args.prizeMoney - entryCost - travelCost,
+    completedAt: args.state.date,
+    matchIds: [args.matchId],
+    scorelines: [args.scoreline],
+    achievements: historyAchievements({
+      state: args.state,
+      status,
+      pointsAwarded: args.pointsAwarded
+    })
+  };
+
+  return {
+    ...args.state,
+    eventHistory: [...args.state.eventHistory, record]
+  };
+}
+
+export function recordPastCareerEvents(state: CareerState): CareerState {
+  const records = state.events
+    .filter((event) => {
+      if (state.eventHistory.some((record) => record.eventId === event.id)) {
+        return false;
+      }
+
+      if (state.completedEventIds.includes(event.id) || state.activeEventId === event.id) {
+        return false;
+      }
+
+      return state.date > eventEndDate(event);
+    })
+    .map((event): CareerEventHistoryRecord => {
+      const entered = state.enteredEventIds.includes(event.id);
+
+      return {
+        eventId: event.id,
+        eventName: event.name,
+        tier: event.tier,
+        startDate: event.startDate,
+        endDate: eventEndDate(event),
+        status: entered ? "skipped" : "missed_deadline",
+        entered,
+        resultRound: null,
+        pointsAwarded: 0,
+        prizeMoney: 0,
+        entryCost: 0,
+        travelCost: 0,
+        netCash: 0,
+        completedAt: state.date,
+        matchIds: [],
+        scorelines: [],
+        achievements: []
+      };
+    });
+
+  if (records.length === 0) {
+    return state;
+  }
+
+  return {
+    ...state,
+    eventHistory: [...state.eventHistory, ...records],
+    notes: [`Past events recorded: ${records.map((record) => record.eventName).join(", ")}`, ...state.notes].slice(0, 6)
+  };
 }
