@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { seededPlayers } from "../../game/content/players";
 import { tacticLibrary } from "../../game/content/tactics";
 import { advanceCareerCalendar, addDays } from "../../game/career/calendar";
+import { scheduledDateForRound } from "../../game/career/matchSchedule";
 import { canAffordEventEntry, chargeEventEntry, eventEntryCost } from "../../game/career/economy";
 import {
   advanceFacilityBuilds,
@@ -317,10 +318,45 @@ describe("career tournament state flow", () => {
 
     const betweenRounds = useTournamentStore.getState();
     expect(betweenRounds.tournament).not.toBeNull();
-    expect(betweenRounds.career?.stage).toBe("pre_match");
+    expect(betweenRounds.career?.date).toBe(event.startDate);
+    expect(betweenRounds.career?.stage).toBe("between_rounds");
     expect(betweenRounds.career?.activeEventId).toBe(event.id);
     expect(betweenRounds.career?.completedEventIds).not.toContain(event.id);
     expect(betweenRounds.career?.lastPreMatchBrief?.opponentId).toBe(nextOpponentId);
+
+    useTournamentStore.getState().advanceCareerDay();
+
+    const nextRoundDay = useTournamentStore.getState();
+    expect(nextRoundDay.career?.date).toBe(scheduledDateForRound(event, "QF"));
+    expect(nextRoundDay.career?.stage).toBe("pre_match");
+  });
+
+  it("opens a due scheduled career match without advancing the saved career date", () => {
+    const managedPlayerId = seededPlayers[0].player.id;
+    const { career, event } = careerOnMetroEvent(managedPlayerId, 9304);
+    const dueCareer = {
+      ...career,
+      stage: "event_entered" as const,
+      lastPreMatchBrief: null
+    };
+    resetStoreForCareerFlow(managedPlayerId);
+    useTournamentStore.setState({
+      selectedPlayerId: managedPlayerId,
+      career: dueCareer,
+      tournament: null,
+      phase: "setup"
+    });
+
+    useTournamentStore.getState().openScheduledCareerMatch();
+
+    const afterOpen = useTournamentStore.getState();
+    const saved = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? "null");
+
+    expect(afterOpen.career?.date).toBe(event.startDate);
+    expect(afterOpen.career?.stage).toBe("pre_match");
+    expect(afterOpen.tournament?.id).toBe(event.id);
+    expect(afterOpen.phase).toBe("overview");
+    expect(saved?.career?.date).toBe(event.startDate);
   });
 
   it("marks a managed loss and a managed final win complete exactly once", () => {
@@ -353,7 +389,10 @@ describe("career tournament state flow", () => {
     resetStoreForCareerFlow(managedPlayerId);
     useTournamentStore.setState({
       selectedPlayerId: managedPlayerId,
-      career: finalSetup.career,
+      career: {
+        ...finalSetup.career,
+        date: scheduledDateForRound(finalSetup.event, "F")
+      },
       tournament: finalTournament,
       phase: "overview"
     });

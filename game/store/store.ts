@@ -33,6 +33,10 @@ import { eventEligibilityFor, getCareerEvent } from "../career/events";
 import { canCompeteWithInjury } from "../career/health";
 import { buildPreMatchBrief, settleCareerMatch } from "../career/hubs";
 import {
+  canAdvanceCareerDay as canAdvanceCareerDayBySchedule,
+  currentManagedMatchSchedule
+} from "../career/matchSchedule";
+import {
   applyDirective as queueDirective,
   applyTeamTalk,
   createMatchSession,
@@ -101,6 +105,7 @@ export interface TournamentStoreState {
   applyCareerTraining: (planId: string) => void;
   enterCareerEvent: (eventId: string) => void;
   advanceCareerDay: () => void;
+  openScheduledCareerMatch: () => void;
   continueCareerAfterPostMatch: () => void;
   commissionScoutReport: (subjectId: string, subjectType: "candidate" | "prospect" | "opponent") => void;
   makeRecruitmentOffer: (candidateId: string) => void;
@@ -384,6 +389,13 @@ function addCareerTournamentIfReady(state: TournamentStoreState, career: CareerS
   };
 }
 
+function prependCareerNote(career: CareerState, note: string) {
+  return {
+    ...career,
+    notes: [note, ...career.notes].slice(0, 6)
+  };
+}
+
 const initialState = loadPersisted();
 
 export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
@@ -566,6 +578,31 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
         return state;
       }
 
+      const guard = canAdvanceCareerDayBySchedule({
+        career: state.career,
+        tournament: state.tournament,
+        liveMatchActive: Boolean(state.liveMatch)
+      });
+
+      if (!guard.allowed) {
+        const blockedCareer =
+          guard.route === "pre_match"
+            ? prependCareerNote({ ...state.career, stage: "pre_match" as const }, guard.reason)
+            : prependCareerNote(state.career, guard.reason);
+        const withTournament =
+          guard.route === "pre_match"
+            ? addCareerTournamentIfReady(state, blockedCareer)
+            : { career: blockedCareer, tournament: state.tournament, phase: "match" as AppPhase };
+        const next = {
+          ...state,
+          career: withTournament.career,
+          tournament: withTournament.tournament,
+          phase: withTournament.phase
+        };
+        persist(next);
+        return next;
+      }
+
       const career = refreshAssistantAdvice(
         resolveMediaObjectives(
           chargeFacilityUpkeep(
@@ -583,6 +620,37 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
         career: withTournament.career,
         tournament: withTournament.tournament,
         phase: withTournament.phase
+      };
+      persist(next);
+      return next;
+    });
+  },
+  openScheduledCareerMatch: () => {
+    set((state) => {
+      if (!state.career) {
+        return state;
+      }
+
+      const schedule = currentManagedMatchSchedule({
+        career: state.career,
+        tournament: state.tournament
+      });
+
+      if (!schedule?.playable) {
+        return state;
+      }
+
+      const career = {
+        ...state.career,
+        stage: "pre_match" as const
+      };
+      const withTournament = addCareerTournamentIfReady(state, career);
+      const next = {
+        ...state,
+        career: withTournament.career,
+        tournament: withTournament.tournament,
+        liveMatch: null,
+        phase: "overview" as AppPhase
       };
       persist(next);
       return next;
@@ -606,16 +674,24 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
         const brief = opponentId
           ? buildPreMatchBrief({ state: state.career, opponentId })
           : state.career.lastPreMatchBrief;
+        const schedule = currentManagedMatchSchedule({
+          career: state.career,
+          tournament: activeTournament
+        });
+        const nextStage = schedule?.playable ? "pre_match" as const : "between_rounds" as const;
+        const note = schedule
+          ? `${schedule.event.name} ${schedule.round} scheduled for ${schedule.scheduledDate}`
+          : "Next event round scheduled";
         const next = {
           ...state,
           tournament: activeTournament,
           liveMatch: null,
           phase: "overview" as AppPhase,
-          career: {
+          career: prependCareerNote({
             ...state.career,
-            stage: "pre_match" as const,
+            stage: nextStage,
             lastPreMatchBrief: brief
-          }
+          }, note)
         };
         persist(next);
         return next;
@@ -907,6 +983,23 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
       }
 
       if (state.career) {
+        const schedule = currentManagedMatchSchedule({
+          career: state.career,
+          tournament: state.tournament
+        });
+
+        if (state.career.stage !== "pre_match" || (schedule && !schedule.playable)) {
+          const note = schedule && !schedule.playable
+            ? `Match entry blocked: ${schedule.event.name} ${schedule.round} is scheduled for ${schedule.scheduledDate}`
+            : "Match entry blocked: open the scheduled pre-match briefing first";
+          const next = {
+            ...state,
+            career: prependCareerNote(state.career, note)
+          };
+          persist(next);
+          return next;
+        }
+
         const athlete = state.career.athletes.find(
           (entry) => entry.playerId === state.career?.program.managedPlayerId
         );

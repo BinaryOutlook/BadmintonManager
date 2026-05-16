@@ -38,6 +38,7 @@ export type CareerEventStatus = z.infer<typeof careerEventStatusSchema>;
 export const careerStageSchema = z.enum([
   "planning",
   "event_entered",
+  "between_rounds",
   "pre_match",
   "post_match",
   "event_complete"

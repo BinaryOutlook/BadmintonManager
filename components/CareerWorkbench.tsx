@@ -11,8 +11,10 @@ import {
   getNextEvent
 } from "../game/career/events";
 import { canCompeteWithInjury, canTrainWithInjury } from "../game/career/health";
+import { currentManagedMatchSchedule } from "../game/career/matchSchedule";
 import type {
   AdvancedTacticPlan,
+  CareerEventDefinition,
   CareerState,
   FacilityModifier,
   FacilityType,
@@ -55,6 +57,7 @@ interface CareerPageProps {
   onApplyTraining: (planId: string) => void;
   onEnterEvent: (eventId: string) => void;
   onAdvanceDay: () => void;
+  onOpenScheduledCareerMatch: (eventId?: string) => void;
   onStartManagedMatch: () => void;
   onContinueAfterPostMatch: () => void;
   onCommissionScoutReport: (subjectId: string, subjectType: "candidate" | "prospect" | "opponent") => void;
@@ -120,6 +123,141 @@ function activeEvent(career: CareerState) {
 
 function pressureForEvent(career: CareerState, eventId: string) {
   return career.rivals.fieldPressure.find((entry) => entry.eventId === eventId);
+}
+
+type CalendarEventAction =
+  | {
+      kind: "enter_event";
+      label: "Enter Event";
+      disabled: false;
+      tone: "primary";
+      eventId: string;
+    }
+  | {
+      kind: "play_match";
+      label: string;
+      disabled: false;
+      tone: "required";
+      eventId: string;
+    }
+  | {
+      kind: "open_draw";
+      label: "View Entry" | "View Draw";
+      disabled: false;
+      tone: "secondary";
+      eventId: string;
+    }
+  | {
+      kind: "review_match";
+      label: "Review Match";
+      disabled: false;
+      tone: "required";
+    }
+  | {
+      kind: "completed";
+      label: "Complete";
+      disabled: true;
+      tone: "muted";
+    }
+  | {
+      kind: "blocked";
+      label: string;
+      disabled: true;
+      tone: "muted";
+      reason: string;
+    };
+
+function calendarEventActionFor(args: {
+  career: CareerState;
+  event: CareerEventDefinition;
+  tournament: TournamentState | null;
+  completed: boolean;
+  entered: boolean;
+  blocked: boolean;
+  medicalAllowed: boolean;
+  tierAllowed: boolean;
+  affordable: boolean;
+}): CalendarEventAction {
+  if (args.completed) {
+    return {
+      kind: "completed",
+      label: "Complete",
+      disabled: true,
+      tone: "muted"
+    };
+  }
+
+  if (args.entered) {
+    if (args.career.stage === "post_match" && args.career.activeEventId === args.event.id) {
+      return {
+        kind: "review_match",
+        label: "Review Match",
+        disabled: false,
+        tone: "required"
+      };
+    }
+
+    const schedule = currentManagedMatchSchedule({
+      career: args.career,
+      tournament: args.tournament
+    });
+
+    if (schedule?.event.id === args.event.id && schedule.playable) {
+      return {
+        kind: "play_match",
+        label: `Play ${args.event.name} ${schedule.round}`,
+        disabled: false,
+        tone: "required",
+        eventId: args.event.id
+      };
+    }
+
+    return {
+      kind: "open_draw",
+      label: args.tournament?.id === args.event.id ? "View Draw" : "View Entry",
+      disabled: false,
+      tone: "secondary",
+      eventId: args.event.id
+    };
+  }
+
+  if (args.blocked) {
+    const label = !args.medicalAllowed
+      ? "Medical Hold"
+      : !args.tierAllowed
+        ? "Tier Locked"
+        : args.affordable
+          ? "Unavailable"
+          : "Insufficient Funds";
+
+    return {
+      kind: "blocked",
+      label,
+      disabled: true,
+      tone: "muted",
+      reason: label
+    };
+  }
+
+  return {
+    kind: "enter_event",
+    label: "Enter Event",
+    disabled: false,
+    tone: "primary",
+    eventId: args.event.id
+  };
+}
+
+function calendarEventActionClass(action: CalendarEventAction) {
+  if (action.tone === "primary") {
+    return "command-button command-button-primary";
+  }
+
+  if (action.tone === "required") {
+    return "command-button command-button-required";
+  }
+
+  return "command-button command-button-secondary";
 }
 
 function modifierRows(modifiers: FacilityModifier) {
@@ -2122,7 +2260,46 @@ export function CareerCalendarPage(props: CareerPageProps) {
                 : false;
               const tierAllowed = tierGate?.allowed ?? false;
               const eventBlocked = !affordable || !medicalGate.allowed || !tierAllowed;
+              const action = props.career
+                ? calendarEventActionFor({
+                    career: props.career,
+                    event,
+                    tournament: props.tournament,
+                    completed: Boolean(completed),
+                    entered: Boolean(entered),
+                    blocked: eventBlocked,
+                    medicalAllowed: medicalGate.allowed,
+                    tierAllowed,
+                    affordable
+                  })
+                : ({
+                    kind: "blocked",
+                    label: "Unavailable",
+                    disabled: true,
+                    tone: "muted",
+                    reason: "No career"
+                  } satisfies CalendarEventAction);
               const milestones = eventDeadlineMilestones(event);
+              const handleEventAction = () => {
+                switch (action.kind) {
+                  case "enter_event":
+                    props.onEnterEvent(action.eventId);
+                    return;
+                  case "play_match":
+                    props.onOpenScheduledCareerMatch(action.eventId);
+                    return;
+                  case "open_draw":
+                    props.onOpenCalendar();
+                    return;
+                  case "review_match":
+                    props.onOpenPostMatch();
+                    return;
+                  case "blocked":
+                  case "completed":
+                    return;
+                }
+              };
+
               return (
                 <article
                   key={event.id}
@@ -2215,22 +2392,12 @@ export function CareerCalendarPage(props: CareerPageProps) {
                     )}
                   </div>
                   <button
-                    className={entered ? "command-button command-button-secondary" : "command-button command-button-primary"}
+                    className={calendarEventActionClass(action)}
                     type="button"
-                    disabled={entered || completed || eventBlocked}
-                    onClick={() => props.onEnterEvent(event.id)}
+                    disabled={action.disabled}
+                    onClick={handleEventAction}
                   >
-                    {completed
-                      ? "Complete"
-                      : entered
-                        ? "Entered"
-                        : !medicalGate.allowed
-                          ? "Medical Hold"
-                          : !tierAllowed
-                            ? "Tier Locked"
-                          : affordable
-                            ? "Enter Event"
-                            : "Insufficient Funds"}
+                    {action.label}
                   </button>
                 </article>
               );

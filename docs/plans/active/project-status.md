@@ -1,6 +1,6 @@
 # Project Status
 
-Status date: 2026-05-11
+Status date: 2026-05-16
 Current version target: `v0.2.4 UI Framework and Season-Ready Layout`
 Overall phase: UI/career/save trust and release polish on top of the `v0.2.3` match-algorithm baseline
 Chosen stack: Option A local-first SPA
@@ -60,6 +60,9 @@ What is now stable:
 - the UIUX1Change dense-page fidelity slice now makes Portal Home the active-career operations hub with tasks/inbox, next event, calendar snapshot, readiness/ranking pressure, recent match evidence, save state, and a visible Continue action
 - training, calendar/competition, match planning, live match, and post-match review now expose compact management status strips above their grids, tables, telemetry, and decision panels
 - Save Manager now leads with active slot metadata for slot state, mode, managed athlete, save version, import preview, and quarantine state while preserving export, import preview/confirm, active-save deletion, and corrupt-backup deletion safety
+- Rescue MVP Plan 2 now adds a shared career daily-action resolver and scheduled-round guard: the topbar turns red for required `Play`, `Resume Match`, or `Review Match` work and stays green only when `Advance Day` is safe
+- entered Calendar / Event Desk rows now expose playable due-event actions instead of becoming disabled after entry
+- career and quick tournament starts now require explicit athlete confirmation through a near-full-screen recommendation/browse selection modal where every ranked roster athlete can be selected
 
 ## Completed
 
@@ -128,6 +131,7 @@ What is now stable:
 - [x] standardized the management shell around a minimal top status bar, grouped primary command sidebar, page canvas, and overlay host while preserving Save Manager, Settings, locked identity, and tournament continuation reachability
 - [x] remediated Settings and confirmation overlay keyboard behavior with initial focus, focus containment, safe Escape handling, focus restoration, and focused Playwright proof
 - [x] converted the active Portal, training, calendar/competition, tactics, live match, post-match review, and Save Manager surfaces toward compact management-page contracts with focused Playwright coverage
+- [x] implemented the Rescue MVP Plan 2 daily-action resolver, scheduled-round match guard, red/green topbar routing, playable entered-event Calendar actions, and explicit full-roster athlete selection gate
 
 ## In Progress
 
@@ -142,6 +146,7 @@ What is now stable:
 - [ ] track mobile Calendar/Event Desk compactness as non-blocking polish debt; current proof shows reachability without horizontal clipping or critical-action loss
 - [ ] track dense live-match directive labels as non-blocking polish debt; current proof does not require a Phase 4 source change
 - [ ] complete the broader Phase 5 screenshot matrix and visual review beyond the focused builder proof
+- [ ] run a manual playtest of the full Rescue MVP Plan 2 loop from explicit athlete selection through entered event, red match action, post-match review, next-day round spacing, and the next red match action
 
 ## Next
 

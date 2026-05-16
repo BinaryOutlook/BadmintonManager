@@ -26,6 +26,7 @@ import { SetupView } from "../components/SetupView";
 import { TacticalIntelPanel } from "../components/TacticalIntelPanel";
 import { playerMap } from "../game/content/players";
 import { tacticOptions } from "../game/content/tactics";
+import { getCareerDailyAction, type CareerDailyActionTone } from "../game/career/dailyAction";
 import { useTournamentStore } from "../game/store/store";
 import type { PersistedSave } from "../game/store/save";
 import { isPhaseBoundPage, pageForPhase, type AppPage } from "./pages";
@@ -170,6 +171,7 @@ export function App() {
     applyCareerTraining,
     enterCareerEvent,
     advanceCareerDay,
+    openScheduledCareerMatch,
     continueCareerAfterPostMatch,
     commissionScoutReport,
     makeRecruitmentOffer,
@@ -214,6 +216,7 @@ export function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
   const [pendingCareerPlayerId, setPendingCareerPlayerId] = useState<string | null>(null);
+  const [pendingTournamentPlayerId, setPendingTournamentPlayerId] = useState<string | null>(null);
   const [quickTournamentDraftPlayerId, setQuickTournamentDraftPlayerId] = useState<string | null>(null);
   const [sidebarWidth, setSidebarWidth] = useState(loadSidebarWidth);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(loadSidebarCollapsed);
@@ -225,7 +228,7 @@ export function App() {
     : selectedPlayerId;
   const selectedTactic =
     tacticOptions.find((option) => option.key === plannedTacticKey) ?? tacticOptions[0];
-  const canEnterManagedMatch = phase === "overview" && Boolean(tournament);
+  const canEnterManagedMatch = phase === "overview" && Boolean(tournament) && (!career || career.stage === "pre_match");
   const activeCommandId = commandIdForPage(activePage);
   const workspaceStyle = {
     "--sidebar-width": `${sidebarCollapsed ? SIDEBAR_COLLAPSED_WIDTH : sidebarWidth}px`
@@ -283,8 +286,8 @@ export function App() {
     setActivePage({ id: "setup" });
   }
 
-  function performStartTournament() {
-    startTournament(quickTournamentDraftPlayerId ?? selectedPlayerId);
+  function performStartTournament(managedPlayerId: string) {
+    startTournament(managedPlayerId);
     setQuickTournamentDraftPlayerId(null);
     setActivePage({ id: "bracket" });
   }
@@ -299,23 +302,34 @@ export function App() {
     setQuickTournamentDraftPlayerId(playerId);
   }
 
-  function requestStartTournament() {
+  function requestStartTournament(managedPlayerId?: string) {
+    if (!managedPlayerId) {
+      setActivePage({ id: "setup" });
+      return;
+    }
+
     if (career) {
+      setPendingTournamentPlayerId(managedPlayerId);
       setPendingConfirm("startTournamentReplaceCareer");
       return;
     }
 
-    performStartTournament();
+    performStartTournament(managedPlayerId);
   }
 
-  function performStartCareer(managedPlayerId?: string) {
+  function performStartCareer(managedPlayerId: string) {
     startCareer(managedPlayerId);
     setActivePage({ id: "home" });
   }
 
   function requestStartCareer(managedPlayerId?: string) {
+    if (!managedPlayerId) {
+      setActivePage({ id: "setup" });
+      return;
+    }
+
     if (career || tournament || liveMatch) {
-      setPendingCareerPlayerId(managedPlayerId ?? selectedPlayerId);
+      setPendingCareerPlayerId(managedPlayerId);
       setPendingConfirm("startCareerReplaceSave");
       return;
     }
@@ -329,15 +343,20 @@ export function App() {
     }
 
     if (pendingConfirm === "startTournamentReplaceCareer") {
-      performStartTournament();
+      if (pendingTournamentPlayerId) {
+        performStartTournament(pendingTournamentPlayerId);
+      }
     }
 
     if (pendingConfirm === "startCareerReplaceSave") {
-      performStartCareer(pendingCareerPlayerId ?? selectedPlayerId);
+      if (pendingCareerPlayerId) {
+        performStartCareer(pendingCareerPlayerId);
+      }
     }
 
     setPendingConfirm(null);
     setPendingCareerPlayerId(null);
+    setPendingTournamentPlayerId(null);
   }
 
   function openSaveManager() {
@@ -387,6 +406,12 @@ export function App() {
 
   function handleAdvanceCareerDay() {
     advanceCareerDay();
+    const next = useTournamentStore.getState();
+    setActivePage(next.career?.stage === "pre_match" ? { id: "bracket" } : { id: "calendar" });
+  }
+
+  function handleOpenScheduledCareerMatch() {
+    openScheduledCareerMatch();
     const next = useTournamentStore.getState();
     setActivePage(next.career?.stage === "pre_match" ? { id: "bracket" } : { id: "calendar" });
   }
@@ -598,7 +623,34 @@ export function App() {
 
   function handleShellContinue() {
     if (career) {
-      continueCareer();
+      const action = getCareerDailyAction({
+        career,
+        tournament,
+        phase,
+        liveMatchActive: Boolean(liveMatch)
+      });
+
+      switch (action.kind) {
+        case "advance_day":
+          handleAdvanceCareerDay();
+          return;
+        case "play_scheduled_match":
+          handleOpenScheduledCareerMatch();
+          return;
+        case "resume_live_match":
+          setActivePage({ id: "liveMatch" });
+          return;
+        case "review_match":
+          setActivePage({ id: "review" });
+          return;
+        case "unavailable":
+          setActivePage({ id: "home" });
+          return;
+      }
+    }
+
+    if (phase === "match") {
+      setActivePage({ id: "liveMatch" });
       return;
     }
 
@@ -666,6 +718,7 @@ export function App() {
       onApplyTraining: applyCareerTraining,
       onEnterEvent: enterCareerEvent,
       onAdvanceDay: handleAdvanceCareerDay,
+      onOpenScheduledCareerMatch: handleOpenScheduledCareerMatch,
       onStartManagedMatch: handleStartManagedMatch,
       onContinueAfterPostMatch: handleContinueCareerAfterPostMatch,
       onCommissionScoutReport: commissionScoutReport,
@@ -892,6 +945,14 @@ export function App() {
   }
 
   const shellCommands = buildShellCommands();
+  const careerDailyAction = career
+    ? getCareerDailyAction({
+        career,
+        tournament,
+        phase,
+        liveMatchActive: Boolean(liveMatch)
+      })
+    : null;
   const shellDate = career?.date ?? "Local slot";
   const saveStatus = activeSavePresent
     ? career
@@ -900,15 +961,12 @@ export function App() {
     : corruptSavePresent
       ? "Recovery available"
       : "No active save";
-  const continueLabel = career
-    ? career.stage === "post_match"
-      ? "Review Match"
-      : career.stage === "pre_match"
-        ? "Open Live Desk"
-        : "Continue Career"
+  const continueLabel = careerDailyAction
+    ? careerDailyAction.label
     : activeSavePresent
       ? "Continue Save"
       : "Start";
+  const continueTone: CareerDailyActionTone = careerDailyAction?.tone ?? "ready";
 
   return (
     <PlayerNavigationProvider onOpenPlayerProfile={openPlayerProfile}>
@@ -919,6 +977,7 @@ export function App() {
         <TopStatusBar
           activeAthleteName={activeAthlete.name}
           continueLabel={continueLabel}
+          continueTone={continueTone}
           dateLabel={shellDate}
           saveStatus={saveStatus}
           onContinue={handleShellContinue}
@@ -997,6 +1056,7 @@ export function App() {
         onCancel={() => {
           setPendingConfirm(null);
           setPendingCareerPlayerId(null);
+          setPendingTournamentPlayerId(null);
         }}
       />
         </OverlayHost>
@@ -1008,12 +1068,23 @@ export function App() {
 function TopStatusBar(props: {
   activeAthleteName: string;
   continueLabel: string;
+  continueTone: CareerDailyActionTone;
   dateLabel: string;
   saveStatus: string;
   onContinue: () => void;
   onOpenIntel: () => void;
   onOpenSettings: () => void;
 }) {
+  const continueClass = [
+    "command-button",
+    "topbar-continue",
+    props.continueTone === "required"
+      ? "topbar-continue-required"
+      : props.continueTone === "disabled"
+        ? "topbar-continue-disabled"
+        : "topbar-continue-ready"
+  ].join(" ");
+
   return (
     <header className="topbar">
       <div className="topbar-brand-block">
@@ -1037,7 +1108,13 @@ function TopStatusBar(props: {
         <button className="icon-command-button" type="button" onClick={props.onOpenSettings}>
           Settings
         </button>
-        <button className="command-button command-button-primary topbar-continue" type="button" onClick={props.onContinue}>
+        <button
+          className={continueClass}
+          type="button"
+          data-tone={props.continueTone}
+          disabled={props.continueTone === "disabled"}
+          onClick={props.onContinue}
+        >
           {props.continueLabel}
         </button>
       </div>

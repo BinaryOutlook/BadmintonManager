@@ -10,7 +10,7 @@ interface SetupViewProps {
   onSelectPlayer: (playerId: string) => void;
   onOpenPlayerProfile: (playerId: string) => void;
   onChooseTactic: (tacticKey: TacticKey) => void;
-  onStartTournament: () => void;
+  onStartTournament: (managedPlayerId: string) => void;
   onStartCareer: (managedPlayerId: string) => void;
   onContinueLocalSave: () => void;
   onOpenSaveManager: () => void;
@@ -27,6 +27,8 @@ function overallFromDossier(dossier: ReturnType<typeof deriveAthleteDossier>) {
 type RankedAthlete = ReturnType<typeof rankRosterByOverall>[number];
 
 type RecommendationModeKey = "best" | "attack" | "control" | "rally" | "underdog";
+type AthleteSelectionPurpose = "career" | "quickTournament";
+type AthleteSelectionView = "recommendations" | "browse";
 type ArchetypeKey = "attack" | "control" | "rally" | "balanced";
 type ArchetypeFilter = "all" | ArchetypeKey;
 type TierKey = "elite" | "contender" | "underdog";
@@ -331,9 +333,10 @@ function buildFeaturedRecommendationCopy(
 
 export function SetupView(props: SetupViewProps) {
   const [setupMode, setSetupMode] = useState<"start" | "quick">("start");
-  const [rosterModalOpen, setRosterModalOpen] = useState(false);
-  const [careerDialogOpen, setCareerDialogOpen] = useState(false);
-  const [careerCandidateId, setCareerCandidateId] = useState(props.selectedPlayerId);
+  const [selectionPurpose, setSelectionPurpose] = useState<AthleteSelectionPurpose | null>(null);
+  const [selectionView, setSelectionView] = useState<AthleteSelectionView>("recommendations");
+  const [modalSelectedPlayerId, setModalSelectedPlayerId] = useState<string | null>(null);
+  const [modalSelectionMade, setModalSelectionMade] = useState(false);
   const [activeModeKey, setActiveModeKey] = useState<RecommendationModeKey>("best");
   const [browseQuery, setBrowseQuery] = useState("");
   const [countryFilter, setCountryFilter] = useState("all");
@@ -367,6 +370,9 @@ export function SetupView(props: SetupViewProps) {
     : undefined;
   const selected =
     rankedRoster.find((item) => item.entry.player.id === props.selectedPlayerId) ?? rankedRoster[0];
+  const modalSelected = modalSelectedPlayerId
+    ? rankedRoster.find((item) => item.entry.player.id === modalSelectedPlayerId)
+    : undefined;
   const hasBrowseFilters =
     browseQuery.trim() !== "" ||
     countryFilter !== "all" ||
@@ -387,29 +393,60 @@ export function SetupView(props: SetupViewProps) {
     : "No active local save";
 
   useEffect(() => {
-    if (!rosterModalOpen) {
+    if (!selectionPurpose) {
       return;
     }
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
-        setRosterModalOpen(false);
+        closeSelectionModal();
       }
     }
 
     window.addEventListener("keydown", handleKeyDown);
 
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [rosterModalOpen]);
+  }, [selectionPurpose]);
 
   function selectPlayer(playerId: string) {
     props.onSelectPlayer(playerId);
-    setRosterModalOpen(false);
   }
 
-  function confirmCareerCandidate() {
-    props.onStartCareer(careerCandidateId);
-    setCareerDialogOpen(false);
+  function openSelectionModal(
+    purpose: AthleteSelectionPurpose,
+    view: AthleteSelectionView = "recommendations"
+  ) {
+    setSelectionPurpose(purpose);
+    setSelectionView(view);
+    setModalSelectedPlayerId(null);
+    setModalSelectionMade(false);
+  }
+
+  function closeSelectionModal() {
+    setSelectionPurpose(null);
+    setSelectionView("recommendations");
+    setModalSelectedPlayerId(null);
+    setModalSelectionMade(false);
+  }
+
+  function selectModalPlayer(playerId: string) {
+    setModalSelectedPlayerId(playerId);
+    setModalSelectionMade(true);
+  }
+
+  function confirmSelectionModal() {
+    if (!selectionPurpose || !modalSelectionMade || !modalSelectedPlayerId) {
+      return;
+    }
+
+    if (selectionPurpose === "career") {
+      props.onStartCareer(modalSelectedPlayerId);
+    } else {
+      props.onSelectPlayer(modalSelectedPlayerId);
+      props.onStartTournament(modalSelectedPlayerId);
+    }
+
+    closeSelectionModal();
   }
 
   function resetBrowseFilters() {
@@ -420,145 +457,393 @@ export function SetupView(props: SetupViewProps) {
     setBrowseSortKey("overall");
   }
 
-  function renderAthleteCard(item: RankedAthlete, compact = false) {
+  function renderModalSelectButton(item: RankedAthlete) {
+    const isSelected = item.entry.player.id === modalSelectedPlayerId;
+
     return (
-      <article
-        key={item.entry.player.id}
-        className={`athlete-card ${compact ? "athlete-card-compact" : ""} ${
-          item.entry.player.id === props.selectedPlayerId ? "athlete-card-active" : ""
-        }`}
+      <button
+        className="sidebar-mini-button athlete-modal-select-button"
+        type="button"
+        aria-label={isSelected ? `${item.entry.player.name} selected` : `Select ${item.entry.player.name}`}
+        aria-pressed={isSelected}
+        disabled={isSelected}
+        onClick={() => selectModalPlayer(item.entry.player.id)}
       >
-        <div className="athlete-card-header">
-          <span className="athlete-avatar">{item.entry.player.nationality}</span>
-          <span className="athlete-card-rank">OVR Rank #{item.rank}</span>
-        </div>
-        <button
-          className="athlete-profile-button athlete-profile-button-block"
-          type="button"
-          onClick={() => props.onOpenPlayerProfile(item.entry.player.id)}
-        >
-          {item.entry.player.name}
-        </button>
-        <div className="metric-track">
-          <div className="metric-track-fill" style={{ width: `${item.overall}%` }} />
-        </div>
-        <div className="recommendation-pick-tags athlete-card-tags">
-          <span>{archetypeLabels[getArchetype(item)]}</span>
-          <span>{tierLabels[getTier(item)]}</span>
-        </div>
-        <div className="athlete-card-footer">
-          <span>{item.entry.player.styleLabel}</span>
-          <span>OVR {item.overall}</span>
-        </div>
-        {item.entry.player.id !== props.selectedPlayerId ? (
-          <button
-            className="sidebar-mini-button athlete-select-button"
-            type="button"
-            aria-label={`Select ${item.entry.player.name}`}
-            onClick={() => selectPlayer(item.entry.player.id)}
-          >
-            Select Athlete
-          </button>
-        ) : (
-          <span className="selection-chip">Selected</span>
-        )}
-      </article>
+        {isSelected ? "Selected" : "Select"}
+      </button>
     );
   }
 
-  function renderNewCareerAthleteDialog() {
-    if (!careerDialogOpen) {
+  function renderSelectionRecommendations() {
+    return (
+      <div className="athlete-selection-view" aria-label="Recommended athlete choices">
+        <div className="selection-view-toolbar">
+          <div>
+            <h3>Recommended Coach Picks</h3>
+            <p>Choose a lane, then make one explicit selection before confirming the run.</p>
+          </div>
+          <button
+            className="command-button command-button-secondary browse-roster-button"
+            type="button"
+            onClick={() => setSelectionView("browse")}
+          >
+            Browse All Athletes
+          </button>
+        </div>
+
+        <div className="recommendation-mode-strip" aria-label="Recommendation modes">
+          {recommendationModes.map((mode) => (
+            <button
+              key={mode.key}
+              className={`recommendation-mode-button ${
+                mode.key === activeMode.key ? "recommendation-mode-button-active" : ""
+              }`}
+              type="button"
+              aria-pressed={mode.key === activeMode.key}
+              onClick={() => setActiveModeKey(mode.key)}
+            >
+              <span>{mode.cue}</span>
+              <strong>{mode.label}</strong>
+            </button>
+          ))}
+        </div>
+
+        <section className="recommendation-mode-stage" aria-labelledby="modal-recommendation-title">
+          <div className="recommendation-group-header">
+            <div>
+              <span>{activeMode.cue}</span>
+              <h3 id="modal-recommendation-title">{activeMode.label}</h3>
+            </div>
+            <p>{activeMode.summary}</p>
+          </div>
+
+          {featuredPick && featuredCopy && (
+            <div className="recommendation-layout">
+              <article
+                className={
+                  featuredPick.entry.player.id === modalSelectedPlayerId
+                    ? "recommendation-featured-card recommendation-pick-active"
+                    : "recommendation-featured-card"
+                }
+                aria-label={`Featured recommendation: ${featuredPick.entry.player.name}`}
+              >
+                <div className="recommendation-featured-top">
+                  <span className="athlete-avatar">{featuredPick.entry.player.nationality}</span>
+                  <div>
+                    <span className="recommendation-featured-kicker">Featured Coach Pick</span>
+                    <span>Rank #{featuredPick.rank}</span>
+                  </div>
+                </div>
+                <strong className="recommendation-featured-name">{featuredPick.entry.player.name}</strong>
+                <div className="recommendation-pick-tags">
+                  <span>{archetypeLabels[getArchetype(featuredPick)]}</span>
+                  <span>{tierLabels[getTier(featuredPick)]}</span>
+                  <span>OVR {featuredPick.overall}</span>
+                </div>
+                <p className="recommendation-featured-headline">{featuredCopy.headline}</p>
+                <p className="recommendation-featured-copy">{featuredCopy.body}</p>
+                <div className="featured-stat-grid" aria-label="Featured recommendation stat cluster">
+                  {featuredCopy.metrics.map((metric) => (
+                    <div className="featured-stat" key={metric.label}>
+                      <span>{metric.label}</span>
+                      <strong>{metric.value}</strong>
+                    </div>
+                  ))}
+                </div>
+                <p className="recommendation-featured-tactical">{featuredCopy.tacticalRead}</p>
+                <div className="recommendation-featured-actions">
+                  {renderModalSelectButton(featuredPick)}
+                </div>
+              </article>
+
+              <div className="recommendation-alt-grid" aria-label="Supporting recommendations">
+                {alternatePicks.map((item) => (
+                  <article
+                    className={
+                      item.entry.player.id === modalSelectedPlayerId
+                        ? "recommendation-pick recommendation-pick-active"
+                        : "recommendation-pick"
+                    }
+                    key={`modal-${activeMode.key}-${item.entry.player.id}`}
+                  >
+                    <div className="recommendation-pick-top">
+                      <span className="athlete-avatar">{item.entry.player.nationality}</span>
+                      <span>Rank #{item.rank}</span>
+                    </div>
+                    <strong className="athlete-profile-button-block">{item.entry.player.name}</strong>
+                    <p>{activeMode.reasonFor(item)}</p>
+                    <div className="recommendation-pick-tags">
+                      <span>{archetypeLabels[getArchetype(item)]}</span>
+                      <span>{tierLabels[getTier(item)]}</span>
+                    </div>
+                    <div className="recommendation-pick-actions">
+                      {renderModalSelectButton(item)}
+                      <span>OVR {item.overall}</span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
+      </div>
+    );
+  }
+
+  function renderSelectionBrowse() {
+    return (
+      <div className="athlete-selection-view athlete-selection-browse-view">
+        <div className="browse-controls" aria-label="Browse athlete filters">
+          <label className="browse-field">
+            <span>Search</span>
+            <input
+              type="search"
+              value={browseQuery}
+              onChange={(event) => setBrowseQuery(event.target.value)}
+              placeholder="Name, style, country"
+            />
+          </label>
+
+          <label className="browse-field">
+            <span>Country</span>
+            <select
+              value={countryFilter}
+              onChange={(event) => setCountryFilter(event.target.value)}
+            >
+              <option value="all">All countries</option>
+              {countryOptions.map((country) => (
+                <option value={country} key={country}>
+                  {country}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="browse-field">
+            <span>Tier</span>
+            <select
+              value={tierFilter}
+              onChange={(event) => setTierFilter(event.target.value as TierFilter)}
+            >
+              <option value="all">All tiers</option>
+              <option value="elite">Elite</option>
+              <option value="contender">Contender</option>
+              <option value="underdog">Underdog</option>
+            </select>
+          </label>
+
+          <label className="browse-field">
+            <span>Style</span>
+            <select
+              value={archetypeFilter}
+              onChange={(event) => setArchetypeFilter(event.target.value as ArchetypeFilter)}
+            >
+              <option value="all">All styles</option>
+              <option value="attack">Attack First</option>
+              <option value="control">Control Artist</option>
+              <option value="rally">Rally Engine</option>
+              <option value="balanced">All-Rounder</option>
+            </select>
+          </label>
+
+          <label className="browse-field">
+            <span>Sort</span>
+            <select
+              value={browseSortKey}
+              onChange={(event) => setBrowseSortKey(event.target.value as BrowseSortKey)}
+            >
+              <option value="overall">OVR</option>
+              <option value="rank">Rank</option>
+              <option value="power">Power</option>
+              <option value="speed">Speed</option>
+              <option value="stamina">Stamina</option>
+              <option value="control">Control</option>
+            </select>
+          </label>
+        </div>
+
+        <div className="browse-results-bar">
+          <div>
+            <strong>{filteredRoster.length}</strong>
+            <span> of {rankedRoster.length} athletes</span>
+          </div>
+          <div className="active-filter-list" aria-label="Active filters">
+            {activeFilterLabels.length > 0 ? (
+              activeFilterLabels.map((label) => <span key={label}>{label}</span>)
+            ) : (
+              <span>All athletes</span>
+            )}
+          </div>
+          <button
+            className="sidebar-mini-button browse-reset-button"
+            type="button"
+            onClick={resetBrowseFilters}
+            disabled={!hasBrowseFilters}
+          >
+            Clear Filters
+          </button>
+        </div>
+
+        <div className="athlete-browse-heading">
+          <h3>Active Roster</h3>
+          <span>Sorted by {sortLabels[browseSortKey]}</span>
+        </div>
+
+        {filteredRoster.length > 0 ? (
+          <div className="athlete-browse-table-wrap">
+            <table className="athlete-browse-table">
+              <thead>
+                <tr>
+                  <th scope="col">Rank</th>
+                  <th scope="col">Athlete</th>
+                  <th scope="col">Nation</th>
+                  <th scope="col">Style</th>
+                  <th scope="col">OVR</th>
+                  <th scope="col">Power</th>
+                  <th scope="col">Speed</th>
+                  <th scope="col">Stamina</th>
+                  <th scope="col">Control</th>
+                  <th scope="col">Select</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredRoster.map((item) => (
+                  <tr
+                    key={item.entry.player.id}
+                    className={
+                      item.entry.player.id === modalSelectedPlayerId ? "athlete-browse-row-selected" : ""
+                    }
+                  >
+                    <td>#{item.rank}</td>
+                    <td>
+                      <strong>{item.entry.player.name}</strong>
+                      <small>{tierLabels[getTier(item)]} / {archetypeLabels[getArchetype(item)]}</small>
+                    </td>
+                    <td>{item.entry.player.nationality}</td>
+                    <td>{item.entry.player.styleLabel}</td>
+                    <td>{item.overall}</td>
+                    <td>{item.dossier.power}</td>
+                    <td>{item.dossier.speed}</td>
+                    <td>{item.dossier.stamina}</td>
+                    <td>{item.dossier.control}</td>
+                    <td>{renderModalSelectButton(item)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="roster-empty-state">
+            <h3>No athletes match those filters.</h3>
+            <p>Clear the board and widen the search before committing your tournament pick.</p>
+            <button className="command-button command-button-secondary" type="button" onClick={resetBrowseFilters}>
+              Clear Filters
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  function renderAthleteSelectionModal() {
+    if (!selectionPurpose) {
       return null;
     }
 
-    const candidate =
-      rankedRoster.find((item) => item.entry.player.id === careerCandidateId) ?? rankedRoster[0];
-    const recommended = rankedRoster.slice(0, 6);
+    const isCareerSelection = selectionPurpose === "career";
+    const title = selectionView === "browse"
+      ? "Browse All Athletes"
+      : isCareerSelection
+        ? "Confirm Career Athlete"
+        : "Confirm Tournament Athlete";
+    const subcopy = isCareerSelection
+      ? "Pick the athlete who becomes the locked identity for this local career save."
+      : "Pick the athlete for this disposable knockout run. This will not alter a locked career identity.";
+    const confirmLabel = modalSelected
+      ? `Confirm ${modalSelected.entry.player.name}`
+      : isCareerSelection
+        ? "Confirm Career Athlete"
+        : "Confirm Tournament Athlete";
 
     return (
       <div className="modal-backdrop" role="presentation">
         <section
-          className="settings-modal athlete-lock-modal"
+          className={`athlete-selection-modal athlete-selection-modal-${selectionView}`}
           role="dialog"
           aria-modal="true"
-          aria-labelledby="career-athlete-dialog-title"
+          aria-labelledby="athlete-selection-title"
         >
           <div className="modal-header">
             <div>
-              <p className="screen-kicker">New Career</p>
-              <h2 id="career-athlete-dialog-title">Confirm Career Athlete</h2>
+              <p className="screen-kicker">{isCareerSelection ? "New Career" : "Quick Tournament"}</p>
+              <h2 id="athlete-selection-title">{title}</h2>
+              <p className="modal-subcopy">{subcopy}</p>
             </div>
-            <button
-              className="modal-close-button"
-              type="button"
-              aria-label="Close career athlete dialog"
-              onClick={() => setCareerDialogOpen(false)}
-            >
-              x
-            </button>
-          </div>
-
-          <p className="modal-subcopy">
-            This athlete becomes the locked managed identity for the local career save. After confirmation,
-            squad and profile pages stay inspect-only for this career.
-          </p>
-
-          <div className="athlete-lock-layout">
-            <div className="athlete-lock-list" aria-label="Recommended career athletes">
-              {recommended.map((item) => (
+            <div className="athlete-selection-header-actions">
+              {selectionView === "browse" ? (
                 <button
-                  key={item.entry.player.id}
-                  className={
-                    item.entry.player.id === candidate.entry.player.id
-                      ? "athlete-lock-choice athlete-lock-choice-active"
-                      : "athlete-lock-choice"
-                  }
+                  className="command-button command-button-secondary"
                   type="button"
-                  aria-pressed={item.entry.player.id === candidate.entry.player.id}
-                  onClick={() => setCareerCandidateId(item.entry.player.id)}
+                  onClick={() => setSelectionView("recommendations")}
                 >
-                  <span>{item.entry.player.nationality}</span>
-                  <strong>{item.entry.player.name}</strong>
-                  <small>OVR {item.overall} / {archetypeLabels[getArchetype(item)]}</small>
-                  <em>Choose {item.entry.player.name}</em>
+                  Back to Recommendations
                 </button>
-              ))}
+              ) : (
+                <button
+                  className="command-button command-button-secondary"
+                  type="button"
+                  onClick={() => setSelectionView("browse")}
+                >
+                  Browse All Athletes
+                </button>
+              )}
+              <button
+                className="modal-close-button"
+                type="button"
+                aria-label="Cancel athlete selection"
+                onClick={closeSelectionModal}
+              >
+                Cancel
+              </button>
             </div>
-
-            <aside className="athlete-lock-preview" aria-label="Selected career athlete preview">
-              <span className="athlete-avatar">{candidate.entry.player.nationality}</span>
-              <h3>{candidate.entry.player.name}</h3>
-              <p>{candidate.entry.player.styleLabel}</p>
-              <div className="featured-stat-grid">
-                <div className="featured-stat">
-                  <span>Power</span>
-                  <strong>{candidate.dossier.power}</strong>
-                </div>
-                <div className="featured-stat">
-                  <span>Speed</span>
-                  <strong>{candidate.dossier.speed}</strong>
-                </div>
-                <div className="featured-stat">
-                  <span>Stamina</span>
-                  <strong>{candidate.dossier.stamina}</strong>
-                </div>
-                <div className="featured-stat">
-                  <span>Control</span>
-                  <strong>{candidate.dossier.control}</strong>
-                </div>
-              </div>
-              <p className="dossier-note-title">{candidate.dossier.formHeadline}</p>
-              <p>{candidate.dossier.formSummary}</p>
-            </aside>
           </div>
 
-          <div className="confirm-actions">
-            <button className="command-button command-button-secondary" type="button" onClick={() => setCareerDialogOpen(false)}>
+          <div className="athlete-selection-scroll-region">
+            {selectionView === "browse" ? renderSelectionBrowse() : renderSelectionRecommendations()}
+          </div>
+
+          <div className="athlete-selection-actions">
+            <div className="athlete-selection-summary" aria-live="polite">
+              {modalSelected ? (
+                <>
+                  <span className="athlete-avatar">{modalSelected.entry.player.nationality}</span>
+                  <div>
+                    <strong>{modalSelected.entry.player.name}</strong>
+                    <span>
+                      Rank #{modalSelected.rank} / OVR {modalSelected.overall} / {archetypeLabels[getArchetype(modalSelected)]}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <div>
+                  <strong>No athlete selected</strong>
+                  <span>Select one athlete to unlock confirmation.</span>
+                </div>
+              )}
+            </div>
+            <div className="confirm-actions">
+              <button className="command-button command-button-secondary" type="button" onClick={closeSelectionModal}>
               Cancel
-            </button>
-            <button className="command-button command-button-primary" type="button" onClick={confirmCareerCandidate}>
-              Confirm {candidate.entry.player.name}
-            </button>
+              </button>
+              <button
+                className="command-button command-button-primary"
+                type="button"
+                onClick={confirmSelectionModal}
+                disabled={!modalSelectionMade || !modalSelectedPlayerId}
+              >
+                {confirmLabel}
+              </button>
+            </div>
           </div>
         </section>
       </div>
@@ -602,7 +887,7 @@ export function SetupView(props: SetupViewProps) {
               <h2>Start New Career</h2>
               <p>Choose and confirm the one managed athlete for a local career program.</p>
             </div>
-            <button className="command-button command-button-primary" type="button" onClick={() => setCareerDialogOpen(true)}>
+            <button className="command-button command-button-primary" type="button" onClick={() => openSelectionModal("career")}>
               Start New Career
             </button>
           </article>
@@ -641,7 +926,7 @@ export function SetupView(props: SetupViewProps) {
           </article>
         </section>
 
-        {renderNewCareerAthleteDialog()}
+        {renderAthleteSelectionModal()}
       </section>
     );
   }
@@ -675,7 +960,11 @@ export function SetupView(props: SetupViewProps) {
             <span>{selected.entry.player.name}</span>
             <span>{tacticOptions.find((option) => option.key === props.plannedTacticKey)?.label ?? "Balanced Control"}</span>
           </div>
-          <button className="command-button command-button-primary" type="button" onClick={props.onStartTournament}>
+          <button
+            className="command-button command-button-primary"
+            type="button"
+            onClick={() => openSelectionModal("quickTournament")}
+          >
             Start Tournament
           </button>
         </article>
@@ -723,7 +1012,7 @@ export function SetupView(props: SetupViewProps) {
             <button
               className="command-button command-button-secondary browse-roster-button"
               type="button"
-              onClick={() => setRosterModalOpen(true)}
+              onClick={() => openSelectionModal("quickTournament", "browse")}
             >
               Browse All Athletes
             </button>
@@ -962,143 +1251,7 @@ export function SetupView(props: SetupViewProps) {
         </section>
       </div>
 
-      {rosterModalOpen && (
-        <div className="modal-backdrop" role="presentation">
-          <section
-            className="roster-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="full-roster-title"
-          >
-            <div className="modal-header">
-              <div>
-                <p className="screen-kicker">Fallback Selection</p>
-                <h2 id="full-roster-title">Browse All Athletes</h2>
-                <p className="modal-subcopy">
-                  Use the full board when you need a specific athlete, nation, tier, or stat shape.
-                </p>
-              </div>
-              <button
-                className="modal-close-button"
-                type="button"
-                onClick={() => setRosterModalOpen(false)}
-                aria-label="Close full roster"
-              >
-                Close
-              </button>
-            </div>
-
-            <div className="browse-controls" aria-label="Browse athlete filters">
-              <label className="browse-field">
-                <span>Search</span>
-                <input
-                  type="search"
-                  value={browseQuery}
-                  onChange={(event) => setBrowseQuery(event.target.value)}
-                  placeholder="Name, style, country"
-                />
-              </label>
-
-              <label className="browse-field">
-                <span>Country</span>
-                <select
-                  value={countryFilter}
-                  onChange={(event) => setCountryFilter(event.target.value)}
-                >
-                  <option value="all">All countries</option>
-                  {countryOptions.map((country) => (
-                    <option value={country} key={country}>
-                      {country}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="browse-field">
-                <span>Tier</span>
-                <select
-                  value={tierFilter}
-                  onChange={(event) => setTierFilter(event.target.value as TierFilter)}
-                >
-                  <option value="all">All tiers</option>
-                  <option value="elite">Elite</option>
-                  <option value="contender">Contender</option>
-                  <option value="underdog">Underdog</option>
-                </select>
-              </label>
-
-              <label className="browse-field">
-                <span>Style</span>
-                <select
-                  value={archetypeFilter}
-                  onChange={(event) => setArchetypeFilter(event.target.value as ArchetypeFilter)}
-                >
-                  <option value="all">All styles</option>
-                  <option value="attack">Attack First</option>
-                  <option value="control">Control Artist</option>
-                  <option value="rally">Rally Engine</option>
-                  <option value="balanced">All-Rounder</option>
-                </select>
-              </label>
-
-              <label className="browse-field">
-                <span>Sort</span>
-                <select
-                  value={browseSortKey}
-                  onChange={(event) => setBrowseSortKey(event.target.value as BrowseSortKey)}
-                >
-                  <option value="overall">OVR</option>
-                  <option value="rank">Rank</option>
-                  <option value="power">Power</option>
-                  <option value="speed">Speed</option>
-                  <option value="stamina">Stamina</option>
-                  <option value="control">Control</option>
-                </select>
-              </label>
-            </div>
-
-            <div className="browse-results-bar">
-              <div>
-                <strong>{filteredRoster.length}</strong>
-                <span> of {rankedRoster.length} athletes</span>
-              </div>
-              <div className="active-filter-list" aria-label="Active filters">
-                {activeFilterLabels.length > 0 ? (
-                  activeFilterLabels.map((label) => <span key={label}>{label}</span>)
-                ) : (
-                  <span>All athletes</span>
-                )}
-              </div>
-              <button
-                className="sidebar-mini-button browse-reset-button"
-                type="button"
-                onClick={resetBrowseFilters}
-                disabled={!hasBrowseFilters}
-              >
-                Clear Filters
-              </button>
-            </div>
-
-            <div className="panel-header panel-header-compact">
-              <h3>Active Roster</h3>
-              <span>Sorted by {sortLabels[browseSortKey]}</span>
-            </div>
-            {filteredRoster.length > 0 ? (
-              <div className="roster-grid roster-grid-modal">
-                {filteredRoster.map((item) => renderAthleteCard(item, true))}
-              </div>
-            ) : (
-              <div className="roster-empty-state">
-                <h3>No athletes match those filters.</h3>
-                <p>Clear the board and widen the search before committing your tournament pick.</p>
-                <button className="command-button command-button-secondary" type="button" onClick={resetBrowseFilters}>
-                  Clear Filters
-                </button>
-              </div>
-            )}
-          </section>
-        </div>
-      )}
+      {renderAthleteSelectionModal()}
     </section>
   );
 }

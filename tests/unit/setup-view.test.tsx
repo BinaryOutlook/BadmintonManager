@@ -38,12 +38,16 @@ describe("SetupView", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Start New Career" }));
     expect(screen.getByRole("dialog", { name: "Confirm Career Athlete" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /Choose Grand-Slam Southpaw/ }));
+    expect(screen.getByRole("button", { name: "Confirm Career Athlete" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Select Grand-Slam Southpaw" }));
     fireEvent.click(screen.getByRole("button", { name: /Confirm Grand-Slam Southpaw/ }));
 
     fireEvent.click(screen.getByRole("button", { name: "Quick Tournament" }));
     expect(screen.getByRole("heading", { name: "Quick Tournament Setup" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Start Tournament" }));
+    expect(screen.getByRole("dialog", { name: "Confirm Tournament Athlete" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Select Grand-Slam Southpaw" }));
+    fireEvent.click(screen.getByRole("button", { name: /Confirm Grand-Slam Southpaw/ }));
     fireEvent.click(screen.getByRole("button", { name: "Start New Career" }));
     fireEvent.click(screen.getByRole("button", { name: "Load Save" }));
     fireEvent.click(screen.getByRole("button", { name: "Preferences" }));
@@ -77,22 +81,22 @@ describe("SetupView", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Browse All Athletes" }));
 
-    const rosterPanel = screen.getByRole("heading", { name: "Active Roster" }).closest("section");
-    expect(rosterPanel).toBeInTheDocument();
+    const rosterDialog = screen.getByRole("dialog", { name: "Browse All Athletes" });
+    expect(within(rosterDialog).getByRole("heading", { name: "Active Roster" })).toBeInTheDocument();
     expect(screen.getByLabelText("Search")).toBeInTheDocument();
     expect(screen.getByLabelText("Country")).toBeInTheDocument();
     expect(screen.getByLabelText("Tier")).toBeInTheDocument();
     expect(screen.getByLabelText("Style")).toBeInTheDocument();
     expect(screen.getByLabelText("Sort")).toBeInTheDocument();
 
-    const athleteCards = rosterPanel!.querySelectorAll(".athlete-card");
     const topRanked = rankRosterByOverall()[0];
+    const topRankedRow = within(rosterDialog).getByText(topRanked.entry.player.name).closest("tr");
 
-    expect(within(athleteCards[0] as HTMLElement).getByRole("button", { name: topRanked.entry.player.name })).toBeInTheDocument();
-    expect(within(athleteCards[0] as HTMLElement).getByText(topRanked.entry.player.nationality)).toBeInTheDocument();
-    expect(within(athleteCards[0] as HTMLElement).getByText("OVR Rank #1")).toBeInTheDocument();
-    expect(within(athleteCards[0] as HTMLElement).queryByText("GS")).not.toBeInTheDocument();
-    expect(within(rosterPanel!).queryByText(/Seed #/)).not.toBeInTheDocument();
+    expect(topRankedRow).toBeInTheDocument();
+    expect(within(topRankedRow as HTMLElement).getByText(topRanked.entry.player.nationality)).toBeInTheDocument();
+    expect(within(topRankedRow as HTMLElement).getByText("#1")).toBeInTheDocument();
+    expect(within(rosterDialog).getByRole("table")).toBeInTheDocument();
+    expect(within(rosterDialog).queryByText(/Seed #/)).not.toBeInTheDocument();
   });
 
   it("selects from the featured coach pick and supporting alternatives", () => {
@@ -121,17 +125,56 @@ describe("SetupView", () => {
 
     expect(screen.getByText("Country: CHN")).toBeInTheDocument();
 
-    const rosterPanel = screen.getByRole("heading", { name: "Active Roster" }).closest("section");
-    const athleteCards = rosterPanel!.querySelectorAll(".athlete-card");
+    const rosterDialog = screen.getByRole("dialog", { name: "Browse All Athletes" });
+    const athleteRows = within(rosterDialog).getAllByRole("row").slice(1);
 
-    expect(athleteCards.length).toBeGreaterThan(0);
-    athleteCards.forEach((card) => {
-      expect(within(card as HTMLElement).getByText("CHN")).toBeInTheDocument();
+    expect(athleteRows.length).toBeGreaterThan(0);
+    athleteRows.forEach((row) => {
+      expect(within(row).getByText("CHN")).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole("button", { name: "Clear Filters" }));
 
     expect(screen.queryByText("Country: CHN")).not.toBeInTheDocument();
     expect(screen.getByText("All athletes")).toBeInTheDocument();
+  });
+
+  it("starts a career with the last-ranked athlete from full browse", () => {
+    const onStartCareer = vi.fn();
+    const lastRanked = rankRosterByOverall().at(-1)!;
+
+    renderSetupView({ onStartCareer });
+
+    fireEvent.click(screen.getByRole("button", { name: "Start New Career" }));
+    fireEvent.click(
+      within(screen.getByRole("dialog", { name: "Confirm Career Athlete" })).getAllByRole("button", {
+        name: "Browse All Athletes"
+      })[0]
+    );
+    fireEvent.click(screen.getByRole("button", { name: `Select ${lastRanked.entry.player.name}` }));
+    fireEvent.click(screen.getByRole("button", { name: `Confirm ${lastRanked.entry.player.name}` }));
+
+    expect(onStartCareer).toHaveBeenCalledWith(lastRanked.entry.player.id);
+  });
+
+  it("starts a quick tournament with the last-ranked athlete from full browse", () => {
+    const onSelectPlayer = vi.fn();
+    const onStartTournament = vi.fn();
+    const lastRanked = rankRosterByOverall().at(-1)!;
+
+    renderSetupView({ onSelectPlayer, onStartTournament });
+
+    fireEvent.click(screen.getByRole("button", { name: "Quick Tournament" }));
+    fireEvent.click(screen.getByRole("button", { name: "Start Tournament" }));
+    fireEvent.click(
+      within(screen.getByRole("dialog", { name: "Confirm Tournament Athlete" })).getAllByRole("button", {
+        name: "Browse All Athletes"
+      })[0]
+    );
+    fireEvent.click(screen.getByRole("button", { name: `Select ${lastRanked.entry.player.name}` }));
+    fireEvent.click(screen.getByRole("button", { name: `Confirm ${lastRanked.entry.player.name}` }));
+
+    expect(onSelectPlayer).toHaveBeenCalledWith(lastRanked.entry.player.id);
+    expect(onStartTournament).toHaveBeenCalledWith(lastRanked.entry.player.id);
   });
 });
