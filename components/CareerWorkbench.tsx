@@ -56,7 +56,6 @@ interface CareerPageProps {
   onOpenPlayerProfile: (playerId: string) => void;
   onApplyTraining: (planId: string) => void;
   onEnterEvent: (eventId: string) => void;
-  onAdvanceDay: () => void;
   onStartManagedMatch: () => void;
   onContinueAfterPostMatch: () => void;
   onCommissionScoutReport: (subjectId: string, subjectType: "candidate" | "prospect" | "opponent") => void;
@@ -819,9 +818,6 @@ export function CareerFacilitiesPage(props: CareerPageProps) {
         <div className="screen-meta">
           <span>Cash {money(props.career.economy.cash)}</span>
           <span>Daily upkeep {money(totalMaintenance)}</span>
-          <button className="command-button command-button-secondary" type="button" onClick={props.onAdvanceDay}>
-            Advance Day
-          </button>
           <button className="command-button command-button-secondary" type="button" onClick={props.onOpenProgram}>
             Program Hub
           </button>
@@ -1129,9 +1125,6 @@ export function CareerScoutingNetworkPage(props: CareerPageProps) {
         <div className="career-action-row">
           <button className="command-button command-button-secondary" type="button" onClick={props.onOpenProgram}>
             Program Hub
-          </button>
-          <button className="command-button command-button-primary" type="button" onClick={props.onAdvanceDay}>
-            Advance Day
           </button>
         </div>
       </div>

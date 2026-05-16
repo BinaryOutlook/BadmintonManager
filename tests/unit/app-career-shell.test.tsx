@@ -79,6 +79,32 @@ describe("career shell day advancement", () => {
     expect(screen.getAllByRole("button", { name: "Advance Day" })).toHaveLength(1);
   });
 
+  it("keeps normal career pages free of duplicate in-page Advance Day buttons", () => {
+    const managedPlayerId = seededPlayers[0].player.id;
+    const career = createInitialCareerState(managedPlayerId, 7704);
+    resetStoreWithCareer(career);
+
+    render(<App />);
+
+    expect(screen.getAllByRole("button", { name: "Advance Day" })).toHaveLength(1);
+
+    fireEvent.click(within(screen.getByRole("main")).getByRole("button", { name: "Program Hub" }));
+    expect(screen.getByRole("heading", { name: "Program Ecosystem" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Advance Day" })).toHaveLength(1);
+    expect(within(screen.getByRole("main")).queryByRole("button", { name: "Advance Day" })).not.toBeInTheDocument();
+
+    fireEvent.click(within(screen.getByRole("main")).getByRole("button", { name: /Scouting Network/ }));
+    expect(screen.getByRole("heading", { name: "Reduce Uncertainty" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Advance Day" })).toHaveLength(1);
+    expect(within(screen.getByRole("main")).queryByRole("button", { name: "Advance Day" })).not.toBeInTheDocument();
+
+    fireEvent.click(within(screen.getByRole("main")).getByRole("button", { name: "Program Hub" }));
+    fireEvent.click(within(screen.getByRole("main")).getByRole("button", { name: /Facilities Upgrades/ }));
+    expect(screen.getByRole("heading", { name: "Facilities Upgrades" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Advance Day" })).toHaveLength(1);
+    expect(within(screen.getByRole("main")).queryByRole("button", { name: "Advance Day" })).not.toBeInTheDocument();
+  });
+
   it("routes into the pre-match hub when a topbar day advance reaches match day", () => {
     const managedPlayerId = seededPlayers[0].player.id;
     const career = {
