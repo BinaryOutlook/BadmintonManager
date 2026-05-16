@@ -2137,6 +2137,68 @@ textarea:focus-visible {
   background: rgba(27, 78, 20, 0.22);
 }
 
+.athlete-selection-modal {
+  width: min(82rem, 100%);
+  max-height: min(52rem, calc(100vh - 2rem));
+  overflow: auto;
+  border: 1px solid var(--border-strong);
+  border-radius: 0.45rem;
+  padding: 1.2rem;
+  background: rgba(17, 19, 22, 0.99);
+  box-shadow: var(--shadow);
+}
+
+.athlete-selection-header {
+  position: sticky;
+  top: -1.2rem;
+  z-index: 2;
+  background:
+    linear-gradient(180deg, rgba(17, 19, 22, 0.99), rgba(17, 19, 22, 0.94));
+  backdrop-filter: blur(10px);
+}
+
+.athlete-selection-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.58fr) minmax(20rem, 0.72fr);
+  gap: 0.9rem;
+  align-items: start;
+}
+
+.athlete-selection-recommendations,
+.athlete-selection-dossier,
+.athlete-selection-tactics,
+.athlete-selection-browse {
+  min-width: 0;
+}
+
+.athlete-selection-tactics,
+.athlete-selection-browse,
+.athlete-selection-actions {
+  margin-top: 0.9rem;
+}
+
+.tactic-option-grid-compact {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.tactic-option-grid-compact .tactic-option-card {
+  padding: 0.82rem;
+}
+
+.tactic-option-grid-compact .tactic-option-card p {
+  font-size: 0.82rem;
+  line-height: 1.32;
+}
+
+.modal-selection-gate {
+  border: 1px solid rgba(57, 255, 20, 0.2);
+  border-radius: 0.3rem;
+  padding: 0.62rem;
+  background: rgba(27, 78, 20, 0.15);
+  color: var(--lime-soft);
+  font-weight: 800;
+}
+
 .roster-modal {
   width: min(74rem, 100%);
   max-height: min(48rem, calc(100vh - 2rem));
@@ -4253,6 +4315,7 @@ textarea:focus-visible {
   .recommendation-layout,
   .tactic-option-grid,
   .tactic-option-grid-wide,
+  .tactic-option-grid-compact,
   .squad-directory-grid,
   .profile-readiness-grid,
   .profile-tactic-grid,
@@ -4282,7 +4345,8 @@ textarea:focus-visible {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .recommendation-layout {
+  .recommendation-layout,
+  .athlete-selection-body {
     grid-template-columns: 1fr;
   }
 
@@ -4545,6 +4609,7 @@ textarea:focus-visible {
   .save-action-grid,
   .danger-action-grid,
   .recommendation-grid,
+  .athlete-selection-body,
   .program-grid,
   .program-card-grid,
   .career-ecosystem-strip,
@@ -4573,6 +4638,7 @@ textarea:focus-visible {
   .browse-controls,
   .tactic-option-grid,
   .tactic-option-grid-wide,
+  .tactic-option-grid-compact,
   .squad-directory-grid,
   .profile-dossier-grid,
   .profile-readiness-grid,

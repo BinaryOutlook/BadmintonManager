@@ -220,10 +220,41 @@ async function captureFocusedScreenshot(page: { screenshot: (options: { path: st
   });
 }
 
+async function selectAthleteInSelectionModal(page: Page, athleteName: string) {
+  const dialog = page.getByRole("dialog", { name: "Pick Your Playstyle" });
+  const directSelect = dialog
+    .getByRole("button", { name: new RegExp(`Select( featured)? ${escapeRegExp(athleteName)}`) })
+    .first();
+
+  if (await directSelect.isVisible().catch(() => false)) {
+    await directSelect.click();
+    return;
+  }
+
+  await dialog.getByRole("button", { name: "Browse All Athletes" }).click();
+  await dialog.getByLabel("Search").fill(athleteName);
+  await dialog.getByRole("button", { name: new RegExp(`Select ${escapeRegExp(athleteName)}`) }).click();
+}
+
 async function startNewCareer(page: Page, athleteName = seededPlayers[0].player.name) {
   await page.getByRole("button", { name: "Start New Career" }).click();
-  await expect(page.getByRole("dialog", { name: "Confirm Career Athlete" })).toBeVisible();
-  await page.getByRole("button", { name: new RegExp(`Confirm ${athleteName}`) }).click();
+  const dialog = page.getByRole("dialog", { name: "Pick Your Playstyle" });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Confirm Career Athlete" })).toBeDisabled();
+  await selectAthleteInSelectionModal(page, athleteName);
+  await expect(dialog.getByRole("button", { name: "Confirm Career Athlete" })).toBeEnabled();
+  await dialog.getByRole("button", { name: "Confirm Career Athlete" }).click();
+}
+
+async function startQuickTournamentFromModal(page: Page, athleteName = seededPlayers[0].player.name) {
+  await page.getByRole("button", { name: "Quick Tournament", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Pick Your Playstyle" });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole("heading", { name: "Strategic Override" })).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Start Tournament" })).toBeDisabled();
+  await selectAthleteInSelectionModal(page, athleteName);
+  await expect(dialog.getByRole("button", { name: "Start Tournament" })).toBeEnabled();
+  await dialog.getByRole("button", { name: "Start Tournament" }).click();
 }
 
 async function openSettings(page: Page) {
@@ -254,9 +285,10 @@ test("can start a tournament run and play through a managed match", async ({ pag
   await expect(page.getByRole("button", { name: "Quick Tournament", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Start New Career" })).toBeVisible();
   await page.getByRole("button", { name: "Quick Tournament", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Quick Tournament Setup" })).toBeVisible();
+  const selectionDialog = page.getByRole("dialog", { name: "Pick Your Playstyle" });
+  await expect(selectionDialog).toBeVisible();
 
-  await page.getByRole("button", { name: "Grand-Slam Southpaw", exact: true }).click();
+  await selectionDialog.getByRole("button", { name: "Grand-Slam Southpaw", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Grand-Slam Southpaw" })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Attributes" })).toBeVisible();
   await expect(page.getByText("Endurance").first()).toBeVisible();
@@ -275,9 +307,7 @@ test("can start a tournament run and play through a managed match", async ({ pag
   await page.getByRole("button", { name: "Close settings" }).click();
   await page.getByRole("button", { name: "Back" }).click();
 
-  await page.getByRole("button", { name: "Quick Tournament", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Quick Tournament Setup" })).toBeVisible();
-  await page.getByRole("button", { name: "Start Tournament" }).click();
+  await startQuickTournamentFromModal(page, "Grand-Slam Southpaw");
   await expect(page.getByRole("button", { name: "Enter Match" })).toBeVisible();
 
   await page.getByRole("button", { name: "Enter Match" }).click();
@@ -328,9 +358,17 @@ test("traps overlay focus and cancels safe dialogs on Escape", async ({ page }) 
   await expect(settingsDialog).toHaveCount(0);
   await expect(settingsButton).toBeFocused();
 
-  await page.getByRole("button", { name: "Quick Tournament", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Quick Tournament Setup" })).toBeVisible();
-  await page.getByRole("button", { name: "Start Tournament" }).click();
+  const quickTournamentButton = page.getByRole("button", { name: "Quick Tournament", exact: true });
+  await quickTournamentButton.click();
+  const selectionDialog = page.getByRole("dialog", { name: "Pick Your Playstyle" });
+  await expect(selectionDialog).toBeVisible();
+  await expect(selectionDialog.getByRole("button", { name: "Close athlete selection" })).toBeFocused();
+
+  await page.keyboard.press("Escape");
+  await expect(selectionDialog).toHaveCount(0);
+  await expect(quickTournamentButton).toBeFocused();
+
+  await startQuickTournamentFromModal(page, seededPlayers[0].player.name);
 
   const resetRunButton = page.getByRole("button", { name: "Reset Run" });
   await expect(resetRunButton).toBeVisible();
@@ -367,11 +405,12 @@ test("starts from a direct screen and locks a confirmed career athlete", async (
   await page.setViewportSize({ width: 1440, height: 900 });
 
   await page.getByRole("button", { name: "Start New Career" }).click();
-  await expect(page.getByRole("dialog", { name: "Confirm Career Athlete" })).toBeVisible();
-  await expect(page.getByText(/This athlete becomes the locked managed identity/)).toBeVisible();
+  const careerDialog = page.getByRole("dialog", { name: "Pick Your Playstyle" });
+  await expect(careerDialog).toBeVisible();
+  await expect(page.getByText(/save is created only after you confirm this modal selection/)).toBeVisible();
   await captureFocusedScreenshot(page, "t099-athlete-lock-dialog-desktop");
-  await page.getByRole("button", { name: /Choose Grand-Slam Southpaw/ }).click();
-  await page.getByRole("button", { name: /Confirm Grand-Slam Southpaw/ }).click();
+  await selectAthleteInSelectionModal(page, "Grand-Slam Southpaw");
+  await careerDialog.getByRole("button", { name: "Confirm Career Athlete" }).click();
   await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
 
   await page.evaluate(() => {
@@ -396,7 +435,7 @@ test("starts from a direct screen and locks a confirmed career athlete", async (
   await page.getByRole("button", { name: "Start New Session" }).click();
   await expect(page.getByRole("button", { name: "Quick Tournament", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Quick Tournament", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Quick Tournament Setup" })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Pick Your Playstyle" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Browse All Athletes" })).toBeVisible();
 });
 
@@ -413,14 +452,12 @@ test("uses an active-career quick tournament draft only after replacement confir
   await requestNewSession(page);
   await page.getByRole("button", { name: "Start New Session" }).click();
   await page.getByRole("button", { name: "Quick Tournament", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Quick Tournament Setup" })).toBeVisible();
-  await page.getByRole("button", { name: "Browse All Athletes" }).click();
-  await page
-    .getByRole("button", { name: new RegExp(`Select ${escapeRegExp(quickDraftPlayer.name)}`) })
-    .click();
-  await expect(page.getByText(quickDraftPlayer.name).first()).toBeVisible();
+  const quickDialog = page.getByRole("dialog", { name: "Pick Your Playstyle" });
+  await expect(quickDialog).toBeVisible();
+  await selectAthleteInSelectionModal(page, quickDraftPlayer.name);
+  await expect(quickDialog.getByText(quickDraftPlayer.name).first()).toBeVisible();
 
-  await page.getByRole("button", { name: "Start Tournament" }).click();
+  await quickDialog.getByRole("button", { name: "Start Tournament" }).click();
   await expect(page.getByRole("heading", { name: "Start tournament and replace career?" })).toBeVisible();
 
   await page.evaluate((expectedCareerPlayerId) => {
@@ -671,8 +708,7 @@ test("keeps first-launch save trust surfaces bounded on mobile", async ({ page }
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
 
-  await page.getByRole("button", { name: "Quick Tournament", exact: true }).click();
-  await page.getByRole("button", { name: "Start Tournament" }).click();
+  await startQuickTournamentFromModal(page);
   await expect(page.getByRole("heading", { name: "Next Opponent" })).toBeVisible();
   await page.evaluate(() => {
     const pageWidth = document.documentElement.scrollWidth;
@@ -806,8 +842,7 @@ test("surfaces dense page contracts and Save Manager metadata", async ({ page })
     window.sessionStorage.clear();
   });
   await page.reload();
-  await page.getByRole("button", { name: "Quick Tournament", exact: true }).click();
-  await page.getByRole("button", { name: "Start Tournament" }).click();
+  await startQuickTournamentFromModal(page);
   await page.getByRole("button", { name: "Enter Match" }).click();
   await expect(page.getByRole("heading", { name: "Match Command Center" })).toBeVisible();
   await expect(page.getByLabel("Live match status")).toContainText("Next action");
@@ -874,8 +909,10 @@ test("manages export import delete and overwrite warnings from the visible Save 
   await page.getByRole("button", { name: "Start New Career" }).click();
   await expect(page.getByRole("heading", { name: "Start Screen" })).toBeVisible();
   await page.getByRole("button", { name: "Start New Career" }).click();
-  await expect(page.getByRole("dialog", { name: "Confirm Career Athlete" })).toBeVisible();
-  await page.getByRole("button", { name: /Confirm Adrian Koh/ }).click();
+  const replacementDialog = page.getByRole("dialog", { name: "Pick Your Playstyle" });
+  await expect(replacementDialog).toBeVisible();
+  await selectAthleteInSelectionModal(page, seededPlayers[0].player.name);
+  await replacementDialog.getByRole("button", { name: "Confirm Career Athlete" }).click();
   await expect(page.getByRole("heading", { name: "Start a new career?" })).toBeVisible();
   await page.getByRole("button", { name: "Cancel" }).click();
   await openSaveManager(page);
