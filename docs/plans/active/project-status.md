@@ -55,11 +55,14 @@ What is now stable:
 - the tournament continuation hardening slice now exposes tournament completion/still-in-event/next-opponent helpers, uses them in store/UI continuation paths, prevents repeated final-placement reward settlement, and proves active between-round saves through import preview
 - the UIUX1Change start-screen slice now opens on a direct Start Screen, routes Quick Tournament through the editable setup path, requires a career-athlete confirmation dialog before writing `career.program.managedPlayerId`, and keeps active-career squad/profile views inspect-only
 - the active-career Quick Tournament path now keeps its draft athlete local until explicit replacement confirmation, preserving the career save's `career.program.managedPlayerId` while starting the replacement quick run with the drafted athlete
+- career creation and Quick Tournament launch now share a blocking playstyle-first athlete selection modal; both require an explicit modal-session athlete pick, career writes `career.program.managedPlayerId` only on confirm, and Quick Tournament keeps compact `Strategic Override` tactic selection plus active-career replacement safety
 - the UIUX1Change shell-standardization slice now uses one grouped command rail with Core, Program, Match, Operations, and System commands; the former top nav and global career route strip are removed, while Settings and Save Manager stay reachable through shell system controls
 - the shell overlay remediation now moves focus into Settings and confirmation dialogs, traps Tab and Shift+Tab inside the active modal, closes Settings on Escape, cancels confirmations on Escape, and restores focus to the invoking control after close
 - the UIUX1Change dense-page fidelity slice now makes Portal Home the active-career operations hub with tasks/inbox, next event, calendar snapshot, readiness/ranking pressure, recent match evidence, save state, and a visible Continue action
 - training, calendar/competition, match planning, live match, and post-match review now expose compact management status strips above their grids, tables, telemetry, and decision panels
 - Save Manager now leads with active slot metadata for slot state, mode, managed athlete, save version, import preview, and quarantine state while preserving export, import preview/confirm, active-save deletion, and corrupt-backup deletion safety
+- the rescue MVP Workstreams A/C slice now centralizes valid career day advancement in the topbar, removes the Calendar/Event Desk-only Advance Day control, and routes match-day advances into the career pre-match hub without bypassing pre/post/live competition states
+- the disposable-run knockout tree is now a reusable `KnockoutTree` component shared by Overview, Career Pre-Match, and Career Post-Match hubs while preserving clickable player names, placeholders, scorelines, managed-path highlighting, champion styling, and background match summaries
 - the live Match Command Center now uses a compact horizontal command surface with the primary point action beside the scoreboard, the tactical feed/viewer/telemetry/options visible across desktop viewports, and focused regression proof for duplicate action prevention
 
 ## Completed
@@ -126,9 +129,12 @@ What is now stable:
 - [x] hardened tournament continuation helpers, post-match CTA branches, final-placement reward settlement, save/import round-trips, and deterministic reload proof for next-round, loss, and title closeout states
 - [x] replaced the clean-launch athlete-directory loop with a direct Start Screen plus explicit career-athlete lock confirmation, while preserving Quick Tournament editability and active-career squad/profile inspection
 - [x] remediated the active-career Quick Tournament draft path so draft athlete selection no longer mutates or no-ops against the locked career identity before replacement confirmation
+- [x] replaced the divergent career confirmation dialog and full-page quick setup with a shared blocking playstyle-first athlete selection modal, explicit athlete-pick gating, full-roster browse fallback, and compact quick-run tactic selection
 - [x] standardized the management shell around a minimal top status bar, grouped primary command sidebar, page canvas, and overlay host while preserving Save Manager, Settings, locked identity, and tournament continuation reachability
 - [x] remediated Settings and confirmation overlay keyboard behavior with initial focus, focus containment, safe Escape handling, focus restoration, and focused Playwright proof
 - [x] converted the active Portal, training, calendar/competition, tactics, live match, post-match review, and Save Manager surfaces toward compact management-page contracts with focused Playwright coverage
+- [x] moved normal-stage career day advancement to the persistent topbar CTA and removed the Calendar/Event Desk special header-level Advance Day button
+- [x] extracted the bracket tree into a reusable component and rendered it in career pre-match and post-match event hubs
 - [x] rebuilt the live Match Command Center into a horizontal scoreboard/action/feed/viewer/telemetry/options command surface with focused unit and Playwright viewport coverage
 
 ## In Progress

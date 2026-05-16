@@ -8,7 +8,12 @@ async function enterQuickLiveMatch(page: Page) {
   });
   await page.reload();
   await page.getByRole("button", { name: "Quick Tournament", exact: true }).click();
-  await page.getByRole("button", { name: "Start Tournament" }).click();
+  const selectionDialog = page.getByRole("dialog", { name: "Pick Your Playstyle" });
+  await expect(selectionDialog).toBeVisible();
+  await expect(selectionDialog.getByRole("button", { name: "Start Tournament" })).toBeDisabled();
+  await selectionDialog.getByRole("button", { name: /Select( featured)? / }).first().click();
+  await expect(selectionDialog.getByRole("button", { name: "Start Tournament" })).toBeEnabled();
+  await selectionDialog.getByRole("button", { name: "Start Tournament" }).click();
   await page.getByRole("button", { name: "Enter Match" }).click();
   await expect(page.getByRole("heading", { name: "Match Command Center" })).toBeVisible();
   await page.evaluate(() => window.scrollTo(0, 0));
