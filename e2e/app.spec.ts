@@ -302,7 +302,7 @@ async function selectAthleteInSelectionModal(page: Page, athleteName: string) {
 }
 
 async function startNewCareer(page: Page, athleteName = seededPlayers[0].player.name) {
-  await page.getByRole("button", { name: "Start New Career" }).click();
+  await page.getByRole("button", { name: "Start Career" }).click();
   const dialog = page.getByRole("dialog", { name: "Pick Your Playstyle" });
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole("button", { name: "Confirm Career Athlete" })).toBeDisabled();
@@ -340,7 +340,7 @@ async function openSaveManager(page: Page) {
     return;
   }
 
-  await page.getByRole("button", { name: "Load Save" }).click();
+  await page.getByRole("button", { name: "Save Tools" }).click();
 }
 
 async function requestNewSession(page: Page) {
@@ -356,9 +356,9 @@ test("can start a tournament run and play through a managed match", async ({ pag
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/");
 
-  await expect(page.getByRole("heading", { name: "Start Screen" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Badminton Manager" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Quick Tournament", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Start New Career" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Start Career" })).toBeVisible();
   await page.getByRole("button", { name: "Quick Tournament", exact: true }).click();
   const selectionDialog = page.getByRole("dialog", { name: "Pick Your Playstyle" });
   await expect(selectionDialog).toBeVisible();
@@ -469,18 +469,19 @@ test("starts from a direct screen and locks a confirmed career athlete", async (
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/");
 
-  await expect(page.getByRole("heading", { name: "Start Screen" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Start New Career" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Badminton Manager" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Start Career" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Quick Tournament", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Load Save" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Save Tools" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Preferences", exact: true })).toBeVisible();
+  await expect(page.getByText(/blocking launch modal/)).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Browse All Athletes" })).toHaveCount(0);
-  await captureFocusedScreenshot(page, "t099-start-screen-desktop");
+  await captureFocusedScreenshot(page, "start-screen-empty-desktop");
   await page.setViewportSize({ width: 390, height: 844 });
-  await captureFocusedScreenshot(page, "t099-start-screen-mobile");
+  await captureFocusedScreenshot(page, "start-screen-empty-mobile");
   await page.setViewportSize({ width: 1440, height: 900 });
 
-  await page.getByRole("button", { name: "Start New Career" }).click();
+  await page.getByRole("button", { name: "Start Career" }).click();
   const careerDialog = page.getByRole("dialog", { name: "Pick Your Playstyle" });
   await expect(careerDialog).toBeVisible();
   await expect(page.getByText(/save is created only after you confirm this modal selection/)).toBeVisible();
@@ -509,6 +510,14 @@ test("starts from a direct screen and locks a confirmed career athlete", async (
 
   await requestNewSession(page);
   await page.getByRole("button", { name: "Start New Session" }).click();
+  await expect(page.getByRole("button", { name: "Continue Career" })).toBeVisible();
+  await expect(page.getByText("Grand-Slam Southpaw").first()).toBeVisible();
+  await expect(page.getByText(/Readiness/).first()).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Primary commands" })).toHaveCount(0);
+  await captureFocusedScreenshot(page, "start-screen-active-save-desktop");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await captureFocusedScreenshot(page, "start-screen-active-save-mobile");
+  await page.setViewportSize({ width: 1440, height: 900 });
   await expect(page.getByRole("button", { name: "Quick Tournament", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Quick Tournament", exact: true }).click();
   await expect(page.getByRole("dialog", { name: "Pick Your Playstyle" })).toBeVisible();
@@ -758,9 +767,12 @@ test("surfaces corrupt save recovery and blocks unaffordable event entry", async
   });
   await page.goto("/");
 
+  await expect(page.getByRole("heading", { name: "Badminton Manager" })).toBeVisible();
+  await expect(page.getByText(/Recovery available/).first()).toBeVisible();
+  await captureFocusedScreenshot(page, "start-screen-recovery-warning");
   await openSaveManager(page);
   await expect(page.getByRole("heading", { name: "Local Save Control" })).toBeVisible();
-  await expect(page.getByText(/Quarantine present/).first()).toBeVisible();
+  await expect(page.getByText(/Quarantine present|Recovery available/).first()).toBeVisible();
 
   await page.getByRole("button", { name: "Start New Career" }).click();
   await startNewCareer(page);
@@ -815,7 +827,7 @@ test("keeps first-launch save trust surfaces bounded on mobile", async ({ page }
     window.sessionStorage.clear();
     window.location.reload();
   });
-  await expect(page.getByRole("heading", { name: "Start Screen" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Badminton Manager" })).toBeVisible();
   await startNewCareer(page);
   await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
 
@@ -1057,7 +1069,7 @@ test("manages export import delete and overwrite warnings from the visible Save 
   });
   await page.goto("/");
 
-  await expect(page.getByRole("heading", { name: "Start Screen" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Badminton Manager" })).toBeVisible();
   await startNewCareer(page);
   await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
 
@@ -1071,8 +1083,8 @@ test("manages export import delete and overwrite warnings from the visible Save 
   await expect(page.getByRole("heading", { name: "Start tournament and replace career?" })).toBeVisible();
   await page.getByRole("button", { name: "Cancel" }).click();
   await page.getByRole("button", { name: "Start New Career" }).click();
-  await expect(page.getByRole("heading", { name: "Start Screen" })).toBeVisible();
-  await page.getByRole("button", { name: "Start New Career" }).click();
+  await expect(page.getByRole("heading", { name: "Badminton Manager" })).toBeVisible();
+  await page.getByRole("button", { name: "Start Career" }).click();
   const replacementDialog = page.getByRole("dialog", { name: "Pick Your Playstyle" });
   await expect(replacementDialog).toBeVisible();
   await selectAthleteInSelectionModal(page, seededPlayers[0].player.name);
@@ -1106,7 +1118,7 @@ test("manages export import delete and overwrite warnings from the visible Save 
 
   await page.getByRole("button", { name: "Delete Active Local Save" }).click();
   await page.getByRole("button", { name: "Confirm", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Start Screen" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Badminton Manager" })).toBeVisible();
   await page.evaluate(() => {
     if (window.localStorage.getItem("badminton-manager-save") !== null) {
       throw new Error("Expected active save to be deleted.");

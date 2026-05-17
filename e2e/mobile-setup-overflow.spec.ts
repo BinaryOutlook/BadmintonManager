@@ -10,7 +10,7 @@ test("mobile setup recommendation card keeps featured content within bounds", as
   await page.reload();
 
   await expect(page.getByRole("button", { name: "Quick Tournament", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Start New Career" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Start Career" })).toBeVisible();
   await page.getByRole("button", { name: "Quick Tournament", exact: true }).click();
   await expect(page.getByRole("button", { name: "Start Tournament" })).toBeVisible();
 

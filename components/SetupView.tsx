@@ -5,6 +5,17 @@ import { deriveAthleteDossier } from "../game/core/intel";
 import type { TacticKey } from "../game/store/store";
 import { useModalFocus } from "./useModalFocus";
 
+export interface LaunchSaveSummary {
+  mode: "career" | "quickTournament";
+  title: string;
+  managedName: string;
+  context: string;
+  nextAction: string;
+  primaryActionLabel: "Continue Career" | "Continue Tournament";
+  details: Array<{ label: string; value: string }>;
+  readiness?: number;
+}
+
 interface SetupViewProps {
   selectedPlayerId: string;
   plannedTacticKey: TacticKey;
@@ -19,6 +30,7 @@ interface SetupViewProps {
   activeSavePresent: boolean;
   careerPresent: boolean;
   corruptSavePresent: boolean;
+  launchSaveSummary: LaunchSaveSummary | null;
 }
 
 function overallFromDossier(dossier: ReturnType<typeof deriveAthleteDossier>) {
@@ -386,11 +398,20 @@ export function SetupView(props: SetupViewProps) {
     archetypeFilter !== "all" ? `Style: ${archetypeLabels[archetypeFilter]}` : "",
     browseSortKey !== "overall" ? `Sort: ${sortLabels[browseSortKey]}` : ""
   ].filter(Boolean);
-  const localSlotLabel = props.activeSavePresent
-    ? props.careerPresent
+  const launchSaveSummary = props.launchSaveSummary;
+  const localSlotLabel = launchSaveSummary
+    ? launchSaveSummary.mode === "career"
       ? "Career save loaded"
-      : "Tournament/setup save loaded"
-    : "No active local save";
+      : "Tournament save loaded"
+    : props.activeSavePresent
+      ? "Setup draft saved"
+      : "No active local save";
+  const launchLayoutClass = launchSaveSummary
+    ? "start-layout start-layout-has-save"
+    : "start-layout start-layout-empty";
+  const heroCopy = launchSaveSummary
+    ? "Resume your local save, build a locked career, or run a disposable tournament."
+    : "Build a locked career program or jump straight into a disposable bracket run.";
   const { modalRef, handleModalKeyDown } = useModalFocus(selectionPurpose !== null, closeSelectionModal);
 
   function resetBrowseFilters() {
@@ -938,78 +959,148 @@ export function SetupView(props: SetupViewProps) {
   }
 
   return (
-    <section className="screen-shell start-screen">
-      <div className="screen-header">
-        <div>
-          <p className="screen-kicker">Launch Control</p>
-          <h1 className="screen-title">Start Screen</h1>
-          <p className="screen-copy">
-            Continue the local slot, create one locked career athlete, or open a disposable tournament selection modal.
-          </p>
+    <section className="screen-shell start-screen start-screen-redesign">
+      <div className="start-hero">
+        <div className="start-hero-copy">
+          <p className="screen-kicker">Launch Hub</p>
+          <h1 className="screen-title">Badminton Manager</h1>
+          <p className="screen-copy">{heroCopy}</p>
         </div>
-        <div className="screen-meta">
-          <span>{localSlotLabel}</span>
-          {props.corruptSavePresent && <span>Quarantine present</span>}
+        <div className="start-hero-status" aria-label="Local slot status">
+          <span>Local slot: {localSlotLabel}</span>
+          <span>Storage: Browser local</span>
+          {props.corruptSavePresent && <span className="start-status-warning">Recovery available</span>}
         </div>
       </div>
 
-      <section className="start-action-grid" aria-label="Start screen actions">
-        {props.activeSavePresent && (
-          <article className="command-panel start-action-panel start-action-panel-primary">
-            <div>
+      {props.corruptSavePresent && (
+        <section className="start-recovery-strip" role="status" aria-label="Save recovery notice">
+          <div>
+            <strong>Recovery available.</strong>
+            <span>A quarantined local file needs review before you trust the slot.</span>
+          </div>
+          <button className="command-button command-button-secondary" type="button" onClick={props.onOpenSaveManager}>
+            Review Recovery
+          </button>
+        </section>
+      )}
+
+      <section className={launchLayoutClass} aria-label="Launch options">
+        {launchSaveSummary && (
+          <article className="command-panel start-resume-panel">
+            <div className="start-resume-main">
               <p className="screen-kicker">Active Slot</p>
-              <h2>Continue</h2>
-              <p>Resume the compatible local save exactly where it was left.</p>
+              <h2>{launchSaveSummary.title}</h2>
+              <p className="start-resume-athlete">{launchSaveSummary.managedName}</p>
+              <p className="start-resume-context">{launchSaveSummary.context}</p>
+
+              <div className="start-resume-detail-grid" aria-label="Active save details">
+                {launchSaveSummary.details.map((detail) => (
+                  <div key={detail.label}>
+                    <span>{detail.label}</span>
+                    <strong>{detail.value}</strong>
+                  </div>
+                ))}
+              </div>
+
+              {typeof launchSaveSummary.readiness === "number" && (
+                <div className="start-readiness-meter" aria-label={`Readiness ${launchSaveSummary.readiness}`}>
+                  <div className="metric-row">
+                    <span>Readiness</span>
+                    <strong>{launchSaveSummary.readiness}</strong>
+                  </div>
+                  <div className="metric-track">
+                    <div className="metric-track-fill" style={{ width: `${launchSaveSummary.readiness}%` }} />
+                  </div>
+                </div>
+              )}
             </div>
-            <button className="command-button command-button-primary" type="button" onClick={props.onContinueLocalSave}>
-              Continue
-            </button>
+
+            <div className="start-resume-action-block">
+              <p>{launchSaveSummary.nextAction}</p>
+              <button className="command-button command-button-primary" type="button" onClick={props.onContinueLocalSave}>
+                {launchSaveSummary.primaryActionLabel}
+              </button>
+            </div>
           </article>
         )}
 
-        <article className="command-panel start-action-panel">
-          <div>
-            <p className="screen-kicker">Career Save</p>
-            <h2>Start New Career</h2>
-            <p>Open the playstyle-first athlete lock modal before creating a career program.</p>
+        <section className="command-panel start-new-panel" aria-labelledby="start-new-title">
+          <div className="panel-header panel-header-compact">
+            <div>
+              <p className="screen-kicker">New Session</p>
+              <h2 id="start-new-title">Start Something New</h2>
+            </div>
+            <span>{launchSaveSummary ? "Secondary paths" : "Choose your opening path"}</span>
           </div>
-          <button className="command-button command-button-primary" type="button" onClick={() => openSelectionModal("career")}>
-            Start New Career
-          </button>
-        </article>
 
-        <article className="command-panel start-action-panel">
-          <div>
-            <p className="screen-kicker">Disposable Run</p>
-            <h2>Quick Tournament</h2>
-            <p>Choose the one-off athlete and tactic inside a blocking launch modal.</p>
-          </div>
-          <button className="command-button command-button-secondary" type="button" onClick={() => openSelectionModal("quickTournament")}>
-            Quick Tournament
-          </button>
-        </article>
+          <div className="start-mode-grid">
+            <article className="start-mode-card start-mode-card-career">
+              <div>
+                <span>Career Save</span>
+                <h3>Career Program</h3>
+                <p>Choose a locked athlete and build a long-term career program with calendar, training, scouting, and event progression.</p>
+              </div>
+              <button className="command-button command-button-primary" type="button" onClick={() => openSelectionModal("career")}>
+                Start Career
+              </button>
+            </article>
 
-        <article className="command-panel start-action-panel">
-          <div>
-            <p className="screen-kicker">Local Slot</p>
-            <h2>Load Save</h2>
-            <p>Preview imports, export the current slot, or recover a quarantined local file.</p>
+            <article className="start-mode-card start-mode-card-quick">
+              <div>
+                <span>Disposable Run</span>
+                <h3>Quick Tournament</h3>
+                <p>Pick an athlete and tactic for a one-off bracket run without committing to a career calendar.</p>
+              </div>
+              <button className="command-button command-button-secondary" type="button" onClick={() => openSelectionModal("quickTournament")}>
+                Quick Tournament
+              </button>
+            </article>
           </div>
-          <button className="command-button command-button-secondary" type="button" onClick={props.onOpenSaveManager}>
-            Load Save
-          </button>
-        </article>
+        </section>
 
-        <article className="command-panel start-action-panel">
+        <section className="start-utility-strip" aria-label="Save and system utilities">
+          <article className="start-utility-card">
+            <div>
+              <span>Save Tools</span>
+              <h2>Local save control</h2>
+              <p>Import, export, preview, or recover local saves.</p>
+            </div>
+            <button className="command-button command-button-secondary" type="button" onClick={props.onOpenSaveManager}>
+              Save Tools
+            </button>
+          </article>
+
+          <article className="start-utility-card">
+            <div>
+              <span>Preferences</span>
+              <h2>Display and session</h2>
+              <p>Tune display, accent, and session settings before launch.</p>
+            </div>
+            <button className="command-button command-button-secondary" type="button" onClick={props.onOpenPreferences}>
+              Preferences
+            </button>
+          </article>
+        </section>
+
+        <section className="start-save-trust-strip" aria-label="Local save trust">
           <div>
-            <p className="screen-kicker">System</p>
-            <h2>Preferences</h2>
-            <p>Adjust display accent and session-level controls before starting.</p>
+            <span>Local slot</span>
+            <strong>{localSlotLabel}</strong>
           </div>
-          <button className="command-button command-button-secondary" type="button" onClick={props.onOpenPreferences}>
-            Preferences
-          </button>
-        </article>
+          <div>
+            <span>Storage</span>
+            <strong>Browser local</strong>
+          </div>
+          <div>
+            <span>Quarantine</span>
+            <strong>{props.corruptSavePresent ? "Needs review" : "None"}</strong>
+          </div>
+          <div>
+            <span>Export</span>
+            <strong>{props.activeSavePresent ? "Available from Save Tools" : "Write a slot first"}</strong>
+          </div>
+        </section>
       </section>
 
       {renderSelectionModal()}
