@@ -25,6 +25,7 @@ function renderMatchView(session: LiveMatchSession, overrides: Partial<Parameter
     onApplyDirective: vi.fn(),
     onApplyTalk: vi.fn(),
     onSimulateNextPoint: vi.fn(),
+    onFinishSet: vi.fn(),
     onAdvanceAfterMatch: vi.fn(),
     onOpenPlayerProfile: vi.fn(),
     ...overrides
@@ -37,18 +38,26 @@ function renderMatchView(session: LiveMatchSession, overrides: Partial<Parameter
 }
 
 describe("MatchView", () => {
-  it("places exactly one dominant point action beside the compact scoreboard", () => {
+  it("places compact point and set controls beside the broadcast scoreboard", () => {
     const { props } = renderMatchView(createSession());
 
     expect(screen.getByLabelText("Match command surface")).toHaveClass("match-command-layout-v2");
     expect(screen.getByLabelText("Compact scoreboard")).toBeInTheDocument();
-    expect(screen.getByLabelText("Primary match action")).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: "Simulate Next Point" })).toHaveLength(1);
+    expect(screen.getByLabelText("Match controls")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Next Point" })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: "Finish Set" })).toHaveLength(1);
     expect(screen.getByRole("heading", { name: "Tactical Options" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Rally Pattern Map" })).toBeInTheDocument();
+    expect(screen.getByText("Attack Value")).toBeInTheDocument();
+    expect(screen.getByText("Movement Load")).toBeInTheDocument();
+    expect(screen.getByText("Rally Control")).toBeInTheDocument();
+    expect(screen.getByText("Tactical Read")).toBeInTheDocument();
 
-    fireEvent.click(within(screen.getByLabelText("Primary match action")).getByRole("button", { name: "Simulate Next Point" }));
+    fireEvent.click(within(screen.getByLabelText("Match controls")).getByRole("button", { name: "Next Point" }));
+    fireEvent.click(within(screen.getByLabelText("Match controls")).getByRole("button", { name: "Finish Set" }));
 
     expect(props.onSimulateNextPoint).toHaveBeenCalledTimes(1);
+    expect(props.onFinishSet).toHaveBeenCalledTimes(1);
   });
 
   it("keeps between-set talks available while preserving a single next-set action", () => {
@@ -71,12 +80,13 @@ describe("MatchView", () => {
     const { props, rerender } = renderMatchView(intermissionSession);
 
     expect(screen.getAllByRole("button", { name: "Open Next Set" })).toHaveLength(1);
+    expect(screen.queryByRole("button", { name: "Finish Set" })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Encourage/ }));
     expect(props.onApplyTalk).toHaveBeenCalledWith("encourage");
 
     rerender(<MatchView {...props} session={{ ...intermissionSession, pendingTalkA: "encourage" }} />);
 
-    expect(screen.getAllByRole("button", { name: "Apply Talk + Open Next Set" })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: "Open Next Set" })).toHaveLength(1);
   });
 
   it("switches the single primary action to bracket advancement after completion", () => {
@@ -105,8 +115,9 @@ describe("MatchView", () => {
     };
     const { props } = renderMatchView(completeSession);
 
-    expect(screen.getAllByRole("button", { name: "Advance Bracket" })).toHaveLength(1);
-    fireEvent.click(screen.getByRole("button", { name: "Advance Bracket" }));
+    expect(screen.getAllByRole("button", { name: "Advance" })).toHaveLength(1);
+    expect(screen.queryByRole("button", { name: "Finish Set" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Advance" }));
 
     expect(props.onAdvanceAfterMatch).toHaveBeenCalledTimes(1);
   });

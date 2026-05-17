@@ -7,6 +7,7 @@ import {
   simulateMatchByFidelity,
   simulateMatch,
   simulateNextPoint,
+  simulateUntilSetComplete,
   simulateQuickMatch
 } from "../../game/core/match";
 import { playerSchema, type Player } from "../../game/core/models";
@@ -344,5 +345,28 @@ describe("match simulation", () => {
       expect(session.competitorA.composureShift).toBeGreaterThanOrEqual(composureBeforeTalk + 6);
       expect(session.intermission).toBe(false);
     }
+  });
+
+  it("finishes the current set by replaying the same deterministic point path", () => {
+    const playerA = createPlayer({ id: "a", name: "Coach Side" });
+    const playerB = createPlayer({ id: "b", name: "Opponent" });
+    const session = createMatchSession({
+      seed: 912,
+      playerA,
+      playerB,
+      tacticA: tacticLibrary.balancedControl,
+      tacticB: tacticLibrary.aggressiveSmash
+    });
+    let pointByPointSession = session;
+
+    while (!pointByPointSession.complete && !pointByPointSession.intermission) {
+      pointByPointSession = simulateNextPoint(pointByPointSession);
+    }
+
+    const finishedSetSession = simulateUntilSetComplete(session);
+
+    expect(finishedSetSession).toEqual(pointByPointSession);
+    expect(finishedSetSession.complete || finishedSetSession.intermission).toBe(true);
+    expect(finishedSetSession.setSummaries).toHaveLength(1);
   });
 });

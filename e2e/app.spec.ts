@@ -387,10 +387,10 @@ test("can start a tournament run and play through a managed match", async ({ pag
   await page.getByRole("button", { name: "Expand sidebar" }).click();
 
   await page.getByRole("button", { name: "Enter Match" }).click();
-  await expect(page.getByRole("button", { name: "Simulate Next Point" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Next Point", exact: true })).toBeVisible();
 
   for (let index = 0; index < 160; index += 1) {
-    if (await page.getByRole("button", { name: "Advance Bracket" }).isVisible().catch(() => false)) {
+    if (await page.getByRole("button", { name: "Advance", exact: true }).isVisible().catch(() => false)) {
       break;
     }
 
@@ -401,12 +401,12 @@ test("can start a tournament run and play through a managed match", async ({ pag
     if (await page.getByRole("button", { name: "Open Next Set" }).isVisible().catch(() => false)) {
       await page.getByRole("button", { name: "Open Next Set" }).click();
     } else {
-      await page.getByRole("button", { name: "Simulate Next Point" }).click();
+      await page.getByRole("button", { name: "Finish Set", exact: true }).click();
     }
   }
 
-  await expect(page.getByRole("button", { name: "Advance Bracket" })).toBeVisible();
-  await page.getByRole("button", { name: "Advance Bracket" }).click();
+  await expect(page.getByRole("button", { name: "Advance", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Advance", exact: true }).click();
 
   await expect(
     page.getByRole("button", { name: /Enter Match|Start New Session/ })
@@ -621,11 +621,11 @@ test("can complete and reload the career core slice with tactical viewer proof",
   await expect(page.getByText(/Career context is now attached/)).toBeVisible();
 
   await page.getByRole("button", { name: "Enter Match" }).click();
-  await expect(page.getByRole("button", { name: "Simulate Next Point" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Next Point", exact: true })).toBeVisible();
   await expect(page.getByTestId("tactical-viewer")).toBeVisible();
 
   for (let index = 0; index < 180; index += 1) {
-    if (await page.getByRole("button", { name: "Advance Bracket" }).isVisible().catch(() => false)) {
+    if (await page.getByRole("button", { name: "Advance", exact: true }).isVisible().catch(() => false)) {
       break;
     }
 
@@ -636,14 +636,14 @@ test("can complete and reload the career core slice with tactical viewer proof",
     if (await page.getByRole("button", { name: "Open Next Set" }).isVisible().catch(() => false)) {
       await page.getByRole("button", { name: "Open Next Set" }).click();
     } else {
-      await page.getByRole("button", { name: "Simulate Next Point" }).click();
+      await page.getByRole("button", { name: "Finish Set", exact: true }).click();
     }
   }
 
-  await page.getByRole("button", { name: "Advance Bracket" }).click();
+  await page.getByRole("button", { name: "Advance", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Match Evidence Review" })).toBeVisible();
   await expect(page.getByText("Career-aware recap")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "2D Tactical Viewer" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Rally Pattern Map" })).toBeVisible();
   await expect(page.locator("[data-zone]")).toHaveCount(9);
   await expect(page.getByTestId("tactical-momentum-timeline")).toBeVisible();
   await page.evaluate(() => {
@@ -661,7 +661,7 @@ test("can complete and reload the career core slice with tactical viewer proof",
 
   await page.reload();
   await expect(page.getByRole("heading", { name: "Match Evidence Review" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "2D Tactical Viewer" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Rally Pattern Map" })).toBeVisible();
   await expect(page.getByText(/Points/).first()).toBeVisible();
   await expect(page.getByText(/Cash/).first()).toBeVisible();
 });
@@ -958,7 +958,8 @@ test("surfaces dense page contracts and Save Manager metadata", async ({ page })
   await startQuickTournamentFromModal(page);
   await page.getByRole("button", { name: "Enter Match" }).click();
   await expect(page.getByRole("heading", { name: "Match Command Center" })).toBeVisible();
-  await expect(page.getByLabel("Live match status")).toContainText("Next action");
+  await expect(page.getByLabel("Match controls")).toContainText("Next Point");
+  await expect(page.getByLabel("Live match status")).toHaveCount(0);
 });
 
 test("integrates fictional calendar ranking stakes into career home and Calendar", async ({ page }) => {

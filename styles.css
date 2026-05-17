@@ -1393,7 +1393,7 @@ textarea:focus-visible {
 
 .tactical-court-zone strong {
   color: var(--text);
-  font-size: 1.35rem;
+  font-size: 1.05rem;
   line-height: 1;
 }
 
@@ -1401,6 +1401,12 @@ textarea:focus-visible {
 .tactical-metric-grid small {
   color: var(--muted);
   font-size: 0.72rem;
+}
+
+.tactical-court-zone em {
+  color: var(--muted-soft);
+  font-size: 0.66rem;
+  font-style: normal;
 }
 
 .tactical-viewer-rail {
@@ -5620,10 +5626,9 @@ textarea:focus-visible {
 
 .match-command-layout-v2 {
   display: grid;
-  grid-template-columns: minmax(17rem, 0.9fr) minmax(23rem, 1.15fr) minmax(18rem, 0.95fr);
+  grid-template-columns: minmax(17rem, 0.82fr) minmax(25rem, 1.22fr) minmax(18rem, 0.88fr);
   grid-template-areas:
     "score score action"
-    "status status status"
     "feed viewer side";
   gap: 0.75rem;
   align-items: stretch;
@@ -5638,6 +5643,64 @@ textarea:focus-visible {
 .match-scoreboard-panel .scoreboard-topline {
   padding-bottom: 0.42rem;
   margin-bottom: 0.55rem;
+}
+
+.broadcast-scoreboard {
+  display: grid;
+  gap: 0.22rem;
+  min-width: 0;
+}
+
+.broadcast-scoreboard-row {
+  display: grid;
+  grid-template-columns: minmax(10rem, 1fr) 2.2rem repeat(2, minmax(2.4rem, 0.22fr)) minmax(4rem, 0.36fr);
+  gap: 0.32rem;
+  align-items: center;
+  min-width: 0;
+}
+
+.broadcast-scoreboard-row > span,
+.broadcast-scoreboard-row > strong,
+.scoreboard-name-button {
+  min-width: 0;
+  border: 1px solid rgba(48, 54, 61, 0.72);
+  border-radius: 0.24rem;
+  padding: 0.38rem 0.45rem;
+  background: rgba(12, 14, 17, 0.62);
+  color: var(--text);
+  font-size: 0.82rem;
+  line-height: 1.1;
+  text-align: center;
+}
+
+.broadcast-scoreboard-head > span {
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted-soft);
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.scoreboard-name-button {
+  width: 100%;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.server-marker {
+  min-height: 2rem;
+  font-weight: 900;
+}
+
+.current-score-cell {
+  border-color: rgba(57, 255, 20, 0.22);
+  background: rgba(57, 255, 20, 0.1);
+  color: var(--lime);
+  font-size: 1.2rem;
 }
 
 .match-scoreboard-panel .scoreboard-main {
@@ -5736,9 +5799,15 @@ textarea:focus-visible {
 
 .primary-match-action .command-button {
   width: 100%;
-  min-height: 3.1rem;
+  min-height: 2.7rem;
   padding: 0.76rem 0.82rem;
   font-size: 0.82rem;
+}
+
+.match-transport-buttons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
 }
 
 .primary-action-meta {
@@ -5760,22 +5829,6 @@ textarea:focus-visible {
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-}
-
-.match-status-strip {
-  grid-area: status;
-  grid-template-columns: minmax(4.8rem, 0.42fr) minmax(4.8rem, 0.42fr) minmax(8rem, 0.9fr) minmax(9rem, 1fr) minmax(8rem, 0.9fr);
-  gap: 0.5rem;
-}
-
-.match-status-strip div {
-  padding: 0.48rem 0.6rem;
-}
-
-.match-status-strip strong {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .match-feed-panel {
@@ -5857,12 +5910,16 @@ textarea:focus-visible {
 
 .match-command-viewer .tactical-court-zone strong,
 .match-command-viewer .tactical-metric-grid strong {
-  font-size: 1.02rem;
+  font-size: 0.88rem;
 }
 
 .match-command-viewer .tactical-court-zone small,
 .match-command-viewer .tactical-metric-grid small {
   font-size: 0.62rem;
+}
+
+.match-command-viewer .tactical-court-zone em {
+  font-size: 0.56rem;
 }
 
 .match-command-viewer .tactical-viewer-rail {
@@ -6014,7 +6071,7 @@ textarea:focus-visible {
   }
 
   .match-command-layout-v2 {
-    grid-template-rows: auto auto minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
     min-height: 0;
   }
 }
@@ -6051,7 +6108,7 @@ textarea:focus-visible {
 
   .match-command-layout-v2 {
     gap: 0.55rem;
-    grid-template-columns: minmax(16rem, 0.88fr) minmax(21rem, 1.18fr) minmax(17rem, 0.94fr);
+    grid-template-columns: minmax(16rem, 0.8fr) minmax(22rem, 1.22fr) minmax(17rem, 0.9fr);
   }
 
   .match-scoreboard-panel,
@@ -6088,7 +6145,7 @@ textarea:focus-visible {
   }
 
   .primary-match-action .command-button {
-    min-height: 2.62rem;
+    min-height: 2.38rem;
     padding: 0.58rem 0.64rem;
     font-size: 0.74rem;
   }
@@ -6096,10 +6153,6 @@ textarea:focus-visible {
   .primary-action-meta span {
     min-height: 1.24rem;
     font-size: 0.56rem;
-  }
-
-  .match-status-strip div {
-    padding: 0.34rem 0.46rem;
   }
 
   .match-command-viewer .tactical-court {
@@ -6141,7 +6194,6 @@ textarea:focus-visible {
     grid-template-areas:
       "score"
       "action"
-      "status"
       "viewer"
       "feed"
       "side";
@@ -6178,10 +6230,13 @@ textarea:focus-visible {
     order: -1;
   }
 
-  .match-status-strip,
   .team-talk-grid,
   .match-command-viewer .tactical-metric-grid {
     grid-template-columns: 1fr;
+  }
+
+  .broadcast-scoreboard-row {
+    grid-template-columns: minmax(8rem, 1fr) 1.8rem repeat(2, minmax(2.1rem, 0.22fr)) minmax(3.6rem, 0.36fr);
   }
 
   .primary-action-meta {
@@ -6238,11 +6293,6 @@ textarea:focus-visible {
 
   .match-scoreboard-panel .score-value {
     font-size: 2.45rem;
-  }
-
-  .match-status-strip div {
-    padding-top: 0.38rem;
-    padding-bottom: 0.38rem;
   }
 
   .match-side-column {
@@ -6795,6 +6845,209 @@ textarea:focus-visible {
   }
 }
 
+/* Issue 12: compact badminton command center and rally-pattern language. */
+.match-command-layout-v2 {
+  grid-template-columns: minmax(15.5rem, 0.86fr) minmax(23rem, 1.28fr) minmax(17.5rem, 0.9fr);
+  grid-template-areas:
+    "score score action"
+    "feed viewer side";
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.broadcast-scoreboard {
+  display: grid;
+  gap: 0.28rem;
+  min-width: 0;
+}
+
+.broadcast-scoreboard-row {
+  display: grid;
+  grid-template-columns: minmax(11rem, 1fr) 2.1rem minmax(2.4rem, 0.22fr) minmax(2.4rem, 0.22fr) minmax(3.7rem, 0.3fr);
+  gap: 0.32rem;
+  align-items: center;
+  min-width: 0;
+}
+
+.broadcast-scoreboard-row > span,
+.broadcast-scoreboard-row > strong,
+.scoreboard-name-button {
+  min-width: 0;
+  border: 1px solid rgba(48, 54, 61, 0.82);
+  border-radius: 0.22rem;
+  padding: 0.34rem 0.42rem;
+  background: rgba(12, 14, 17, 0.58);
+  color: var(--text);
+  font-size: 0.82rem;
+  line-height: 1.1;
+  text-align: center;
+}
+
+.broadcast-scoreboard-head > span {
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted-soft);
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.broadcast-scoreboard-head > span:first-child,
+.scoreboard-name-button {
+  text-align: left;
+}
+
+.scoreboard-name-button {
+  width: 100%;
+  overflow: hidden;
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scoreboard-player-cell {
+  padding: 0;
+  overflow: hidden;
+  text-align: left;
+}
+
+.scoreboard-player-cell .scoreboard-name-button {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0.34rem 0.42rem;
+}
+
+.server-marker {
+  color: var(--cyan);
+  font-weight: 900;
+}
+
+.current-score-cell {
+  border-color: rgba(242, 193, 78, 0.48);
+  background: rgba(242, 193, 78, 0.12);
+  font-size: 1.08rem;
+}
+
+.match-scoreboard-panel {
+  display: grid;
+  gap: 0.46rem;
+  align-content: center;
+}
+
+.match-scoreboard-panel .scoreboard-topline {
+  padding-bottom: 0.34rem;
+  margin-bottom: 0;
+}
+
+.primary-match-action {
+  min-width: 0;
+  align-content: center;
+}
+
+.match-transport-buttons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.48rem;
+}
+
+.match-transport-buttons .command-button:only-child {
+  grid-column: 1 / -1;
+}
+
+.primary-match-action .command-button {
+  min-height: 2.7rem;
+}
+
+.tactical-court-zone em {
+  color: var(--muted);
+  font-size: 0.62rem;
+  font-style: normal;
+  font-weight: 750;
+  line-height: 1;
+}
+
+.tactical-adjustment-block strong {
+  margin-bottom: 0;
+}
+
+.match-command-viewer .tactical-court-zone em {
+  font-size: 0.55rem;
+}
+
+.match-command-viewer .tactical-summary-block strong {
+  font-size: 0.78rem;
+  line-height: 1.25;
+}
+
+.match-command-viewer .tactical-summary-block p {
+  margin-top: 0.28rem;
+}
+
+.match-command-viewer .tactical-timeline {
+  display: none;
+}
+
+@media (min-width: 1101px) {
+  .match-command-layout-v2 {
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .primary-match-action h2,
+  .primary-match-action p {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0.16rem 0 0;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+  }
+
+  .primary-match-action h2 {
+    font-size: 1rem;
+  }
+
+  .primary-match-action p {
+    max-height: 2.6rem;
+    font-size: 0.72rem;
+  }
+
+  .match-command-viewer .tactical-viewer-layout {
+    grid-template-columns: minmax(15.5rem, 1fr) minmax(10.5rem, 0.62fr);
+  }
+
+  .match-command-viewer .tactical-metric-grid > div,
+  .match-command-viewer .tactical-summary-block {
+    padding: 0.44rem;
+  }
+}
+
+@media (max-height: 800px) and (min-width: 1101px) {
+  .broadcast-scoreboard-row > span,
+  .broadcast-scoreboard-row > strong,
+  .scoreboard-name-button {
+    padding: 0.26rem 0.34rem;
+    font-size: 0.74rem;
+  }
+
+  .broadcast-scoreboard-head > span {
+    font-size: 0.56rem;
+  }
+
+  .primary-match-action p {
+    display: none;
+  }
+
+  .primary-match-action .command-button {
+    min-height: 2.36rem;
+  }
+
+  .match-command-viewer .tactical-summary-block p {
+    display: none;
+  }
+}
+
 @media (max-width: 1100px) {
   .start-layout,
   .start-layout-empty {
@@ -6820,6 +7073,21 @@ textarea:focus-visible {
 
   .start-resume-panel {
     min-height: 20rem;
+  }
+
+  .match-command-layout-v2 {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "score"
+      "action"
+      "viewer"
+      "feed"
+      "side";
+    grid-template-rows: auto;
+  }
+
+  .broadcast-scoreboard-row {
+    grid-template-columns: minmax(8rem, 1fr) 2rem repeat(2, minmax(2.3rem, 0.2fr)) minmax(3.4rem, 0.28fr);
   }
 }
 
@@ -6950,5 +7218,23 @@ textarea:focus-visible {
 
   .start-resume-panel::after {
     opacity: 0.44;
+  }
+}
+
+@media (max-width: 620px) {
+  .broadcast-scoreboard-row {
+    grid-template-columns: minmax(0, 1fr) 1.7rem repeat(2, minmax(2rem, 0.2fr)) minmax(3rem, 0.28fr);
+  }
+
+  .broadcast-scoreboard-row > span,
+  .broadcast-scoreboard-row > strong,
+  .scoreboard-name-button {
+    padding-right: 0.24rem;
+    padding-left: 0.24rem;
+    font-size: 0.68rem;
+  }
+
+  .match-transport-buttons {
+    grid-template-columns: 1fr;
   }
 }

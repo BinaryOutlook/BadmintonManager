@@ -43,7 +43,8 @@ import {
   applyTeamTalk,
   createMatchSession,
   getMatchResultFromSession,
-  simulateNextPoint as runNextPoint
+  simulateNextPoint as runNextPoint,
+  simulateUntilSetComplete
 } from "../core/match";
 import type { LiveDirective, LiveMatchSession, MatchTactic, Side, TeamTalk } from "../core/models";
 import type { AdvancedTacticPlan, CareerState, FacilityType, PlayerPromise } from "../career/models";
@@ -139,6 +140,7 @@ export interface TournamentStoreState {
   applyDirective: (directive: LiveDirective) => void;
   applyTalk: (teamTalk: TeamTalk) => void;
   simulateNextPoint: () => void;
+  finishSet: () => void;
   advanceAfterMatch: () => void;
   reset: () => void;
   exportActiveSave: () => PersistedSave | null;
@@ -1149,6 +1151,24 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
       }
 
       const session = runNextPoint(state.liveMatch.session);
+      const next = {
+        ...state,
+        liveMatch: {
+          ...state.liveMatch,
+          session
+        }
+      };
+      persist(next);
+      return next;
+    });
+  },
+  finishSet: () => {
+    set((state) => {
+      if (!state.liveMatch) {
+        return state;
+      }
+
+      const session = simulateUntilSetComplete(state.liveMatch.session);
       const next = {
         ...state,
         liveMatch: {

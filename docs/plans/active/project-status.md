@@ -65,6 +65,7 @@ What is now stable:
 - the rescue MVP Workstreams E/F UI slice now renames the runtime page to `Calendar`, removes the legacy mixed Calendar naming, expands the Calendar into a full-width Upcoming layout, and adds a safe `Past Events` coming-state without changing the domain history schema
 - the disposable-run knockout tree is now a reusable `KnockoutTree` component shared by Overview, Career Pre-Match, and Career Post-Match hubs while preserving clickable player names, placeholders, scorelines, managed-path highlighting, champion styling, and background match summaries
 - the live Match Command Center now uses a compact horizontal command surface with the primary point action beside the scoreboard, the tactical feed/viewer/telemetry/options visible across desktop viewports, and focused regression proof for duplicate action prevention
+- the live Match Command Center now uses a compact broadcast-style score strip with `Next Point` / `Finish Set` transport controls, removes the repeated status strip, and reframes the tactical viewer as a badminton-native `Rally Pattern Map`
 - the Rescue MVP Plan 1 domain foundation now enforces schedule-aware career day advancement, spaces managed R16/QF/SF/F rounds across separate event dates, persists `eventHistory`, and migrates older saves safely
 - Rescue MVP Plan 2 now adds a shared career daily-action resolver: the topbar turns red for required `Play`, `Resume Match`, or `Review Match` work and stays green only when `Advance Day` is safe
 - entered Calendar rows now expose playable due-event actions instead of becoming disabled after entry
@@ -144,6 +145,7 @@ What is now stable:
 - [x] renamed the Calendar runtime UI, added Upcoming/Past Events subnavigation, and rebuilt the Calendar content into a full-page schedule-led layout without touching scheduling or history persistence
 - [x] extracted the bracket tree into a reusable component and rendered it in career pre-match and post-match event hubs
 - [x] rebuilt the live Match Command Center into a horizontal scoreboard/action/feed/viewer/telemetry/options command surface with focused unit and Playwright viewport coverage
+- [x] implemented TIX-002 presentation polish for the Rally Pattern Map, compact broadcast scoreboard, folded status/action context, and deterministic Finish Set control
 - [x] added the Rescue MVP Plan 1 schedule-aware career calendar foundation with direct store guards, `between_rounds`, event-history recording, save migration, and catalog invariant coverage
 - [x] implemented the Rescue MVP Plan 2 daily-action resolver, scheduled-match route, red/green topbar routing, playable entered-event Calendar actions, and explicit athlete selection gate coverage
 - [x] implemented Rescue MVP Plan 3 calendar, event-entry, shell cleanup, event catalog, event-details routing, and standalone start-screen fixes with unit and Playwright proof

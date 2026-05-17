@@ -1330,6 +1330,21 @@ export function simulateNextPoint(session: LiveMatchSession): LiveMatchSession {
   return nextSession;
 }
 
+export function simulateUntilSetComplete(session: LiveMatchSession): LiveMatchSession {
+  let nextSession = session;
+  const startingSetNumber = session.currentSetNumber;
+
+  while (
+    !nextSession.complete &&
+    !nextSession.intermission &&
+    nextSession.currentSetNumber === startingSetNumber
+  ) {
+    nextSession = simulateNextPoint(nextSession);
+  }
+
+  return nextSession;
+}
+
 export function getMatchResultFromSession(session: LiveMatchSession): MatchResult {
   const stats = createStatsFromSets(session.setSummaries, session.competitorA, session.competitorB);
 
