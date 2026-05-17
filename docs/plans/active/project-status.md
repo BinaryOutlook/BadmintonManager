@@ -70,6 +70,7 @@ What is now stable:
 - entered Calendar rows now expose playable due-event actions instead of becoming disabled after entry
 - Rescue MVP Plan 3 now makes event opening event-id-safe, keeps entered future events from hijacking the active competition, renders real paged Upcoming/Past Calendar records, adds event details routing for `View Entry`/`View Draw`, removes lower sidebar context/tactic/athlete blocks, removes the Portal Home in-page `Continue`, and keeps the fresh Start Screen outside the career shell until a save or run exists
 - the event catalog is now MVP-debug friendly: only `Summit Invitational` and `Continental Premier` keep meaningful locks, `Season Finals` moves to week 52, and six additional fictional events fill the late-season calendar for paging and repeated entry testing
+- the Career Portal dashboard now uses a compact one-page command grid with a slim route strip, central next-decision panel, table-like tasks/evidence/ledger, a timeline week strip, and dense ecosystem chips without changing career simulation or store behavior
 
 ## Completed
 
@@ -146,6 +147,7 @@ What is now stable:
 - [x] added the Rescue MVP Plan 1 schedule-aware career calendar foundation with direct store guards, `between_rounds`, event-history recording, save migration, and catalog invariant coverage
 - [x] implemented the Rescue MVP Plan 2 daily-action resolver, scheduled-match route, red/green topbar routing, playable entered-event Calendar actions, and explicit athlete selection gate coverage
 - [x] implemented Rescue MVP Plan 3 calendar, event-entry, shell cleanup, event catalog, event-details routing, and standalone start-screen fixes with unit and Playwright proof
+- [x] rebuilt the Career Portal dashboard into a compact one-page command center with focused desktop/mobile bounded-layout e2e proof
 
 ## In Progress
 
