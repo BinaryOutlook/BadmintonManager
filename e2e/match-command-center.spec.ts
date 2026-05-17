@@ -22,7 +22,7 @@ async function enterQuickLiveMatch(page: Page) {
 async function expectCommandSurfaceInViewport(page: Page) {
   const metrics = await page.evaluate(() => {
     const score = document.querySelector('[aria-label="Compact scoreboard"]');
-    const action = document.querySelector('[aria-label="Primary match action"]');
+    const action = document.querySelector('[aria-label="Match controls"]');
     const surface = document.querySelector('[aria-label="Match command surface"]');
     const feed = document.querySelector(".match-feed-panel");
     const viewer = document.querySelector('[data-testid="tactical-viewer"]');
@@ -57,8 +57,12 @@ async function expectCommandSurfaceInViewport(page: Page) {
       telemetryAndOptions: rect(telemetryAndOptions),
       tacticalOptions: rect(tacticalOptions),
       primaryPointButtonCount: [...document.querySelectorAll("button")].filter((button) =>
-        button.textContent?.includes("Simulate Next Point")
-      ).length
+        button.textContent?.trim() === "Next Point"
+      ).length,
+      finishSetButtonCount: [...document.querySelectorAll("button")].filter((button) =>
+        button.textContent?.trim() === "Finish Set"
+      ).length,
+      statusStripCount: document.querySelectorAll('[aria-label="Live match status"]').length
     };
   });
 
@@ -72,6 +76,8 @@ async function expectCommandSurfaceInViewport(page: Page) {
   expect(metrics.telemetryAndOptions.bottom).toBeLessThanOrEqual(metrics.viewport.height);
   expect(metrics.tacticalOptions.top).toBeLessThan(metrics.viewport.height);
   expect(metrics.primaryPointButtonCount).toBe(1);
+  expect(metrics.finishSetButtonCount).toBe(1);
+  expect(metrics.statusStripCount).toBe(0);
 }
 
 test("keeps the live match command surface horizontal at desktop viewports", async ({ page }) => {
@@ -85,7 +91,7 @@ test("keeps the live match command surface horizontal at desktop viewports", asy
   await page.evaluate(() => window.scrollTo(0, 0));
 
   for (let pointIndex = 0; pointIndex < 3; pointIndex += 1) {
-    await page.getByRole("button", { name: "Simulate Next Point" }).click();
+    await page.getByRole("button", { name: "Next Point" }).click();
   }
 
   await page.evaluate(() => window.scrollTo(0, 0));

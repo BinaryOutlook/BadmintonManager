@@ -342,6 +342,7 @@ export function App() {
     applyDirective,
     applyTalk,
     simulateNextPoint,
+    finishSet,
     advanceAfterMatch,
     reset,
     exportActiveSave,
@@ -1140,6 +1141,7 @@ export function App() {
           onApplyDirective={applyDirective}
           onApplyTalk={applyTalk}
           onSimulateNextPoint={simulateNextPoint}
+          onFinishSet={finishSet}
           onAdvanceAfterMatch={handleAdvanceAfterMatch}
           onOpenPlayerProfile={openPlayerProfile}
         />

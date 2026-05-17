@@ -3116,8 +3116,8 @@ export function CareerPostMatchHubPage(props: CareerPageProps) {
         <section className="command-panel command-panel-full">
           <TacticalMatchViewer
             frame={report?.tacticalViewer ?? null}
-            title="2D Tactical Viewer"
-            statusLabel={report?.tacticalViewer ? `${report.tacticalViewer.sequence} rally frames` : "No frame"}
+            title="Rally Pattern Map"
+            statusLabel={report?.tacticalViewer ? `${report.tacticalViewer.sequence} rallies` : "No frame"}
           />
         </section>
       </div>

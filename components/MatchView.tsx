@@ -12,12 +12,13 @@ interface MatchViewProps {
   onApplyDirective: (directive: LiveDirective) => void;
   onApplyTalk: (teamTalk: TeamTalk) => void;
   onSimulateNextPoint: () => void;
+  onFinishSet: () => void;
   onAdvanceAfterMatch: () => void;
   onOpenPlayerProfile: (playerId: string) => void;
 }
 
 type CompetitorTelemetry = ReturnType<typeof telemetryForCompetitor>;
-type MatchActionLabel = "Advance Bracket" | "Apply Talk + Open Next Set" | "Open Next Set" | "Simulate Next Point";
+type MatchActionLabel = "Advance" | "Open Next Set" | "Next Point";
 
 const teamTalks: Array<{ id: TeamTalk; label: string; copy: string }> = [
   { id: "encourage", label: "Encourage", copy: "Lift composure and stop the match from speeding away." },
@@ -28,30 +29,14 @@ const teamTalks: Array<{ id: TeamTalk; label: string; copy: string }> = [
 
 function matchActionLabel(session: LiveMatchSession, pendingTeamTalk?: TeamTalk): MatchActionLabel {
   if (session.complete) {
-    return "Advance Bracket";
-  }
-
-  if (session.intermission && pendingTeamTalk) {
-    return "Apply Talk + Open Next Set";
+    return "Advance";
   }
 
   if (session.intermission) {
     return "Open Next Set";
   }
 
-  return "Simulate Next Point";
-}
-
-function statusActionLabel(session: LiveMatchSession) {
-  if (session.complete) {
-    return "Advance bracket";
-  }
-
-  if (session.intermission) {
-    return "Open next set";
-  }
-
-  return "Simulate point";
+  return pendingTeamTalk ? "Open Next Set" : "Next Point";
 }
 
 interface ScoreboardPanelProps {
@@ -60,65 +45,64 @@ interface ScoreboardPanelProps {
 }
 
 function ScoreboardPanel(props: ScoreboardPanelProps) {
-  const shouldShowSetSummary = props.session.setSummaries.length > 0 || (!props.session.complete && props.session.intermission);
+  const setColumns = [0, 1];
+  const serverLabelA = props.session.currentServer === "A" ? "*" : "";
+  const serverLabelB = props.session.currentServer === "B" ? "*" : "";
+  const currentColumnLabel = props.session.complete ? "Final" : "Current";
 
   return (
     <section className="scoreboard-panel match-scoreboard-panel" aria-label="Compact scoreboard">
       <div className="scoreboard-topline">
-        <span>Set {props.session.currentSetNumber}</span>
+        <span>Broadcast match state</span>
         <span>
-          Match {props.session.setsWonA}-{props.session.setsWonB}
+          Games {props.session.setsWonA}-{props.session.setsWonB}
         </span>
       </div>
 
-      <div className="scoreboard-main">
-        <div className="scoreboard-athlete">
-          <button
-            className="profile-name-button profile-name-button-large"
-            type="button"
-            onClick={() => props.onOpenPlayerProfile(props.session.input.playerA.id)}
-          >
-            {props.session.input.playerA.name}
-          </button>
-          <span>{props.session.currentServer === "A" ? "Serving" : "Receiving"}</span>
+      <div className="broadcast-scoreboard" role="table" aria-label="Broadcast match score">
+        <div className="broadcast-scoreboard-row broadcast-scoreboard-head" role="row">
+          <span role="columnheader">Player / Side</span>
+          <span role="columnheader">Srv</span>
+          {setColumns.map((setIndex) => (
+            <span key={setIndex} role="columnheader">S{setIndex + 1}</span>
+          ))}
+          <span role="columnheader">{currentColumnLabel}</span>
         </div>
 
-        <div className="scoreboard-points" aria-label="Current point score">
-          <span className="score-value score-value-home">{props.session.currentScoreA}</span>
-          <span className="score-divider">-</span>
-          <span className="score-value">{props.session.currentScoreB}</span>
+        <div className="broadcast-scoreboard-row" role="row">
+          <span className="scoreboard-player-cell" role="cell">
+            <button
+              className="profile-name-button scoreboard-name-button"
+              type="button"
+              onClick={() => props.onOpenPlayerProfile(props.session.input.playerA.id)}
+            >
+              {props.session.input.playerA.name}
+            </button>
+          </span>
+          <span className="server-marker" role="cell" aria-label={serverLabelA ? "Serving" : "Receiving"}>{serverLabelA}</span>
+          {setColumns.map((setIndex) => (
+            <span key={setIndex} role="cell">{props.session.setSummaries[setIndex]?.scoreA ?? "-"}</span>
+          ))}
+          <strong className="current-score-cell" role="cell">{props.session.currentScoreA}</strong>
         </div>
 
-        <div className="scoreboard-athlete scoreboard-athlete-right">
-          <button
-            className="profile-name-button profile-name-button-large"
-            type="button"
-            onClick={() => props.onOpenPlayerProfile(props.session.input.playerB.id)}
-          >
-            {props.session.input.playerB.name}
-          </button>
-          <span>{props.session.currentServer === "B" ? "Serving" : "Receiving"}</span>
+        <div className="broadcast-scoreboard-row" role="row">
+          <span className="scoreboard-player-cell" role="cell">
+            <button
+              className="profile-name-button scoreboard-name-button"
+              type="button"
+              onClick={() => props.onOpenPlayerProfile(props.session.input.playerB.id)}
+            >
+              {props.session.input.playerB.name}
+            </button>
+          </span>
+          <span className="server-marker" role="cell" aria-label={serverLabelB ? "Serving" : "Receiving"}>{serverLabelB}</span>
+          {setColumns.map((setIndex) => (
+            <span key={setIndex} role="cell">{props.session.setSummaries[setIndex]?.scoreB ?? "-"}</span>
+          ))}
+          <strong className="current-score-cell" role="cell">{props.session.currentScoreB}</strong>
         </div>
       </div>
-
-      {shouldShowSetSummary && (
-        <div className="set-summary-row" aria-label="Set summary">
-          {props.session.setSummaries.map((set, index) => (
-            <article key={`${set.scoreA}-${set.scoreB}-${index}`} className="set-result-chip">
-              <span>Set {index + 1}</span>
-              <strong>
-                {set.scoreA}-{set.scoreB}
-              </strong>
-            </article>
-          ))}
-          {!props.session.complete && props.session.intermission && (
-            <article className="set-result-chip set-result-chip-live">
-              <span>Intermission</span>
-              <strong>Set {props.session.currentSetNumber} loading</strong>
-            </article>
-          )}
-        </div>
-      )}
     </section>
   );
 }
@@ -129,12 +113,14 @@ interface PrimaryMatchActionProps {
   activeDirective?: LiveDirective;
   opponentName: string;
   onSimulateNextPoint: () => void;
+  onFinishSet: () => void;
   onAdvanceAfterMatch: () => void;
 }
 
 function PrimaryMatchAction(props: PrimaryMatchActionProps) {
   const label = matchActionLabel(props.session, props.pendingTeamTalk);
   const onClick = props.session.complete ? props.onAdvanceAfterMatch : props.onSimulateNextPoint;
+  const canFinishSet = !props.session.complete && !props.session.intermission;
   const helperCopy = props.session.complete
     ? "Match complete. Return to the bracket path."
     : props.session.intermission
@@ -144,53 +130,29 @@ function PrimaryMatchAction(props: PrimaryMatchActionProps) {
       : `Resolve the next rally window against ${props.opponentName}.`;
 
   return (
-    <section className="command-panel primary-match-action" aria-label="Primary match action">
+    <section className="command-panel primary-match-action" aria-label="Match controls">
       <div>
-        <span className="action-kicker">Next Command</span>
+        <span className="action-kicker">Controls</span>
         <h2>{label}</h2>
         <p>{helperCopy}</p>
       </div>
-      <button className="command-button command-button-primary" type="button" onClick={onClick}>
-        {label}
-      </button>
+      <div className="match-transport-buttons">
+        <button className="command-button command-button-primary" type="button" onClick={onClick}>
+          {label}
+        </button>
+        {canFinishSet && (
+          <button className="command-button command-button-secondary" type="button" onClick={props.onFinishSet}>
+            Finish Set
+          </button>
+        )}
+      </div>
       <div className="primary-action-meta" aria-label="Primary action context">
         <span>Set {props.session.currentSetNumber}</span>
         <span>
-          Match {props.session.setsWonA}-{props.session.setsWonB}
+          Games {props.session.setsWonA}-{props.session.setsWonB}
         </span>
         <span>{props.activeDirective ?? "No directive"}</span>
-      </div>
-    </section>
-  );
-}
-
-interface MatchStatusStripProps {
-  session: LiveMatchSession;
-  activeDirective?: LiveDirective;
-}
-
-function MatchStatusStrip(props: MatchStatusStripProps) {
-  return (
-    <section className="management-status-strip match-status-strip" aria-label="Live match status">
-      <div>
-        <span>Score</span>
-        <strong>{props.session.currentScoreA}-{props.session.currentScoreB}</strong>
-      </div>
-      <div>
-        <span>Match</span>
-        <strong>{props.session.setsWonA}-{props.session.setsWonB}</strong>
-      </div>
-      <div>
-        <span>Directive</span>
-        <strong>{props.activeDirective ?? "None"}</strong>
-      </div>
-      <div>
-        <span>Server</span>
-        <strong>{props.session.currentServer === "A" ? props.session.input.playerA.name : props.session.input.playerB.name}</strong>
-      </div>
-      <div>
-        <span>Next action</span>
-        <strong>{statusActionLabel(props.session)}</strong>
+        <span>{props.session.currentServer === "A" ? props.session.input.playerA.name : props.session.input.playerB.name} serves</span>
       </div>
     </section>
   );
@@ -413,18 +375,17 @@ export function MatchView(props: MatchViewProps) {
           activeDirective={activeDirective}
           opponentName={props.opponentName}
           onSimulateNextPoint={props.onSimulateNextPoint}
+          onFinishSet={props.onFinishSet}
           onAdvanceAfterMatch={props.onAdvanceAfterMatch}
         />
-
-        <MatchStatusStrip session={props.session} activeDirective={activeDirective} />
 
         <LiveFeedPanel session={props.session} />
 
         <section className="command-panel tactical-viewer-live-panel match-command-viewer">
           <TacticalMatchViewer
             frame={tacticalFrame}
-            title="2D Tactical Viewer"
-            statusLabel={props.session.complete ? "Final frame" : `${tacticalFrame.sequence} rally frames`}
+            title="Rally Pattern Map"
+            statusLabel={props.session.complete ? "Final frame" : `${tacticalFrame.sequence} rallies`}
           />
         </section>
 
