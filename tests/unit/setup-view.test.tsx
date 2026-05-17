@@ -19,6 +19,7 @@ function renderSetupView(overrides: Partial<Parameters<typeof SetupView>[0]> = {
       activeSavePresent={false}
       careerPresent={false}
       corruptSavePresent={false}
+      launchSaveSummary={null}
       {...overrides}
     />
   );
@@ -47,10 +48,10 @@ describe("SetupView", () => {
       onOpenPreferences
     });
 
-    expect(screen.getByRole("heading", { name: "Start Screen" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Badminton Manager" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Browse All Athletes" })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Start New Career" }));
+    fireEvent.click(screen.getByRole("button", { name: "Start Career" }));
     const dialog = screen.getByRole("dialog", { name: "Pick Your Playstyle" });
     expect(within(dialog).getByText("New Career")).toBeInTheDocument();
     expect(within(dialog).getByRole("button", { name: "Confirm Career Athlete" })).toBeDisabled();
@@ -63,7 +64,7 @@ describe("SetupView", () => {
     );
     fireEvent.click(within(dialog).getByRole("button", { name: "Confirm Career Athlete" }));
 
-    fireEvent.click(screen.getByRole("button", { name: "Load Save" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save Tools" }));
     fireEvent.click(screen.getByRole("button", { name: "Preferences" }));
 
     expect(onStartTournament).not.toHaveBeenCalled();
@@ -74,7 +75,7 @@ describe("SetupView", () => {
     expect(onOpenPreferences).toHaveBeenCalledTimes(1);
   });
 
-  it("opens quick tournament as a blocking modal with explicit selection and compact tactics", () => {
+  it("opens quick tournament as a focused modal with explicit selection and compact tactics", () => {
     const onSelectPlayer = vi.fn();
     const onStartTournament = vi.fn();
     const onChooseTactic = vi.fn();
@@ -101,6 +102,41 @@ describe("SetupView", () => {
     expect(onChooseTactic).toHaveBeenCalledWith("defensiveWall");
     expect(onStartTournament).toHaveBeenCalledTimes(1);
     expect(onStartTournament).toHaveBeenCalledWith(topRanked.entry.player.id);
+  });
+
+  it("promotes a compatible career save with player-facing resume metadata", () => {
+    const onContinueLocalSave = vi.fn();
+
+    renderSetupView({
+      activeSavePresent: true,
+      careerPresent: true,
+      onContinueLocalSave,
+      launchSaveSummary: {
+        mode: "career",
+        title: "Resume Career",
+        managedName: "Three-Lung Dynamo",
+        context: "National Command Championship R16",
+        nextAction: "Next: Play R16 match",
+        primaryActionLabel: "Continue Career",
+        readiness: 68,
+        details: [
+          { label: "Date", value: "2026-07-22" },
+          { label: "Stage", value: "Match day" },
+          { label: "Event", value: "National Command Championship" },
+          { label: "Save", value: "Career slot ready" }
+        ]
+      }
+    });
+
+    expect(screen.getByRole("heading", { name: "Resume Career" })).toBeInTheDocument();
+    expect(screen.getByText("Three-Lung Dynamo")).toBeInTheDocument();
+    expect(screen.getByLabelText("Active save details")).toHaveTextContent("2026-07-22");
+    expect(screen.getByLabelText("Readiness 68")).toBeInTheDocument();
+    expect(screen.getByText("Next: Play R16 match")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Continue Career" }));
+
+    expect(onContinueLocalSave).toHaveBeenCalledTimes(1);
   });
 
   it("shows recommendations first and keeps the full roster as a fallback inside the modal", () => {
@@ -196,7 +232,7 @@ describe("SetupView", () => {
     const target = rankRosterByOverall()[1];
 
     renderSetupView({ onSelectPlayer, onStartCareer });
-    fireEvent.click(screen.getByRole("button", { name: "Start New Career" }));
+    fireEvent.click(screen.getByRole("button", { name: "Start Career" }));
     const dialog = screen.getByRole("dialog", { name: "Pick Your Playstyle" });
 
     expect(within(dialog).getByRole("button", { name: "Confirm Career Athlete" })).toBeDisabled();
@@ -220,7 +256,7 @@ describe("SetupView", () => {
     const topRanked = rankRosterByOverall()[0];
 
     renderSetupView();
-    fireEvent.click(screen.getByRole("button", { name: "Start New Career" }));
+    fireEvent.click(screen.getByRole("button", { name: "Start Career" }));
     let dialog = screen.getByRole("dialog", { name: "Pick Your Playstyle" });
 
     fireEvent.click(
@@ -231,7 +267,7 @@ describe("SetupView", () => {
     expect(within(dialog).getByRole("button", { name: "Confirm Career Athlete" })).toBeEnabled();
 
     fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
-    fireEvent.click(screen.getByRole("button", { name: "Start New Career" }));
+    fireEvent.click(screen.getByRole("button", { name: "Start Career" }));
     dialog = screen.getByRole("dialog", { name: "Pick Your Playstyle" });
 
     expect(within(dialog).getByRole("button", { name: "Confirm Career Athlete" })).toBeDisabled();
@@ -241,13 +277,13 @@ describe("SetupView", () => {
     const onStartCareer = vi.fn();
 
     renderSetupView({ onStartCareer });
-    fireEvent.click(screen.getByRole("button", { name: "Start New Career" }));
+    fireEvent.click(screen.getByRole("button", { name: "Start Career" }));
 
     const dialog = screen.getByRole("dialog", { name: "Pick Your Playstyle" });
     fireEvent.keyDown(dialog, { key: "Escape" });
 
     expect(screen.queryByRole("dialog", { name: "Pick Your Playstyle" })).not.toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Start Screen" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Badminton Manager" })).toBeInTheDocument();
     expect(onStartCareer).not.toHaveBeenCalled();
   });
 });

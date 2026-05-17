@@ -142,8 +142,8 @@ describe("career shell daily action", () => {
 
     render(<App />);
 
-    expect(screen.getByRole("heading", { name: "Start Screen" })).toBeInTheDocument();
-    expect(screen.queryByRole("banner")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Badminton Manager" })).toBeInTheDocument();
+    expect(screen.getByRole("banner")).toHaveTextContent("Launch mode");
     expect(screen.queryByRole("navigation", { name: "Primary commands" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Resize sidebar" })).not.toBeInTheDocument();
   });

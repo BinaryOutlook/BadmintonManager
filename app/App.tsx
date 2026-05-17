@@ -23,13 +23,15 @@ import { MatchView } from "../components/MatchView";
 import { OverviewView } from "../components/OverviewView";
 import { SaveManagerView } from "../components/SaveManagerView";
 import { SettingsOverlay, type ThemeAccent } from "../components/SettingsOverlay";
-import { SetupView } from "../components/SetupView";
+import { SetupView, type LaunchSaveSummary } from "../components/SetupView";
 import { TacticalIntelPanel } from "../components/TacticalIntelPanel";
 import { playerMap } from "../game/content/players";
 import { getCareerDailyAction, type CareerDailyActionTone } from "../game/career/dailyAction";
-import { useTournamentStore, type AppPhase } from "../game/store/store";
+import { getCareerEvent } from "../game/career/events";
+import { useTournamentStore, type AppPhase, type TournamentStoreState } from "../game/store/store";
 import type { CareerStage, CareerState } from "../game/career/models";
 import type { PersistedSave } from "../game/store/save";
+import { getManagedMatchContext, type TournamentState } from "../game/tournament/tournament";
 import { isPhaseBoundPage, pageForPhase, type AppPage } from "./pages";
 import { PlayerProfilePage } from "./pages/PlayerProfilePage";
 import { SquadPage } from "./pages/SquadPage";
@@ -85,6 +87,136 @@ export function canAdvanceCareerDate(career: CareerState | null, phase: AppPhase
   return Boolean(career && phase !== "match" && advanceableCareerStages.has(career.stage));
 }
 
+function formatCareerStage(stage: CareerStage) {
+  switch (stage) {
+    case "planning":
+      return "Planning";
+    case "event_entered":
+      return "Event entered";
+    case "between_rounds":
+      return "Between rounds";
+    case "pre_match":
+      return "Pre-match";
+    case "post_match":
+      return "Post-match review";
+    case "event_complete":
+      return "Event complete";
+  }
+}
+
+function playerName(playerId: string) {
+  return playerMap[playerId]?.name ?? playerId;
+}
+
+function buildLaunchSaveSummary(args: {
+  activeSavePresent: boolean;
+  career: CareerState | null;
+  tournament: TournamentState | null;
+  liveMatch: TournamentStoreState["liveMatch"];
+  phase: AppPhase;
+  selectedPlayerId: string;
+}): LaunchSaveSummary | null {
+  if (!args.activeSavePresent) {
+    return null;
+  }
+
+  if (args.career) {
+    const managedPlayerId = args.career.program.managedPlayerId;
+    const managedName = playerName(managedPlayerId);
+    const athlete = args.career.athletes.find((entry) => entry.playerId === managedPlayerId);
+    const activeEvent = args.career.activeEventId
+      ? getCareerEvent(args.career.events, args.career.activeEventId)
+      : undefined;
+    const matchContext = args.tournament ? getManagedMatchContext(args.tournament) : null;
+    const dailyAction = getCareerDailyAction({
+      career: args.career,
+      tournament: args.tournament,
+      phase: args.phase,
+      liveMatchActive: Boolean(args.liveMatch)
+    });
+    const nextAction = dailyAction.kind === "advance_day"
+      ? `Next: ${dailyAction.label} to ${dailyAction.targetDate}`
+      : `Next: ${dailyAction.label}`;
+    const eventContext = activeEvent
+      ? `${activeEvent.name}${matchContext ? ` ${matchContext.roundName}` : ""}`
+      : formatCareerStage(args.career.stage);
+    const details: LaunchSaveSummary["details"] = [
+      { label: "Date", value: args.career.date },
+      { label: "Stage", value: formatCareerStage(args.career.stage) },
+      { label: "Program", value: args.career.program.name }
+    ];
+
+    if (activeEvent) {
+      details.push({ label: "Event", value: activeEvent.name });
+    }
+
+    if (matchContext) {
+      const opponentId = matchContext.playerAId === managedPlayerId ? matchContext.playerBId : matchContext.playerAId;
+      details.push({ label: "Opponent", value: playerName(opponentId) });
+    }
+
+    if (athlete) {
+      details.push({ label: "Rank", value: `#${athlete.currentRank}` });
+    }
+
+    return {
+      mode: "career",
+      title: "Resume Career",
+      managedName,
+      context: `${args.career.date} | ${eventContext}`,
+      nextAction,
+      primaryActionLabel: "Continue Career",
+      details,
+      readiness: athlete ? Math.round(athlete.readiness) : undefined
+    };
+  }
+
+  if (args.tournament || args.liveMatch) {
+    const tournament = args.tournament;
+    const managedPlayerId = tournament?.managedPlayerId ?? args.selectedPlayerId;
+    const matchContext = tournament ? getManagedMatchContext(tournament) : null;
+    const opponentId = matchContext
+      ? matchContext.playerAId === managedPlayerId
+        ? matchContext.playerBId
+        : matchContext.playerAId
+      : null;
+    const opponentName = args.liveMatch?.opponentName ?? (opponentId ? playerName(opponentId) : "Draw pending");
+    const roundLabel = args.liveMatch?.roundName ?? matchContext?.roundName ?? tournament?.rounds[tournament.currentRoundIndex]?.name ?? "Bracket";
+    const stageLabel = args.phase === "match"
+      ? "Live match"
+      : args.phase === "complete"
+        ? "Complete"
+        : "Bracket ready";
+    const nextAction = args.phase === "match" && args.liveMatch
+      ? `Next: Resume ${args.liveMatch.roundName} match`
+      : args.phase === "complete"
+        ? "Next: Review the completed tournament"
+        : matchContext
+          ? `Next: Enter ${matchContext.roundName} against ${opponentName}`
+          : "Next: Review the bracket state";
+    const details: LaunchSaveSummary["details"] = [
+      { label: "Event", value: tournament?.name ?? "Quick tournament" },
+      { label: "Stage", value: stageLabel },
+      { label: "Round", value: roundLabel }
+    ];
+
+    if (opponentName !== "Draw pending") {
+      details.push({ label: "Opponent", value: opponentName });
+    }
+
+    return {
+      mode: "quickTournament",
+      title: "Continue Tournament",
+      managedName: playerName(managedPlayerId),
+      context: `${tournament?.name ?? "Quick tournament"} | ${roundLabel}`,
+      nextAction,
+      primaryActionLabel: "Continue Tournament",
+      details
+    };
+  }
+
+  return null;
+}
 
 function loadThemeAccent(): ThemeAccent {
   if (typeof window === "undefined") {
@@ -244,6 +376,14 @@ export function App() {
   const workspaceStyle = {
     "--sidebar-width": `${sidebarCollapsed ? SIDEBAR_COLLAPSED_WIDTH : sidebarWidth}px`
   } as CSSProperties;
+  const launchSaveSummary = buildLaunchSaveSummary({
+    activeSavePresent,
+    career,
+    tournament,
+    liveMatch,
+    phase,
+    selectedPlayerId
+  });
 
   useEffect(() => {
     setActivePage((currentPage) => {
@@ -825,6 +965,7 @@ export function App() {
           activeSavePresent={activeSavePresent}
           careerPresent={Boolean(career)}
           corruptSavePresent={corruptSavePresent}
+          launchSaveSummary={launchSaveSummary}
         />
       );
     }
@@ -962,6 +1103,7 @@ export function App() {
           activeSavePresent={activeSavePresent}
           careerPresent={Boolean(career)}
           corruptSavePresent={corruptSavePresent}
+          launchSaveSummary={launchSaveSummary}
         />
       );
     }
@@ -1041,18 +1183,29 @@ export function App() {
       ? "Continue Save"
       : "Start";
   const continueTone: CareerDailyActionTone = careerDailyAction?.tone ?? "ready";
-  const shouldRenderStandaloneStart =
-    !activeSavePresent &&
-    !career &&
-    !tournament &&
-    !liveMatch &&
-    phase === "setup" &&
-    (activePage.id === "setup" || activePage.id === "saveManager" || activePage.id === "playerProfile");
+  const shouldRenderLaunchShell =
+    activePage.id === "setup" ||
+    (!activeSavePresent &&
+      !career &&
+      !tournament &&
+      !liveMatch &&
+      phase === "setup" &&
+      (activePage.id === "saveManager" || activePage.id === "playerProfile"));
+  const launchSaveStatus = launchSaveSummary
+    ? launchSaveSummary.mode === "career"
+      ? "Save: Career loaded"
+      : "Save: Tournament loaded"
+    : corruptSavePresent
+      ? "Save: Recovery available"
+      : activeSavePresent
+        ? "Save: Setup draft"
+        : "Save: Empty";
 
-  if (shouldRenderStandaloneStart) {
+  if (shouldRenderLaunchShell) {
     return (
       <PlayerNavigationProvider onOpenPlayerProfile={openPlayerProfile}>
-        <div className="command-shell command-shell-standalone-start" data-accent={themeAccent}>
+        <div className="command-shell command-shell-launch" data-accent={themeAccent}>
+          <LaunchTopBar saveStatus={launchSaveStatus} onOpenSettings={() => setSettingsOpen(true)} />
           <PageCanvas>{renderPage()}</PageCanvas>
           {renderSystemOverlays(false)}
         </div>
@@ -1092,6 +1245,34 @@ export function App() {
         {renderSystemOverlays(true)}
       </div>
     </PlayerNavigationProvider>
+  );
+}
+
+function LaunchTopBar(props: {
+  saveStatus: string;
+  onOpenSettings: () => void;
+}) {
+  return (
+    <header className="topbar launch-topbar">
+      <div className="topbar-brand-block">
+        <span className="brand-mark">BM</span>
+        <label className="command-search">
+          <span>Command</span>
+          <input aria-label="Search or go to command" placeholder="Search or go to..." readOnly />
+        </label>
+      </div>
+
+      <div className="topbar-status launch-topbar-status" aria-label="Launch save status">
+        <span>{props.saveStatus}</span>
+        <span>Launch mode</span>
+      </div>
+
+      <div className="topbar-actions launch-topbar-actions">
+        <button className="icon-command-button" type="button" onClick={props.onOpenSettings}>
+          Settings
+        </button>
+      </div>
+    </header>
   );
 }
 
