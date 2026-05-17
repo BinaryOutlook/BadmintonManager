@@ -5869,7 +5869,7 @@ textarea:focus-visible {
   min-width: 0;
   font-size: clamp(0.95rem, 1.05vw, 1.12rem);
   line-height: 1.08;
-  letter-spacing: -0.025em;
+  letter-spacing: 0;
 }
 
 .career-dashboard-grid-compact .panel-header span {
