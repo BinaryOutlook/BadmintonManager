@@ -1,6 +1,6 @@
 import type { CareerState } from "./models";
 import { applyPassiveRecovery } from "./health";
-import { currentManagedMatchSchedule } from "./matchSchedule";
+import { activateDueEnteredEvent, currentManagedMatchSchedule } from "./matchSchedule";
 import type { TournamentState } from "../tournament/tournament";
 
 const DAY_MS = 86_400_000;
@@ -36,21 +36,32 @@ export function advanceCareerCalendar(
     career: datedState,
     tournament: options.tournament ?? null
   });
+  const stagedState =
+    state.stage !== "post_match" && schedule?.playable
+      ? activateDueEnteredEvent({
+          career: datedState,
+          tournament: options.tournament ?? null
+        })
+      : datedState;
   const stage =
     state.stage !== "post_match" && schedule?.playable
-      ? "pre_match"
+      ? stagedState.stage
       : state.stage === "between_rounds" && schedule
         ? "between_rounds"
         : state.stage;
 
   return {
-    ...state,
+    ...stagedState,
     date,
     stage,
-    athletes: state.athletes.map(applyPassiveRecovery),
-    notes:
-      stage === "pre_match" && state.stage !== "pre_match"
-        ? [`${schedule?.event.name ?? "Event"} ${schedule?.round ?? "match"} day opened`, ...state.notes].slice(0, 6)
-        : state.notes
+    athletes: stagedState.athletes.map(applyPassiveRecovery),
+    notes: (() => {
+      if (stage !== "pre_match" || state.stage === "pre_match") {
+        return stagedState.notes;
+      }
+
+      const note = `${schedule?.event.name ?? "Event"} ${schedule?.round ?? "match"} day opened`;
+      return stagedState.notes[0] === note ? stagedState.notes : [note, ...stagedState.notes].slice(0, 6);
+    })()
   };
 }

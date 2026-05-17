@@ -16,6 +16,8 @@ export type CalendarEventStatus =
   | "entered"
   | "missed_deadline";
 
+export const CALENDAR_PAGE_SIZE = 5;
+
 export const careerEventCatalog: CareerEventDefinition[] = [
   {
     id: "metro-open-300",
@@ -72,9 +74,9 @@ export const careerEventCatalog: CareerEventDefinition[] = [
     seedCount: 8,
     status: "scheduled",
     eligibility: {
-      minRank: 24,
+      minRank: null,
       minPoints: null,
-      readinessFloor: 60,
+      readinessFloor: 0,
       minCompletedEvents: null
     },
     stakesLabel: "Mid-tier points race event with firmer readiness demands",
@@ -222,30 +224,234 @@ export const careerEventCatalog: CareerEventDefinition[] = [
     prestige: 46
   },
   {
+    id: "coastline-classic-300",
+    name: "Coastline Classic",
+    tier: "Circuit 300",
+    weekNumber: 33,
+    startDate: "2026-08-13",
+    durationDays: 4,
+    location: {
+      city: "South Quay",
+      country: "Meridian Coast",
+      venue: "Coastline Sports Hall"
+    },
+    entryDeadline: "2026-08-07",
+    rankingCutoffDate: "2026-08-04",
+    seedingDate: "2026-08-05",
+    withdrawalDeadline: "2026-08-09",
+    drawDate: "2026-08-11",
+    drawSize: 16,
+    seedCount: 8,
+    status: "scheduled",
+    eligibility: {
+      minRank: null,
+      minPoints: null,
+      readinessFloor: 0,
+      minCompletedEvents: null
+    },
+    stakesLabel: "Compact coastal points event for post-academy rhythm",
+    travelCost: 3000,
+    entryFee: 700,
+    trainingCostModifier: 0.9,
+    prizeMoney: { R16: 800, QF: 1800, SF: 4200, F: 8500, champion: 15000 },
+    rankingPoints: { R16: 120, QF: 210, SF: 360, F: 540, champion: 700 },
+    prestige: 52
+  },
+  {
+    id: "lakeside-sprint-300",
+    name: "Lakeside Sprint",
+    tier: "Circuit 300",
+    weekNumber: 36,
+    startDate: "2026-09-03",
+    durationDays: 4,
+    location: {
+      city: "Lakehaven",
+      country: "Home Federation",
+      venue: "Mirrorlake Arena"
+    },
+    entryDeadline: "2026-08-28",
+    rankingCutoffDate: "2026-08-25",
+    seedingDate: "2026-08-26",
+    withdrawalDeadline: "2026-08-30",
+    drawDate: "2026-09-01",
+    drawSize: 16,
+    seedCount: 8,
+    status: "scheduled",
+    eligibility: {
+      minRank: null,
+      minPoints: null,
+      readinessFloor: 0,
+      minCompletedEvents: null
+    },
+    stakesLabel: "Short-format ranking sprint with low travel drag",
+    travelCost: 1800,
+    entryFee: 650,
+    trainingCostModifier: 0.86,
+    prizeMoney: { R16: 800, QF: 1800, SF: 4200, F: 8500, champion: 15000 },
+    rankingPoints: { R16: 120, QF: 210, SF: 360, F: 540, champion: 700 },
+    prestige: 50
+  },
+  {
+    id: "ember-city-open-500",
+    name: "Ember City Open",
+    tier: "Circuit 500",
+    weekNumber: 39,
+    startDate: "2026-09-24",
+    durationDays: 5,
+    location: {
+      city: "Ember City",
+      country: "Central Federation",
+      venue: "Foundry Court"
+    },
+    entryDeadline: "2026-09-17",
+    rankingCutoffDate: "2026-09-14",
+    seedingDate: "2026-09-15",
+    withdrawalDeadline: "2026-09-19",
+    drawDate: "2026-09-22",
+    drawSize: 16,
+    seedCount: 8,
+    status: "scheduled",
+    eligibility: {
+      minRank: null,
+      minPoints: null,
+      readinessFloor: 0,
+      minCompletedEvents: null
+    },
+    stakesLabel: "Autumn circuit step-up with firmer prize and points pressure",
+    travelCost: 5600,
+    entryFee: 1250,
+    trainingCostModifier: 1,
+    prizeMoney: { R16: 1200, QF: 3200, SF: 7600, F: 14500, champion: 26000 },
+    rankingPoints: { R16: 180, QF: 320, SF: 520, F: 760, champion: 950 },
+    prestige: 66
+  },
+  {
+    id: "northern-lights-challenge-500",
+    name: "Northern Lights Challenge",
+    tier: "Circuit 500",
+    weekNumber: 42,
+    startDate: "2026-10-15",
+    durationDays: 5,
+    location: {
+      city: "Aurora Bay",
+      country: "Northern League",
+      venue: "Skyline Badminton Dome"
+    },
+    entryDeadline: "2026-10-08",
+    rankingCutoffDate: "2026-10-05",
+    seedingDate: "2026-10-06",
+    withdrawalDeadline: "2026-10-10",
+    drawDate: "2026-10-13",
+    drawSize: 16,
+    seedCount: 8,
+    status: "scheduled",
+    eligibility: {
+      minRank: null,
+      minPoints: null,
+      readinessFloor: 0,
+      minCompletedEvents: null
+    },
+    stakesLabel: "Cold-weather travel test with balanced circuit rewards",
+    travelCost: 6200,
+    entryFee: 1250,
+    trainingCostModifier: 1.02,
+    prizeMoney: { R16: 1200, QF: 3200, SF: 7600, F: 14500, champion: 26000 },
+    rankingPoints: { R16: 180, QF: 320, SF: 520, F: 760, champion: 950 },
+    prestige: 67
+  },
+  {
+    id: "meridian-autumn-masters-750",
+    name: "Meridian Autumn Masters",
+    tier: "Circuit 750",
+    weekNumber: 45,
+    startDate: "2026-11-05",
+    durationDays: 5,
+    location: {
+      city: "Meridian City",
+      country: "Meridian Coast",
+      venue: "Autumn Masters Hall"
+    },
+    entryDeadline: "2026-10-29",
+    rankingCutoffDate: "2026-10-26",
+    seedingDate: "2026-10-27",
+    withdrawalDeadline: "2026-10-31",
+    drawDate: "2026-11-03",
+    drawSize: 16,
+    seedCount: 8,
+    status: "scheduled",
+    eligibility: {
+      minRank: null,
+      minPoints: null,
+      readinessFloor: 0,
+      minCompletedEvents: null
+    },
+    stakesLabel: "Late-season masters event without MVP qualification locks",
+    travelCost: 7400,
+    entryFee: 1900,
+    trainingCostModifier: 1.08,
+    prizeMoney: { R16: 1800, QF: 5600, SF: 12800, F: 24000, champion: 43000 },
+    rankingPoints: { R16: 250, QF: 450, SF: 700, F: 980, champion: 1250 },
+    prestige: 78
+  },
+  {
+    id: "crownbridge-warmup-invitational",
+    name: "Crownbridge Warmup Invitational",
+    tier: "Invitational",
+    weekNumber: 48,
+    startDate: "2026-11-26",
+    durationDays: 4,
+    location: {
+      city: "Crownbridge",
+      country: "Neutral Circuit",
+      venue: "Warmup Pavilion"
+    },
+    entryDeadline: "2026-11-20",
+    rankingCutoffDate: "2026-11-17",
+    seedingDate: "2026-11-18",
+    withdrawalDeadline: "2026-11-22",
+    drawDate: "2026-11-24",
+    drawSize: 16,
+    seedCount: 8,
+    status: "scheduled",
+    eligibility: {
+      minRank: null,
+      minPoints: null,
+      readinessFloor: 0,
+      minCompletedEvents: null
+    },
+    stakesLabel: "Fictional invitational bridge before the week 52 finale",
+    travelCost: 4200,
+    entryFee: 600,
+    trainingCostModifier: 0.94,
+    prizeMoney: { R16: 500, QF: 1100, SF: 2400, F: 4200, champion: 8000 },
+    rankingPoints: { R16: 90, QF: 150, SF: 260, F: 390, champion: 540 },
+    prestige: 48
+  },
+  {
     id: "season-finals",
     name: "Season Finals",
     tier: "Finals",
-    weekNumber: 34,
-    startDate: "2026-08-20",
+    weekNumber: 52,
+    startDate: "2026-12-23",
     durationDays: 6,
     location: {
       city: "Crownbridge",
       country: "Neutral Circuit",
       venue: "Finals Hall"
     },
-    entryDeadline: "2026-08-10",
-    rankingCutoffDate: "2026-08-08",
-    seedingDate: "2026-08-09",
-    withdrawalDeadline: "2026-08-12",
-    drawDate: "2026-08-17",
+    entryDeadline: "2026-12-12",
+    rankingCutoffDate: "2026-12-08",
+    seedingDate: "2026-12-10",
+    withdrawalDeadline: "2026-12-14",
+    drawDate: "2026-12-20",
     drawSize: 16,
     seedCount: 8,
     status: "scheduled",
     eligibility: {
-      minRank: 8,
-      minPoints: 2600,
-      readinessFloor: 74,
-      minCompletedEvents: 4
+      minRank: null,
+      minPoints: null,
+      readinessFloor: 0,
+      minCompletedEvents: null
     },
     stakesLabel: "Fictional season finale based on circuit rank or proven event volume",
     travelCost: 9200,
@@ -276,9 +482,11 @@ export function hydrateCareerEventDefinition(event: CareerEventDefinition): Care
 
   return catalogEvent
     ? {
-        ...event,
+        ...catalogEvent,
         tier: catalogEvent.tier,
         weekNumber: catalogEvent.weekNumber,
+        startDate: catalogEvent.startDate,
+        durationDays: catalogEvent.durationDays,
         location: catalogEvent.location,
         entryDeadline: catalogEvent.entryDeadline,
         rankingCutoffDate: catalogEvent.rankingCutoffDate,
@@ -289,13 +497,25 @@ export function hydrateCareerEventDefinition(event: CareerEventDefinition): Care
         seedCount: catalogEvent.seedCount,
         status: catalogEvent.status,
         eligibility: catalogEvent.eligibility,
-        stakesLabel: catalogEvent.stakesLabel
+        stakesLabel: catalogEvent.stakesLabel,
+        travelCost: catalogEvent.travelCost,
+        entryFee: catalogEvent.entryFee,
+        trainingCostModifier: catalogEvent.trainingCostModifier,
+        prizeMoney: catalogEvent.prizeMoney,
+        rankingPoints: catalogEvent.rankingPoints,
+        prestige: catalogEvent.prestige
       }
     : { ...event, tier: normalizeCareerTierLabel(event.tier) as CareerTier };
 }
 
 export function hydrateCareerEvents(events: CareerEventDefinition[]): CareerEventDefinition[] {
-  return events.map(hydrateCareerEventDefinition);
+  const hydratedById = new Map(events.map((event) => [event.id, hydrateCareerEventDefinition(event)]));
+  const catalogMerged = careerEventCatalog.map((event) => hydratedById.get(event.id) ?? event);
+  const customEvents = [...hydratedById.values()].filter(
+    (event) => !careerEventCatalog.some((catalogEvent) => catalogEvent.id === event.id)
+  );
+
+  return [...catalogMerged, ...customEvents].sort((left, right) => left.startDate.localeCompare(right.startDate));
 }
 
 export function getNextEvent(events: CareerEventDefinition[], date: string) {
@@ -458,8 +678,41 @@ export function roundKeyForPlacement(round: string, won: boolean) {
   return round;
 }
 
-function eventEndDate(event: CareerEventDefinition) {
+export function eventEndDate(event: CareerEventDefinition) {
   return addDays(event.startDate, event.durationDays - 1);
+}
+
+export function upcomingCalendarEvents(career: CareerState): CareerEventDefinition[] {
+  return [...career.events]
+    .filter((event) => career.date <= eventEndDate(event))
+    .sort((left, right) => left.startDate.localeCompare(right.startDate) || left.id.localeCompare(right.id));
+}
+
+export function pastCalendarRecords(career: CareerState): CareerEventHistoryRecord[] {
+  return [...career.eventHistory].sort(
+    (left, right) =>
+      right.endDate.localeCompare(left.endDate) ||
+      right.completedAt.localeCompare(left.completedAt) ||
+      left.eventName.localeCompare(right.eventName)
+  );
+}
+
+export function paginateCalendarItems<T>(
+  items: T[],
+  pageIndex: number,
+  pageSize = CALENDAR_PAGE_SIZE
+) {
+  const pageCount = Math.max(1, Math.ceil(items.length / pageSize));
+  const currentPage = Math.min(Math.max(0, pageIndex), pageCount - 1);
+  const start = currentPage * pageSize;
+
+  return {
+    items: items.slice(start, start + pageSize),
+    pageIndex: currentPage,
+    pageCount,
+    hasPrevious: currentPage > 0,
+    hasNext: currentPage < pageCount - 1
+  };
 }
 
 function eventHistoryStatusForPlacement(placementKey: string): CareerEventHistoryStatus {
@@ -570,7 +823,7 @@ export function recordPastCareerEvents(state: CareerState): CareerState {
         return false;
       }
 
-      if (state.completedEventIds.includes(event.id) || state.activeEventId === event.id) {
+      if (state.completedEventIds.includes(event.id)) {
         return false;
       }
 
@@ -607,6 +860,8 @@ export function recordPastCareerEvents(state: CareerState): CareerState {
   return {
     ...state,
     eventHistory: [...state.eventHistory, ...records],
+    activeEventId: records.some((record) => record.eventId === state.activeEventId) ? null : state.activeEventId,
+    stage: records.some((record) => record.eventId === state.activeEventId) ? "event_complete" : state.stage,
     notes: [`Past events recorded: ${records.map((record) => record.eventName).join(", ")}`, ...state.notes].slice(0, 6)
   };
 }

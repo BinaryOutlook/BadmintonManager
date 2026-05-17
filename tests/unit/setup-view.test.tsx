@@ -190,6 +190,53 @@ describe("SetupView", () => {
     expect(within(dialog).getByText("All athletes")).toBeInTheDocument();
   });
 
+  it("selects a career athlete from full roster browse without mutating setup selection", () => {
+    const onSelectPlayer = vi.fn();
+    const onStartCareer = vi.fn();
+    const target = rankRosterByOverall()[1];
+
+    renderSetupView({ onSelectPlayer, onStartCareer });
+    fireEvent.click(screen.getByRole("button", { name: "Start New Career" }));
+    const dialog = screen.getByRole("dialog", { name: "Pick Your Playstyle" });
+
+    expect(within(dialog).getByRole("button", { name: "Confirm Career Athlete" })).toBeDisabled();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Browse All Athletes" }));
+    fireEvent.change(within(dialog).getByLabelText("Search"), {
+      target: { value: target.entry.player.name }
+    });
+    const rosterPanel = within(dialog).getByRole("heading", { name: "Active Roster" }).closest("section")!;
+    fireEvent.click(within(rosterPanel).getByRole("button", { name: `Select ${target.entry.player.name}` }));
+
+    expect(within(dialog).getByRole("button", { name: "Confirm Career Athlete" })).toBeEnabled();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Confirm Career Athlete" }));
+
+    expect(onSelectPlayer).not.toHaveBeenCalled();
+    expect(onStartCareer).toHaveBeenCalledWith(target.entry.player.id);
+  });
+
+  it("clears stale modal selection after cancelling and reopening career selection", () => {
+    const topRanked = rankRosterByOverall()[0];
+
+    renderSetupView();
+    fireEvent.click(screen.getByRole("button", { name: "Start New Career" }));
+    let dialog = screen.getByRole("dialog", { name: "Pick Your Playstyle" });
+
+    fireEvent.click(
+      within(dialog).getByRole("button", {
+        name: new RegExp(`Select featured ${topRanked.entry.player.name}`)
+      })
+    );
+    expect(within(dialog).getByRole("button", { name: "Confirm Career Athlete" })).toBeEnabled();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    fireEvent.click(screen.getByRole("button", { name: "Start New Career" }));
+    dialog = screen.getByRole("dialog", { name: "Pick Your Playstyle" });
+
+    expect(within(dialog).getByRole("button", { name: "Confirm Career Athlete" })).toBeDisabled();
+  });
+
   it("closes the selection modal on Escape without writing a career save", () => {
     const onStartCareer = vi.fn();
 

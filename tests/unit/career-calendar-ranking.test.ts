@@ -3,10 +3,16 @@ import { seededPlayers } from "../../game/content/players";
 import { addDays } from "../../game/career/calendar";
 import {
   buildEventSeedingSnapshot,
+  careerEventCatalog,
   eventDeadlineMilestones,
+  eventEndDate,
   eventEligibilityFor,
   eventStatusFor,
-  getCareerEvent
+  getCareerEvent,
+  paginateCalendarItems,
+  pastCalendarRecords,
+  recordPastCareerEvents,
+  upcomingCalendarEvents
 } from "../../game/career/events";
 import { awardRankingPoints } from "../../game/career/rankings";
 import { createInitialCareerState, managedAthlete } from "../../game/career/state";
@@ -16,10 +22,14 @@ describe("fictional career calendar and ranking model", () => {
   it("defines ordered fictional event operations metadata for every catalog event", () => {
     const career = createInitialCareerState(seededPlayers[0].player.id, 6801);
 
-    expect(career.events.length).toBeGreaterThan(0);
+    expect(career.events.length).toBeGreaterThan(5);
     expect(career.events.every((event) => event.location.venue.length > 0)).toBe(true);
     expect(career.events.every((event) => event.drawSize === 16)).toBe(true);
     expect(career.events.every((event) => event.seedCount === 8)).toBe(true);
+    expect(new Set(careerEventCatalog.map((event) => event.id)).size).toBe(careerEventCatalog.length);
+    expect(careerEventCatalog.map((event) => event.startDate)).toEqual(
+      [...careerEventCatalog.map((event) => event.startDate)].sort()
+    );
 
     for (const event of career.events) {
       const milestones = eventDeadlineMilestones(event).map((entry) => entry.date);
@@ -38,6 +48,73 @@ describe("fictional career calendar and ranking model", () => {
     }
 
     expect(career.events[0]?.startDate).toBe("2026-06-03");
+    expect(getCareerEvent(career.events, "season-finals")).toMatchObject({
+      weekNumber: 52,
+      startDate: "2026-12-23"
+    });
+    expect(
+      career.events
+        .filter(
+          (event) =>
+            event.eligibility.minRank !== null ||
+            event.eligibility.minPoints !== null ||
+            event.eligibility.readinessFloor > 0 ||
+            event.eligibility.minCompletedEvents !== null
+        )
+        .map((event) => event.id)
+        .sort()
+    ).toEqual(["continental-premier-1000", "summit-invitational-750"]);
+  });
+
+  it("separates upcoming events from archived history and paginates calendar records", () => {
+    const career = createInitialCareerState(seededPlayers[0].player.id, 6811);
+    const metro = getCareerEvent(career.events, "metro-open-300")!;
+    const afterMetro = {
+      ...career,
+      date: addDays(eventEndDate(metro), 1),
+      activeEventId: metro.id,
+      enteredEventIds: [metro.id],
+      stage: "event_entered" as const
+    };
+    const recorded = recordPastCareerEvents(afterMetro);
+
+    expect(upcomingCalendarEvents(afterMetro).map((event) => event.id)).not.toContain(metro.id);
+    expect(recorded.eventHistory.find((record) => record.eventId === metro.id)).toMatchObject({
+      status: "skipped",
+      entered: true
+    });
+    expect(recorded.activeEventId).toBeNull();
+
+    const historyCareer = {
+      ...career,
+      eventHistory: career.events.slice(0, 6).map((event, index) => ({
+        eventId: event.id,
+        eventName: event.name,
+        tier: event.tier,
+        startDate: event.startDate,
+        endDate: eventEndDate(event),
+        status: "missed_deadline" as const,
+        entered: false,
+        resultRound: null,
+        pointsAwarded: 0,
+        prizeMoney: 0,
+        entryCost: 0,
+        travelCost: 0,
+        netCash: 0,
+        completedAt: addDays(eventEndDate(event), index),
+        matchIds: [],
+        scorelines: [],
+        achievements: []
+      }))
+    };
+    const past = pastCalendarRecords(historyCareer);
+    const firstPage = paginateCalendarItems(past, 0);
+    const secondPage = paginateCalendarItems(past, 1);
+
+    expect(past[0]?.endDate >= past[1]!.endDate).toBe(true);
+    expect(firstPage.items).toHaveLength(5);
+    expect(firstPage.hasNext).toBe(true);
+    expect(secondPage.items).toHaveLength(1);
   });
 
   it("returns deterministic missed-deadline states before charging entry costs", () => {
@@ -167,8 +244,10 @@ describe("fictional career calendar and ranking model", () => {
     const parsed = persistedSavePayloadSchema.parse(save);
     const migrated = migratePersistedSave(parsed);
 
+    expect(migrated.career?.events).toHaveLength(careerEventCatalog.length);
     expect(migrated.career?.events[0]?.entryDeadline).toBe("2026-06-01");
     expect(migrated.career?.events[0]?.location.venue).toBe("Harborline Fieldhouse");
+    expect(getCareerEvent(migrated.career?.events ?? [], "season-finals")?.startDate).toBe("2026-12-23");
     expect(migrated.career?.rankings[0]?.seasonPoints).toBe(0);
     expect(persistedSaveSchema.parse(migrated)).toEqual(migrated);
   });

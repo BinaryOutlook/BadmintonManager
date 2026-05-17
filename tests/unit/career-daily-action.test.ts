@@ -3,7 +3,7 @@ import { seededPlayers } from "../../game/content/players";
 import { createInitialCareerState } from "../../game/career/state";
 import { getCareerEvent } from "../../game/career/events";
 import { getCareerDailyAction } from "../../game/career/dailyAction";
-import { scheduledDateForRound } from "../../game/career/matchSchedule";
+import { managedMatchScheduleForEvent, scheduledDateForRound } from "../../game/career/matchSchedule";
 import type { MatchResult, Side } from "../../game/core/models";
 import {
   advanceTournament,
@@ -166,6 +166,70 @@ describe("career daily action resolver", () => {
       tone: "required",
       label: "Resume Match",
       route: "live_match"
+    });
+  });
+
+  it("chooses the earliest due entered event when a later entry is active", () => {
+    const managedPlayerId = seededPlayers[0].player.id;
+    const initial = createInitialCareerState(managedPlayerId, 9603);
+    const metro = getCareerEvent(initial.events, "metro-open-300")!;
+    const harbor = getCareerEvent(initial.events, "harbor-masters-500")!;
+    const career = {
+      ...initial,
+      date: metro.startDate,
+      activeEventId: harbor.id,
+      enteredEventIds: [metro.id, harbor.id],
+      stage: "event_entered" as const
+    };
+    const action = getCareerDailyAction({
+      career,
+      tournament: null,
+      phase: "overview",
+      liveMatchActive: false
+    });
+
+    expect(action).toMatchObject({
+      kind: "play_scheduled_match",
+      eventId: metro.id,
+      label: `Play ${metro.name} R16`
+    });
+  });
+
+  it("resolves an event by id even when activeEventId points elsewhere", () => {
+    const managedPlayerId = seededPlayers[0].player.id;
+    const initial = createInitialCareerState(managedPlayerId, 9604);
+    const metro = getCareerEvent(initial.events, "metro-open-300")!;
+    const harbor = getCareerEvent(initial.events, "harbor-masters-500")!;
+    const career = {
+      ...initial,
+      date: metro.startDate,
+      activeEventId: harbor.id,
+      enteredEventIds: [metro.id, harbor.id],
+      stage: "event_entered" as const
+    };
+
+    expect(managedMatchScheduleForEvent({ career, tournament: null, eventId: metro.id })).toMatchObject({
+      event: metro,
+      playable: true,
+      round: "R16"
+    });
+  });
+
+  it("does not keep an expired entered event playable after its window closes", () => {
+    const managedPlayerId = seededPlayers[0].player.id;
+    const initial = createInitialCareerState(managedPlayerId, 9605);
+    const metro = getCareerEvent(initial.events, "metro-open-300")!;
+    const career = {
+      ...initial,
+      date: "2026-06-09",
+      activeEventId: metro.id,
+      enteredEventIds: [metro.id],
+      stage: "event_entered" as const
+    };
+
+    expect(managedMatchScheduleForEvent({ career, tournament: null, eventId: metro.id })).toBeNull();
+    expect(getCareerDailyAction({ career, tournament: null, phase: "overview", liveMatchActive: false })).toMatchObject({
+      kind: "advance_day"
     });
   });
 });

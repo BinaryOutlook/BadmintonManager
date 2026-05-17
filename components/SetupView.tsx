@@ -508,7 +508,7 @@ export function SetupView(props: SetupViewProps) {
     return (
       <div className="modal-backdrop" role="presentation">
         <section
-          className="athlete-selection-modal"
+          className={rosterBrowseOpen ? "athlete-selection-modal athlete-selection-modal-browse" : "athlete-selection-modal"}
           role="dialog"
           aria-modal="true"
           aria-labelledby="athlete-selection-title"
