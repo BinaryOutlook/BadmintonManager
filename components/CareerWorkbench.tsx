@@ -413,6 +413,7 @@ export function CareerHomePage(props: CareerPageProps) {
   const seedingSnapshot = event ? buildEventSeedingSnapshot({ state: props.career, event }) : null;
   const recentLedger = props.career.economy.ledger.slice(-4).reverse();
   const week = buildWeek(props.career.date);
+  const evidenceRows = (props.career.lastMatchReport?.evidence ?? ["No managed match evidence yet."]).slice(0, 3);
   const taskRows = [
     {
       label: props.career.stage === "post_match" ? "Review desk" : props.career.stage === "pre_match" ? "Match day" : "Program desk",
@@ -448,87 +449,76 @@ export function CareerHomePage(props: CareerPageProps) {
       : props.career.stage === "post_match"
         ? "Review Match"
         : "Match Plan";
+  const stageLabel = props.career.stage.replace(/_/g, " ");
+  const nextEventName = event?.name ?? "Season planning";
+  const eventIntro = event
+    ? `${event.location.city}, ${event.location.country} | Starts ${event.startDate} (${daysUntilLabel(props.career.date, event.startDate)}) | ${event.stakesLabel}.`
+    : "No remaining event in the Phase 1 catalog.";
+  const medicalSummary =
+    athlete.injury.status === "healthy"
+      ? "Available for training and event entry."
+      : `${athlete.injury.daysRemaining} day(s) remaining; return ${athlete.injury.returnDate ?? "pending"}. ${athlete.injury.notes[0]}`;
   return (
     <section className="screen-shell career-page" aria-label="Portal Home" data-page-contract="portal-home">
-      <div className="screen-header">
+      <div className="screen-header career-portal-header">
         <div>
           <p className="screen-kicker">Portal Home</p>
           <h1 className="screen-title">Career Command Center</h1>
-          <p className="screen-copy">
-            {props.career.date} - {player.name} sits circuit rank {athlete.currentRank} with{" "}
-            {points(athlete.rankingPoints)} and {points(ranking?.seasonPoints ?? 0)} in the season race.
+          <p className="screen-copy career-portal-summary">
+            {props.career.date} | {player.name} | Rank {athlete.currentRank} | {points(athlete.rankingPoints)} | Race{" "}
+            {points(ranking?.seasonPoints ?? 0)} | Next: {nextEventName}
           </p>
         </div>
-        <div className="screen-meta screen-meta-actions">
+        <div className="screen-meta screen-meta-actions career-portal-meta">
           <span>Cash {money(props.career.economy.cash)}</span>
-          <span>Readiness {athlete.readiness}</span>
-          <span>{props.career.stage.replace("_", " ")}</span>
+          <span>Readiness {athlete.readiness}%</span>
+          <span>{stageLabel}</span>
         </div>
       </div>
 
-      <section className="career-status-strip" aria-label="Career route status">
+      <section className="career-status-strip career-status-strip-compact" aria-label="Career route status">
         <div>
-          <span>Active route</span>
+          <span>Route</span>
           <strong>Career Home</strong>
         </div>
         <div>
-          <span>Next event</span>
-          <strong>{event?.name ?? "Season planning"}</strong>
+          <span>Next</span>
+          <strong>{nextEventName}</strong>
         </div>
         <div>
-          <span>Entry deadline</span>
+          <span>Deadline</span>
           <strong>{event ? `${event.entryDeadline} (${daysUntilLabel(props.career.date, event.entryDeadline)})` : "No open event"}</strong>
         </div>
         <div>
-          <span>Next action</span>
+          <span>Action</span>
           <strong>{eventStatus ? statusLabel(eventStatus) : liveRouteLabel}</strong>
         </div>
         <div>
-          <span>Save state</span>
+          <span>Save</span>
           <strong>{props.activeSavePresent ? `Active ${STORAGE_KEY}` : "No active slot"}</strong>
         </div>
       </section>
 
-      <div className="career-dashboard-grid">
-        <section className="command-panel">
-          <div className="panel-header">
-            <h2>Tasks / Inbox</h2>
-            <span>{taskRows.length} live items</span>
-          </div>
-          <div className="management-table" aria-label="Portal tasks inbox">
-            {taskRows.map((task) => (
-              <div key={task.label} className="management-table-row">
-                <span>{task.label}</span>
-                <strong>{task.value}</strong>
-                <small>{task.action}</small>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="command-panel career-priority-panel">
+      <div className="career-dashboard-grid career-dashboard-grid-compact">
+        <section className="command-panel career-dashboard-card career-dashboard-card-decision career-priority-panel">
           <div className="panel-header">
             <h2>Next Decision</h2>
             <span>{event ? `${event.tier} / week ${event.weekNumber}` : "No event"}</span>
           </div>
-          <div className="career-decision-block">
+          <div className="career-decision-block career-decision-block-compact">
             <strong>{event?.name ?? "Season planning"}</strong>
-            <p>
-              {event
-                ? `${event.location.city}, ${event.location.country}. ${daysUntilLabel(props.career.date, event.startDate)} until match week; ${daysUntilLabel(props.career.date, event.entryDeadline)} until entry deadline. ${event.stakesLabel}.`
-                : "No remaining event in the Phase 1 catalog."}
-            </p>
+            <p>{eventIntro}</p>
             {event && eventGate && (
-              <div className="career-quick-stakes" aria-label="Next event stakes summary">
+              <div className="career-quick-stakes career-quick-stakes-compact" aria-label="Next event stakes summary">
                 <div>
                   <span>Eligibility</span>
-                  <strong>{eventGate.allowed ? "Entry gate clear" : "Gate not clear"}</strong>
+                  <strong>{eventGate.allowed ? "Entry clear" : "Gate blocked"}</strong>
                   <small>
                     Rank {eventGate.rank}, readiness {eventGate.readiness}, season race {points(eventGate.seasonPoints)}.
                   </small>
                 </div>
                 <div>
-                  <span>Ranking Cutoff</span>
+                  <span>Cutoff</span>
                   <strong>{event.rankingCutoffDate}</strong>
                   <small>Seed snapshot {seedingSnapshot?.status ?? "projected"} on {event.seedingDate}.</small>
                 </div>
@@ -559,97 +549,78 @@ export function CareerHomePage(props: CareerPageProps) {
           </div>
         </section>
 
-        <section className="command-panel">
+        <section className="command-panel career-dashboard-card career-dashboard-card-tasks">
           <div className="panel-header">
-            <h2>Readiness</h2>
-            <span>{athlete.recoveryStatus}</span>
+            <h2>Tasks / Inbox</h2>
+            <span>{taskRows.length} live items</span>
           </div>
-          <div className="career-meter-list">
-            <CareerMeter label="Readiness" value={athlete.readiness} />
-            <CareerMeter label="Fatigue" value={Math.round(athlete.fatigue)} danger />
-            <CareerMeter label="Injury Risk" value={Math.round(athlete.injuryRisk * 100)} danger />
-          </div>
-          <div className="program-log-row career-button-spaced">
-            <span>{athlete.injury.status} / medical desk</span>
-            <strong>{athlete.injury.label}</strong>
-            <p>
-              {athlete.injury.status === "healthy"
-                ? "Available for training and event entry."
-                : `${athlete.injury.daysRemaining} day(s) remaining; return ${athlete.injury.returnDate ?? "pending"}. ${athlete.injury.notes[0]}`}
-            </p>
-          </div>
-        </section>
-
-        <section className="command-panel">
-          <div className="panel-header">
-            <h2>Ranking Pressure</h2>
-            <span>simplified circuit list</span>
-          </div>
-          <div className="career-stat-grid">
-            <div>
-              <span>Rank</span>
-              <strong>{athlete.currentRank}</strong>
+          <div className="management-table management-table-compact career-task-table" aria-label="Portal tasks inbox">
+            <div className="management-table-row management-table-row-head" aria-hidden="true">
+              <span>Type</span>
+              <strong>Item</strong>
+              <small>Action</small>
             </div>
-            <div>
-              <span>Total Points</span>
-              <strong>{points(athlete.rankingPoints)}</strong>
-            </div>
-            <div>
-              <span>Season Race</span>
-              <strong>{points(ranking?.seasonPoints ?? 0)}</strong>
-            </div>
-            <div>
-              <span>Event History</span>
-              <strong>{props.career.completedEventIds.length}</strong>
-            </div>
-          </div>
-          {event && (
-            <p className="panel-summary">
-              Finals gate: top 8 with {points(2600)} season-race pressure or four completed events. The ranking is a
-              fictional simplified circuit list, not an official rolling table.
-            </p>
-          )}
-        </section>
-
-        <section className="command-panel">
-          <div className="panel-header">
-            <h2>Ledger</h2>
-            <span>Reconciled cashflow</span>
-          </div>
-          <div className="career-ledger">
-            {recentLedger.map((entry) => (
-              <div key={entry.id} className="career-ledger-row">
-                <span>{entry.label}</span>
-                <strong>{signedMoney(entry.amount)}</strong>
+            {taskRows.map((task) => (
+              <div key={task.label} className="management-table-row">
+                <span>{task.label}</span>
+                <strong>{task.value}</strong>
+                <small>{task.action}</small>
               </div>
             ))}
           </div>
         </section>
 
-        <section className="command-panel">
+        <section className="command-panel career-dashboard-card career-dashboard-card-readiness">
+          <div className="panel-header">
+            <h2>Readiness</h2>
+            <span>{athlete.recoveryStatus}</span>
+          </div>
+          <div className="career-meter-list career-meter-list-compact">
+            <CareerMeter label="Readiness" value={athlete.readiness} />
+            <CareerMeter label="Fatigue" value={Math.round(athlete.fatigue)} danger />
+            <CareerMeter label="Injury Risk" value={Math.round(athlete.injuryRisk * 100)} danger />
+          </div>
+          <div className="program-log-row career-readiness-medical-row career-button-spaced">
+            <span>Medical</span>
+            <strong>{athlete.injury.label}</strong>
+            <small>{medicalSummary}</small>
+          </div>
+        </section>
+
+        <section className="command-panel career-dashboard-card career-dashboard-card-calendar">
           <div className="panel-header">
             <h2>Calendar Snapshot</h2>
             <span>{props.career.date}</span>
           </div>
           <div className="career-week-strip career-week-strip-compact" aria-label="Portal calendar snapshot">
-            {week.map((day) => (
-              <div key={day} className={day === props.career?.date ? "career-day career-day-active" : "career-day"}>
-                <span>{day.slice(5)}</span>
-                <strong>{props.career?.events.find((entry) => entry.startDate === day)?.tier ?? "Train"}</strong>
-              </div>
-            ))}
+            {week.map((day) => {
+              const calendarEvent = props.career?.events.find((entry) => entry.startDate === day);
+              const dayLabel = calendarEvent?.tier ?? (day === props.career?.date ? "Today" : "Train");
+
+              return (
+                <div key={day} className={day === props.career?.date ? "career-day career-day-active" : "career-day"}>
+                  <span>{day.slice(5)}</span>
+                  <strong>{dayLabel}</strong>
+                </div>
+              );
+            })}
           </div>
         </section>
 
-        <section className="command-panel">
+        <section className="command-panel career-dashboard-card career-dashboard-card-evidence">
           <div className="panel-header">
             <h2>Recent Match Evidence</h2>
-            <span>{props.career.lastMatchReport ? props.career.lastMatchReport.round : "No report"}</span>
+            <span>{props.career.lastMatchReport ? `${props.career.lastMatchReport.round} evidence` : "No report"}</span>
           </div>
-          <div className="management-table" aria-label="Recent match evidence">
-            {(props.career.lastMatchReport?.evidence ?? ["No managed match evidence yet."]).slice(0, 3).map((entry, index) => (
+          <div className="management-table management-table-compact career-evidence-table" aria-label="Recent match evidence">
+            <div className="management-table-row management-table-row-head" aria-hidden="true">
+              <span>#</span>
+              <strong>Evidence</strong>
+              <small>Score</small>
+            </div>
+            {evidenceRows.map((entry, index) => (
               <div key={`${entry}-${index}`} className="management-table-row">
-                <span>Evidence {index + 1}</span>
+                <span>{index + 1}</span>
                 <strong>{entry}</strong>
                 <small>{props.career?.lastMatchReport?.scoreline ?? "Pending"}</small>
               </div>
@@ -657,12 +628,66 @@ export function CareerHomePage(props: CareerPageProps) {
           </div>
         </section>
 
-        <section className="command-panel command-panel-full">
+        <section className="command-panel career-dashboard-card career-dashboard-card-ledger">
+          <div className="panel-header">
+            <h2>Ledger</h2>
+            <span>Reconciled cashflow</span>
+          </div>
+          <div className="career-ledger career-ledger-compact">
+            {recentLedger.length > 0 ? (
+              recentLedger.map((entry) => (
+                <div key={entry.id} className="career-ledger-row">
+                  <span>{entry.label}</span>
+                  <strong className={entry.amount >= 0 ? "career-ledger-amount-positive" : "career-ledger-amount-negative"}>
+                    {signedMoney(entry.amount)}
+                  </strong>
+                </div>
+              ))
+            ) : (
+              <div className="career-ledger-row career-ledger-row-empty">
+                <span>No ledger entries yet</span>
+                <strong>$0</strong>
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className="command-panel career-dashboard-card career-dashboard-card-ranking">
+          <div className="panel-header">
+            <h2>Ranking Pressure</h2>
+            <span>simplified circuit list</span>
+          </div>
+          <div className="career-stat-grid career-stat-grid-compact">
+            <div>
+              <span>Rank</span>
+              <strong>{athlete.currentRank}</strong>
+            </div>
+            <div>
+              <span>Total</span>
+              <strong>{points(athlete.rankingPoints)}</strong>
+            </div>
+            <div>
+              <span>Race</span>
+              <strong>{points(ranking?.seasonPoints ?? 0)}</strong>
+            </div>
+            <div>
+              <span>Events</span>
+              <strong>{props.career.completedEventIds.length}</strong>
+            </div>
+          </div>
+          {event && (
+            <p className="panel-summary career-ranking-note">
+              Finals gate: top 8 or four completed events; fictional simplified circuit list.
+            </p>
+          )}
+        </section>
+
+        <section className="command-panel career-dashboard-card career-dashboard-card-ecosystem">
           <div className="panel-header">
             <h2>Program Ecosystem</h2>
-            <span>Scouting / recruitment / youth / staff / promises</span>
+            <span>Subsystems</span>
           </div>
-          <div className="career-ecosystem-strip">
+          <div className="career-ecosystem-strip career-ecosystem-strip-compact">
             <button className="career-system-tile" type="button" onClick={props.onOpenScouting}>
               <span>Reports</span>
               <strong>{props.career.ecosystem.scouting.reports.length}</strong>
@@ -693,12 +718,12 @@ export function CareerHomePage(props: CareerPageProps) {
             <button className="career-system-tile" type="button" onClick={props.onOpenRivals}>
               <span>Rivals</span>
               <strong>{Math.round(Math.max(...props.career.rivals.programs.map((program) => program.pressureScore)))}</strong>
-              <small>{props.career.rivals.fieldPressure.length} pressured event fields</small>
+              <small>{props.career.rivals.fieldPressure.length} fields</small>
             </button>
             <button className="career-system-tile" type="button" onClick={props.onOpenMatchPlanning}>
               <span>Tactics</span>
               <strong>{activeAdvancedTacticPlan(props.career).name}</strong>
-              <small>{props.career.matchPlanning.advice.filter((entry) => entry.overrideState === "pending").length} staff notes</small>
+              <small>{props.career.matchPlanning.advice.filter((entry) => entry.overrideState === "pending").length} notes</small>
             </button>
             <button className="career-system-tile" type="button" onClick={props.onOpenFacilities}>
               <span>Facilities</span>
@@ -711,7 +736,7 @@ export function CareerHomePage(props: CareerPageProps) {
               <small>
                 {props.career.media.sponsors.filter((objective) => objective.status === "active").length +
                   props.career.media.federationObjectives.filter((objective) => objective.status === "active").length}{" "}
-                active objectives
+                active
               </small>
             </button>
           </div>

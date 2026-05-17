@@ -244,6 +244,47 @@ async function expectCalendarViewportBounded(page: Page) {
   });
 }
 
+async function expectPortalViewportBounded(page: Page, expectOnePage: boolean) {
+  await page.evaluate((shouldFitInViewport) => {
+    const pageWidth = document.documentElement.scrollWidth;
+    const viewportWidth = window.innerWidth;
+
+    if (pageWidth > viewportWidth + 1) {
+      throw new Error(`Unexpected Portal document overflow: ${pageWidth} > ${viewportWidth}`);
+    }
+
+    const portal = document.querySelector<HTMLElement>('[data-page-contract="portal-home"]');
+
+    if (!portal) {
+      throw new Error("Expected compact Portal Home contract element.");
+    }
+
+    if (shouldFitInViewport) {
+      const portalBottom = portal.getBoundingClientRect().bottom;
+
+      if (portalBottom > window.innerHeight + 1) {
+        throw new Error(`Expected desktop Portal to fit one viewport: ${portalBottom} > ${window.innerHeight}`);
+      }
+    }
+
+    const checkedElements = Array.from(
+      document.querySelectorAll<HTMLElement>(
+        ".career-status-strip-compact, .career-dashboard-grid-compact, .career-week-strip-compact, .career-ecosystem-strip-compact, .management-table-compact, .career-ledger-compact"
+      )
+    );
+
+    for (const element of checkedElements) {
+      const mobileTimelineOverflow =
+        viewportWidth <= 780 && element.classList.contains("career-week-strip-compact");
+
+      if (!mobileTimelineOverflow && element.scrollWidth > element.clientWidth + 1) {
+        const label = element.className || element.tagName;
+        throw new Error(`Unexpected Portal element overflow for ${label}: ${element.scrollWidth} > ${element.clientWidth}`);
+      }
+    }
+  }, expectOnePage);
+}
+
 async function selectAthleteInSelectionModal(page: Page, athleteName: string) {
   const dialog = page.getByRole("dialog", { name: "Pick Your Playstyle" });
   const directSelect = dialog
@@ -840,9 +881,31 @@ test("surfaces dense page contracts and Save Manager metadata", async ({ page })
   await expect(page.getByLabel("Portal tasks inbox")).toContainText("Save state");
   await expect(page.getByRole("heading", { name: "Calendar Snapshot" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Recent Match Evidence" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Program Ecosystem" })).toBeVisible();
   await expect(page.getByRole("main").getByRole("button", { name: "Continue" })).toHaveCount(0);
 
   const commandRail = page.getByRole("navigation", { name: "Primary commands" });
+
+  await page.getByRole("main").getByRole("button", { name: "Calendar" }).click();
+  await expect(page.getByRole("heading", { name: "Calendar" })).toBeVisible();
+  await commandRail.getByRole("button", { name: /Portal/ }).click();
+  await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
+
+  await page.getByRole("main").getByRole("button", { name: "Training Desk" }).click();
+  await expect(page.getByRole("heading", { name: "Load Management" })).toBeVisible();
+  await commandRail.getByRole("button", { name: /Portal/ }).click();
+
+  await page.getByRole("main").getByRole("button", { name: "Program Hub" }).click();
+  await expect(page.getByText(/Scout capacity/)).toBeVisible();
+  await commandRail.getByRole("button", { name: /Portal/ }).click();
+
+  await page.getByRole("main").getByRole("button", { name: "Circuit Room" }).click();
+  await expect(page.getByRole("heading", { name: "Rival Programs" })).toBeVisible();
+  await commandRail.getByRole("button", { name: /Portal/ }).click();
+
+  await page.getByRole("main").getByRole("button", { name: "Match Planning" }).click();
+  await expect(page.getByRole("heading", { name: "Advanced Tactics Creator" })).toBeVisible();
+  await commandRail.getByRole("button", { name: /Portal/ }).click();
 
   await commandRail.getByRole("button", { name: /Training/ }).click();
   await expect(page.getByRole("heading", { name: "Load Management" })).toBeVisible();
@@ -892,8 +955,8 @@ test("integrates fictional calendar ranking stakes into career home and Calendar
 
   await startNewCareer(page);
   await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
-  await expect(page.getByLabel("Next event stakes summary")).toContainText("Entry gate clear");
-  await expect(page.getByLabel("Next event stakes summary")).toContainText("Ranking Cutoff");
+  await expect(page.getByLabel("Next event stakes summary")).toContainText("Entry clear");
+  await expect(page.getByLabel("Next event stakes summary")).toContainText("Cutoff");
   await expect(page.getByLabel("Next event stakes summary")).toContainText("Champion points 700 pts");
   await expect(page.getByText(/fictional simplified circuit list/)).toBeVisible();
 
@@ -930,6 +993,32 @@ test("integrates fictional calendar ranking stakes into career home and Calendar
       throw new Error("Expected Metro Open entry to persist.");
     }
   });
+});
+
+test("keeps the compact Career Portal bounded across target viewports", async ({ page }) => {
+  for (const viewport of [
+    { width: 2048, height: 1152, name: "portal-2048x1152", onePage: true },
+    { width: 1440, height: 900, name: "portal-1440x900", onePage: true },
+    { width: 390, height: 844, name: "portal-mobile", onePage: false }
+  ]) {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    await page.goto("/");
+    await page.evaluate(() => {
+      window.localStorage.clear();
+      window.sessionStorage.clear();
+    });
+    await page.goto("/");
+
+    await startNewCareer(page);
+    await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Tasks / Inbox" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Calendar Snapshot" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Recent Match Evidence" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Program Ecosystem" })).toBeVisible();
+    await expect(page.getByRole("banner").getByRole("button", { name: "Advance Day" })).toBeVisible();
+    await expectPortalViewportBounded(page, viewport.onePage);
+    await captureFocusedScreenshot(page, viewport.name);
+  }
 });
 
 test("keeps the Calendar layout bounded across target viewports", async ({ page }) => {
