@@ -120,6 +120,7 @@ function buildCareerPageProps(
     onStartCareer: noop,
     onOpenTraining: noop,
     onOpenCalendar: noop,
+    onOpenEventDetails: noop,
     onOpenHome: noop,
     onOpenLiveMatch: noop,
     onOpenPostMatch: noop,

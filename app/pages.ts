@@ -8,6 +8,7 @@ export type AppPage =
   | { id: "games" }
   | { id: "season" }
   | { id: "calendar" }
+  | { id: "eventDetails"; eventId: string }
   | { id: "saveManager" }
   | { id: "program" }
   | { id: "rivals" }

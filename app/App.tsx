@@ -3,6 +3,7 @@ import { CompleteView } from "../components/CompleteView";
 import {
   CareerAthletePromisesPage,
   CareerCalendarPage,
+  CareerEventDetailsPage,
   CareerFacilitiesPage,
   CareerHomePage,
   CareerMatchPlanningPage,
@@ -25,7 +26,6 @@ import { SettingsOverlay, type ThemeAccent } from "../components/SettingsOverlay
 import { SetupView } from "../components/SetupView";
 import { TacticalIntelPanel } from "../components/TacticalIntelPanel";
 import { playerMap } from "../game/content/players";
-import { tacticOptions } from "../game/content/tactics";
 import { getCareerDailyAction, type CareerDailyActionTone } from "../game/career/dailyAction";
 import { useTournamentStore, type AppPhase } from "../game/store/store";
 import type { CareerStage, CareerState } from "../game/career/models";
@@ -138,6 +138,7 @@ function commandIdForPage(page: AppPage): CommandId {
     case "season":
       return "training";
     case "calendar":
+    case "eventDetails":
       return "calendar";
     case "games":
     case "bracket":
@@ -239,9 +240,6 @@ export function App() {
   const setupSelectedPlayerId = career
     ? quickTournamentDraftPlayerId ?? selectedPlayerId
     : selectedPlayerId;
-  const selectedTactic =
-    tacticOptions.find((option) => option.key === plannedTacticKey) ?? tacticOptions[0];
-  const canEnterManagedMatch = phase === "overview" && Boolean(tournament) && (!career || career.stage === "pre_match");
   const activeCommandId = commandIdForPage(activePage);
   const workspaceStyle = {
     "--sidebar-width": `${sidebarCollapsed ? SIDEBAR_COLLAPSED_WIDTH : sidebarWidth}px`
@@ -306,12 +304,6 @@ export function App() {
   }
 
   function selectSetupPlayer(playerId: string) {
-    if (career) {
-      setQuickTournamentDraftPlayerId(playerId);
-      return;
-    }
-
-    selectPlayer(playerId);
     setQuickTournamentDraftPlayerId(playerId);
   }
 
@@ -426,8 +418,8 @@ export function App() {
     setActivePage(next.career?.stage === "pre_match" ? { id: "bracket" } : { id: "calendar" });
   }
 
-  function handleOpenScheduledCareerMatch() {
-    openScheduledCareerMatch();
+  function handleOpenScheduledCareerMatch(eventId?: string) {
+    openScheduledCareerMatch(eventId);
     const next = useTournamentStore.getState();
     setActivePage(next.career?.stage === "pre_match" ? { id: "bracket" } : { id: "calendar" });
   }
@@ -651,7 +643,7 @@ export function App() {
           handleAdvanceCareerDay();
           return;
         case "play_scheduled_match":
-          handleOpenScheduledCareerMatch();
+          handleOpenScheduledCareerMatch(action.eventId);
           return;
         case "resume_live_match":
           setActivePage({ id: "liveMatch" });
@@ -675,6 +667,68 @@ export function App() {
     }
 
     setActivePage(pageForPhase(phase));
+  }
+
+  function renderSystemOverlays(includeIntel: boolean) {
+    return (
+      <OverlayHost>
+        {includeIntel && (
+          <TacticalIntelPanel
+            open={intelOpen}
+            phase={phase}
+            selectedPlayerId={selectedPlayerId}
+            plannedTacticKey={plannedTacticKey}
+            tournament={tournament}
+            liveMatch={liveMatch}
+            onClose={() => setIntelOpen(false)}
+          />
+        )}
+
+        <SettingsOverlay
+          open={settingsOpen}
+          themeAccent={themeAccent}
+          onThemeAccentChange={setThemeAccentPreference}
+          onRequestReset={requestReset}
+          onOpenSaveManager={openSaveManager}
+          onClose={() => setSettingsOpen(false)}
+        />
+
+        <ConfirmOverlay
+          open={pendingConfirm !== null}
+          title={
+            pendingConfirm === "startTournamentReplaceCareer"
+              ? "Start tournament and replace career?"
+              : pendingConfirm === "startCareerReplaceSave"
+                ? "Start a new career?"
+                : career
+                  ? "Reset tournament state?"
+                  : "Start a new session?"
+          }
+          message={
+            pendingConfirm === "startTournamentReplaceCareer"
+              ? "Starting a tournament writes to the single active local slot and removes the current career save. Export JSON first if you want a backup."
+              : pendingConfirm === "startCareerReplaceSave"
+                ? "This creates a new career in the single active local slot and clears the current tournament/live match state. Export JSON first if you want a backup."
+                : career
+                  ? "This clears the current tournament or live-match state and returns to athlete selection. Your career save remains in the active local slot."
+                  : "This clears the current local tournament run and returns the app to athlete selection."
+          }
+          confirmLabel={
+            pendingConfirm === "startTournamentReplaceCareer"
+              ? "Start Tournament"
+              : pendingConfirm === "startCareerReplaceSave"
+                ? "Start New Career"
+                : "Start New Session"
+          }
+          onConfirm={confirmPendingAction}
+          onCancel={() => {
+            setPendingConfirm(null);
+            setPendingCareerPlayerId(null);
+            setPendingTournamentPlayerId(null);
+          }}
+        />
+      </OverlayHost>
+    );
   }
 
   function beginSidebarResize(event: ReactPointerEvent<HTMLButtonElement>) {
@@ -715,6 +769,7 @@ export function App() {
       onStartCareer: requestStartCareer,
       onOpenTraining: () => setActivePage({ id: "season" }),
       onOpenCalendar: () => setActivePage({ id: "calendar" }),
+      onOpenEventDetails: (eventId: string) => setActivePage({ id: "eventDetails", eventId }),
       onOpenHome: () => setActivePage({ id: "home" }),
       onOpenLiveMatch: openCareerLiveRoute,
       onOpenPostMatch: openCareerPostMatchRoute,
@@ -883,6 +938,10 @@ export function App() {
       return <CareerCalendarPage {...careerPageProps} />;
     }
 
+    if (activePage.id === "eventDetails") {
+      return <CareerEventDetailsPage {...careerPageProps} eventId={activePage.eventId} />;
+    }
+
     if (activePage.id === "review" && career) {
       return <CareerPostMatchHubPage {...careerPageProps} />;
     }
@@ -982,6 +1041,24 @@ export function App() {
       ? "Continue Save"
       : "Start";
   const continueTone: CareerDailyActionTone = careerDailyAction?.tone ?? "ready";
+  const shouldRenderStandaloneStart =
+    !activeSavePresent &&
+    !career &&
+    !tournament &&
+    !liveMatch &&
+    phase === "setup" &&
+    (activePage.id === "setup" || activePage.id === "saveManager" || activePage.id === "playerProfile");
+
+  if (shouldRenderStandaloneStart) {
+    return (
+      <PlayerNavigationProvider onOpenPlayerProfile={openPlayerProfile}>
+        <div className="command-shell command-shell-standalone-start" data-accent={themeAccent}>
+          <PageCanvas>{renderPage()}</PageCanvas>
+          {renderSystemOverlays(false)}
+        </div>
+      </PlayerNavigationProvider>
+    );
+  }
 
   return (
     <PlayerNavigationProvider onOpenPlayerProfile={openPlayerProfile}>
@@ -1002,79 +1079,17 @@ export function App() {
 
         <div className="workspace-shell" style={workspaceStyle}>
           <CommandSidebar
-            activeAthlete={activeAthlete}
             activeCommandId={activeCommandId}
-            canEnterManagedMatch={canEnterManagedMatch}
             commands={shellCommands}
             collapsed={sidebarCollapsed}
-            phaseLabel={career ? career.stage.replace("_", " ") : phase}
-            selectedTacticLabel={selectedTactic.label}
-            onChooseTactic={chooseTactic}
-            onOpenPlayerProfile={() => openPlayerProfile(activeAthlete.id)}
             onResizeStart={beginSidebarResize}
-            onStartManagedMatch={handleStartManagedMatch}
             onToggleCollapsed={() => setSidebarCollapsed((current) => !current)}
-            plannedTacticKey={plannedTacticKey}
           />
 
           <PageCanvas>{renderPage()}</PageCanvas>
         </div>
 
-        <OverlayHost>
-          <TacticalIntelPanel
-            open={intelOpen}
-            phase={phase}
-            selectedPlayerId={selectedPlayerId}
-            plannedTacticKey={plannedTacticKey}
-            tournament={tournament}
-            liveMatch={liveMatch}
-            onClose={() => setIntelOpen(false)}
-          />
-
-          <SettingsOverlay
-            open={settingsOpen}
-            themeAccent={themeAccent}
-            onThemeAccentChange={setThemeAccentPreference}
-            onRequestReset={requestReset}
-            onOpenSaveManager={openSaveManager}
-            onClose={() => setSettingsOpen(false)}
-          />
-
-      <ConfirmOverlay
-        open={pendingConfirm !== null}
-        title={
-          pendingConfirm === "startTournamentReplaceCareer"
-            ? "Start tournament and replace career?"
-            : pendingConfirm === "startCareerReplaceSave"
-              ? "Start a new career?"
-              : career
-                ? "Reset tournament state?"
-                : "Start a new session?"
-        }
-        message={
-          pendingConfirm === "startTournamentReplaceCareer"
-            ? "Starting a tournament writes to the single active local slot and removes the current career save. Export JSON first if you want a backup."
-            : pendingConfirm === "startCareerReplaceSave"
-              ? "This creates a new career in the single active local slot and clears the current tournament/live match state. Export JSON first if you want a backup."
-              : career
-                ? "This clears the current tournament or live-match state and returns to athlete selection. Your career save remains in the active local slot."
-                : "This clears the current local tournament run and returns the app to athlete selection."
-        }
-        confirmLabel={
-          pendingConfirm === "startTournamentReplaceCareer"
-            ? "Start Tournament"
-            : pendingConfirm === "startCareerReplaceSave"
-              ? "Start New Career"
-              : "Start New Session"
-        }
-        onConfirm={confirmPendingAction}
-        onCancel={() => {
-          setPendingConfirm(null);
-          setPendingCareerPlayerId(null);
-          setPendingTournamentPlayerId(null);
-        }}
-      />
-        </OverlayHost>
+        {renderSystemOverlays(true)}
       </div>
     </PlayerNavigationProvider>
   );
@@ -1132,22 +1147,12 @@ function TopStatusBar(props: {
 }
 
 function CommandSidebar(props: {
-  activeAthlete: { id: string; name: string; nationality: string; styleLabel: string };
   activeCommandId: CommandId;
-  canEnterManagedMatch: boolean;
   collapsed: boolean;
   commands: ShellCommand[];
-  phaseLabel: string;
-  selectedTacticLabel: string;
-  plannedTacticKey: string;
-  onChooseTactic: (tacticKey: (typeof tacticOptions)[number]["key"]) => void;
-  onOpenPlayerProfile: () => void;
   onResizeStart: (event: ReactPointerEvent<HTMLButtonElement>) => void;
-  onStartManagedMatch: () => void;
   onToggleCollapsed: () => void;
 }) {
-  const activeCommand = props.commands.find((command) => command.id === props.activeCommandId);
-
   return (
     <aside className="sidebar command-sidebar" aria-label="Primary command sidebar">
       <div className="sidebar-brand">
@@ -1198,54 +1203,6 @@ function CommandSidebar(props: {
           </section>
         ))}
       </nav>
-
-      <div className="sidebar-options" aria-label="Active command context">
-        <span className="sidebar-caption">Active Command</span>
-        <div className="sidebar-option-stack">
-          <strong>{activeCommand?.label ?? "Portal"}</strong>
-          <span>{activeCommand?.description ?? "Career command center"}</span>
-          <span>State: {props.phaseLabel}</span>
-          {props.canEnterManagedMatch && (
-            <button className="sidebar-mini-button" type="button" onClick={props.onStartManagedMatch}>
-              Go Live
-            </button>
-          )}
-        </div>
-      </div>
-
-      <div className="sidebar-options sidebar-tactic-stack" aria-label="Quick tactic controls">
-        <span className="sidebar-caption">Tactic</span>
-        <div className="sidebar-option-stack">
-          <strong>{props.selectedTacticLabel}</strong>
-          <div className="sidebar-option-list">
-            {tacticOptions.map((option) => (
-              <button
-                key={option.key}
-                type="button"
-                className={
-                  props.plannedTacticKey === option.key
-                    ? "sidebar-mini-button sidebar-mini-button-active"
-                    : "sidebar-mini-button"
-                }
-                aria-pressed={props.plannedTacticKey === option.key}
-                onClick={() => props.onChooseTactic(option.key)}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="sidebar-athlete">
-        <span className="sidebar-caption">Managed Athlete</span>
-        <button className="profile-name-button" type="button" onClick={props.onOpenPlayerProfile}>
-          {props.activeAthlete.name}
-        </button>
-        <span>
-          {props.activeAthlete.nationality} - {props.activeAthlete.styleLabel}
-        </span>
-      </div>
 
       <button
         className="sidebar-resize-handle"

@@ -388,6 +388,78 @@ describe("career tournament state flow", () => {
     expect(saved?.career?.date).toBe(event.startDate);
   });
 
+  it.each([
+    "metro-open-300",
+    "harbor-masters-500",
+    "national-command-championship",
+    "academy-select-invitational",
+    "coastline-classic-300",
+    "lakeside-sprint-300",
+    "ember-city-open-500",
+    "northern-lights-challenge-500",
+    "meridian-autumn-masters-750",
+    "crownbridge-warmup-invitational",
+    "season-finals"
+  ])("opens entered due unlocked event %s by id", (eventId) => {
+    const managedPlayerId = seededPlayers[0].player.id;
+    const initial = createInitialCareerState(managedPlayerId, 9340);
+    const event = getCareerEvent(initial.events, eventId)!;
+    resetStoreForCareerFlow(managedPlayerId);
+    useTournamentStore.setState({
+      selectedPlayerId: managedPlayerId,
+      career: {
+        ...initial,
+        date: event.entryDeadline,
+        stage: "planning"
+      },
+      tournament: null,
+      phase: "setup"
+    });
+
+    useTournamentStore.getState().enterCareerEvent(event.id);
+    useTournamentStore.setState((state) => ({
+      career: state.career
+        ? {
+            ...state.career,
+            date: event.startDate
+          }
+        : state.career
+    }));
+    useTournamentStore.getState().openScheduledCareerMatch(event.id);
+
+    const afterOpen = useTournamentStore.getState();
+    expect(afterOpen.career?.stage).toBe("pre_match");
+    expect(afterOpen.career?.activeEventId).toBe(event.id);
+    expect(afterOpen.tournament?.id).toBe(event.id);
+    expect(afterOpen.career?.lastPreMatchBrief).not.toBeNull();
+  });
+
+  it("routes the earliest due entered event when a later entry was registered last", () => {
+    const managedPlayerId = seededPlayers[0].player.id;
+    const initial = createInitialCareerState(managedPlayerId, 9341);
+    const metro = getCareerEvent(initial.events, "metro-open-300")!;
+    const harbor = getCareerEvent(initial.events, "harbor-masters-500")!;
+    resetStoreForCareerFlow(managedPlayerId);
+    useTournamentStore.setState({
+      selectedPlayerId: managedPlayerId,
+      career: {
+        ...initial,
+        date: metro.startDate,
+        activeEventId: harbor.id,
+        enteredEventIds: [metro.id, harbor.id],
+        stage: "event_entered"
+      },
+      tournament: null,
+      phase: "setup"
+    });
+
+    useTournamentStore.getState().openScheduledCareerMatch();
+
+    const afterOpen = useTournamentStore.getState();
+    expect(afterOpen.career?.activeEventId).toBe(metro.id);
+    expect(afterOpen.tournament?.id).toBe(metro.id);
+  });
+
   it("marks a managed loss and a managed final win complete exactly once", () => {
     const managedPlayerId = seededPlayers[0].player.id;
     const lossSetup = careerOnMetroEvent(managedPlayerId, 9301);
@@ -776,6 +848,7 @@ describe("career core slice", () => {
 
     const super1000 = getCareerEvent(career.events, "continental-premier-1000")!;
     const finals = getCareerEvent(career.events, "season-finals")!;
+    const harbor = getCareerEvent(career.events, "harbor-masters-500")!;
     const lowQualified = {
       ...career,
       rankings: career.rankings.map((entry) =>
@@ -789,20 +862,11 @@ describe("career core slice", () => {
           : athlete
       )
     };
-    const finalsQualified = {
-      ...career,
-      completedEventIds: ["metro-open-300", "harbor-masters-500", "summit-invitational-750", "continental-premier-1000"],
-      rankings: career.rankings.map((entry) =>
-        entry.playerId === career.program.managedPlayerId
-          ? { ...entry, rank: 4, points: 2550 }
-          : entry
-      )
-    };
-
+    expect(eventEligibilityFor(career, harbor).allowed).toBe(true);
     expect(eventEligibilityFor(career, super1000).allowed).toBe(true);
     expect(eventEligibilityFor(lowQualified, super1000).allowed).toBe(false);
-    expect(eventEligibilityFor(career, finals).allowed).toBe(false);
-    expect(eventEligibilityFor(finalsQualified, finals).allowed).toBe(true);
+    expect(eventEligibilityFor(career, finals).allowed).toBe(true);
+    expect(finals.weekNumber).toBe(52);
   });
 });
 

@@ -85,7 +85,7 @@ function createBetweenRoundsCareerSave() {
   const nextOpponentId = nextContext.playerAId === managedPlayerId ? nextContext.playerBId : nextContext.playerAId;
   const opponentId = context.playerAId === managedPlayerId ? context.playerBId : context.playerAId;
   const save = {
-    version: 8,
+    version: 9,
     selectedPlayerId: managedPlayerId,
     plannedTacticKey: "balancedControl",
     seed: 61001,
@@ -169,7 +169,7 @@ function createPostMatchCloseoutCareerSave(outcome: "loss" | "title") {
   });
   const placementKey = won ? "champion" : context.roundName;
   const save = {
-    version: 8,
+    version: 9,
     selectedPlayerId: managedPlayerId,
     plannedTacticKey: "balancedControl",
     seed: outcome === "title" ? 62002 : 62001,
@@ -282,14 +282,24 @@ async function startQuickTournamentFromModal(page: Page, athleteName = seededPla
 }
 
 async function openSettings(page: Page) {
-  await page.getByRole("banner").getByRole("button", { name: "Settings" }).click();
+  if (await page.getByRole("banner").count()) {
+    await page.getByRole("banner").getByRole("button", { name: "Settings" }).click();
+    return;
+  }
+
+  await page.getByRole("button", { name: "Preferences", exact: true }).click();
 }
 
 async function openSaveManager(page: Page) {
-  await page
-    .getByRole("navigation", { name: "Primary commands" })
-    .getByRole("button", { name: /Save Manager/ })
-    .click();
+  if (await page.getByRole("navigation", { name: "Primary commands" }).count()) {
+    await page
+      .getByRole("navigation", { name: "Primary commands" })
+      .getByRole("button", { name: /Save Manager/ })
+      .click();
+    return;
+  }
+
+  await page.getByRole("button", { name: "Load Save" }).click();
 }
 
 async function requestNewSession(page: Page) {
@@ -316,10 +326,8 @@ test("can start a tournament run and play through a managed match", async ({ pag
   await expect(page.getByRole("heading", { name: "Grand-Slam Southpaw" })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Attributes" })).toBeVisible();
   await expect(page.getByText("Endurance").first()).toBeVisible();
-  await expect(page.getByRole("button", { name: "Resize sidebar" })).toBeVisible();
-  await page.getByRole("button", { name: "Collapse sidebar" }).click();
-  await expect(page.getByRole("button", { name: "Expand sidebar" })).toBeVisible();
-  await page.getByRole("button", { name: "Expand sidebar" }).click();
+  await expect(page.getByRole("button", { name: "Resize sidebar" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Back" }).click();
 
   await openSettings(page);
   await expect(page.getByRole("heading", { name: "Console Preferences" })).toBeVisible();
@@ -329,10 +337,13 @@ test("can start a tournament run and play through a managed match", async ({ pag
     "true"
   );
   await page.getByRole("button", { name: "Close settings" }).click();
-  await page.getByRole("button", { name: "Back" }).click();
 
   await startQuickTournamentFromModal(page, "Grand-Slam Southpaw");
   await expect(page.getByRole("button", { name: "Enter Match" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Resize sidebar" })).toBeVisible();
+  await page.getByRole("button", { name: "Collapse sidebar" }).click();
+  await expect(page.getByRole("button", { name: "Expand sidebar" })).toBeVisible();
+  await page.getByRole("button", { name: "Expand sidebar" }).click();
 
   await page.getByRole("button", { name: "Enter Match" }).click();
   await expect(page.getByRole("button", { name: "Simulate Next Point" })).toBeVisible();
@@ -365,7 +376,7 @@ test("traps overlay focus and cancels safe dialogs on Escape", async ({ page }) 
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/");
 
-  const settingsButton = page.getByRole("banner").getByRole("button", { name: "Settings" });
+  const settingsButton = page.getByRole("button", { name: "Preferences", exact: true });
   await settingsButton.click();
 
   const settingsDialog = page.getByRole("dialog", { name: "Console Preferences" });
@@ -552,7 +563,7 @@ test("can complete and reload the career core slice with tactical viewer proof",
   await expect(page.getByRole("heading", { name: "Calendar" })).toBeVisible();
   await expect(page.getByText(/prize \$15,000/)).toBeVisible();
   await page.getByRole("button", { name: "Enter Event" }).first().click();
-  await expect(page.getByRole("button", { name: "Await Draw" }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "View Entry" }).first()).toBeVisible();
 
   await page.getByRole("button", { name: "Advance Day" }).click();
   await page.getByRole("button", { name: "Advance Day" }).click();
@@ -620,6 +631,9 @@ test("continues a deterministic career event from post-match into the next round
   await captureFocusedScreenshot(page, "post-match-next-round-cta");
 
   await page.getByRole("button", { name: "Continue To Next Round" }).click();
+  await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Advance Day" })).toBeVisible();
+  await page.getByRole("button", { name: "Advance Day" }).click();
 
   await expect(page.getByRole("heading", { name: "Opponent Briefing" })).toBeVisible();
   await expect(page.getByText(betweenRounds.nextOpponentName).first()).toBeVisible();
@@ -826,7 +840,7 @@ test("surfaces dense page contracts and Save Manager metadata", async ({ page })
   await expect(page.getByLabel("Portal tasks inbox")).toContainText("Save state");
   await expect(page.getByRole("heading", { name: "Calendar Snapshot" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Recent Match Evidence" })).toBeVisible();
-  await expect(page.getByRole("main").getByRole("button", { name: "Continue" })).toBeVisible();
+  await expect(page.getByRole("main").getByRole("button", { name: "Continue" })).toHaveCount(0);
 
   const commandRail = page.getByRole("navigation", { name: "Primary commands" });
 
@@ -899,12 +913,12 @@ test("integrates fictional calendar ranking stakes into career home and Calendar
   await expect(page.getByText(/playable match bridge remains the existing deterministic 16-player knockout/)).toBeVisible();
   await page.getByRole("tab", { name: "Past Events" }).click();
   await expect(page.getByRole("heading", { name: "Past Events" })).toBeVisible();
-  await expect(page.getByText(/safe coming state/)).toBeVisible();
+  await expect(page.getByText(/No past-event records have been written yet/)).toBeVisible();
   await page.getByRole("tab", { name: "Upcoming" }).click();
   await expect(page.getByRole("heading", { name: "Upcoming Event Schedule" })).toBeVisible();
 
   await page.getByRole("button", { name: "Enter Event" }).first().click();
-  await expect(page.getByRole("button", { name: "Await Draw" }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "View Entry" }).first()).toBeVisible();
   await page.evaluate(() => {
     const raw = window.localStorage.getItem("badminton-manager-save");
     if (!raw) {

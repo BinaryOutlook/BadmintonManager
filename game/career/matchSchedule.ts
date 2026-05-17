@@ -34,6 +34,10 @@ export function scheduledDateForRound(event: CareerEventDefinition, round: Round
   return addUtcDays(event.startDate, managedRoundOffsets[round]);
 }
 
+function eventEndDate(event: CareerEventDefinition) {
+  return addUtcDays(event.startDate, event.durationDays - 1);
+}
+
 export interface ManagedMatchSchedule {
   event: CareerEventDefinition;
   round: RoundName;
@@ -56,6 +60,18 @@ function activeEnteredEvent(career: CareerState) {
   }
 
   return event;
+}
+
+function dueEnteredEvents(career: CareerState) {
+  return career.events
+    .filter((event) => {
+      if (!career.enteredEventIds.includes(event.id) || career.completedEventIds.includes(event.id)) {
+        return false;
+      }
+
+      return career.date >= event.startDate && career.date <= eventEndDate(event);
+    })
+    .sort((left, right) => left.startDate.localeCompare(right.startDate) || left.id.localeCompare(right.id));
 }
 
 function buildSchedule(args: {
@@ -82,14 +98,14 @@ export function currentManagedMatchSchedule(args: {
   career: CareerState;
   tournament: TournamentState | null;
 }): ManagedMatchSchedule | null {
-  const event = activeEnteredEvent(args.career);
+  if (args.tournament && !isTournamentComplete(args.tournament)) {
+    const event = args.career.events.find((entry) => entry.id === args.tournament?.id) ?? activeEnteredEvent(args.career);
 
-  if (!event) {
-    return null;
-  }
+    if (!event || !args.career.enteredEventIds.includes(event.id)) {
+      return null;
+    }
 
-  if (args.tournament) {
-    if (args.tournament.id !== event.id || isTournamentComplete(args.tournament)) {
+    if (args.tournament.id !== event.id) {
       return null;
     }
 
@@ -105,7 +121,58 @@ export function currentManagedMatchSchedule(args: {
       : null;
   }
 
-  return args.career.date >= event.startDate
+  const dueEvent = nextDueEnteredEvent(args);
+
+  if (dueEvent) {
+    return buildSchedule({
+      career: args.career,
+      event: dueEvent,
+      round: "R16",
+      matchId: null
+    });
+  }
+
+  const activeEvent = activeEnteredEvent(args.career);
+
+  return activeEvent && args.career.date < activeEvent.startDate
+    ? buildSchedule({
+        career: args.career,
+        event: activeEvent,
+        round: "R16",
+        matchId: null
+      })
+    : null;
+}
+
+export function managedMatchScheduleForEvent(args: {
+  career: CareerState;
+  tournament: TournamentState | null;
+  eventId: string;
+}): ManagedMatchSchedule | null {
+  const event = args.career.events.find((entry) => entry.id === args.eventId) ?? null;
+
+  if (!event || !args.career.enteredEventIds.includes(event.id) || args.career.completedEventIds.includes(event.id)) {
+    return null;
+  }
+
+  if (args.tournament && !isTournamentComplete(args.tournament)) {
+    if (args.tournament.id !== event.id) {
+      return null;
+    }
+
+    const context = getManagedMatchContext(args.tournament);
+
+    return context
+      ? buildSchedule({
+          career: args.career,
+          event,
+          round: context.roundName,
+          matchId: context.matchId
+        })
+      : null;
+  }
+
+  return args.career.date >= event.startDate && args.career.date <= eventEndDate(event)
     ? buildSchedule({
         career: args.career,
         event,
@@ -113,6 +180,49 @@ export function currentManagedMatchSchedule(args: {
         matchId: null
       })
     : null;
+}
+
+export function nextDueEnteredEvent(args: {
+  career: CareerState;
+  tournament: TournamentState | null;
+}): CareerEventDefinition | null {
+  if (args.tournament && !isTournamentComplete(args.tournament)) {
+    const tournamentEvent = args.career.events.find((event) => event.id === args.tournament?.id) ?? null;
+
+    return tournamentEvent &&
+      args.career.enteredEventIds.includes(tournamentEvent.id) &&
+      !args.career.completedEventIds.includes(tournamentEvent.id)
+      ? tournamentEvent
+      : null;
+  }
+
+  return dueEnteredEvents(args.career)[0] ?? null;
+}
+
+export function activateDueEnteredEvent(args: {
+  career: CareerState;
+  tournament: TournamentState | null;
+  eventId?: string;
+}): CareerState {
+  const event = args.eventId
+    ? args.career.events.find((entry) => entry.id === args.eventId) ?? null
+    : nextDueEnteredEvent(args);
+
+  if (!event || !args.career.enteredEventIds.includes(event.id) || args.career.completedEventIds.includes(event.id)) {
+    return args.career;
+  }
+
+  const note =
+    args.career.activeEventId && args.career.activeEventId !== event.id
+      ? `Activated ${event.name} before later entered event ${args.career.activeEventId}`
+      : `${event.name} R16 match day opened`;
+
+  return {
+    ...args.career,
+    activeEventId: event.id,
+    stage: "pre_match",
+    notes: args.career.notes[0] === note ? args.career.notes : [note, ...args.career.notes].slice(0, 6)
+  };
 }
 
 export type CareerDayAdvanceRoute = "pre_match" | "live_match";

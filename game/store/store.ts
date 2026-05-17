@@ -29,12 +29,14 @@ import {
   trainRosterAthlete,
   withdrawPromise
 } from "../career/ecosystem";
-import { eventEligibilityFor, getCareerEvent, recordPastCareerEvents } from "../career/events";
+import { eventEligibilityFor, eventEndDate, getCareerEvent, recordPastCareerEvents } from "../career/events";
 import { canCompeteWithInjury } from "../career/health";
 import { buildPreMatchBrief, settleCareerMatch } from "../career/hubs";
 import {
+  activateDueEnteredEvent,
   canAdvanceCareerDay as canAdvanceCareerDayBySchedule,
-  currentManagedMatchSchedule
+  currentManagedMatchSchedule,
+  managedMatchScheduleForEvent
 } from "../career/matchSchedule";
 import {
   applyDirective as queueDirective,
@@ -105,7 +107,7 @@ export interface TournamentStoreState {
   applyCareerTraining: (planId: string) => void;
   enterCareerEvent: (eventId: string) => void;
   advanceCareerDay: () => void;
-  openScheduledCareerMatch: () => void;
+  openScheduledCareerMatch: (eventId?: string) => void;
   continueCareerAfterPostMatch: () => void;
   commissionScoutReport: (subjectId: string, subjectType: "candidate" | "prospect" | "opponent") => void;
   makeRecruitmentOffer: (candidateId: string) => void;
@@ -378,7 +380,7 @@ function addCareerTournamentIfReady(state: TournamentStoreState, career: CareerS
     return { career, tournament: state.tournament, phase: state.phase };
   }
 
-  if (state.tournament) {
+  if (state.tournament && state.tournament.id === career.activeEventId && !isTournamentComplete(state.tournament)) {
     return {
       career: {
         ...career,
@@ -562,12 +564,17 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
       const enteredEventIds = state.career.enteredEventIds.includes(eventId)
         ? state.career.enteredEventIds
         : [...state.career.enteredEventIds, eventId];
+      const eventDue = state.career.date >= event.startDate && state.career.date <= eventEndDate(event);
+      const preservesActiveStage =
+        state.career.stage === "pre_match" ||
+        state.career.stage === "post_match" ||
+        state.career.stage === "between_rounds";
       const career = applyTravelPressureForEvent({
         ...state.career,
-        activeEventId: eventId,
+        activeEventId: eventDue ? eventId : state.career.activeEventId,
         enteredEventIds,
         economy,
-        stage: state.career.date >= event.startDate ? "pre_match" as const : "event_entered" as const,
+        stage: eventDue ? "pre_match" as const : preservesActiveStage ? state.career.stage : "event_entered" as const,
         notes: [
           `Entered ${event.name}${entryCosts.savedTravelCost > 0 ? ` with ${entryCosts.savedTravelCost} travel savings` : ""}`,
           ...state.career.notes
@@ -600,7 +607,14 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
       if (!guard.allowed) {
         const blockedCareer =
           guard.route === "pre_match"
-            ? prependCareerNote({ ...state.career, stage: "pre_match" as const }, guard.reason)
+            ? prependCareerNote(
+                activateDueEnteredEvent({
+                  career: state.career,
+                  tournament: state.tournament,
+                  eventId: guard.schedule?.event.id
+                }),
+                guard.reason
+              )
             : prependCareerNote(state.career, guard.reason);
         const withTournament =
           guard.route === "pre_match"
@@ -646,25 +660,32 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
       return next;
     });
   },
-  openScheduledCareerMatch: () => {
+  openScheduledCareerMatch: (eventId) => {
     set((state) => {
       if (!state.career) {
         return state;
       }
 
-      const schedule = currentManagedMatchSchedule({
-        career: state.career,
-        tournament: state.tournament
-      });
+      const schedule = eventId
+        ? managedMatchScheduleForEvent({
+            career: state.career,
+            tournament: state.tournament,
+            eventId
+          })
+        : currentManagedMatchSchedule({
+            career: state.career,
+            tournament: state.tournament
+          });
 
       if (!schedule?.playable) {
         return state;
       }
 
-      const career = {
-        ...state.career,
-        stage: "pre_match" as const
-      };
+      const career = activateDueEnteredEvent({
+        career: state.career,
+        tournament: state.tournament,
+        eventId: schedule.event.id
+      });
       const withTournament = addCareerTournamentIfReady(state, career);
       const next = {
         ...state,

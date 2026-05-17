@@ -1,6 +1,6 @@
 # Project Status
 
-Status date: 2026-05-16
+Status date: 2026-05-18
 Current version target: `v0.2.4 UI Framework and Season-Ready Layout`
 Overall phase: UI/career/save trust and release polish on top of the `v0.2.3` match-algorithm baseline
 Chosen stack: Option A local-first SPA
@@ -68,6 +68,8 @@ What is now stable:
 - the Rescue MVP Plan 1 domain foundation now enforces schedule-aware career day advancement, spaces managed R16/QF/SF/F rounds across separate event dates, persists `eventHistory`, and migrates older saves safely
 - Rescue MVP Plan 2 now adds a shared career daily-action resolver: the topbar turns red for required `Play`, `Resume Match`, or `Review Match` work and stays green only when `Advance Day` is safe
 - entered Calendar rows now expose playable due-event actions instead of becoming disabled after entry
+- Rescue MVP Plan 3 now makes event opening event-id-safe, keeps entered future events from hijacking the active competition, renders real paged Upcoming/Past Calendar records, adds event details routing for `View Entry`/`View Draw`, removes lower sidebar context/tactic/athlete blocks, removes the Portal Home in-page `Continue`, and keeps the fresh Start Screen outside the career shell until a save or run exists
+- the event catalog is now MVP-debug friendly: only `Summit Invitational` and `Continental Premier` keep meaningful locks, `Season Finals` moves to week 52, and six additional fictional events fill the late-season calendar for paging and repeated entry testing
 
 ## Completed
 
@@ -143,6 +145,7 @@ What is now stable:
 - [x] rebuilt the live Match Command Center into a horizontal scoreboard/action/feed/viewer/telemetry/options command surface with focused unit and Playwright viewport coverage
 - [x] added the Rescue MVP Plan 1 schedule-aware career calendar foundation with direct store guards, `between_rounds`, event-history recording, save migration, and catalog invariant coverage
 - [x] implemented the Rescue MVP Plan 2 daily-action resolver, scheduled-match route, red/green topbar routing, playable entered-event Calendar actions, and explicit athlete selection gate coverage
+- [x] implemented Rescue MVP Plan 3 calendar, event-entry, shell cleanup, event catalog, event-details routing, and standalone start-screen fixes with unit and Playwright proof
 
 ## In Progress
 
@@ -157,7 +160,7 @@ What is now stable:
 - [ ] add real Past Events records after the domain history model lands; the current Calendar tab is intentionally a safe coming-state
 - [ ] track dense live-match directive labels as non-blocking polish debt; current proof does not require a Phase 4 source change
 - [ ] complete the broader Phase 5 screenshot matrix and visual review beyond the focused builder proof
-- [ ] run a manual playtest of the full Rescue MVP Plan 2 loop from explicit athlete selection through entered event, red match action, post-match review, next-day round spacing, and the next red match action
+- [ ] run a manual playtest of the full Rescue MVP Plan 3 loop from explicit athlete selection through multi-event entry, event details, red match action, post-match review, next-day round spacing, Past Events movement, and the next due event
 
 ## Next
 
