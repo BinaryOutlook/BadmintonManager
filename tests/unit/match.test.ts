@@ -45,6 +45,19 @@ function createPlayer(overrides: Partial<Player> = {}): Player {
   });
 }
 
+function assertLegalSetScore(scoreA: number, scoreB: number) {
+  const reachedCap = scoreA === 30 || scoreB === 30;
+  const reachedGamePoint = scoreA >= 21 || scoreB >= 21;
+  const twoPointMargin = Math.abs(scoreA - scoreB) >= 2;
+
+  expect(Math.max(scoreA, scoreB)).toBeLessThanOrEqual(30);
+  expect(reachedCap || (reachedGamePoint && twoPointMargin)).toBe(true);
+}
+
+function loserPoints(scoreA: number, scoreB: number) {
+  return Math.min(scoreA, scoreB);
+}
+
 describe("match simulation", () => {
   it("produces deterministic results for the same seed and inputs", () => {
     const playerA = createPlayer({ id: "a", name: "Lin" });
@@ -67,6 +80,31 @@ describe("match simulation", () => {
 
     expect(left).toEqual(right);
     expect(left.fidelity).toBe("detailed");
+  });
+
+  it("keeps detailed set scores legal under the 21-by-2 and 30-cap rules", () => {
+    const playerA = createPlayer({ id: "a", name: "Legal A" });
+    const playerB = createPlayer({ id: "b", name: "Legal B" });
+
+    for (let seed = 200; seed < 212; seed += 1) {
+      const result = simulateMatch({
+        seed,
+        playerA,
+        playerB,
+        tacticA: tacticLibrary.balancedControl,
+        tacticB: tacticLibrary.spreadCourt
+      });
+
+      expect(result.setsWonA === 2 || result.setsWonB === 2).toBe(true);
+      expect(result.stats.totalPoints).toBe(
+        result.setSummaries.reduce((sum, set) => sum + set.points.length, 0)
+      );
+
+      for (const set of result.setSummaries) {
+        assertLegalSetScore(set.scoreA, set.scoreB);
+        expect(set.points.at(-1)?.scoreboard).toBe(`${set.scoreA}-${set.scoreB}`);
+      }
+    }
   });
 
   it("produces deterministic quick results that obey badminton scoring", () => {
@@ -108,6 +146,136 @@ describe("match simulation", () => {
       expect(set.points.at(-1)?.scoreboard).toBe(`${set.scoreA}-${set.scoreB}`);
       expect(set.points.every((point) => point.shots.length === 0)).toBe(true);
     }
+  });
+
+  it("keeps near-equal detailed games from routinely collapsing into bagels", () => {
+    const playerA = createPlayer({ id: "near-a", name: "Near A" });
+    const playerB = createPlayer({
+      id: "near-b",
+      name: "Near B",
+      ratings: {
+        technical: {
+          smash: 73,
+          netPlay: 73,
+          clearLob: 72,
+          dropShot: 72,
+          defenseRetrieval: 73,
+          serveReturn: 73
+        },
+        physical: {
+          stamina: 75,
+          footworkSpeed: 74,
+          explosivenessJump: 73,
+          agilityBalance: 75
+        },
+        mental: {
+          anticipation: 74,
+          composure: 73,
+          focus: 74,
+          aggression: 67
+        }
+      }
+    });
+    const setLoserPoints: number[] = [];
+
+    for (let seed = 500; seed < 536; seed += 1) {
+      const result = simulateMatch({
+        seed,
+        playerA,
+        playerB,
+        tacticA: tacticLibrary.balancedControl,
+        tacticB: tacticLibrary.balancedControl
+      });
+
+      for (const set of result.setSummaries) {
+        setLoserPoints.push(loserPoints(set.scoreA, set.scoreB));
+      }
+    }
+
+    const bagels = setLoserPoints.filter((points) => points === 0).length;
+    const loserLe2 = setLoserPoints.filter((points) => points <= 2).length;
+    const averageLoserPoints =
+      setLoserPoints.reduce((sum, points) => sum + points, 0) / setLoserPoints.length;
+
+    expect(bagels).toBe(0);
+    expect(loserLe2).toBeLessThanOrEqual(1);
+    expect(averageLoserPoints).toBeGreaterThanOrEqual(12);
+  });
+
+  it("still allows stronger detailed players to create decisive games", () => {
+    const elite = createPlayer({
+      id: "dominant-elite",
+      name: "Dominant Elite",
+      ratings: {
+        technical: {
+          smash: 90,
+          netPlay: 86,
+          clearLob: 88,
+          dropShot: 86,
+          defenseRetrieval: 88,
+          serveReturn: 86
+        },
+        physical: {
+          stamina: 88,
+          footworkSpeed: 89,
+          explosivenessJump: 87,
+          agilityBalance: 88
+        },
+        mental: {
+          anticipation: 88,
+          composure: 87,
+          focus: 88,
+          aggression: 80
+        }
+      }
+    });
+    const developing = createPlayer({
+      id: "developing",
+      name: "Developing",
+      ratings: {
+        technical: {
+          smash: 61,
+          netPlay: 60,
+          clearLob: 62,
+          dropShot: 60,
+          defenseRetrieval: 62,
+          serveReturn: 61
+        },
+        physical: {
+          stamina: 63,
+          footworkSpeed: 62,
+          explosivenessJump: 61,
+          agilityBalance: 62
+        },
+        mental: {
+          anticipation: 61,
+          composure: 60,
+          focus: 61,
+          aggression: 58
+        }
+      }
+    });
+    let eliteWins = 0;
+    let decisiveGames = 0;
+
+    for (let seed = 700; seed < 724; seed += 1) {
+      const result = simulateMatch({
+        seed,
+        playerA: elite,
+        playerB: developing,
+        tacticA: tacticLibrary.balancedControl,
+        tacticB: tacticLibrary.balancedControl
+      });
+
+      if (result.winner === "A") {
+        eliteWins += 1;
+      }
+
+      decisiveGames += result.setSummaries.filter((set) => loserPoints(set.scoreA, set.scoreB) <= 13).length;
+    }
+
+    expect(eliteWins).toBeGreaterThanOrEqual(20);
+    expect(decisiveGames).toBeGreaterThanOrEqual(12);
   });
 
   it("allows detailed neutral rallies beyond the old 18-shot guardrail", () => {

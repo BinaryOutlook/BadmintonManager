@@ -50,7 +50,12 @@ const DETAILED_RALLY_CAP = 32;
 const RALLY_STRESS_START_SHOT = 6;
 const RALLY_STRESS_BASE = 3.4;
 const RALLY_STRESS_TEMPO_WEIGHT = 0.5;
-const DETAILED_MATCH_FORM_RANGE = 13;
+const DETAILED_MATCH_FORM_RANGE = 7;
+const DETAILED_RALLY_FORM_RANGE = 4.5;
+const DETAILED_RATING_ANCHOR = 76;
+const DETAILED_RATING_SPREAD = 0.5;
+const DETAILED_ERROR_SPIRAL_LOOKBACK = 5;
+const DETAILED_ERROR_SPIRAL_TRIGGER = 3;
 const QUICK_RALLY_SOFT_CAP = 32;
 const QUICK_RALLY_EXTREME_CAP = 70;
 const QUICK_EXTREME_RALLY_TAIL_CHANCE = 0.015;
@@ -70,6 +75,10 @@ function clamp(value: number, min: number, max: number) {
 
 function logistic(value: number) {
   return 1 / (1 + Math.exp(-value));
+}
+
+function detailedRating(value: number) {
+  return DETAILED_RATING_ANCHOR + (value - DETAILED_RATING_ANCHOR) * DETAILED_RATING_SPREAD;
 }
 
 function formatClock(totalSeconds: number) {
@@ -133,8 +142,9 @@ function shotWeights(input: {
   aggression: number;
   tactic: LiveCompetitorState["tactic"];
   directive?: LiveDirective;
+  safeShotBias?: number;
 }): Array<{ item: ShotType; weight: number }> {
-  const { shotIndex, incomingBonus, aggression, tactic, directive } = input;
+  const { shotIndex, incomingBonus, aggression, tactic, directive, safeShotBias = 0 } = input;
   const attackingTilt = aggression / 18 + incomingBonus / 8;
 
   return SHOT_TYPES.map((shotType) => {
@@ -158,6 +168,20 @@ function shotWeights(input: {
 
     if (shotType === "drive") {
       weight += 1 + tacticShotModifier(tactic, shotType);
+    }
+
+    if (safeShotBias > 0) {
+      if (shotType === "clear" || shotType === "lift" || shotType === "block") {
+        weight += safeShotBias * 2.1;
+      }
+
+      if (shotType === "smash") {
+        weight -= safeShotBias * 2.2;
+      }
+
+      if (shotType === "drive" || shotType === "drop" || shotType === "net") {
+        weight -= safeShotBias * 0.7;
+      }
     }
 
     if (tactic.pressurePattern === "rear_court_grind" && shotType === "clear") {
@@ -377,6 +401,75 @@ function pressureQualityMultiplier(shotType: ShotType) {
   }
 }
 
+function isLargeDeficit(margin: number, highScore: number) {
+  return margin <= (highScore < 15 ? -6 : -8);
+}
+
+function isLargeLead(margin: number, highScore: number) {
+  return margin >= (highScore < 15 ? 6 : 8);
+}
+
+function recentUnforcedErrors(side: Side, points: PointSummary[]) {
+  return points
+    .slice(-DETAILED_ERROR_SPIRAL_LOOKBACK)
+    .filter((point) => point.reason === "unforced_error" && opposite(point.winner) === side)
+    .length;
+}
+
+function scoreShapeModifiers(input: {
+  side: Side;
+  scoreA: number;
+  scoreB: number;
+  points: PointSummary[];
+}) {
+  const scoreFor = input.side === "A" ? input.scoreA : input.scoreB;
+  const scoreAgainst = input.side === "A" ? input.scoreB : input.scoreA;
+  const margin = scoreFor - scoreAgainst;
+  const highScore = Math.max(input.scoreA, input.scoreB);
+  const trailingBig = isLargeDeficit(margin, highScore);
+  const leadingBig = isLargeLead(margin, highScore);
+  const errorSpiral = recentUnforcedErrors(input.side, input.points) >= DETAILED_ERROR_SPIRAL_TRIGGER;
+  const earlyScorelineScale =
+    scoreFor <= 2 && scoreAgainst >= 8 ? 0.8 : scoreFor <= 5 && scoreAgainst >= 14 ? 0.5 : 0;
+  const trailingScale = trailingBig ? clamp((-margin - 5) / 5 + earlyScorelineScale, 1, 3.2) : 0;
+  const leadingScale = leadingBig ? clamp((margin - 5) / 6, 1, 2.8) : 0;
+  const safeShotBias = trailingScale * 2.1 + leadingScale * 1.2 + (errorSpiral ? 2 : 0);
+  const attackDamping = trailingScale * 3.5 + leadingScale * 4.5 + (errorSpiral ? 2.5 : 0);
+  const errorRelief = trailingScale * 4.5 + leadingScale * 1.6 + (errorSpiral ? 4.5 : 0);
+  const focusRelief = trailingScale * 5.5 + (errorSpiral ? 3.5 : 0);
+  const retrievalRelief = trailingScale * 4.5 + (errorSpiral ? 1.5 : 0);
+
+  return {
+    safeShotBias,
+    attackDamping,
+    errorRelief,
+    focusRelief,
+    retrievalRelief
+  };
+}
+
+function trailingSaveChance(input: {
+  side: Side;
+  scoreA: number;
+  scoreB: number;
+  points: PointSummary[];
+}) {
+  const scoreFor = input.side === "A" ? input.scoreA : input.scoreB;
+  const scoreAgainst = input.side === "A" ? input.scoreB : input.scoreA;
+  const margin = scoreFor - scoreAgainst;
+  const highScore = Math.max(input.scoreA, input.scoreB);
+
+  if (!isLargeDeficit(margin, highScore)) {
+    return 0;
+  }
+
+  const deficit = -margin;
+  const lowScoreRelief = scoreFor <= 2 && scoreAgainst >= 8 ? 0.12 : scoreFor <= 5 && scoreAgainst >= 14 ? 0.08 : 0;
+  const errorRelief = recentUnforcedErrors(input.side, input.points) * 0.04;
+
+  return clamp(0.12 + (deficit - 5) * 0.035 + lowScoreRelief + errorRelief, 0, 0.42);
+}
+
 function targetZonePressureModifier(zone: CourtZone) {
   const widthPressure = zone.endsWith("left") || zone.endsWith("right") ? 3 : 0;
   const depthPressure = zone.startsWith("front") || zone.startsWith("back") ? 1 : 0;
@@ -469,8 +562,8 @@ function resolveCappedRallyWinner(args: {
   const pressureA = scorePressure(args.scoreA, args.scoreB) * (100 - profileA.pressureResistance) / 70;
   const pressureB = scorePressure(args.scoreB, args.scoreA) * (100 - profileB.pressureResistance) / 70;
   const edge =
-    (profileA.rallyTolerance - profileB.rallyTolerance) * 0.38 +
-    (profileA.recoveryQuality - profileB.recoveryQuality) * 0.16 +
+    (profileA.rallyTolerance - profileB.rallyTolerance) * 0.28 +
+    (profileA.recoveryQuality - profileB.recoveryQuality) * 0.12 +
     fatiguePenalty(args.competitorB.stamina) -
     fatiguePenalty(args.competitorA.stamina) +
     pressureB -
@@ -486,6 +579,7 @@ function resolveRally(args: {
   competitorB: LiveCompetitorState;
   scoreA: number;
   scoreB: number;
+  currentSetPoints: PointSummary[];
   server: Side;
   rng: SeededRng;
 }): PointSummary {
@@ -496,6 +590,8 @@ function resolveRally(args: {
   let activeSide: Side = server;
   let incomingBonus = 0;
   const shots: ShotEvent[] = [];
+  const rallyFormA = rng.nextNumber(-DETAILED_RALLY_FORM_RANGE, DETAILED_RALLY_FORM_RANGE);
+  const rallyFormB = rng.nextNumber(-DETAILED_RALLY_FORM_RANGE, DETAILED_RALLY_FORM_RANGE);
 
   for (let shotIndex = 0; shotIndex < DETAILED_RALLY_CAP; shotIndex += 1) {
     const actor = activeSide === "A" ? input.playerA : input.playerB;
@@ -504,8 +600,22 @@ function resolveRally(args: {
     const defender = activeSide === "A" ? input.playerB : input.playerA;
     const defenderProfile = activeSide === "A" ? profileB : profileA;
     const defenderState = activeSide === "A" ? competitorB : competitorA;
+    const actorRallyForm = activeSide === "A" ? rallyFormA : rallyFormB;
+    const defenderRallyForm = activeSide === "A" ? rallyFormB : rallyFormA;
     const directive = getActiveDirective(actorState);
     const rallyStress = rallyContinuationStress(shotIndex, actorState.tactic);
+    const actorShape = scoreShapeModifiers({
+      side: activeSide,
+      scoreA,
+      scoreB,
+      points: args.currentSetPoints
+    });
+    const defenderShape = scoreShapeModifiers({
+      side: opposite(activeSide),
+      scoreA,
+      scoreB,
+      points: args.currentSetPoints
+    });
     const shotType =
       shotIndex === 0
         ? ("serve" as const)
@@ -515,7 +625,8 @@ function resolveRally(args: {
               incomingBonus,
               aggression: actor.ratings.mental.aggression + actorState.aggressionShift,
               tactic: actorState.tactic,
-              directive
+              directive,
+              safeShotBias: actorShape.safeShotBias
             })
           );
     const targetZone =
@@ -530,10 +641,11 @@ function resolveRally(args: {
           );
     const actorPressure = activeSide === "A" ? scorePressure(scoreA, scoreB) : scorePressure(scoreB, scoreA);
     const skill =
-      getRelevantShotSkill(actor, shotType) +
+      detailedRating(getRelevantShotSkill(actor, shotType)) +
       actorState.focusShift * 0.3 +
       actorState.composureShift * 0.15 +
-      actorProfile.attackPressure * 0.08 +
+      detailedRating(actorProfile.attackPressure) * 0.08 +
+      actorRallyForm * 0.55 +
       tacticShotModifier(actorState.tactic, shotType) +
       directiveShotModifier(directive, shotType) * 0.7;
     const difficulty =
@@ -547,11 +659,12 @@ function resolveRally(args: {
       incomingBonus -
       fatiguePenalty(actorState.stamina) -
       actorPressure * (100 - actorProfile.pressureResistance) * 0.03 -
-      rallyStress * 0.45 +
-      rng.nextInt(-14, 14);
+      rallyStress * 0.42 +
+      actorShape.errorRelief * 0.35 +
+      rng.nextInt(-16, 16);
     const quality = Math.round(execution - difficulty);
 
-    if (execution < difficulty - 10) {
+    if (execution < difficulty - 10 - actorShape.errorRelief) {
       const finalShot: ShotEvent = {
         actor: activeSide,
         shotType,
@@ -587,11 +700,11 @@ function resolveRally(args: {
 
     if (mightDriftLong) {
       const judgmentScore =
-        defenderProfile.judgment +
+        detailedRating(defenderProfile.judgment) +
         defenderState.focusShift * 0.35 +
         defenderState.composureShift * 0.2 -
         (activeSide === "A" ? scorePressure(scoreB, scoreA) : scorePressure(scoreA, scoreB)) * 0.35 +
-        rng.nextInt(-12, 12);
+        rng.nextInt(-14, 14);
 
       if (judgmentScore > 66) {
         shots.push({
@@ -624,18 +737,45 @@ function resolveRally(args: {
       targetZonePressureModifier(targetZone) +
       tacticPlacementPressure(actorState.tactic, targetZone) +
       tempoModifiers(actorState.tactic).attack +
-      (directive === "push_pace" ? 4 : 0);
-    const retrievalScore =
+      (directive === "push_pace" ? 4 : 0) -
+      actorShape.attackDamping;
+    const retrievalBase =
       defender.ratings.technical.defenseRetrieval * 0.42 +
       defender.ratings.physical.footworkSpeed * 0.24 +
       defender.ratings.physical.agilityBalance * 0.18 +
-      defender.ratings.mental.anticipation * 0.16 +
+      defender.ratings.mental.anticipation * 0.16;
+    const retrievalScore =
+      detailedRating(retrievalBase) +
       defenderState.focusShift * 0.25 +
-      rng.nextInt(-14, 14) -
+      defenderRallyForm * 0.75 +
+      defenderShape.retrievalRelief +
+      rng.nextInt(-16, 16) -
       fatiguePenalty(defenderState.stamina) -
-      rallyStress * 0.55;
+      rallyStress * 0.5;
 
-    if (retrievalScore + 8 < incomingPressure + rallyStress * 0.7) {
+    if (retrievalScore + 8 < incomingPressure + rallyStress * 0.55) {
+      const saveChance = trailingSaveChance({
+        side: opposite(activeSide),
+        scoreA,
+        scoreB,
+        points: args.currentSetPoints
+      });
+
+      if (saveChance > 0 && rng.chance(saveChance * 0.7)) {
+        shots.push({
+          actor: activeSide,
+          shotType,
+          targetZone,
+          targetDifficulty: Math.round(difficulty),
+          executionScore: Math.round(execution),
+          quality,
+          outcome: "in_play"
+        });
+        incomingBonus = -1;
+        activeSide = opposite(activeSide);
+        continue;
+      }
+
       shots.push({
         actor: activeSide,
         shotType,
@@ -658,7 +798,7 @@ function resolveRally(args: {
       );
     }
 
-    if (retrievalScore < incomingPressure + 6 + rallyStress * 0.45) {
+    if (retrievalScore < incomingPressure + 6 + rallyStress * 0.38) {
       shots.push({
         actor: activeSide,
         shotType,
@@ -673,14 +813,38 @@ function resolveRally(args: {
     }
 
     const focusScore =
-      defender.ratings.mental.focus +
+      detailedRating(defender.ratings.mental.focus) +
       defenderState.focusShift -
       fatiguePenalty(defenderState.stamina) * 0.45 -
-      rallyStress * 0.55 +
+      rallyStress * 0.42 +
+      defenderRallyForm * 0.65 +
+      defenderShape.focusRelief +
       (defender.ratings.physical.footworkSpeed + defender.ratings.physical.agilityBalance - 160) * 0.1 +
-      rng.nextInt(-14, 14);
+      rng.nextInt(-16, 16);
 
-    if (focusScore < 34 + rallyStress * 1.1) {
+    if (focusScore < 34 + rallyStress * 0.7 - defenderShape.errorRelief * 0.55) {
+      const saveChance = trailingSaveChance({
+        side: opposite(activeSide),
+        scoreA,
+        scoreB,
+        points: args.currentSetPoints
+      });
+
+      if (saveChance > 0 && rng.chance(saveChance)) {
+        shots.push({
+          actor: activeSide,
+          shotType,
+          targetZone,
+          targetDifficulty: Math.round(difficulty),
+          executionScore: Math.round(execution),
+          quality,
+          outcome: "in_play"
+        });
+        incomingBonus = -1;
+        activeSide = opposite(activeSide);
+        continue;
+      }
+
       shots.push({
         actor: activeSide,
         shotType,
@@ -746,9 +910,42 @@ function applyPointFatigue(session: LiveMatchSession, point: PointSummary) {
   session.competitorB.stamina = Math.max(38, session.competitorB.stamina - rallyBurn * tempoB);
 }
 
+function dampMomentum(state: LiveCompetitorState, retain: number) {
+  state.momentum = clamp(50 + (state.momentum - 50) * retain, 0, 100);
+}
+
+function applyIntervalStabilization(session: LiveMatchSession) {
+  const trailingSide: Side = session.currentScoreA <= session.currentScoreB ? "A" : "B";
+  const leaderSide = opposite(trailingSide);
+  const deficit = Math.abs(session.currentScoreA - session.currentScoreB);
+  const trailing = trailingSide === "A" ? session.competitorA : session.competitorB;
+  const leader = leaderSide === "A" ? session.competitorA : session.competitorB;
+  const reset = clamp(1 + deficit / 5, 1, 3);
+
+  dampMomentum(session.competitorA, 0.65);
+  dampMomentum(session.competitorB, 0.65);
+  trailing.focusShift += reset;
+  trailing.composureShift += reset;
+  leader.aggressionShift -= 0.6;
+}
+
 function recoverBetweenSets(session: LiveMatchSession) {
   session.competitorA.stamina = Math.min(100, session.competitorA.stamina + 5.5);
   session.competitorB.stamina = Math.min(100, session.competitorB.stamina + 5.5);
+}
+
+function applySetBreakStabilization(session: LiveMatchSession, setSummary: SetSummary) {
+  const loserSide = opposite(setSummary.winner);
+  const loser = loserSide === "A" ? session.competitorA : session.competitorB;
+  const winner = setSummary.winner === "A" ? session.competitorA : session.competitorB;
+  const margin = Math.abs(setSummary.scoreA - setSummary.scoreB);
+  const reset = margin >= 8 ? 1 : 0.45;
+
+  dampMomentum(session.competitorA, 0.72);
+  dampMomentum(session.competitorB, 0.72);
+  loser.focusShift += reset;
+  loser.composureShift += reset + 0.2;
+  winner.aggressionShift -= 0.25;
 }
 
 function finalizePendingTalk(target: LiveCompetitorState, teamTalk?: TeamTalk) {
@@ -1258,12 +1455,14 @@ export function simulateNextPoint(session: LiveMatchSession): LiveMatchSession {
   }
 
   const rng = new SeededRng(nextSession.rngState);
+  const wasBeforeInterval = Math.max(nextSession.currentScoreA, nextSession.currentScoreB) < 11;
   const point = resolveRally({
     input: nextSession.input,
     competitorA: nextSession.competitorA,
     competitorB: nextSession.competitorB,
     scoreA: nextSession.currentScoreA,
     scoreB: nextSession.currentScoreB,
+    currentSetPoints: nextSession.currentSetPoints,
     server: nextSession.currentServer,
     rng
   });
@@ -1284,6 +1483,11 @@ export function simulateNextPoint(session: LiveMatchSession): LiveMatchSession {
   nextSession.currentSetPoints.push(scoredPoint);
   applyPointFatigue(nextSession, scoredPoint);
   applyMomentumShift(nextSession, scoredPoint);
+
+  if (wasBeforeInterval && Math.max(nextSession.currentScoreA, nextSession.currentScoreB) === 11) {
+    applyIntervalStabilization(nextSession);
+  }
+
   updateTelemetry(nextSession, scoredPoint);
   consumeDirective(nextSession.competitorA);
   consumeDirective(nextSession.competitorB);
@@ -1317,6 +1521,7 @@ export function simulateNextPoint(session: LiveMatchSession): LiveMatchSession {
       nextSession.complete = true;
       nextSession.winner = nextSession.setsWonA > nextSession.setsWonB ? "A" : "B";
     } else {
+      applySetBreakStabilization(nextSession, setSummary);
       recoverBetweenSets(nextSession);
       nextSession.currentSetNumber += 1;
       nextSession.currentScoreA = 0;
