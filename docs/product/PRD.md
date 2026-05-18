@@ -2,8 +2,8 @@
 
 Status: Living product baseline
 Owner: binaryoutlook
-Last updated: 2026-05-11
-Project phase: UI/career/save trust build
+Last updated: 2026-05-18
+Project phase: `v0.3` stable career system foundation
 
 ## 1. Purpose
 
@@ -89,6 +89,7 @@ For the first serious version, the product should:
 - keep save ownership visible through local export/import/delete/reset and corrupt-save recovery
 - make the active career home behave as a dense operations portal with tasks, next fixture, calendar context, readiness/ranking pressure, recent match evidence, save state, and one obvious Continue action
 - keep local save management inspectable through slot metadata, mode, managed athlete, save version, import preview, safe actions, and a separated danger zone
+- treat the `v0.3` career loop as stable but deliberately bounded, expanding flexibility and realism in measured future releases
 
 ## 6. Non-Goals
 
@@ -265,6 +266,11 @@ Career calendar and ranking presentation is fictional and structurally inspired 
 concepts. It must not use licensed event branding, real athlete likenesses, or official ranking
 tables as product content.
 
+As of `v0.3`, this career loop is stable enough to be the main long-run foundation. Its feature set
+is intentionally narrow: one locked managed athlete, fictional events, simplified rankings, bounded
+training/recovery, local budget pressure, and local save ownership. Future releases should add more
+choice and realism in layers rather than treating `v0.3` as a finished career simulation.
+
 ## 11. Core Systems
 
 The early product depends on five systems:
@@ -305,4 +311,4 @@ The foundation phase is successful when all of the following are true:
 
 - Whether the first version manages a single athlete or a small squad should be confirmed before the long-term manager loop is designed.
 - The first shipped career pass uses fictional Circuit rankings and event tiers. Any future move toward official-looking rankings needs a fresh licensing/content decision.
-- Whether player growth belongs in `v0.2` or `v0.3` depends on how quickly the core match engine becomes trustworthy.
+- How aggressively to expand player growth, program flexibility, scouting depth, and event realism after the `v0.3` stable career foundation.

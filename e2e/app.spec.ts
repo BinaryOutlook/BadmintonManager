@@ -282,6 +282,19 @@ async function expectPortalViewportBounded(page: Page, expectOnePage: boolean) {
         throw new Error(`Unexpected Portal element overflow for ${label}: ${element.scrollWidth} > ${element.clientWidth}`);
       }
     }
+
+    const compactTextElements = Array.from(
+      document.querySelectorAll<HTMLElement>(
+        ".career-week-strip-compact .career-day strong, .career-ecosystem-strip-compact .career-system-tile strong, .career-ecosystem-strip-compact .career-system-tile small, .career-status-strip-compact strong"
+      )
+    );
+
+    for (const element of compactTextElements) {
+      if (element.scrollWidth > element.clientWidth + 1) {
+        const text = element.textContent?.trim() || element.className || element.tagName;
+        throw new Error(`Unexpected Portal text clipping for ${text}: ${element.scrollWidth} > ${element.clientWidth}`);
+      }
+    }
   }, expectOnePage);
 }
 
@@ -474,7 +487,7 @@ test("starts from a direct screen and locks a confirmed career athlete", async (
   await expect(page.getByRole("button", { name: "Quick Tournament", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Save Tools" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Preferences", exact: true })).toBeVisible();
-  await expect(page.getByText(/blocking launch modal/)).toHaveCount(0);
+  await expect(page.getByText(/blocking launch modal|confirm this modal selection/)).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Browse All Athletes" })).toHaveCount(0);
   await captureFocusedScreenshot(page, "start-screen-empty-desktop");
   await page.setViewportSize({ width: 390, height: 844 });
@@ -484,7 +497,8 @@ test("starts from a direct screen and locks a confirmed career athlete", async (
   await page.getByRole("button", { name: "Start Career" }).click();
   const careerDialog = page.getByRole("dialog", { name: "Pick Your Playstyle" });
   await expect(careerDialog).toBeVisible();
-  await expect(page.getByText(/save is created only after you confirm this modal selection/)).toBeVisible();
+  await expect(page.getByText(/save is created only after you confirm this athlete/)).toBeVisible();
+  await expect(careerDialog.getByText(/in this modal|blocking launch modal|confirm this modal selection/)).toHaveCount(0);
   await captureFocusedScreenshot(page, "t099-athlete-lock-dialog-desktop");
   await selectAthleteInSelectionModal(page, "Grand-Slam Southpaw");
   await careerDialog.getByRole("button", { name: "Confirm Career Athlete" }).click();
@@ -1012,6 +1026,7 @@ test("keeps the compact Career Portal bounded across target viewports", async ({
   for (const viewport of [
     { width: 2048, height: 1152, name: "portal-2048x1152", onePage: true },
     { width: 1440, height: 900, name: "portal-1440x900", onePage: true },
+    { width: 1366, height: 768, name: "portal-1366x768", onePage: true },
     { width: 390, height: 844, name: "portal-mobile", onePage: false }
   ]) {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
