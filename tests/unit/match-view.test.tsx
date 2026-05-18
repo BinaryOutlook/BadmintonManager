@@ -60,6 +60,197 @@ describe("MatchView", () => {
     expect(props.onFinishSet).toHaveBeenCalledTimes(1);
   });
 
+  it("renders set one as the only visible score column at match start", () => {
+    renderMatchView(createSession());
+
+    const scoreboard = screen.getByLabelText("Broadcast match score");
+    expect(within(scoreboard).getByRole("columnheader", { name: "S1" })).toBeInTheDocument();
+    expect(within(scoreboard).queryByRole("columnheader", { name: "S2" })).not.toBeInTheDocument();
+    expect(within(scoreboard).queryByRole("columnheader", { name: "S3" })).not.toBeInTheDocument();
+    expect(within(scoreboard).queryByRole("columnheader", { name: "Current" })).not.toBeInTheDocument();
+    expect(within(scoreboard).queryByRole("columnheader", { name: "Final" })).not.toBeInTheDocument();
+    expect(
+      within(scoreboard).getByRole("cell", {
+        name: new RegExp(`Set 1 active score for ${seededPlayers[0].player.name}: 0`)
+      })
+    ).toBeInTheDocument();
+    expect(
+      within(scoreboard).getByRole("cell", {
+        name: new RegExp(`Set 1 active score for ${seededPlayers[1].player.name}: 0`)
+      })
+    ).toBeInTheDocument();
+  });
+
+  it("renders completed set one and active set two without advertising set three", () => {
+    const setTwoSession: LiveMatchSession = {
+      ...createSession(),
+      setsWonA: 1,
+      setSummaries: [
+        {
+          winner: "A",
+          scoreA: 21,
+          scoreB: 17,
+          points: []
+        }
+      ],
+      currentSetNumber: 2,
+      currentScoreA: 8,
+      currentScoreB: 6
+    };
+
+    renderMatchView(setTwoSession);
+
+    const scoreboard = screen.getByLabelText("Broadcast match score");
+    expect(within(scoreboard).getByRole("columnheader", { name: "S1" })).toBeInTheDocument();
+    expect(within(scoreboard).getByRole("columnheader", { name: "S2" })).toBeInTheDocument();
+    expect(within(scoreboard).queryByRole("columnheader", { name: "S3" })).not.toBeInTheDocument();
+    expect(
+      within(scoreboard).getByRole("cell", {
+        name: new RegExp(`Set 1 completed score for ${seededPlayers[0].player.name}: 21`)
+      })
+    ).toBeInTheDocument();
+    expect(
+      within(scoreboard).getByRole("cell", {
+        name: new RegExp(`Set 2 active score for ${seededPlayers[0].player.name}: 8`)
+      })
+    ).toBeInTheDocument();
+    expect(
+      within(scoreboard).getByRole("cell", {
+        name: new RegExp(`Set 2 active score for ${seededPlayers[1].player.name}: 6`)
+      })
+    ).toBeInTheDocument();
+  });
+
+  it("renders all three set columns when a deciding set is active", () => {
+    const setThreeSession: LiveMatchSession = {
+      ...createSession(),
+      setsWonA: 1,
+      setsWonB: 1,
+      setSummaries: [
+        {
+          winner: "A",
+          scoreA: 21,
+          scoreB: 17,
+          points: []
+        },
+        {
+          winner: "B",
+          scoreA: 18,
+          scoreB: 21,
+          points: []
+        }
+      ],
+      currentSetNumber: 3,
+      currentScoreA: 13,
+      currentScoreB: 11
+    };
+
+    renderMatchView(setThreeSession);
+
+    const scoreboard = screen.getByLabelText("Broadcast match score");
+    expect(within(scoreboard).getByRole("columnheader", { name: "S1" })).toBeInTheDocument();
+    expect(within(scoreboard).getByRole("columnheader", { name: "S2" })).toBeInTheDocument();
+    expect(within(scoreboard).getByRole("columnheader", { name: "S3" })).toBeInTheDocument();
+    expect(
+      within(scoreboard).getByRole("cell", {
+        name: new RegExp(`Set 3 active score for ${seededPlayers[0].player.name}: 13`)
+      })
+    ).toBeInTheDocument();
+  });
+
+  it("renders only played sets for completed straight-game and three-game matches", () => {
+    const straightGameSession: LiveMatchSession = {
+      ...createSession(),
+      setsWonA: 2,
+      setSummaries: [
+        {
+          winner: "A",
+          scoreA: 21,
+          scoreB: 16,
+          points: []
+        },
+        {
+          winner: "A",
+          scoreA: 21,
+          scoreB: 19,
+          points: []
+        }
+      ],
+      currentSetNumber: 2,
+      currentScoreA: 21,
+      currentScoreB: 19,
+      complete: true,
+      winner: "A"
+    };
+    const { rerender, props } = renderMatchView(straightGameSession);
+
+    let scoreboard = screen.getByLabelText("Broadcast match score");
+    expect(within(scoreboard).getByRole("columnheader", { name: "S1" })).toBeInTheDocument();
+    expect(within(scoreboard).getByRole("columnheader", { name: "S2" })).toBeInTheDocument();
+    expect(within(scoreboard).queryByRole("columnheader", { name: "S3" })).not.toBeInTheDocument();
+    expect(within(scoreboard).queryByRole("columnheader", { name: "Final" })).not.toBeInTheDocument();
+
+    const threeGameSession: LiveMatchSession = {
+      ...straightGameSession,
+      setsWonA: 2,
+      setsWonB: 1,
+      setSummaries: [
+        {
+          winner: "A",
+          scoreA: 21,
+          scoreB: 17,
+          points: []
+        },
+        {
+          winner: "B",
+          scoreA: 18,
+          scoreB: 21,
+          points: []
+        },
+        {
+          winner: "A",
+          scoreA: 21,
+          scoreB: 16,
+          points: []
+        }
+      ],
+      currentSetNumber: 3,
+      currentScoreA: 21,
+      currentScoreB: 16
+    };
+
+    rerender(<MatchView {...props} session={threeGameSession} />);
+
+    scoreboard = screen.getByLabelText("Broadcast match score");
+    expect(within(scoreboard).getByRole("columnheader", { name: "S1" })).toBeInTheDocument();
+    expect(within(scoreboard).getByRole("columnheader", { name: "S2" })).toBeInTheDocument();
+    expect(within(scoreboard).getByRole("columnheader", { name: "S3" })).toBeInTheDocument();
+    expect(within(scoreboard).queryByRole("columnheader", { name: "Final" })).not.toBeInTheDocument();
+    expect(
+      within(scoreboard).getByRole("cell", {
+        name: new RegExp(`Set 3 completed score for ${seededPlayers[0].player.name}: 21`)
+      })
+    ).toBeInTheDocument();
+  });
+
+  it("includes nationality codes and accessible server state in player rows", () => {
+    const { props } = renderMatchView(createSession());
+
+    const scoreboard = screen.getByLabelText("Broadcast match score");
+    expect(scoreboard).toHaveTextContent(seededPlayers[0].player.nationality);
+    expect(scoreboard).toHaveTextContent(seededPlayers[1].player.nationality);
+    expect(
+      within(scoreboard).getByLabelText(`${seededPlayers[0].player.name} serving`)
+    ).toBeInTheDocument();
+    expect(
+      within(scoreboard).getByLabelText(`${seededPlayers[1].player.name} receiving`)
+    ).toBeInTheDocument();
+
+    fireEvent.click(within(scoreboard).getByRole("button", { name: seededPlayers[0].player.name }));
+
+    expect(props.onOpenPlayerProfile).toHaveBeenCalledWith(seededPlayers[0].player.id);
+  });
+
   it("keeps between-set talks available while preserving a single next-set action", () => {
     const intermissionSession: LiveMatchSession = {
       ...createSession(),

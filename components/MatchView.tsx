@@ -1,6 +1,6 @@
 import { liveDirectiveOptions } from "../game/content/tactics.js";
 import { telemetryForCompetitor } from "../game/core/intel.js";
-import type { LiveDirective, LiveMatchSession, Side, TeamTalk } from "../game/core/models.js";
+import type { LiveDirective, LiveMatchSession, Player, Side, TeamTalk } from "../game/core/models.js";
 import { projectTacticalViewerFromSession } from "../game/career/tacticalViewer.js";
 import { TacticalMatchViewer } from "./TacticalMatchViewer.js";
 
@@ -44,11 +44,108 @@ interface ScoreboardPanelProps {
   onOpenPlayerProfile: (playerId: string) => void;
 }
 
+type BroadcastSetNumber = 1 | 2 | 3;
+
+interface BroadcastSetColumn {
+  setNumber: BroadcastSetNumber;
+  scoreA: number;
+  scoreB: number;
+  state: "completed" | "active";
+}
+
+function clampBroadcastSetNumber(setNumber: number): BroadcastSetNumber {
+  if (setNumber <= 1) {
+    return 1;
+  }
+
+  if (setNumber >= 3) {
+    return 3;
+  }
+
+  return 2;
+}
+
+function buildBroadcastSetColumns(session: LiveMatchSession): BroadcastSetColumn[] {
+  const completedColumns: BroadcastSetColumn[] = session.setSummaries.slice(0, 3).map((summary, index) => ({
+    setNumber: clampBroadcastSetNumber(index + 1),
+    scoreA: summary.scoreA,
+    scoreB: summary.scoreB,
+    state: "completed"
+  }));
+
+  if (!session.complete && completedColumns.length < 3) {
+    const activeSetNumber = clampBroadcastSetNumber(session.currentSetNumber);
+    const activeSetAlreadyCompleted = completedColumns.some((column) => column.setNumber === activeSetNumber);
+
+    if (!activeSetAlreadyCompleted) {
+      completedColumns.push({
+        setNumber: activeSetNumber,
+        scoreA: session.currentScoreA,
+        scoreB: session.currentScoreB,
+        state: "active"
+      });
+    }
+  }
+
+  return completedColumns;
+}
+
+interface ScoreboardPlayerCellProps {
+  player: Player;
+  isServing: boolean;
+  onOpenPlayerProfile: (playerId: string) => void;
+}
+
+function ScoreboardPlayerCell(props: ScoreboardPlayerCellProps) {
+  return (
+    <span className="scoreboard-player-cell" role="cell">
+      <span className="scoreboard-nation-code">{props.player.nationality}</span>
+      <button
+        className="profile-name-button scoreboard-name-button"
+        type="button"
+        onClick={() => props.onOpenPlayerProfile(props.player.id)}
+      >
+        {props.player.name}
+      </button>
+      <span
+        className={`scoreboard-server-marker ${props.isServing ? "scoreboard-server-marker-active" : ""}`}
+        aria-label={`${props.player.name} ${props.isServing ? "serving" : "receiving"}`}
+      >
+        {props.isServing ? "*" : ""}
+      </span>
+    </span>
+  );
+}
+
+interface ScoreboardSetScoreCellProps {
+  column: BroadcastSetColumn;
+  side: Side;
+  playerName: string;
+}
+
+function ScoreboardSetScoreCell(props: ScoreboardSetScoreCellProps) {
+  const score = props.side === "A" ? props.column.scoreA : props.column.scoreB;
+  const className = `scoreboard-set-cell scoreboard-set-cell-${props.column.state}`;
+  const ariaLabel = `Set ${props.column.setNumber} ${props.column.state} score for ${props.playerName}: ${score}`;
+
+  if (props.column.state === "active") {
+    return (
+      <strong className={className} role="cell" aria-label={ariaLabel}>
+        {score}
+      </strong>
+    );
+  }
+
+  return (
+    <span className={className} role="cell" aria-label={ariaLabel}>
+      {score}
+    </span>
+  );
+}
+
 function ScoreboardPanel(props: ScoreboardPanelProps) {
-  const setColumns = [0, 1];
-  const serverLabelA = props.session.currentServer === "A" ? "*" : "";
-  const serverLabelB = props.session.currentServer === "B" ? "*" : "";
-  const currentColumnLabel = props.session.complete ? "Final" : "Current";
+  const setColumns = buildBroadcastSetColumns(props.session);
+  const setCount = setColumns.length;
 
   return (
     <section className="scoreboard-panel match-scoreboard-panel" aria-label="Compact scoreboard">
@@ -60,47 +157,43 @@ function ScoreboardPanel(props: ScoreboardPanelProps) {
       </div>
 
       <div className="broadcast-scoreboard" role="table" aria-label="Broadcast match score">
-        <div className="broadcast-scoreboard-row broadcast-scoreboard-head" role="row">
+        <div className="broadcast-scoreboard-row broadcast-scoreboard-head" role="row" data-set-count={setCount}>
           <span role="columnheader">Player / Side</span>
-          <span role="columnheader">Srv</span>
-          {setColumns.map((setIndex) => (
-            <span key={setIndex} role="columnheader">S{setIndex + 1}</span>
+          {setColumns.map((column) => (
+            <span key={column.setNumber} role="columnheader">S{column.setNumber}</span>
           ))}
-          <span role="columnheader">{currentColumnLabel}</span>
         </div>
 
-        <div className="broadcast-scoreboard-row" role="row">
-          <span className="scoreboard-player-cell" role="cell">
-            <button
-              className="profile-name-button scoreboard-name-button"
-              type="button"
-              onClick={() => props.onOpenPlayerProfile(props.session.input.playerA.id)}
-            >
-              {props.session.input.playerA.name}
-            </button>
-          </span>
-          <span className="server-marker" role="cell" aria-label={serverLabelA ? "Serving" : "Receiving"}>{serverLabelA}</span>
-          {setColumns.map((setIndex) => (
-            <span key={setIndex} role="cell">{props.session.setSummaries[setIndex]?.scoreA ?? "-"}</span>
+        <div className="broadcast-scoreboard-row" role="row" data-set-count={setCount}>
+          <ScoreboardPlayerCell
+            player={props.session.input.playerA}
+            isServing={props.session.currentServer === "A"}
+            onOpenPlayerProfile={props.onOpenPlayerProfile}
+          />
+          {setColumns.map((column) => (
+            <ScoreboardSetScoreCell
+              key={column.setNumber}
+              column={column}
+              side="A"
+              playerName={props.session.input.playerA.name}
+            />
           ))}
-          <strong className="current-score-cell" role="cell">{props.session.currentScoreA}</strong>
         </div>
 
-        <div className="broadcast-scoreboard-row" role="row">
-          <span className="scoreboard-player-cell" role="cell">
-            <button
-              className="profile-name-button scoreboard-name-button"
-              type="button"
-              onClick={() => props.onOpenPlayerProfile(props.session.input.playerB.id)}
-            >
-              {props.session.input.playerB.name}
-            </button>
-          </span>
-          <span className="server-marker" role="cell" aria-label={serverLabelB ? "Serving" : "Receiving"}>{serverLabelB}</span>
-          {setColumns.map((setIndex) => (
-            <span key={setIndex} role="cell">{props.session.setSummaries[setIndex]?.scoreB ?? "-"}</span>
+        <div className="broadcast-scoreboard-row" role="row" data-set-count={setCount}>
+          <ScoreboardPlayerCell
+            player={props.session.input.playerB}
+            isServing={props.session.currentServer === "B"}
+            onOpenPlayerProfile={props.onOpenPlayerProfile}
+          />
+          {setColumns.map((column) => (
+            <ScoreboardSetScoreCell
+              key={column.setNumber}
+              column={column}
+              side="B"
+              playerName={props.session.input.playerB.name}
+            />
           ))}
-          <strong className="current-score-cell" role="cell">{props.session.currentScoreB}</strong>
         </div>
       </div>
     </section>
