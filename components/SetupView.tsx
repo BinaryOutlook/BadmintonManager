@@ -401,17 +401,17 @@ export function SetupView(props: SetupViewProps) {
   const launchSaveSummary = props.launchSaveSummary;
   const localSlotLabel = launchSaveSummary
     ? launchSaveSummary.mode === "career"
-      ? "Career save loaded"
-      : "Tournament save loaded"
+      ? "Career ready"
+      : "Tournament ready"
     : props.activeSavePresent
-      ? "Setup draft saved"
-      : "No active local save";
+      ? "Draft ready"
+      : "Empty";
   const launchLayoutClass = launchSaveSummary
     ? "start-layout start-layout-has-save"
     : "start-layout start-layout-empty";
   const heroCopy = launchSaveSummary
-    ? "Resume your local save, build a locked career, or run a disposable tournament."
-    : "Build a locked career program or jump straight into a disposable bracket run.";
+    ? "Resume your save, build a career, or jump into a tournament."
+    : "Build a career or jump into a disposable tournament.";
   const { modalRef, handleModalKeyDown } = useModalFocus(selectionPurpose !== null, closeSelectionModal);
 
   function resetBrowseFilters() {
@@ -966,18 +966,13 @@ export function SetupView(props: SetupViewProps) {
           <h1 className="screen-title">Badminton Manager</h1>
           <p className="screen-copy">{heroCopy}</p>
         </div>
-        <div className="start-hero-status" aria-label="Local slot status">
-          <span>Local slot: {localSlotLabel}</span>
-          <span>Storage: Browser local</span>
-          {props.corruptSavePresent && <span className="start-status-warning">Recovery available</span>}
-        </div>
       </div>
 
       {props.corruptSavePresent && (
         <section className="start-recovery-strip" role="status" aria-label="Save recovery notice">
           <div>
             <strong>Recovery available.</strong>
-            <span>A quarantined local file needs review before you trust the slot.</span>
+            <span>A quarantined local file needs review.</span>
           </div>
           <button className="command-button command-button-secondary" type="button" onClick={props.onOpenSaveManager}>
             Review Recovery
@@ -1025,7 +1020,10 @@ export function SetupView(props: SetupViewProps) {
           </article>
         )}
 
-        <section className="command-panel start-new-panel" aria-labelledby="start-new-title">
+        <section
+          className={launchSaveSummary ? "start-new-panel start-new-panel-secondary" : "start-new-panel start-new-panel-primary"}
+          aria-labelledby="start-new-title"
+        >
           <div className="panel-header panel-header-compact">
             <div>
               <p className="screen-kicker">New Session</p>
@@ -1066,8 +1064,8 @@ export function SetupView(props: SetupViewProps) {
         <section className="start-utility-strip" aria-label="Save and system utilities">
           <article className="start-utility-card">
             <div>
-              <span>Save Tools</span>
-              <h2>Local save control</h2>
+              <span>Local setup</span>
+              <h2>Save Tools</h2>
               <p>Import, export, preview, or recover local saves.</p>
             </div>
             <button className="command-button command-button-secondary" type="button" onClick={props.onOpenSaveManager}>
@@ -1077,9 +1075,9 @@ export function SetupView(props: SetupViewProps) {
 
           <article className="start-utility-card">
             <div>
-              <span>Preferences</span>
-              <h2>Display and session</h2>
-              <p>Tune display, accent, and session settings before launch.</p>
+              <span>Display setup</span>
+              <h2>Preferences</h2>
+              <p>Tune display and accent preferences before launch.</p>
             </div>
             <button className="command-button command-button-secondary" type="button" onClick={props.onOpenPreferences}>
               Preferences
@@ -1098,11 +1096,11 @@ export function SetupView(props: SetupViewProps) {
           </div>
           <div>
             <span>Quarantine</span>
-            <strong>{props.corruptSavePresent ? "Needs review" : "None"}</strong>
+            <strong>{props.corruptSavePresent ? "Review in Save Tools" : "None"}</strong>
           </div>
           <div>
             <span>Export</span>
-            <strong>{props.activeSavePresent ? "Available from Save Tools" : "Write a slot first"}</strong>
+            <strong>{props.activeSavePresent ? "Available from Save Tools" : "Available after save"}</strong>
           </div>
         </section>
       </section>

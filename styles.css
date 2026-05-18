@@ -7394,3 +7394,321 @@ textarea:focus-visible {
     grid-template-columns: 1fr;
   }
 }
+
+/* TIX-005: launch-screen hierarchy polish. Keep these overrides scoped to the launch surface. */
+.command-shell-launch {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 74% 4%, rgba(57, 255, 20, 0.055), transparent 17rem),
+    linear-gradient(180deg, rgba(17, 19, 22, 0.92), rgba(9, 11, 13, 0.98));
+}
+
+.command-shell-launch .main-canvas {
+  width: min(100%, 74rem);
+  margin: 0 auto;
+  padding: clamp(0.85rem, 2vw, 1.35rem);
+}
+
+.command-shell-launch .launch-topbar {
+  grid-template-columns: minmax(16rem, 1fr) auto auto;
+  border-bottom-color: rgba(48, 54, 61, 0.62);
+  background: rgba(13, 15, 18, 0.9);
+}
+
+.command-shell-launch .command-search {
+  max-width: 24rem;
+  opacity: 0.78;
+}
+
+.command-shell-launch .launch-topbar-status span {
+  border-color: rgba(48, 54, 61, 0.68);
+  background: rgba(12, 14, 17, 0.48);
+}
+
+.start-screen-redesign {
+  max-width: 74rem;
+  gap: 0.8rem;
+}
+
+.start-screen-redesign::before {
+  inset: 0;
+  opacity: 0.28;
+}
+
+.start-screen-redesign .start-hero {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  min-width: 0;
+  border-color: rgba(48, 54, 61, 0.58);
+  padding: clamp(1rem, 2vw, 1.35rem);
+  background:
+    linear-gradient(135deg, rgba(35, 39, 44, 0.68), rgba(17, 19, 22, 0.88)),
+    rgba(18, 21, 24, 0.92);
+  box-shadow: none;
+}
+
+.start-screen-redesign .start-hero::after {
+  display: none;
+}
+
+.start-screen-redesign .start-hero .screen-title {
+  max-width: 15ch;
+  font-size: clamp(2.35rem, 5vw, 4rem);
+  line-height: 0.96;
+}
+
+.start-screen-redesign .start-hero .screen-copy {
+  max-width: 38rem;
+  color: var(--muted);
+  font-size: clamp(0.98rem, 1.4vw, 1.08rem);
+}
+
+.start-screen-redesign .start-layout {
+  grid-template-columns: minmax(0, 1.08fr) minmax(18rem, 0.72fr);
+  grid-template-areas:
+    "resume modes"
+    "utilities utilities"
+    "trust trust";
+  gap: 0.75rem;
+  align-items: stretch;
+}
+
+.start-screen-redesign .start-layout-empty {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    "modes"
+    "utilities"
+    "trust";
+}
+
+.start-screen-redesign .start-resume-panel {
+  min-height: 18rem;
+  padding: clamp(1rem, 2vw, 1.25rem);
+  border-color: rgba(57, 255, 20, 0.32);
+  background:
+    linear-gradient(135deg, rgba(57, 255, 20, 0.1), transparent 42%),
+    linear-gradient(180deg, rgba(26, 29, 33, 0.96), rgba(12, 14, 17, 0.94));
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.24);
+}
+
+.start-screen-redesign .start-resume-panel::after {
+  display: none;
+}
+
+.start-screen-redesign .start-resume-panel h2 {
+  font-size: clamp(1.35rem, 2.2vw, 1.9rem);
+}
+
+.start-screen-redesign .start-resume-athlete {
+  margin-top: 0.2rem;
+  font-size: clamp(1.65rem, 3vw, 2.55rem);
+  line-height: 1.02;
+}
+
+.start-screen-redesign .start-resume-context {
+  margin-top: 0.45rem;
+  font-size: 0.92rem;
+}
+
+.start-screen-redesign .start-resume-detail-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.48rem;
+  margin-top: 0.85rem;
+}
+
+.start-screen-redesign .start-resume-detail-grid div {
+  border-color: rgba(48, 54, 61, 0.64);
+  padding: 0.52rem;
+  background: rgba(12, 14, 17, 0.44);
+}
+
+.start-screen-redesign .start-readiness-meter {
+  margin-top: 0.75rem;
+  border-color: rgba(57, 255, 20, 0.2);
+  padding: 0.62rem;
+  background: rgba(57, 255, 20, 0.045);
+}
+
+.start-screen-redesign .start-resume-action-block {
+  gap: 0.65rem;
+  align-content: end;
+}
+
+.start-screen-redesign .start-resume-action-block p {
+  max-width: 34rem;
+  color: var(--text);
+}
+
+.start-screen-redesign .start-new-panel {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.start-screen-redesign .start-new-panel .panel-header {
+  gap: 0.55rem;
+}
+
+.start-screen-redesign .start-layout-empty .start-mode-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.start-screen-redesign .start-mode-card {
+  min-height: 10rem;
+  border-color: rgba(48, 54, 61, 0.7);
+  padding: 0.9rem;
+  background: rgba(12, 14, 17, 0.56);
+  box-shadow: none;
+}
+
+.start-screen-redesign .start-layout-empty .start-mode-card {
+  min-height: 13.4rem;
+  padding: 1.05rem;
+}
+
+.start-screen-redesign .start-layout-empty .start-mode-card-career {
+  border-color: rgba(57, 255, 20, 0.36);
+  background:
+    linear-gradient(135deg, rgba(57, 255, 20, 0.08), transparent 48%),
+    rgba(12, 14, 17, 0.68);
+}
+
+.start-screen-redesign .start-mode-card h3 {
+  font-size: clamp(1.15rem, 1.8vw, 1.32rem);
+}
+
+.start-screen-redesign .start-mode-card p,
+.start-screen-redesign .start-utility-card p {
+  font-size: 0.9rem;
+}
+
+.start-screen-redesign .start-layout-has-save .start-mode-card p {
+  font-size: 0.84rem;
+}
+
+.start-screen-redesign .start-layout-has-save .start-utility-strip {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.start-screen-redesign .start-utility-strip {
+  gap: 0.62rem;
+}
+
+.start-screen-redesign .start-utility-card {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.6rem;
+  border-color: rgba(48, 54, 61, 0.62);
+  padding: 0.78rem;
+  background: rgba(17, 19, 22, 0.62);
+}
+
+.start-screen-redesign .start-utility-card h2 {
+  font-size: 1.06rem;
+}
+
+.start-screen-redesign .start-save-trust-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid rgba(48, 54, 61, 0.58);
+  border-radius: 0.38rem;
+  background: rgba(12, 14, 17, 0.44);
+}
+
+.start-screen-redesign .start-save-trust-strip div {
+  min-width: 0;
+  border: 0;
+  border-right: 1px solid rgba(48, 54, 61, 0.5);
+  border-radius: 0;
+  padding: 0.58rem 0.7rem;
+  background: transparent;
+}
+
+.start-screen-redesign .start-save-trust-strip div:last-child {
+  border-right: 0;
+}
+
+.start-screen-redesign .start-save-trust-strip strong {
+  margin-top: 0.08rem;
+  font-size: 0.82rem;
+}
+
+.start-screen-redesign .start-recovery-strip {
+  border-color: rgba(242, 193, 78, 0.5);
+  padding: 0.72rem 0.85rem;
+  background: rgba(71, 48, 13, 0.28);
+}
+
+@media (max-width: 1100px) {
+  .start-screen-redesign .start-layout,
+  .start-screen-redesign .start-layout-empty {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .start-screen-redesign .start-layout {
+    grid-template-areas:
+      "resume"
+      "modes"
+      "utilities"
+      "trust";
+  }
+
+  .start-screen-redesign .start-layout-empty {
+    grid-template-areas:
+      "modes"
+      "utilities"
+      "trust";
+  }
+
+  .start-screen-redesign .start-layout-has-save .start-mode-grid,
+  .start-screen-redesign .start-layout-empty .start-mode-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .start-screen-redesign .start-layout-has-save .start-utility-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 780px) {
+  .command-shell-launch .launch-topbar {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 0.55rem 0.75rem;
+  }
+
+  .command-shell-launch .command-search {
+    min-width: 0;
+    max-width: none;
+  }
+
+  .command-shell-launch .launch-topbar-status {
+    justify-content: flex-start;
+  }
+
+  .start-screen-redesign .start-recovery-strip,
+  .start-screen-redesign .start-layout-has-save .start-mode-grid,
+  .start-screen-redesign .start-layout-empty .start-mode-grid,
+  .start-screen-redesign .start-utility-strip,
+  .start-screen-redesign .start-layout-has-save .start-utility-strip,
+  .start-screen-redesign .start-save-trust-strip,
+  .start-screen-redesign .start-resume-detail-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .start-screen-redesign .start-layout-empty .start-mode-card,
+  .start-screen-redesign .start-mode-card {
+    min-height: auto;
+  }
+
+  .start-screen-redesign .start-save-trust-strip div {
+    border-right: 0;
+    border-bottom: 1px solid rgba(48, 54, 61, 0.5);
+  }
+
+  .start-screen-redesign .start-save-trust-strip div:last-child {
+    border-bottom: 0;
+  }
+}

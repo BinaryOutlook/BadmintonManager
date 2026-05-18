@@ -143,7 +143,7 @@ function buildLaunchSaveSummary(args: {
     const details: LaunchSaveSummary["details"] = [
       { label: "Date", value: args.career.date },
       { label: "Stage", value: formatCareerStage(args.career.stage) },
-      { label: "Program", value: args.career.program.name }
+      { label: "Save Health", value: "Local slot ready" }
     ];
 
     if (activeEvent) {
@@ -197,7 +197,8 @@ function buildLaunchSaveSummary(args: {
     const details: LaunchSaveSummary["details"] = [
       { label: "Event", value: tournament?.name ?? "Quick tournament" },
       { label: "Stage", value: stageLabel },
-      { label: "Round", value: roundLabel }
+      { label: "Round", value: roundLabel },
+      { label: "Save Health", value: "Local slot ready" }
     ];
 
     if (opponentName !== "Draw pending") {
@@ -1198,7 +1199,7 @@ export function App() {
       ? "Save: Career loaded"
       : "Save: Tournament loaded"
     : corruptSavePresent
-      ? "Save: Recovery available"
+      ? "Save: Needs review"
       : activeSavePresent
         ? "Save: Setup draft"
         : "Save: Empty";
