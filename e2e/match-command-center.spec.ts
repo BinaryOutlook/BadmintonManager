@@ -80,12 +80,34 @@ async function expectCommandSurfaceInViewport(page: Page) {
   expect(metrics.statusStripCount).toBe(0);
 }
 
+async function expectInitialBroadcastScoreline(page: Page) {
+  const scoreboard = page.getByRole("table", { name: "Broadcast match score" });
+
+  await expect(scoreboard.getByRole("columnheader", { name: "S1" })).toBeVisible();
+  await expect(scoreboard.getByRole("columnheader", { name: "S2" })).toHaveCount(0);
+  await expect(scoreboard.getByRole("columnheader", { name: "S3" })).toHaveCount(0);
+  await expect(scoreboard.getByRole("columnheader", { name: "Current" })).toHaveCount(0);
+  await expect(scoreboard.getByRole("columnheader", { name: "Final" })).toHaveCount(0);
+  await expect(scoreboard.locator('[aria-label^="Set 1 active score"]')).toHaveCount(2);
+  await expect(scoreboard.getByText(/^[A-Z]{3}$/).first()).toBeVisible();
+}
+
+async function expectNoHorizontalOverflow(page: Page) {
+  const metrics = await page.evaluate(() => ({
+    scrollWidth: document.documentElement.scrollWidth,
+    viewportWidth: window.innerWidth
+  }));
+
+  expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.viewportWidth);
+}
+
 test("keeps the live match command surface horizontal at desktop viewports", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await enterQuickLiveMatch(page);
 
+  await expectInitialBroadcastScoreline(page);
   await expectCommandSurfaceInViewport(page);
-  await page.screenshot({ path: "test-results/workstream-d/match-command-1440-initial.png", fullPage: false });
+  await page.screenshot({ path: "test-results/tix-004/match-command-1440-initial.png", fullPage: false });
 
   await page.setViewportSize({ width: 1366, height: 768 });
   await page.evaluate(() => window.scrollTo(0, 0));
@@ -95,6 +117,40 @@ test("keeps the live match command surface horizontal at desktop viewports", asy
   }
 
   await page.evaluate(() => window.scrollTo(0, 0));
+  const scoreboard = page.getByRole("table", { name: "Broadcast match score" });
+  await expect(scoreboard.getByRole("columnheader", { name: "S1" })).toBeVisible();
+  await expect(scoreboard.getByRole("columnheader", { name: "S2" })).toHaveCount(0);
+  await expect(scoreboard.locator('[aria-label^="Set 1 active score"]')).toHaveCount(2);
+  await expect(scoreboard.getByRole("columnheader", { name: "Current" })).toHaveCount(0);
   await expectCommandSurfaceInViewport(page);
-  await page.screenshot({ path: "test-results/workstream-d/match-command-1366-after-3-points.png", fullPage: false });
+  await page.screenshot({ path: "test-results/tix-004/match-command-1366-after-3-points.png", fullPage: false });
+});
+
+test("keeps broadcast set columns semantic through set transitions and mobile layout", async ({ page }) => {
+  await page.setViewportSize({ width: 2048, height: 1152 });
+  await enterQuickLiveMatch(page);
+  await expectInitialBroadcastScoreline(page);
+  await expectNoHorizontalOverflow(page);
+  await page.screenshot({ path: "test-results/tix-004/match-command-2048-initial.png", fullPage: false });
+
+  await page.getByRole("button", { name: "Finish Set" }).click();
+
+  const scoreboard = page.getByRole("table", { name: "Broadcast match score" });
+  await expect(scoreboard.getByRole("columnheader", { name: "S1" })).toBeVisible();
+  await expect(scoreboard.getByRole("columnheader", { name: "S2" })).toBeVisible();
+  await expect(scoreboard.getByRole("columnheader", { name: "S3" })).toHaveCount(0);
+  await expect(scoreboard.getByRole("columnheader", { name: "Current" })).toHaveCount(0);
+  await expect(scoreboard.locator('[aria-label^="Set 2 active score"]')).toHaveCount(2);
+  await expect(page.getByRole("button", { name: "Open Next Set" })).toHaveCount(1);
+  await expectNoHorizontalOverflow(page);
+
+  await page.getByRole("button", { name: "Open Next Set" }).click();
+  await expect(scoreboard.locator('[aria-label^="Set 2 active score"]')).toHaveCount(2);
+  await expect(scoreboard.getByRole("columnheader", { name: "S3" })).toHaveCount(0);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByLabel("Compact scoreboard").scrollIntoViewIfNeeded();
+  await expectNoHorizontalOverflow(page);
+  await expect(scoreboard.getByRole("columnheader", { name: "Current" })).toHaveCount(0);
+  await page.screenshot({ path: "test-results/tix-004/match-command-390-set-two.png", fullPage: false });
 });

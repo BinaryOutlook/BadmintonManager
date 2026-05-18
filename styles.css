@@ -5653,10 +5653,22 @@ textarea:focus-visible {
 
 .broadcast-scoreboard-row {
   display: grid;
-  grid-template-columns: minmax(10rem, 1fr) 2.2rem repeat(2, minmax(2.4rem, 0.22fr)) minmax(4rem, 0.36fr);
+  grid-template-columns: minmax(10rem, 1fr) minmax(2.6rem, 0.22fr);
   gap: 0.32rem;
   align-items: center;
   min-width: 0;
+}
+
+.broadcast-scoreboard-row[data-set-count="1"] {
+  grid-template-columns: minmax(10rem, 1fr) minmax(2.6rem, 0.22fr);
+}
+
+.broadcast-scoreboard-row[data-set-count="2"] {
+  grid-template-columns: minmax(10rem, 1fr) repeat(2, minmax(2.6rem, 0.22fr));
+}
+
+.broadcast-scoreboard-row[data-set-count="3"] {
+  grid-template-columns: minmax(10rem, 1fr) repeat(3, minmax(2.6rem, 0.22fr));
 }
 
 .broadcast-scoreboard-row > span,
@@ -5691,16 +5703,52 @@ textarea:focus-visible {
   white-space: nowrap;
 }
 
-.server-marker {
-  min-height: 2rem;
-  font-weight: 900;
+.scoreboard-player-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.36rem;
+  overflow: hidden;
+  text-align: left;
 }
 
-.current-score-cell {
+.scoreboard-player-cell .scoreboard-name-button {
+  flex: 1 1 auto;
+  width: auto;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.scoreboard-nation-code {
+  flex: 0 0 auto;
+  color: var(--muted-soft);
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.scoreboard-server-marker {
+  flex: 0 0 0.72rem;
+  color: var(--muted-soft);
+  font-weight: 900;
+  text-align: center;
+}
+
+.scoreboard-server-marker-active {
+  color: var(--cyan);
+}
+
+.current-score-cell,
+.scoreboard-set-cell-active {
   border-color: rgba(57, 255, 20, 0.22);
   background: rgba(57, 255, 20, 0.1);
   color: var(--lime);
   font-size: 1.2rem;
+}
+
+.scoreboard-set-cell-completed {
+  font-weight: 800;
 }
 
 .match-scoreboard-panel .scoreboard-main {
@@ -6935,10 +6983,22 @@ textarea:focus-visible {
 
 .broadcast-scoreboard-row {
   display: grid;
-  grid-template-columns: minmax(11rem, 1fr) 2.1rem minmax(2.4rem, 0.22fr) minmax(2.4rem, 0.22fr) minmax(3.7rem, 0.3fr);
+  grid-template-columns: minmax(11rem, 1fr) minmax(2.5rem, 0.22fr);
   gap: 0.32rem;
   align-items: center;
   min-width: 0;
+}
+
+.broadcast-scoreboard-row[data-set-count="1"] {
+  grid-template-columns: minmax(11rem, 1fr) minmax(2.5rem, 0.22fr);
+}
+
+.broadcast-scoreboard-row[data-set-count="2"] {
+  grid-template-columns: minmax(11rem, 1fr) repeat(2, minmax(2.5rem, 0.22fr));
+}
+
+.broadcast-scoreboard-row[data-set-count="3"] {
+  grid-template-columns: minmax(11rem, 1fr) repeat(3, minmax(2.5rem, 0.22fr));
 }
 
 .broadcast-scoreboard-row > span,
@@ -6979,27 +7039,50 @@ textarea:focus-visible {
 }
 
 .scoreboard-player-cell {
-  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.36rem;
   overflow: hidden;
   text-align: left;
 }
 
 .scoreboard-player-cell .scoreboard-name-button {
+  flex: 1 1 auto;
+  width: auto;
   border: 0;
   border-radius: 0;
   background: transparent;
-  padding: 0.34rem 0.42rem;
+  padding: 0;
 }
 
-.server-marker {
-  color: var(--cyan);
+.scoreboard-nation-code {
+  flex: 0 0 auto;
+  color: var(--muted-soft);
+  font-size: 0.66rem;
   font-weight: 900;
+  letter-spacing: 0;
 }
 
-.current-score-cell {
+.scoreboard-server-marker {
+  flex: 0 0 0.72rem;
+  color: var(--muted-soft);
+  font-weight: 900;
+  text-align: center;
+}
+
+.scoreboard-server-marker-active {
+  color: var(--cyan);
+}
+
+.current-score-cell,
+.scoreboard-set-cell-active {
   border-color: rgba(242, 193, 78, 0.48);
   background: rgba(242, 193, 78, 0.12);
   font-size: 1.08rem;
+}
+
+.scoreboard-set-cell-completed {
+  font-weight: 800;
 }
 
 .match-scoreboard-panel {
