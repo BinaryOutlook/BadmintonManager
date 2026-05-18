@@ -40,10 +40,14 @@ describe("SetupView", () => {
     expect(screen.getByRole("button", { name: "Quick Tournament" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Save Tools" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Preferences" })).toBeInTheDocument();
+    expect(screen.getByText("Court Desk")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Start New" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Local Setup" })).toBeInTheDocument();
     expect(screen.queryByText("Active Slot")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Saved game summary")).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /Resume Career|Continue Tournament/ })).not.toBeInTheDocument();
     expect(screen.getByLabelText("Local save trust")).toHaveTextContent("Local slotEmpty");
-    expect(screen.getByLabelText("Local save trust")).toHaveTextContent("Available after save");
+    expect(screen.getByLabelText("Local save trust")).toHaveTextContent("After first save");
     expect(screen.queryByText("Write a slot first")).not.toBeInTheDocument();
   });
 
@@ -70,6 +74,7 @@ describe("SetupView", () => {
     fireEvent.click(screen.getByRole("button", { name: "Start Career" }));
     const dialog = screen.getByRole("dialog", { name: "Pick Your Playstyle" });
     expect(within(dialog).getByText("New Career")).toBeInTheDocument();
+    expect(within(dialog).getByText(/coaching program will commit/)).toBeInTheDocument();
     expect(within(dialog).getByRole("button", { name: "Confirm Career Athlete" })).toBeDisabled();
     expect(within(dialog).queryByRole("heading", { name: "Strategic Override" })).not.toBeInTheDocument();
 
@@ -145,9 +150,11 @@ describe("SetupView", () => {
     });
 
     expect(screen.getByRole("heading", { name: "Resume Career" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Saved game summary")).toHaveTextContent("Saved Career");
     expect(screen.getByText("Three-Lung Dynamo")).toBeInTheDocument();
     expect(screen.getByLabelText("Active save details")).toHaveTextContent("2026-07-22");
     expect(screen.getByLabelText("Readiness 68")).toBeInTheDocument();
+    expect(screen.getByText("Next decision")).toBeInTheDocument();
     expect(screen.getByText("Next: Play R16 match")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Continue Career" })).toHaveClass("command-button-primary");
     expect(screen.getByRole("button", { name: "Start Career" })).toHaveClass("command-button-secondary");
@@ -179,6 +186,7 @@ describe("SetupView", () => {
     });
 
     expect(screen.getByRole("heading", { name: "Continue Tournament" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Saved game summary")).toHaveTextContent("Saved Tournament");
     expect(screen.queryByRole("heading", { name: "Resume Career" })).not.toBeInTheDocument();
     expect(screen.getByText("Grand-Slam Southpaw")).toBeInTheDocument();
     expect(screen.getByText("Harborline Open | R16")).toBeInTheDocument();
@@ -200,7 +208,7 @@ describe("SetupView", () => {
 
     expect(screen.getAllByText(/Recovery available/)).toHaveLength(1);
     expect(screen.getByRole("status", { name: "Save recovery notice" })).toHaveTextContent(
-      "A quarantined local file needs review."
+      "A saved slot is waiting for review."
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Review Recovery" }));
