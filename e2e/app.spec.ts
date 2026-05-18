@@ -298,6 +298,29 @@ async function expectPortalViewportBounded(page: Page, expectOnePage: boolean) {
   }, expectOnePage);
 }
 
+async function expectLaunchViewportBounded(page: Page) {
+  await page.evaluate(() => {
+    const overflow = document.documentElement.scrollWidth - window.innerWidth;
+
+    if (overflow > 0) {
+      throw new Error(`Unexpected launch document overflow: ${overflow}px`);
+    }
+
+    const checkedElements = Array.from(
+      document.querySelectorAll<HTMLElement>(
+        ".start-screen-redesign, .start-hero, .start-layout, .start-resume-panel, .start-mode-card, .start-utility-card, .start-save-trust-strip"
+      )
+    );
+
+    for (const element of checkedElements) {
+      if (element.scrollWidth > element.clientWidth + 1) {
+        const label = element.className || element.tagName;
+        throw new Error(`Unexpected launch element overflow for ${label}: ${element.scrollWidth} > ${element.clientWidth}`);
+      }
+    }
+  });
+}
+
 async function selectAthleteInSelectionModal(page: Page, athleteName: string) {
   const dialog = page.getByRole("dialog", { name: "Pick Your Playstyle" });
   const directSelect = dialog
@@ -488,10 +511,13 @@ test("starts from a direct screen and locks a confirmed career athlete", async (
   await expect(page.getByRole("button", { name: "Save Tools" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Preferences", exact: true })).toBeVisible();
   await expect(page.getByText(/blocking launch modal|confirm this modal selection/)).toHaveCount(0);
+  await expect(page.getByText("Available after save")).toBeVisible();
   await expect(page.getByRole("button", { name: "Browse All Athletes" })).toHaveCount(0);
-  await captureFocusedScreenshot(page, "start-screen-empty-desktop");
+  await expectLaunchViewportBounded(page);
+  await captureFocusedScreenshot(page, "start-empty-desktop");
   await page.setViewportSize({ width: 390, height: 844 });
-  await captureFocusedScreenshot(page, "start-screen-empty-mobile");
+  await expectLaunchViewportBounded(page);
+  await captureFocusedScreenshot(page, "start-empty-mobile");
   await page.setViewportSize({ width: 1440, height: 900 });
 
   await page.getByRole("button", { name: "Start Career" }).click();
@@ -527,15 +553,37 @@ test("starts from a direct screen and locks a confirmed career athlete", async (
   await expect(page.getByRole("button", { name: "Continue Career" })).toBeVisible();
   await expect(page.getByText("Grand-Slam Southpaw").first()).toBeVisible();
   await expect(page.getByText(/Readiness/).first()).toBeVisible();
+  await expect(page.getByLabel("Active save details")).toContainText("Save Health");
   await expect(page.getByRole("navigation", { name: "Primary commands" })).toHaveCount(0);
-  await captureFocusedScreenshot(page, "start-screen-active-save-desktop");
+  await expectLaunchViewportBounded(page);
+  await captureFocusedScreenshot(page, "start-career-save-desktop");
   await page.setViewportSize({ width: 390, height: 844 });
-  await captureFocusedScreenshot(page, "start-screen-active-save-mobile");
+  await expectLaunchViewportBounded(page);
+  await captureFocusedScreenshot(page, "start-career-save-mobile");
   await page.setViewportSize({ width: 1440, height: 900 });
   await expect(page.getByRole("button", { name: "Quick Tournament", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Quick Tournament", exact: true }).click();
   await expect(page.getByRole("dialog", { name: "Pick Your Playstyle" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Browse All Athletes" })).toBeVisible();
+  await selectAthleteInSelectionModal(page, "Grand-Slam Southpaw");
+  await page.getByRole("dialog", { name: "Pick Your Playstyle" }).getByRole("button", { name: "Start Tournament" }).click();
+  await expect(page.getByRole("heading", { name: "Start tournament and replace career?" })).toBeVisible();
+  await page
+    .getByRole("dialog", { name: "Start tournament and replace career?" })
+    .getByRole("button", { name: "Start Tournament" })
+    .click();
+  await expect(page.getByRole("heading", { name: "Next Opponent" })).toBeVisible();
+
+  await openSaveManager(page);
+  await expect(page.getByRole("heading", { name: "Local Save Control" })).toBeVisible();
+  await page.getByRole("button", { name: "Start New Career" }).click();
+  await expect(page.getByRole("heading", { name: "Badminton Manager" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Continue Tournament" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Continue Tournament" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Resume Career" })).toHaveCount(0);
+  await expect(page.getByText("Grand-Slam Southpaw").first()).toBeVisible();
+  await expectLaunchViewportBounded(page);
+  await captureFocusedScreenshot(page, "start-quick-save-desktop");
 });
 
 test("uses an active-career quick tournament draft only after replacement confirmation", async ({ page }) => {
@@ -783,7 +831,8 @@ test("surfaces corrupt save recovery and blocks unaffordable event entry", async
 
   await expect(page.getByRole("heading", { name: "Badminton Manager" })).toBeVisible();
   await expect(page.getByText(/Recovery available/).first()).toBeVisible();
-  await captureFocusedScreenshot(page, "start-screen-recovery-warning");
+  await expectLaunchViewportBounded(page);
+  await captureFocusedScreenshot(page, "start-recovery-warning-desktop");
   await openSaveManager(page);
   await expect(page.getByRole("heading", { name: "Local Save Control" })).toBeVisible();
   await expect(page.getByText(/Quarantine present|Recovery available/).first()).toBeVisible();

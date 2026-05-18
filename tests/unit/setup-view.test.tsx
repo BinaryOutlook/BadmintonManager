@@ -32,6 +32,21 @@ function openQuickSelectionModal() {
 }
 
 describe("SetupView", () => {
+  it("keeps the no-save launch hierarchy calm and direct", () => {
+    renderSetupView();
+
+    expect(screen.getByRole("heading", { name: "Badminton Manager" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Start Career" })).toHaveClass("command-button-primary");
+    expect(screen.getByRole("button", { name: "Quick Tournament" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save Tools" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Preferences" })).toBeInTheDocument();
+    expect(screen.queryByText("Active Slot")).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /Resume Career|Continue Tournament/ })).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Local save trust")).toHaveTextContent("Local slotEmpty");
+    expect(screen.getByLabelText("Local save trust")).toHaveTextContent("Available after save");
+    expect(screen.queryByText("Write a slot first")).not.toBeInTheDocument();
+  });
+
   it("presents a direct start screen and confirms a deliberately selected career athlete", () => {
     const onSelectPlayer = vi.fn();
     const onStartTournament = vi.fn();
@@ -140,6 +155,57 @@ describe("SetupView", () => {
     fireEvent.click(screen.getByRole("button", { name: "Continue Career" }));
 
     expect(onContinueLocalSave).toHaveBeenCalledTimes(1);
+  });
+
+  it("labels an active quick tournament save without career copy", () => {
+    const onContinueLocalSave = vi.fn();
+
+    renderSetupView({
+      activeSavePresent: true,
+      onContinueLocalSave,
+      launchSaveSummary: {
+        mode: "quickTournament",
+        title: "Continue Tournament",
+        managedName: "Grand-Slam Southpaw",
+        context: "Harborline Open | R16",
+        nextAction: "Next: Enter R16 against Arc-Foot Sprinter",
+        primaryActionLabel: "Continue Tournament",
+        details: [
+          { label: "Event", value: "Harborline Open" },
+          { label: "Round", value: "R16" },
+          { label: "Save Health", value: "Local slot ready" }
+        ]
+      }
+    });
+
+    expect(screen.getByRole("heading", { name: "Continue Tournament" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Resume Career" })).not.toBeInTheDocument();
+    expect(screen.getByText("Grand-Slam Southpaw")).toBeInTheDocument();
+    expect(screen.getByText("Harborline Open | R16")).toBeInTheDocument();
+    expect(screen.getByText("Next: Enter R16 against Arc-Foot Sprinter")).toBeInTheDocument();
+    expect(screen.getByLabelText("Active save details")).toHaveTextContent("Save HealthLocal slot ready");
+
+    fireEvent.click(screen.getByRole("button", { name: "Continue Tournament" }));
+
+    expect(onContinueLocalSave).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows one compact recovery warning with a reachable recovery action", () => {
+    const onOpenSaveManager = vi.fn();
+
+    renderSetupView({
+      corruptSavePresent: true,
+      onOpenSaveManager
+    });
+
+    expect(screen.getAllByText(/Recovery available/)).toHaveLength(1);
+    expect(screen.getByRole("status", { name: "Save recovery notice" })).toHaveTextContent(
+      "A quarantined local file needs review."
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Review Recovery" }));
+
+    expect(onOpenSaveManager).toHaveBeenCalledTimes(1);
   });
 
   it("shows recommendations first and keeps the full roster as a fallback inside the modal", () => {
