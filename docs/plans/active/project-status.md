@@ -1,6 +1,6 @@
 # Project Status
 
-Status date: 2026-05-18
+Status date: 2026-05-19
 Current version target: `v0.3 Stable Career System`
 Overall phase: stable career-system foundation and controlled expansion on top of the completed `v0.2.4` UI/career/save bridge and the `v0.2.3` match-algorithm baseline
 Chosen stack: Option A local-first SPA
@@ -76,6 +76,7 @@ What is now stable:
 - the `v0.3` career system is intentionally limited: it proves the local-first manager loop with one locked managed athlete, fictional event/ranking structures, compact resource pressure, and safe saves before later versions expand flexibility and realism
 - the live Match Command Center now renders a BWF-style set scoreline strip with set columns, server/transport context, focused desktop/mobile proof, and no repeated current-point column
 - the Start Screen hierarchy now has calmer no-save, active-career, active-quick-run, and corrupt-save states with committed visual QA artifacts under `docs/rescue_MVP/visual_qa/TIX-005/`
+- the TIX-007 Start Screen refinement tightens the hero into a launch title bar, makes saved career/tournament resume panels the dominant decision, groups Start New and Local Setup actions more naturally, adds restrained court-line badminton identity, and commits refreshed visual QA artifacts under `docs/rescue_MVP/visual_qa/TIX-007/`
 - detailed match scorelines now use bounded score-shape safety rails, score-aware anti-collapse relief, and opt-in calibration assertions to prevent repeated pathological `21-0`, `21-1`, and `21-2` games in normal roster matchups
 
 ## Completed
@@ -161,6 +162,7 @@ What is now stable:
 - [x] filed Rescue MVP tickets as GitHub issues #17, #18, and #19, delivered them through PRs #20, #22, and #21, and archived the ticket specs under `docs/rescue_MVP/arc_tix/`
 - [x] converted the live match scoreboard to BWF-style set columns with focused unit and Playwright coverage
 - [x] polished the Start Screen hierarchy and committed desktop/mobile visual QA artifacts for empty, active career, active quick tournament, and recovery states
+- [x] completed the TIX-007 Start Screen visual hierarchy pass with saved-slot primary action emphasis, simplified start/manage grouping, badminton court-line atmosphere, focused unit/e2e coverage, and refreshed TIX-007 screenshots
 - [x] rebalanced detailed match score shape with focused legality/low-score-prevention tests plus a 10-seed asserted calibration sweep
 
 ## In Progress

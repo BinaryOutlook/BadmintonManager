@@ -510,8 +510,12 @@ test("starts from a direct screen and locks a confirmed career athlete", async (
   await expect(page.getByRole("button", { name: "Quick Tournament", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Save Tools" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Preferences", exact: true })).toBeVisible();
+  await expect(page.getByText("Court Desk")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Start New" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Local Setup" })).toBeVisible();
+  await expect(page.locator(".start-resume-panel")).toHaveCount(0);
   await expect(page.getByText(/blocking launch modal|confirm this modal selection/)).toHaveCount(0);
-  await expect(page.getByText("Available after save")).toBeVisible();
+  await expect(page.getByText("After first save")).toBeVisible();
   await expect(page.getByRole("button", { name: "Browse All Athletes" })).toHaveCount(0);
   await expectLaunchViewportBounded(page);
   await captureFocusedScreenshot(page, "start-empty-desktop");
@@ -523,7 +527,7 @@ test("starts from a direct screen and locks a confirmed career athlete", async (
   await page.getByRole("button", { name: "Start Career" }).click();
   const careerDialog = page.getByRole("dialog", { name: "Pick Your Playstyle" });
   await expect(careerDialog).toBeVisible();
-  await expect(page.getByText(/save is created only after you confirm this athlete/)).toBeVisible();
+  await expect(page.getByText(/coaching program will commit/)).toBeVisible();
   await expect(careerDialog.getByText(/in this modal|blocking launch modal|confirm this modal selection/)).toHaveCount(0);
   await captureFocusedScreenshot(page, "t099-athlete-lock-dialog-desktop");
   await selectAthleteInSelectionModal(page, "Grand-Slam Southpaw");
@@ -551,6 +555,8 @@ test("starts from a direct screen and locks a confirmed career athlete", async (
   await requestNewSession(page);
   await page.getByRole("button", { name: "Start New Session" }).click();
   await expect(page.getByRole("button", { name: "Continue Career" })).toBeVisible();
+  await expect(page.getByLabel("Saved game summary")).toContainText("Saved Career");
+  await expect(page.getByText("Next decision")).toBeVisible();
   await expect(page.getByText("Grand-Slam Southpaw").first()).toBeVisible();
   await expect(page.getByText(/Readiness/).first()).toBeVisible();
   await expect(page.getByLabel("Active save details")).toContainText("Save Health");
@@ -580,6 +586,7 @@ test("starts from a direct screen and locks a confirmed career athlete", async (
   await expect(page.getByRole("heading", { name: "Badminton Manager" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Continue Tournament" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Continue Tournament" })).toBeVisible();
+  await expect(page.getByLabel("Saved game summary")).toContainText("Saved Tournament");
   await expect(page.getByRole("heading", { name: "Resume Career" })).toHaveCount(0);
   await expect(page.getByText("Grand-Slam Southpaw").first()).toBeVisible();
   await expectLaunchViewportBounded(page);
@@ -830,6 +837,7 @@ test("surfaces corrupt save recovery and blocks unaffordable event entry", async
   await page.goto("/");
 
   await expect(page.getByRole("heading", { name: "Badminton Manager" })).toBeVisible();
+  await expect(page.getByText(/Recovery available/)).toHaveCount(1);
   await expect(page.getByText(/Recovery available/).first()).toBeVisible();
   await expectLaunchViewportBounded(page);
   await captureFocusedScreenshot(page, "start-recovery-warning-desktop");

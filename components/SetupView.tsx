@@ -410,8 +410,10 @@ export function SetupView(props: SetupViewProps) {
     ? "start-layout start-layout-has-save"
     : "start-layout start-layout-empty";
   const heroCopy = launchSaveSummary
-    ? "Resume your save, build a career, or jump into a tournament."
-    : "Build a career or jump into a disposable tournament.";
+    ? "Continue your active save or choose a fresh court assignment."
+    : "Choose your first career program or run a quick tournament.";
+  const resumeModeLabel = launchSaveSummary?.mode === "career" ? "Saved Career" : "Saved Tournament";
+  const resumeCourtLabel = launchSaveSummary?.mode === "career" ? "Court ready" : "Bracket ready";
   const { modalRef, handleModalKeyDown } = useModalFocus(selectionPurpose !== null, closeSelectionModal);
 
   function resetBrowseFilters() {
@@ -521,10 +523,10 @@ export function SetupView(props: SetupViewProps) {
     const isCareer = selectionPurpose === "career";
     const confirmDisabled = !modalSelectionMade || !modalSelectedPlayerId;
     const confirmLabel = isCareer ? "Confirm Career Athlete" : "Start Tournament";
-    const purposeLabel = isCareer ? "New Career" : "Disposable Run";
+    const purposeLabel = isCareer ? "New Career" : "Quick Tournament";
     const purposeCopy = isCareer
-      ? "Choose the locked managed athlete for this local career. The save is created only after you confirm this athlete."
-      : "Choose a disposable tournament athlete, then optionally set the opening tactic before launch.";
+      ? "Choose the athlete your coaching program will commit to before the first season begins."
+      : "Choose a tournament athlete, then optionally set the opening tactic before launch.";
 
     return (
       <div className="modal-backdrop" role="presentation">
@@ -962,9 +964,13 @@ export function SetupView(props: SetupViewProps) {
     <section className="screen-shell start-screen start-screen-redesign">
       <div className="start-hero">
         <div className="start-hero-copy">
-          <p className="screen-kicker">Launch Hub</p>
+          <p className="screen-kicker">Court Desk</p>
           <h1 className="screen-title">Badminton Manager</h1>
           <p className="screen-copy">{heroCopy}</p>
+        </div>
+        <div className="start-hero-badges" aria-label="Launch context">
+          <span>Singles circuit</span>
+          <span>Coach mode</span>
         </div>
       </div>
 
@@ -972,7 +978,7 @@ export function SetupView(props: SetupViewProps) {
         <section className="start-recovery-strip" role="status" aria-label="Save recovery notice">
           <div>
             <strong>Recovery available.</strong>
-            <span>A quarantined local file needs review.</span>
+            <span>A saved slot is waiting for review.</span>
           </div>
           <button className="command-button command-button-secondary" type="button" onClick={props.onOpenSaveManager}>
             Review Recovery
@@ -982,10 +988,18 @@ export function SetupView(props: SetupViewProps) {
 
       <section className={launchLayoutClass} aria-label="Launch options">
         {launchSaveSummary && (
-          <article className="command-panel start-resume-panel">
+          <article
+            className={`command-panel start-resume-panel start-resume-panel-${launchSaveSummary.mode}`}
+            aria-label="Saved game summary"
+          >
             <div className="start-resume-main">
-              <p className="screen-kicker">Active Slot</p>
-              <h2>{launchSaveSummary.title}</h2>
+              <div className="start-resume-heading-row">
+                <div>
+                  <p className="screen-kicker">{resumeModeLabel}</p>
+                  <h2 id="start-resume-title">{launchSaveSummary.title}</h2>
+                </div>
+                <span className="start-shuttle-chip">{resumeCourtLabel}</span>
+              </div>
               <p className="start-resume-athlete">{launchSaveSummary.managedName}</p>
               <p className="start-resume-context">{launchSaveSummary.context}</p>
 
@@ -1012,6 +1026,7 @@ export function SetupView(props: SetupViewProps) {
             </div>
 
             <div className="start-resume-action-block">
+              <span className="start-next-label">Next decision</span>
               <p>{launchSaveSummary.nextAction}</p>
               <button className="command-button command-button-primary" type="button" onClick={props.onContinueLocalSave}>
                 {launchSaveSummary.primaryActionLabel}
@@ -1026,18 +1041,18 @@ export function SetupView(props: SetupViewProps) {
         >
           <div className="panel-header panel-header-compact">
             <div>
-              <p className="screen-kicker">New Session</p>
-              <h2 id="start-new-title">Start Something New</h2>
+              <p className="screen-kicker">Fresh Court</p>
+              <h2 id="start-new-title">Start New</h2>
             </div>
-            <span>{launchSaveSummary ? "Secondary paths" : "Choose your opening path"}</span>
+            <span>{launchSaveSummary ? "Career Program | Quick Tournament" : "Career Program leads; Quick Tournament is ready for fast play."}</span>
           </div>
 
           <div className="start-mode-grid">
             <article className="start-mode-card start-mode-card-career">
               <div>
-                <span>Career Save</span>
+                <span>Career Program</span>
                 <h3>Career Program</h3>
-                <p>Choose a locked athlete and build a long-term career program with calendar, training, scouting, and event progression.</p>
+                <p>Lock a managed athlete for training, calendar, scouting, and event progression.</p>
               </div>
               <button
                 className={launchSaveSummary ? "command-button command-button-secondary" : "command-button command-button-primary"}
@@ -1050,9 +1065,9 @@ export function SetupView(props: SetupViewProps) {
 
             <article className="start-mode-card start-mode-card-quick">
               <div>
-                <span>Disposable Run</span>
+                <span>Quick Tournament</span>
                 <h3>Quick Tournament</h3>
-                <p>Pick an athlete and tactic for a one-off bracket run without committing to a career calendar.</p>
+                <p>Pick an athlete and tactic for a one-off bracket without committing to a career calendar.</p>
               </div>
               <button className="command-button command-button-secondary" type="button" onClick={() => openSelectionModal("quickTournament")}>
                 Quick Tournament
@@ -1061,12 +1076,20 @@ export function SetupView(props: SetupViewProps) {
           </div>
         </section>
 
-        <section className="start-utility-strip" aria-label="Save and system utilities">
+        <section className="start-utility-strip" aria-labelledby="start-manage-title">
+          <div className="start-utility-header">
+            <div>
+              <p className="screen-kicker">Manage</p>
+              <h2 id="start-manage-title">Local Setup</h2>
+            </div>
+            <span>Save Tools | Preferences</span>
+          </div>
+
           <article className="start-utility-card">
             <div>
-              <span>Local setup</span>
-              <h2>Save Tools</h2>
-              <p>Import, export, preview, or recover local saves.</p>
+              <span>Save control</span>
+              <h3>Save Tools</h3>
+              <p>Import, export, preview, or recover saves.</p>
             </div>
             <button className="command-button command-button-secondary" type="button" onClick={props.onOpenSaveManager}>
               Save Tools
@@ -1076,7 +1099,7 @@ export function SetupView(props: SetupViewProps) {
           <article className="start-utility-card">
             <div>
               <span>Display setup</span>
-              <h2>Preferences</h2>
+              <h3>Preferences</h3>
               <p>Tune display and accent preferences before launch.</p>
             </div>
             <button className="command-button command-button-secondary" type="button" onClick={props.onOpenPreferences}>
@@ -1092,15 +1115,15 @@ export function SetupView(props: SetupViewProps) {
           </div>
           <div>
             <span>Storage</span>
-            <strong>Browser local</strong>
+            <strong>On this device</strong>
           </div>
           <div>
             <span>Quarantine</span>
-            <strong>{props.corruptSavePresent ? "Review in Save Tools" : "None"}</strong>
+            <strong>{props.corruptSavePresent ? "Save Tools" : "None"}</strong>
           </div>
           <div>
             <span>Export</span>
-            <strong>{props.activeSavePresent ? "Available from Save Tools" : "Available after save"}</strong>
+            <strong>{props.activeSavePresent ? "Save Tools" : "After first save"}</strong>
           </div>
         </section>
       </section>
