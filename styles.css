@@ -6503,6 +6503,7 @@ textarea:focus-visible {
   min-width: 0;
   font-size: 0.74rem;
   line-height: 1.18;
+  overflow-wrap: anywhere;
 }
 
 .career-dashboard-grid-compact {
@@ -6767,11 +6768,11 @@ textarea:focus-visible {
 
 .career-dashboard-card-calendar .career-week-strip-compact .career-day strong {
   margin-top: 0.06rem;
-  overflow: hidden;
-  font-size: 0.64rem;
+  min-width: 0;
+  font-size: 0.62rem;
   line-height: 1.12;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .career-stat-grid-compact {
@@ -6813,11 +6814,83 @@ textarea:focus-visible {
 }
 
 .career-ecosystem-strip-compact .career-system-tile strong {
-  overflow: hidden;
-  font-size: 0.82rem;
-  line-height: 1.08;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-width: 0;
+  font-size: 0.78rem;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+@media (max-height: 800px) and (min-width: 1101px) {
+  .career-page[data-page-contract="portal-home"] {
+    gap: 0.48rem;
+  }
+
+  .career-page[data-page-contract="portal-home"] .career-portal-header {
+    padding-bottom: 0.38rem;
+  }
+
+  .career-portal-header .screen-title {
+    margin-bottom: 0.14rem;
+    font-size: 1.35rem;
+  }
+
+  .career-portal-summary {
+    font-size: 0.78rem;
+    line-height: 1.16;
+  }
+
+  .career-page[data-page-contract="portal-home"] .career-status-strip-compact div {
+    padding: 0.3rem 0.42rem;
+  }
+
+  .career-dashboard-grid-compact {
+    gap: 0.46rem;
+  }
+
+  .career-dashboard-card {
+    padding: 0.56rem;
+  }
+
+  .career-dashboard-grid-compact .panel-header {
+    padding-bottom: 0.3rem;
+    margin-bottom: 0.36rem;
+  }
+
+  .career-decision-block-compact,
+  .career-meter-list-compact {
+    gap: 0.34rem;
+  }
+
+  .career-decision-block-compact > strong {
+    font-size: 1.04rem;
+  }
+
+  .career-decision-block-compact > p {
+    font-size: 0.78rem;
+    line-height: 1.2;
+  }
+
+  .career-dashboard-grid-compact .career-quick-stakes-compact div,
+  .career-readiness-medical-row,
+  .career-stat-grid-compact div,
+  .career-ecosystem-strip-compact .career-system-tile {
+    padding: 0.34rem;
+  }
+
+  .career-dashboard-grid-compact .management-table-compact .management-table-row,
+  .career-ledger-compact .career-ledger-row {
+    padding: 0.3rem 0.4rem;
+  }
+
+  .career-dashboard-card-calendar .career-week-strip-compact .career-day {
+    padding: 0.28rem 0.24rem;
+  }
+
+  .career-ranking-note {
+    margin-top: 0.34rem;
+    line-height: 1.16;
+  }
 }
 
 .career-ecosystem-strip-compact .career-system-tile small {

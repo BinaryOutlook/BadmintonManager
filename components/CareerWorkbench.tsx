@@ -123,6 +123,10 @@ function daysUntilLabel(date: string, targetDate: string) {
   return `${days} day(s)`;
 }
 
+function compactTierLabel(tier: string) {
+  return tier.replace(/^Circuit\s+/i, "C");
+}
+
 function activeEvent(career: CareerState) {
   return career.activeEventId
     ? getCareerEvent(career.events, career.activeEventId)
@@ -595,7 +599,7 @@ export function CareerHomePage(props: CareerPageProps) {
           <div className="career-week-strip career-week-strip-compact" aria-label="Portal calendar snapshot">
             {week.map((day) => {
               const calendarEvent = props.career?.events.find((entry) => entry.startDate === day);
-              const dayLabel = calendarEvent?.tier ?? (day === props.career?.date ? "Today" : "Train");
+              const dayLabel = calendarEvent ? compactTierLabel(calendarEvent.tier) : (day === props.career?.date ? "Today" : "Train");
 
               return (
                 <div key={day} className={day === props.career?.date ? "career-day career-day-active" : "career-day"}>

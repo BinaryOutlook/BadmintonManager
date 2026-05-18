@@ -1,8 +1,8 @@
 # Project Status
 
 Status date: 2026-05-18
-Current version target: `v0.2.4 UI Framework and Season-Ready Layout`
-Overall phase: UI/career/save trust and release polish on top of the `v0.2.3` match-algorithm baseline
+Current version target: `v0.3 Stable Career System`
+Overall phase: stable career-system foundation and controlled expansion on top of the completed `v0.2.4` UI/career/save bridge and the `v0.2.3` match-algorithm baseline
 Chosen stack: Option A local-first SPA
 
 ## Snapshot
@@ -58,7 +58,7 @@ What is now stable:
 - career creation and Quick Tournament launch now share a blocking playstyle-first athlete selection modal; both require an explicit modal-session athlete pick, career writes `career.program.managedPlayerId` only on confirm, and Quick Tournament keeps compact `Strategic Override` tactic selection plus active-career replacement safety
 - the UIUX1Change shell-standardization slice now uses one grouped command rail with Core, Program, Match, Operations, and System commands; the former top nav and global career route strip are removed, while Settings and Save Manager stay reachable through shell system controls
 - the shell overlay remediation now moves focus into Settings and confirmation dialogs, traps Tab and Shift+Tab inside the active modal, closes Settings on Escape, cancels confirmations on Escape, and restores focus to the invoking control after close
-- the UIUX1Change dense-page fidelity slice now makes Portal Home the active-career operations hub with tasks/inbox, next event, calendar snapshot, readiness/ranking pressure, recent match evidence, save state, and a visible Continue action
+- the UIUX1Change dense-page fidelity slice now makes Portal Home the active-career operations hub with tasks/inbox, next event, calendar snapshot, readiness/ranking pressure, recent match evidence, save state, and visible route actions while daily continuation lives in the global topbar resolver
 - training, calendar/competition, match planning, live match, and post-match review now expose compact management status strips above their grids, tables, telemetry, and decision panels
 - Save Manager now leads with active slot metadata for slot state, mode, managed athlete, save version, import preview, and quarantine state while preserving export, import preview/confirm, active-save deletion, and corrupt-backup deletion safety
 - the rescue MVP Workstreams A/C slice now centralizes valid career day advancement in the topbar, removes the Calendar-only Advance Day control, and routes match-day advances into the career pre-match hub without bypassing pre/post/live competition states
@@ -72,6 +72,8 @@ What is now stable:
 - Rescue MVP Plan 3 now makes event opening event-id-safe, keeps entered future events from hijacking the active competition, renders real paged Upcoming/Past Calendar records, adds event details routing for `View Entry`/`View Draw`, removes lower sidebar context/tactic/athlete blocks, removes the Portal Home in-page `Continue`, and keeps the fresh Start Screen outside the career shell until a save or run exists
 - the event catalog is now MVP-debug friendly: only `Summit Invitational` and `Continental Premier` keep meaningful locks, `Season Finals` moves to week 52, and six additional fictional events fill the late-season calendar for paging and repeated entry testing
 - the Career Portal dashboard now uses a compact one-page command grid with a slim route strip, central next-decision panel, table-like tasks/evidence/ledger, a timeline week strip, and dense ecosystem chips without changing career simulation or store behavior
+- `v0.3 Stable Career System` is now the active release target: the career loop is stable from launch through Save Manager, Calendar, Training, Match Planning, Live Match, and Post-Match Review
+- the `v0.3` career system is intentionally limited: it proves the local-first manager loop with one locked managed athlete, fictional event/ranking structures, compact resource pressure, and safe saves before later versions expand flexibility and realism
 
 ## Completed
 
@@ -150,6 +152,8 @@ What is now stable:
 - [x] implemented the Rescue MVP Plan 2 daily-action resolver, scheduled-match route, red/green topbar routing, playable entered-event Calendar actions, and explicit athlete selection gate coverage
 - [x] implemented Rescue MVP Plan 3 calendar, event-entry, shell cleanup, event catalog, event-details routing, and standalone start-screen fixes with unit and Playwright proof
 - [x] rebuilt the Career Portal dashboard into a compact one-page command center with focused desktop/mobile bounded-layout e2e proof
+- [x] filed Rescue MVP tickets as GitHub issues #10, #11, and #12, delivered them through PRs #13, #14, and #15, and archived the ticket specs under `docs/rescue_MVP/arc_tix/`
+- [x] promoted the active documentation target to `v0.3 Stable Career System`
 
 ## In Progress
 
@@ -173,10 +177,10 @@ What is now stable:
 - [ ] stage detailed rally cap testing through `48`, and then `70`
 - [ ] add optional calibration assertions behind `MATCH_BALANCE_ASSERT=1`
 - [ ] add optional stat-composition assertions behind `STAT_COMPOSITION_ASSERT=1`
-- [ ] keep `docs/product/versions/v0.2.4/v0.2.4.md` as the active UI/career/save packet while algorithm tuning continues against the `v0.2.3` baseline
-- [ ] use `docs/product/versions/v0.2.4/player-profile-and-shell-amendment.md` as the implementation guide for the player profile page and shell/settings cleanup
+- [ ] keep `docs/product/versions/v0.3/v0.3.md` as the active stable career-system packet while algorithm tuning continues against the `v0.2.3` baseline
+- [ ] use `docs/product/versions/v0.2.4/v0.2.4.md` and `docs/product/versions/v0.2.4/player-profile-and-shell-amendment.md` as completed bridge references for UI framework, player profile, shell, and settings behavior
 - [ ] keep Phase 4 shell standardization separate from the accepted Phase 3 Start Screen and locked-athlete slice
-- [ ] decide whether `v0.2.4` should keep internal SPA page state or introduce URL routes
+- [ ] decide whether a post-`v0.3` release should keep internal SPA page state or introduce URL routes
 - [ ] confirm whether the future `32` selectable items should be called games, events, competitions, or tournaments in player-facing UI
 - [ ] deepen the tactical intel layer with richer contextual explanations
 - [ ] add more differentiated live directives and opponent pattern reads
@@ -196,9 +200,9 @@ Current design questions that could affect scope:
 - how much tactical explanation belongs in the persistent `TACTICAL_INTEL` surface versus local screen copy
 - how much save migration coverage is needed before future `v0.2.x` changes become risky
 - how much of the richer active-match algorithm should ship before quick simulation calibration is considered good enough
-- whether `v0.2.4` should adopt URL routes or keep a typed internal page registry inside the current SPA shell
+- whether a post-`v0.3` release should adopt URL routes or keep a typed internal page registry inside the current SPA shell
 - whether the first calendar should use fixed fictional dates or seed-generated dates
-- how much of the full player profile should ship as page content in `v0.2.4` versus remain as focused overlays or later season/career scaffolds
+- how much the full player profile should deepen beyond the current page content versus remain focused around later season/career scaffolds
 - whether future evidence packages should require walkthrough video in addition to the current screenshot, command, reset, and import proof
 
 ## Risks
@@ -229,6 +233,7 @@ Future sessions should read these files first:
 - `docs/product/PRD.md`
 - `docs/product/ROADMAP.md`
 - `docs/plans/active/project-status.md`
+- `docs/product/versions/v0.3/v0.3.md`
 - `docs/product/versions/v0.2.4/v0.2.4.md`
 - `docs/product/versions/v0.2.4/player-profile-and-shell-amendment.md`
 - `docs/reference/match-engine.md`
