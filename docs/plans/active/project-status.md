@@ -74,6 +74,9 @@ What is now stable:
 - the Career Portal dashboard now uses a compact one-page command grid with a slim route strip, central next-decision panel, table-like tasks/evidence/ledger, a timeline week strip, and dense ecosystem chips without changing career simulation or store behavior
 - `v0.3 Stable Career System` is now the active release target: the career loop is stable from launch through Save Manager, Calendar, Training, Match Planning, Live Match, and Post-Match Review
 - the `v0.3` career system is intentionally limited: it proves the local-first manager loop with one locked managed athlete, fictional event/ranking structures, compact resource pressure, and safe saves before later versions expand flexibility and realism
+- the live Match Command Center now renders a BWF-style set scoreline strip with set columns, server/transport context, focused desktop/mobile proof, and no repeated current-point column
+- the Start Screen hierarchy now has calmer no-save, active-career, active-quick-run, and corrupt-save states with committed visual QA artifacts under `docs/rescue_MVP/visual_qa/TIX-005/`
+- detailed match scorelines now use bounded score-shape safety rails, score-aware anti-collapse relief, and opt-in calibration assertions to prevent repeated pathological `21-0`, `21-1`, and `21-2` games in normal roster matchups
 
 ## Completed
 
@@ -154,6 +157,11 @@ What is now stable:
 - [x] rebuilt the Career Portal dashboard into a compact one-page command center with focused desktop/mobile bounded-layout e2e proof
 - [x] filed Rescue MVP tickets as GitHub issues #10, #11, and #12, delivered them through PRs #13, #14, and #15, and archived the ticket specs under `docs/rescue_MVP/arc_tix/`
 - [x] promoted the active documentation target to `v0.3 Stable Career System`
+- [x] aligned the root `README.md` with the `v0.3` documentation harness and current local-first career loop
+- [x] filed Rescue MVP tickets as GitHub issues #17, #18, and #19, delivered them through PRs #20, #22, and #21, and archived the ticket specs under `docs/rescue_MVP/arc_tix/`
+- [x] converted the live match scoreboard to BWF-style set columns with focused unit and Playwright coverage
+- [x] polished the Start Screen hierarchy and committed desktop/mobile visual QA artifacts for empty, active career, active quick tournament, and recovery states
+- [x] rebalanced detailed match score shape with focused legality/low-score-prevention tests plus a 10-seed asserted calibration sweep
 
 ## In Progress
 
