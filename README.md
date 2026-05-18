@@ -79,21 +79,28 @@ post-match review, rankings, budget ledger, and Save Manager trust surfaces.
 
 ## Documentation
 
-This repo now uses an agent-first documentation harness:
+This repo uses the agent-first documentation harness described in `docs/README.md`.
+Start with `AGENTS.md` for fast routing, then use the docs map when the task needs
+deeper product, architecture, or subsystem context.
 
-- `AGENTS.md` - compact entrypoint for AI agents and future coding sessions
-- `docs/README.md` - documentation map and update rules
-- `docs/product/PRD.md` - stable product direction
-- `docs/product/versions/` - versioned release packets and UI references
-- `docs/product/versions/v0.3/v0.3.md` - active stable career-system release packet
-- `docs/product/versions/v0.2.4/v0.2.4.md` - completed UI/career/save bridge packet
-- `docs/product/versions/v0.2.3/v0.2.3.md` - completed match-algorithm baseline packet
-- `docs/architecture/overview.md` - architecture and implementation boundaries
-- `docs/reference/` - subsystem contracts
-- `docs/plans/active/project-status.md` - current state and next work
-- `docs/decisions/` - architecture decision records
+| Need | Read |
+| --- | --- |
+| Fast session entry | `AGENTS.md` |
+| Full documentation map and update rules | `docs/README.md` |
+| Stable product direction | `docs/product/PRD.md` |
+| Milestone sequence | `docs/product/ROADMAP.md` |
+| Active release packet | `docs/product/versions/v0.3/v0.3.md` |
+| Completed UI/career/save bridge | `docs/product/versions/v0.2.4/v0.2.4.md` |
+| Completed match-algorithm baseline | `docs/product/versions/v0.2.3/v0.2.3.md` |
+| Architecture and implementation boundaries | `docs/architecture/overview.md` |
+| Subsystem contracts | `docs/reference/` |
+| Match calibration references | `docs/reference/match-simulation-fidelity.md`, `docs/reference/match-balance-calibration.md`, `docs/reference/stat-composition-calibration.md` |
+| Current state and next work | `docs/plans/active/project-status.md` |
+| Architecture decisions | `docs/decisions/` |
+| Archived Rescue MVP tickets | `docs/rescue_MVP/arc_tix/` |
 
-Start with `AGENTS.md` if you are an AI agent or returning maintainer. Start with `docs/README.md` if you need the deeper source-of-truth map.
+When code changes materially, update the smallest doc that would let the next
+maintainer or agent understand the change without needing the chat transcript.
 
 ## Contribution Mindset
 
