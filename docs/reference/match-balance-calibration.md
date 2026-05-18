@@ -45,7 +45,8 @@ It does the following:
   - `balanced`: both players use `Balanced Control`
   - `autoplay`: each player receives a simple style-based tactic choice
 - records high-OVR win rate, weaker-player win rate, three-game rate, straight-game rates,
-  average points, average rally length, and longest rally
+  average points, average rally length, longest rally, loser-points buckets, bagel rate,
+  loser-`<=2` rate, average loser points, median loser points, and worst score examples
 
 The `10`-seed report below sampled `43,240` simulated matches:
 
@@ -110,161 +111,133 @@ Match-shape targets:
 
 ## Current Results
 
-Generated with:
+Generated after TIX-006 with:
 
 ```sh
 MATCH_BALANCE_SEEDS=10 npm run calibrate:match
 ```
 
-### Balanced Tactics
+The score-shape pass keeps the same scoring laws:
 
-| Gap | Detailed high win | Detailed weak win | Detailed 3G | Detailed avg rally | Quick high win | Quick weak win | Quick 3G | Quick avg rally |
+$$
+\text{best of three games},\quad \text{rally scoring to }21,\quad \text{win by }2,\quad \text{cap at }30
+$$
+
+but changes the detailed engine so realistic match texture matters as much as legal endpoints.
+
+### Detailed Score-Shape: Before And After
+
+The most important TIX-006 movement is in detailed-mode loser points. Before this pass, normal roster
+matchups could collapse into repeated `21-0`, `21-1`, and `21-2` games. After the pass, equal and
+small-gap detailed games no longer routinely produce pathological low-score games.
+
+#### Balanced Control vs Balanced Control
+
+| Gap | Before loser <=2 | After loser <=2 | Before avg loser pts | After avg loser pts | Before 3G | After 3G | Before high win | After high win |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| `0` | 50.1% | 49.9% | 10.7% | 13.8 | 52.2% | 47.8% | 40.4% | 12.8 |
-| `1-2` | 60.3% | 39.7% | 10.8% | 13.7 | 60.4% | 39.6% | 36.8% | 12.7 |
-| `3-4` | 79.0% | 21.0% | 8.4% | 13.2 | 77.4% | 22.6% | 30.6% | 12.6 |
-| `5-6` | 86.3% | 13.7% | 7.7% | 13.3 | 85.5% | 14.5% | 25.1% | 12.4 |
-| `7-9` | 96.2% | 3.8% | 3.7% | 12.2 | 95.1% | 4.9% | 14.2% | 12.1 |
-| `10+` | 99.7% | 0.3% | 0.5% | 10.4 | 99.1% | 0.9% | 2.7% | 11.6 |
+| `0` | 15.1% | 0.0% | 9.2 | 16.4 | 10.7% | 37.4% | 50.1% | 52.1% |
+| `1-2` | 16.1% | 0.0% | 9.0 | 16.3 | 10.8% | 35.9% | 60.3% | 61.5% |
+| `3-4` | 25.1% | 0.0% | 7.8 | 15.8 | 8.4% | 28.1% | 79.0% | 81.7% |
+| `5-6` | 33.1% | 0.0% | 6.8 | 15.2 | 7.7% | 20.8% | 86.3% | 90.2% |
+| `7-9` | 56.5% | 0.0% | 4.1 | 13.6 | 3.7% | 8.0% | 96.2% | 97.5% |
+| `10+` | 85.5% | 0.1% | 1.2 | 11.3 | 0.5% | 1.6% | 99.7% | 99.8% |
 
-### Autoplay Tactics
+#### Autoplay Tactics
 
-| Gap | Detailed high win | Detailed weak win | Detailed 3G | Detailed avg rally | Quick high win | Quick weak win | Quick 3G | Quick avg rally |
+| Gap | Before loser <=2 | After loser <=2 | Before avg loser pts | After avg loser pts | Before 3G | After 3G | Before high win | After high win |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| `0` | 50.1% | 49.9% | 12.5% | 13.6 | 50.2% | 49.8% | 41.4% | 12.8 |
-| `1-2` | 59.7% | 40.3% | 11.9% | 13.4 | 58.7% | 41.3% | 39.0% | 12.7 |
-| `3-4` | 79.8% | 20.2% | 9.7% | 12.9 | 75.9% | 24.1% | 33.3% | 12.5 |
-| `5-6` | 89.3% | 10.7% | 6.4% | 13.1 | 87.6% | 12.4% | 23.3% | 12.6 |
-| `7-9` | 97.4% | 2.6% | 2.4% | 11.8 | 96.3% | 3.7% | 13.4% | 12.1 |
-| `10+` | 99.8% | 0.2% | 0.3% | 9.9 | 99.6% | 0.4% | 2.1% | 11.2 |
+| `0` | 10.9% | 0.0% | 9.9 | 16.4 | 12.5% | 37.0% | 50.1% | 50.6% |
+| `1-2` | 12.6% | 0.0% | 9.5 | 16.3 | 11.9% | 34.5% | 59.7% | 60.5% |
+| `3-4` | 21.3% | 0.0% | 8.2 | 15.7 | 9.7% | 26.1% | 79.8% | 80.2% |
+| `5-6` | 33.8% | 0.0% | 6.6 | 15.2 | 6.4% | 21.0% | 89.3% | 87.3% |
+| `7-9` | 60.2% | 0.0% | 3.5 | 13.6 | 2.4% | 8.3% | 97.4% | 95.6% |
+| `10+` | 86.1% | 0.0% | 1.1 | 10.8 | 0.3% | 1.0% | 99.8% | 99.7% |
 
-## Quick Vs Detailed Parity
+### Full Current Detailed Report
 
-Winner-rate parity is now good. Quick and detailed should not produce identical scores or rally
-histories, but they should agree on macro outcome odds. The current larger sweep is within about
-`0-3.9` percentage points for every OVR bucket.
+| Gap | Balanced high win | Balanced weak win | Balanced 3G | Balanced avg loser pts | Balanced loser <=2 | Autoplay high win | Autoplay weak win | Autoplay 3G | Autoplay avg loser pts | Autoplay loser <=2 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `0` | 52.1% | 47.9% | 37.4% | 16.4 | 0.0% | 50.6% | 49.4% | 37.0% | 16.4 | 0.0% |
+| `1-2` | 61.5% | 38.5% | 35.9% | 16.3 | 0.0% | 60.5% | 39.5% | 34.5% | 16.3 | 0.0% |
+| `3-4` | 81.7% | 18.3% | 28.1% | 15.8 | 0.0% | 80.2% | 19.8% | 26.1% | 15.7 | 0.0% |
+| `5-6` | 90.2% | 9.8% | 20.8% | 15.2 | 0.0% | 87.3% | 12.7% | 21.0% | 15.2 | 0.0% |
+| `7-9` | 97.5% | 2.5% | 8.0% | 13.6 | 0.0% | 95.6% | 4.4% | 8.3% | 13.6 | 0.0% |
+| `10+` | 99.8% | 0.2% | 1.6% | 11.3 | 0.1% | 99.7% | 0.3% | 1.0% | 10.8 | 0.0% |
 
-| Gap | Balanced quick minus detailed | Autoplay quick minus detailed |
-| --- | ---: | ---: |
-| `0` | `+2.1` | `+0.1` |
-| `1-2` | `+0.1` | `-1.0` |
-| `3-4` | `-1.6` | `-3.9` |
-| `5-6` | `-0.8` | `-1.7` |
-| `7-9` | `-1.1` | `-1.1` |
-| `10+` | `-0.6` | `-0.2` |
+### Quick Vs Detailed Parity After TIX-006
 
-Match-shape parity is not good yet. Quick mode has many more three-game matches and more total
-points than detailed mode:
+Quick mode was intentionally left macro-stable. The detailed engine is now much closer to quick mode
+on score shape while retaining richer rally telemetry.
 
-- equal-OVR balanced detailed three-game rate: `10.7%`
-- equal-OVR balanced quick three-game rate: `40.4%`
-- equal-OVR autoplay detailed three-game rate: `12.5%`
-- equal-OVR autoplay quick three-game rate: `41.4%`
-
-That means the two engines now agree on "who is likely to win", but not yet on "what kind of match
-shape gets them there".
+| Gap | Detailed balanced 3G | Quick balanced 3G | Detailed balanced avg loser pts | Quick balanced avg loser pts |
+| --- | ---: | ---: | ---: | ---: |
+| `0` | 37.4% | 40.4% | 16.4 | 15.3 |
+| `1-2` | 35.9% | 36.8% | 16.3 | 15.2 |
+| `3-4` | 28.1% | 30.6% | 15.8 | 14.4 |
+| `5-6` | 20.8% | 25.1% | 15.2 | 14.0 |
+| `7-9` | 8.0% | 14.2% | 13.6 | 12.5 |
+| `10+` | 1.6% | 2.7% | 11.3 | 9.3 |
 
 ## Interpretation
 
 ### What Is Good
 
-Equivalent players are now healthy:
+TIX-006 substantially fixes the detailed score-collapse problem:
 
-- balanced detailed: `50.1%`
-- balanced quick: `52.2%`
-- autoplay detailed: `50.1%`
-- autoplay quick: `50.2%`
+- equal-OVR loser-`<=2` games fell from `15.1%` to `0.0%` in balanced mode
+- `1-2` OVR loser-`<=2` games fell from `16.1%` to `0.0%` in balanced mode
+- `10+` OVR average loser points rose from `1.2` to `11.3` in balanced mode
+- close-match detailed three-game rates now sit near quick-mode rates instead of the old `10-14%` band
 
-Small gaps are also healthy. A `1-2` OVR advantage wins about `59-60%`, leaving the weaker player
-with roughly `40-41%`. That is exactly the feel we want: a visible edge, not destiny.
+The engine still produces favorites and decisive matches. The stronger-player win rate remains
+bucket-sensitive, but the losing player now gets realistic point footholds instead of vanishing from
+the scoreline.
 
-Quick and detailed now broadly agree on macro-probability. In the `3-4` and `5-6` buckets, both
-paths keep underdogs live while clearly favoring the stronger player.
+### Known Tradeoffs
 
-Rally shape improved after the neutral-rally pass:
+The detailed `10+` bucket is still highly favorite-skewed, especially in balanced mode. That is
+acceptable for the current roster because a `10+` OVR gap represents a very large quality gap, but it
+should remain a calibration watchpoint.
 
-- detailed average rallies are now about `9.9-13.8`, depending on gap and tactic mode
-- quick average rallies are about `11.2-12.8`
-- detailed longest rallies in this sweep are `20-22`, meaning the `32` cap is no longer the normal
-  endpoint
+Detailed average rallies now sit around `14-15` shots. That is above the earlier reference band, but
+it is an intentional compromise for TIX-006: score-shape credibility was prioritized over preserving
+the old short-rally distribution. A later pass can shorten ordinary rallies without reopening the
+`21-0` error-collapse failure mode.
 
-### What Is Still Too Chalky
-
-The `10+` bucket remains close to certain:
-
-- balanced detailed `10+`: `99.7%`
-- balanced quick `10+`: `99.1%`
-- autoplay detailed `10+`: `99.8%`
-- autoplay quick `10+`: `99.6%`
-
-That may be acceptable if `10+` means a true legend against a much weaker field player, and this
-run still shows a tiny upset path. A larger sweep should continue to confirm that the bucket is
-heavily tilted without becoming literally impossible.
-
-Detailed mode also produces fewer three-game matches than quick mode. That suggests active-match
-fatigue, momentum, and set-to-set tactical variance are not yet strong enough.
-
-## Changes Made In This Pass
+## Changes Made In TIX-006
 
 Code:
 
-- added `npm run calibrate:match`
-- added the explicit calibration harness
-- softened quick-mode OVR determinism
-- added seeded detailed match-form variance
-- moved detailed continuation stress earlier in the rally
-- made late-rally stress more important to retrieval and focus
-- kept neutral-shot pressure dampening, but tightened it so neutral rallies no longer average near
-  the detailed cap
+- added score-shape metrics to `tests/calibration/match-balance.calibration.test.ts`
+- added optional score-shape target assertions behind `MATCH_SCORE_SHAPE_ASSERT=1`
+- reduced detailed match-form volatility from the old wide watched-match range
+- compressed detailed rating spread so ordinary roster gaps do not become point-by-point certainty
+- added per-rally variance, large-deficit safety behavior, leader conservation, and local anti-error-spiral relief
+- added interval and set-break stabilization as bounded composure/momentum resets, not direct comeback bonuses
+- left quick-mode point probability and macro behavior unchanged
 
 Tests:
 
-- the calibration harness is skipped by default
-- normal unit tests still cover deterministic detailed and quick modes
-- the detailed long-rally regression verifies rallies can exceed the old `18`-shot guardrail while
-  staying under the current `32` cap
+- normal unit tests cover deterministic detailed output, scoring legality, long rallies, stronger-player success, and near-equal low-score prevention
+- calibration remains skipped unless `MATCH_BALANCE_CALIBRATION=1` is set
+- score-shape assertions remain opt-in via `MATCH_SCORE_SHAPE_ASSERT=1`
 
 ## Recommended Next Balancing Pass
 
-1. Add permanent target-band assertions behind an explicit calibration gate.
-   - Do not fail normal `npm run test`.
-   - Fail only when `MATCH_BALANCE_ASSERT=1` is set.
-
-2. Reduce detailed-mode chalk in `5+` OVR buckets.
-   - Add more set-to-set form swing.
-   - Increase between-set recovery variance.
-   - Let high-risk tactics produce more errors when favorite players overpress.
-
-3. Increase detailed three-game rate for close matchups.
-   - Current detailed equal-OVR three-game rate is only about `12%`.
-   - Quick mode sits around `40-41%`, which may be high but gives a better "close match" feel.
-
-4. Add rare detailed long-rally tails without increasing the average.
-   - Real elite badminton has many regular rallies and a smaller long-rally cluster.
-   - The current detailed path has a reasonable average, but longest rallies in this sweep top out
-     around `20-23`; rare `30+` rallies should still exist.
-
-5. Separate balance by archetype, not only OVR.
-   - OVR is useful, but a front-court controller, defensive retriever, and high-risk attacker
-     should not produce identical upset curves.
-   - The next report should bucket by style matchup as well as OVR gap.
+1. Shorten ordinary detailed rallies without reintroducing terminal-error chains.
+2. Watch the detailed `10+` stronger-player win rate over larger seed counts.
+3. Add archetype-specific calibration once more player styles are active in career progression.
+4. Keep quick-mode behavior stable unless future evidence shows background match scorelines drifting.
 
 ## Verdict
 
-The current algorithm is now credible for:
+The detailed engine now produces credible badminton score shapes for normal roster matchups:
 
-- equivalent players
-- small OVR gaps
-- quick/background match probability
-- quick-to-detailed winner-rate parity
-- average rally shape compared with modern badminton references
+$$
+\text{favorites still win}
++ \text{underdogs still score}
++ \text{close matchups breathe}
+$$
 
-The current algorithm still needs work for:
-
-- match-shape parity between quick and detailed modes
-- detailed-mode three-game rates
-- rare but real long-rally tails
-- avoiding near-`100%` stronger-player win rates in the `10+` bucket over larger samples
-
-This is a good first calibrated baseline. It is no longer just vibes; we now have a repeatable
-statistical harness and concrete target bands to tune against.
+The calibration harness now reports the score-shape evidence needed to keep that behavior from
+regressing.
