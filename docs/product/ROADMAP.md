@@ -127,7 +127,7 @@ Exit criteria:
 
 ## `v0.2.4` UI Framework and Season-Ready Layout
 
-Status: Active
+Status: Completed / Superseded by `v0.3`
 
 Goal:
 
@@ -165,19 +165,24 @@ Exit criteria:
 
 ## `v0.3` Manager Loop Expansion
 
-Status: Planned
+Status: Active / Stable career system
 
 Goal:
 
-- add training and player development
-- add schedule progression beyond a single tournament
-- introduce lightweight resource management around preparation
+- make the local-first career system stable enough to be the default long-run foundation
+- keep the core career loop readable from launch through post-match review
+- preserve the compact command surfaces introduced during the Rescue MVP pass
+- keep training, recovery, calendar entry, rankings, event scheduling, budget, and save trust connected
+- expand management flexibility and sport realism gradually instead of shipping a bloated career mode all at once
 
 Exit criteria:
 
-- the player can improve athletes over time
-- the game has a meaningful next-day or next-event loop
-- progression remains readable and not spreadsheet-heavy
+- the player can start or continue a locked-athlete career from the launch screen
+- Career Home clearly exposes the next required decision, save state, readiness, ranking pressure, ledger, calendar, and recent evidence
+- calendar advancement respects scheduled event and match-day obligations
+- match planning, live match, and post-match review remain reachable without bypassing career state
+- local saves remain versioned, validated, importable/exportable, and recoverable
+- intentionally limited systems are labeled honestly, with future flexibility and realism staged into later versions
 
 ## `v0.4` Architecture Hardening
 

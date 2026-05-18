@@ -23,6 +23,28 @@ docs/README.md
   +-- decisions/            architecture decision records
 ```
 
+## Current Version
+
+The project is now at **`v0.3 Stable Career System`**.
+
+`v0.3` introduces a stable local-first career loop: career launch, a locked managed athlete, the dense
+Career Command Center, training/recovery, calendar entry, scheduled match days, live match
+management, post-match review, rankings, budget ledger, and Save Manager trust surfaces.
+
+The career system is stable, but intentionally limited. This release is a controlled foundation, not
+a claim that every long-term sports-management feature is complete:
+
+$$
+\text{v0.3 career scope}
+=
+\text{stable loop}
++ \text{limited flexibility}
++ \text{clear expansion path}
+$$
+
+Future versions should expand both flexibility and realism gradually, without breaking the
+local-first save model or turning the UI back into a crowded panel stack.
+
 ## Source Of Truth
 
 | Need | Read | Update when |
@@ -30,7 +52,8 @@ docs/README.md
 | Fast session entry | `AGENTS.md` | Routing or required commands change |
 | Product direction | `docs/product/PRD.md` | The product thesis, scope, or non-goals change |
 | Milestone sequence | `docs/product/ROADMAP.md` | Version order, goals, or exit criteria change |
-| Current release work | `docs/product/versions/v0.2.4/v0.2.4.md` | The active UI/career/save version scope changes |
+| Current release work | `docs/product/versions/v0.3/v0.3.md` | The active stable career-system scope changes |
+| Completed UI/career/save bridge | `docs/product/versions/v0.2.4/v0.2.4.md` | Historical UI framework or season-ready bridge context needs clarification |
 | Match-algorithm baseline | `docs/product/versions/v0.2.3/v0.2.3.md` | Detailed/quick simulation scope or calibration baseline changes |
 | `v0.2.4` player page and shell cleanup | `docs/product/versions/v0.2.4/player-profile-and-shell-amendment.md` | Player profile, player-name navigation, or settings consolidation direction changes |
 | Current project state | `docs/plans/active/project-status.md` | Work completes, next work changes, blockers appear |
@@ -41,6 +64,7 @@ docs/README.md
 | Match balance calibration | `docs/reference/match-balance-calibration.md` | OVR fairness, upset probability, or rally-shape tuning changes |
 | Stat composition calibration | `docs/reference/stat-composition-calibration.md` | Rating-field influence, archetype balance, or displayed OVR formulas change |
 | Big technical decisions | `docs/decisions/ADR-*.md` | A costly-to-reverse decision is accepted or superseded |
+| Archived Rescue MVP tickets | `docs/rescue_MVP/arc_tix/` | Historical ticket wording needs review |
 
 ## Versioning Rules
 
@@ -63,10 +87,11 @@ For most coding tasks, read in this order:
 For product or architecture tasks, start with:
 
 1. `docs/product/PRD.md`
-2. `docs/product/versions/v0.2.4/v0.2.4.md`
-3. `docs/product/versions/v0.2.3/v0.2.3.md` when match-algorithm intent is relevant
-4. `docs/architecture/overview.md`
-5. Related ADRs in `docs/decisions/`
+2. `docs/product/versions/v0.3/v0.3.md`
+3. `docs/product/versions/v0.2.4/v0.2.4.md` when UI/career/save bridge context is relevant
+4. `docs/product/versions/v0.2.3/v0.2.3.md` when match-algorithm intent is relevant
+5. `docs/architecture/overview.md`
+6. Related ADRs in `docs/decisions/`
 
 ## Update Contract
 

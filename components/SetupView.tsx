@@ -523,7 +523,7 @@ export function SetupView(props: SetupViewProps) {
     const confirmLabel = isCareer ? "Confirm Career Athlete" : "Start Tournament";
     const purposeLabel = isCareer ? "New Career" : "Disposable Run";
     const purposeCopy = isCareer
-      ? "Choose the locked managed athlete for this local career. The save is created only after you confirm this modal selection."
+      ? "Choose the locked managed athlete for this local career. The save is created only after you confirm this athlete."
       : "Choose a disposable tournament athlete, then optionally set the opening tactic before launch.";
 
     return (
@@ -559,7 +559,7 @@ export function SetupView(props: SetupViewProps) {
                 <div>
                   <h2>Recommendation Board</h2>
                   <p className="panel-summary panel-summary-tight">
-                    A default preview is visible, but the final action unlocks only after you deliberately select an athlete in this modal.
+                    A default preview is visible, but the final action unlocks only after you deliberately select an athlete.
                   </p>
                 </div>
                 <button
@@ -1041,7 +1041,11 @@ export function SetupView(props: SetupViewProps) {
                 <h3>Career Program</h3>
                 <p>Choose a locked athlete and build a long-term career program with calendar, training, scouting, and event progression.</p>
               </div>
-              <button className="command-button command-button-primary" type="button" onClick={() => openSelectionModal("career")}>
+              <button
+                className={launchSaveSummary ? "command-button command-button-secondary" : "command-button command-button-primary"}
+                type="button"
+                onClick={() => openSelectionModal("career")}
+              >
                 Start Career
               </button>
             </article>

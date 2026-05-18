@@ -50,6 +50,7 @@ describe("SetupView", () => {
 
     expect(screen.getByRole("heading", { name: "Badminton Manager" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Browse All Athletes" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Start Career" })).toHaveClass("command-button-primary");
 
     fireEvent.click(screen.getByRole("button", { name: "Start Career" }));
     const dialog = screen.getByRole("dialog", { name: "Pick Your Playstyle" });
@@ -133,6 +134,8 @@ describe("SetupView", () => {
     expect(screen.getByLabelText("Active save details")).toHaveTextContent("2026-07-22");
     expect(screen.getByLabelText("Readiness 68")).toBeInTheDocument();
     expect(screen.getByText("Next: Play R16 match")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Continue Career" })).toHaveClass("command-button-primary");
+    expect(screen.getByRole("button", { name: "Start Career" })).toHaveClass("command-button-secondary");
 
     fireEvent.click(screen.getByRole("button", { name: "Continue Career" }));
 
