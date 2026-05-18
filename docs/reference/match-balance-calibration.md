@@ -204,6 +204,21 @@ it is an intentional compromise for TIX-006: score-shape credibility was priorit
 the old short-rally distribution. A later pass can shorten ordinary rallies without reopening the
 `21-0` error-collapse failure mode.
 
+### Bounded Score-Shape Safety Mechanism
+
+This pass is intentionally score-aware. When a player is trailing by a large margin, or has stacked
+recent unforced errors, the detailed resolver applies bounded safety rails:
+
+- safer shot weights rise for `clear`, `lift`, and `block`
+- attacking pressure is damped for both heavy leaders and heavily trailing players
+- focus/retrieval/execution relief reduces repeated terminal-error chains
+- a capped trailing save chance can convert some immediate terminal failures into continued play
+- the `11`-point interval and set break damp momentum and add small composure/focus resets
+
+This is not an automatic comeback script and it does not award points directly. It is, however, a
+deliberate score-shape governor: the large-deficit player becomes more conservative and less likely
+to donate another cheap error, which is why loser points and three-game rates move materially.
+
 ## Changes Made In TIX-006
 
 Code:
@@ -213,7 +228,7 @@ Code:
 - reduced detailed match-form volatility from the old wide watched-match range
 - compressed detailed rating spread so ordinary roster gaps do not become point-by-point certainty
 - added per-rally variance, large-deficit safety behavior, leader conservation, and local anti-error-spiral relief
-- added interval and set-break stabilization as bounded composure/momentum resets, not direct comeback bonuses
+- added interval and set-break stabilization plus capped trailing save chances as bounded score-shape safety rails
 - left quick-mode point probability and macro behavior unchanged
 
 Tests:

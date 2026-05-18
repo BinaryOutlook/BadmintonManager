@@ -948,7 +948,6 @@ function applySetBreakStabilization(session: LiveMatchSession, setSummary: SetSu
   winner.aggressionShift -= 0.25;
 }
 
-
 function finalizePendingTalk(target: LiveCompetitorState, teamTalk?: TeamTalk) {
   if (!teamTalk) {
     return;
