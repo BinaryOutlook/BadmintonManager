@@ -345,6 +345,78 @@ async function expectPrimaryCommandLabels(commandRail: Locator) {
   expect(labels).toEqual(expectedPrimaryCommandLabels);
 }
 
+async function expectTopbarHierarchyAndBounded(page: Page) {
+  await page.evaluate(() => {
+    const topbar = document.querySelector<HTMLElement>(".topbar:not(.launch-topbar)");
+
+    if (!topbar) {
+      throw new Error("Expected loaded career topbar.");
+    }
+
+    const brand = topbar.querySelector<HTMLElement>(".brand-mark");
+    const athlete = topbar.querySelector<HTMLElement>(".topbar-athlete-chip");
+    const search = topbar.querySelector<HTMLElement>(".command-search");
+    const dailyCluster = topbar.querySelector<HTMLElement>(".topbar-daily-cluster");
+    const date = topbar.querySelector<HTMLElement>(".topbar-date");
+    const dailyAction = topbar.querySelector<HTMLElement>(".topbar-continue");
+    const saveStatus = topbar.querySelector<HTMLElement>(".topbar-save-status span");
+    const settings = topbar.querySelector<HTMLButtonElement>(".topbar-actions button");
+
+    if (!brand || !athlete || !search || !dailyCluster || !date || !dailyAction || !saveStatus || !settings) {
+      throw new Error("Expected complete topbar identity, clock, save, and settings controls.");
+    }
+
+    if (brand.nextElementSibling !== athlete || athlete.nextElementSibling !== search) {
+      throw new Error("Expected managed athlete directly between BM and command search.");
+    }
+
+    if (date.nextElementSibling !== dailyAction) {
+      throw new Error("Expected date directly beside the daily action.");
+    }
+
+    const topbarButtonLabels = Array.from(topbar.querySelectorAll("button")).map((button) => button.textContent?.trim());
+
+    if (topbarButtonLabels.includes("Intel")) {
+      throw new Error("Intel button should not be visible in the topbar.");
+    }
+
+    if (settings.textContent?.trim() !== "Settings") {
+      throw new Error("Expected Settings to remain reachable from the topbar.");
+    }
+
+    const dateFontSize = Number.parseFloat(window.getComputedStyle(date).fontSize);
+    const actionFontSize = Number.parseFloat(window.getComputedStyle(dailyAction).fontSize);
+    const saveFontSize = Number.parseFloat(window.getComputedStyle(saveStatus).fontSize);
+
+    if (dateFontSize <= saveFontSize || actionFontSize <= saveFontSize) {
+      throw new Error(
+        `Expected date/action font size to exceed save status: date ${dateFontSize}, action ${actionFontSize}, save ${saveFontSize}`
+      );
+    }
+
+    const pageWidth = document.documentElement.scrollWidth;
+    const viewportWidth = window.innerWidth;
+
+    if (pageWidth > viewportWidth + 1) {
+      throw new Error(`Unexpected topbar document overflow: ${pageWidth} > ${viewportWidth}`);
+    }
+
+    const checkedElements = [
+      topbar,
+      topbar.querySelector<HTMLElement>(".topbar-brand-block"),
+      dailyCluster,
+      topbar.querySelector<HTMLElement>(".topbar-actions")
+    ];
+
+    for (const element of checkedElements) {
+      if (element && element.scrollWidth > element.clientWidth + 1) {
+        const label = element.className || element.tagName;
+        throw new Error(`Unexpected topbar element overflow for ${label}: ${element.scrollWidth} > ${element.clientWidth}`);
+      }
+    }
+  });
+}
+
 async function selectAthleteInSelectionModal(page: Page, athleteName: string) {
   const dialog = page.getByRole("dialog", { name: "Pick Your Playstyle" });
   const directSelect = dialog
@@ -1172,8 +1244,11 @@ test("keeps the compact Career Portal bounded across target viewports", async ({
     await expect(page.getByRole("heading", { name: "Recent Match Evidence" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Program Ecosystem" })).toBeVisible();
     await expect(page.getByRole("banner").getByRole("button", { name: "Advance Day" })).toBeVisible();
+    await expect(page.getByRole("banner").getByRole("button", { name: "Intel" })).toHaveCount(0);
+    await expectTopbarHierarchyAndBounded(page);
     await expectPortalViewportBounded(page, viewport.onePage);
     await captureFocusedScreenshot(page, viewport.name);
+    await captureFocusedScreenshot(page, `tix-012-topbar-${viewport.name}`);
   }
 });
 
