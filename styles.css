@@ -398,41 +398,18 @@ textarea:focus-visible {
   min-width: 0;
   max-width: 100%;
   overflow: hidden;
-  padding: 1.25rem 0.9rem;
+  padding: 1.05rem 0.9rem 1.25rem;
   border-right: 1px solid rgba(48, 54, 61, 0.9);
   background: linear-gradient(180deg, rgba(14, 16, 19, 0.94), rgba(18, 21, 24, 0.96));
 }
 
-.sidebar-brand {
-  display: flex;
-  gap: 0.85rem;
-  align-items: center;
-  margin-bottom: 1rem;
-}
-
-.sidebar-logo {
-  width: 3rem;
-  height: 3rem;
-  display: grid;
-  place-items: center;
-  border: 1px solid rgba(57, 255, 20, 0.32);
-  border-radius: 0.2rem;
-  background: rgba(57, 255, 20, 0.08);
-  color: var(--lime);
-  font-weight: 900;
-}
-
-.sidebar-brand h2 {
-  margin: 0;
-  font-size: 1.12rem;
-  letter-spacing: -0.03em;
-  color: var(--lime);
-}
-
 .sidebar-collapse-button {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 2;
   width: 1.7rem;
   height: 1.7rem;
-  margin-left: auto;
   border: 1px solid var(--border);
   border-radius: 0.25rem;
   background: rgba(35, 39, 44, 0.82);
@@ -440,15 +417,12 @@ textarea:focus-visible {
   font-weight: 900;
 }
 
-.sidebar-brand > div:not(.sidebar-logo),
 .sidebar-option-stack,
 .sidebar-option-list,
 .sidebar-athlete {
   min-width: 0;
 }
 
-.sidebar-brand h2,
-.sidebar-brand p,
 .sidebar-option-stack strong,
 .sidebar-option-stack span,
 .sidebar-mini-button,
@@ -471,7 +445,6 @@ textarea:focus-visible {
   line-height: 1.22;
 }
 
-.sidebar-brand p,
 .sidebar-athlete span,
 .screen-copy,
 .panel-summary,
@@ -490,6 +463,7 @@ textarea:focus-visible {
 .sidenav {
   display: grid;
   gap: 0.8rem;
+  padding-top: 2.35rem;
 }
 
 .command-group {
@@ -650,32 +624,22 @@ textarea:focus-visible {
   padding: 1rem 0.45rem;
 }
 
-.command-shell-sidebar-collapsed .sidebar-brand {
-  justify-content: center;
-}
-
-.command-shell-sidebar-collapsed .sidebar-brand > div:not(.sidebar-logo),
 .command-shell-sidebar-collapsed .sidebar-options,
 .command-shell-sidebar-collapsed .sidebar-athlete {
   display: none;
 }
 
-.command-shell-sidebar-collapsed .sidebar-logo {
-  width: 2.6rem;
-  height: 2.6rem;
-  font-size: 0.82rem;
-}
-
 .command-shell-sidebar-collapsed .sidebar-collapse-button {
   position: absolute;
-  top: 3.9rem;
+  top: 0.7rem;
   left: 50%;
+  right: auto;
   margin: 0;
   transform: translateX(-50%);
 }
 
 .command-shell-sidebar-collapsed .sidenav {
-  margin-top: 2.9rem;
+  padding-top: 2.7rem;
   gap: 0.45rem;
 }
 
@@ -5544,32 +5508,22 @@ textarea:focus-visible {
     padding: 1rem 0.45rem;
   }
 
-  .sidebar-brand {
-    justify-content: center;
-  }
-
-  .sidebar-brand > div:not(.sidebar-logo),
   .sidebar-options,
   .sidebar-athlete {
     display: none;
   }
 
-  .sidebar-logo {
-    width: 2.6rem;
-    height: 2.6rem;
-    font-size: 0.82rem;
-  }
-
   .sidebar-collapse-button {
     position: absolute;
-    top: 3.9rem;
+    top: 0.7rem;
     left: 50%;
+    right: auto;
     margin: 0;
     transform: translateX(-50%);
   }
 
   .sidenav {
-    margin-top: 2.9rem;
+    padding-top: 2.7rem;
     gap: 0.45rem;
   }
 
@@ -5664,32 +5618,22 @@ textarea:focus-visible {
     border-bottom: 0;
   }
 
-  .sidebar-brand {
-    justify-content: center;
-  }
-
-  .sidebar-brand > div:not(.sidebar-logo),
   .sidebar-options,
   .sidebar-athlete {
     display: none;
   }
 
-  .sidebar-logo {
-    width: 2.6rem;
-    height: 2.6rem;
-    font-size: 0.82rem;
-  }
-
   .sidebar-collapse-button {
     position: absolute;
-    top: 3.9rem;
+    top: 0.7rem;
     left: 50%;
+    right: auto;
     margin: 0;
     transform: translateX(-50%);
   }
 
   .sidenav {
-    margin-top: 2.9rem;
+    padding-top: 2.7rem;
     gap: 0.45rem;
   }
 
@@ -5869,32 +5813,22 @@ textarea:focus-visible {
     padding: 1rem 0.45rem;
   }
 
-  .sidebar-brand {
-    justify-content: center;
-  }
-
-  .sidebar-brand > div:not(.sidebar-logo),
   .sidebar-options,
   .sidebar-athlete {
     display: none;
   }
 
-  .sidebar-logo {
-    width: 2.6rem;
-    height: 2.6rem;
-    font-size: 0.82rem;
-  }
-
   .sidebar-collapse-button {
     position: absolute;
-    top: 3.9rem;
+    top: 0.7rem;
     left: 50%;
+    right: auto;
     margin: 0;
     transform: translateX(-50%);
   }
 
   .sidenav {
-    margin-top: 2.9rem;
+    padding-top: 2.7rem;
     gap: 0.45rem;
   }
 

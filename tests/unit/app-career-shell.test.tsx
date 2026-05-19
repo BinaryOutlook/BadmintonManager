@@ -326,12 +326,15 @@ describe("career shell daily action", () => {
     expect(screen.queryByRole("button", { name: "Resize sidebar" })).not.toBeInTheDocument();
   });
 
-  it("removes lower context, tactic, and athlete blocks from the loaded career sidebar", () => {
+  it("removes duplicated identity, lower context, tactic, and athlete blocks from the loaded career sidebar", () => {
     resetStoreForCareer();
 
     render(<App />);
 
     const sidebar = screen.getByRole("complementary", { name: "Primary command sidebar" });
+    expect(within(sidebar).queryByText("BM")).not.toBeInTheDocument();
+    expect(within(sidebar).queryByText("Command Rail")).not.toBeInTheDocument();
+    expect(within(sidebar).queryByText("Local-first career shell")).not.toBeInTheDocument();
     expect(within(sidebar).queryByText("Active Command")).not.toBeInTheDocument();
     expect(within(sidebar).queryByText("Tactic")).not.toBeInTheDocument();
     expect(within(sidebar).queryByText("Managed Athlete")).not.toBeInTheDocument();
@@ -339,7 +342,7 @@ describe("career shell daily action", () => {
     expect(within(screen.getByRole("main")).queryByRole("button", { name: "Continue" })).not.toBeInTheDocument();
   });
 
-  it("keeps the command rail focused on calendar browsing and the match path", () => {
+  it("orders the command rail as pure navigation through schedule shortcuts and the match path", () => {
     resetStoreForCareer();
 
     render(<App />);
@@ -351,12 +354,13 @@ describe("career shell daily action", () => {
 
     expect(labels).toEqual([
       "Portal",
-      "Inbox",
+      "Timeline",
+      "Calendar",
+      "Inbox Preview",
       "Squad",
       "Training",
-      "Schedule",
-      "Rankings",
       "Tactics",
+      "Rankings",
       "Live Match",
       "Reports",
       "Scouting",
@@ -367,6 +371,32 @@ describe("career shell daily action", () => {
     ]);
     expect(labels).not.toContain("Competitions");
     expect(commandIdForPage({ id: "bracket" })).toBe("live");
+    expect(commandIdForPage({ id: "calendar", section: "timeline" })).toBe("timeline");
+    expect(commandIdForPage({ id: "calendar", section: "calendar" })).toBe("calendar");
+    expect(within(commandRail).getByRole("button", { name: /Inbox Preview preview-only/ })).toBeDisabled();
+  });
+
+  it("routes Timeline and Calendar sidebar shortcuts into the Schedule split", () => {
+    resetStoreForCareer();
+
+    render(<App />);
+
+    const commandRail = screen.getByRole("navigation", { name: "Primary commands" });
+    const timelineCommand = within(commandRail).getByRole("button", { name: /Timeline/ });
+    const calendarCommand = within(commandRail).getByRole("button", { name: /Calendar/ });
+
+    fireEvent.click(timelineCommand);
+
+    expect(screen.getByRole("heading", { name: "Schedule" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Timeline" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("heading", { name: "Timeline" })).toBeInTheDocument();
+    expect(timelineCommand).toHaveAttribute("aria-current", "page");
+
+    fireEvent.click(calendarCommand);
+
+    expect(screen.getByRole("tab", { name: "Calendar" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("heading", { name: "Calendar" })).toBeInTheDocument();
+    expect(calendarCommand).toHaveAttribute("aria-current", "page");
   });
 
   it("renders the career topbar as identity, clock control, save, and settings", () => {

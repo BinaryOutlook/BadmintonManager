@@ -216,6 +216,11 @@ function activeEvent(career: CareerState) {
 
 type CalendarSection = "upcoming" | "past" | "timeline" | "calendar";
 
+type CareerCalendarPageProps = CareerPageProps & {
+  activeSection?: CalendarSection;
+  onActiveSectionChange?: (section: CalendarSection) => void;
+};
+
 function nextCalendarMilestone(career: CareerState, event: CareerState["events"][number] | undefined) {
   if (career.stage === "pre_match") {
     return "Match briefing ready today";
@@ -3197,10 +3202,11 @@ export function CareerTrainingPage(props: CareerPageProps) {
   );
 }
 
-export function CareerCalendarPage(props: CareerPageProps) {
-  const [activeSection, setActiveSection] = useState<CalendarSection>("upcoming");
+export function CareerCalendarPage(props: CareerCalendarPageProps) {
+  const [localActiveSection, setLocalActiveSection] = useState<CalendarSection>(props.activeSection ?? "upcoming");
   const [upcomingPageIndex, setUpcomingPageIndex] = useState(0);
   const [pastPageIndex, setPastPageIndex] = useState(0);
+  const activeSection = props.activeSection ?? localActiveSection;
 
   if (!props.career) {
     return <CareerEmpty onStartCareer={props.onStartCareer} saveRecovery={props.saveRecovery} />;
@@ -3235,7 +3241,11 @@ export function CareerCalendarPage(props: CareerPageProps) {
   const activeEventLabel = activeResolvedEvent?.name ?? career.activeEventId ?? "No active entry";
   const completedEventCount = career.completedEventIds.length;
   const handleSectionChange = (section: CalendarSection) => {
-    setActiveSection(section);
+    if (props.onActiveSectionChange) {
+      props.onActiveSectionChange(section);
+    } else {
+      setLocalActiveSection(section);
+    }
 
     if (section === "upcoming") {
       setUpcomingPageIndex(0);
