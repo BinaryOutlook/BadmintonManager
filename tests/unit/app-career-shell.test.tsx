@@ -189,6 +189,33 @@ describe("career shell daily action", () => {
     expect(commandIdForPage({ id: "bracket" })).toBe("live");
   });
 
+  it("renders the career topbar as identity, clock control, save, and settings", () => {
+    const career = createInitialCareerState(seededPlayers[0].player.id, 9904);
+    resetStoreForCareer(career);
+
+    render(<App />);
+
+    const banner = screen.getByRole("banner");
+    const managedAthlete = within(banner).getByLabelText("Managed athlete");
+    const dailyCluster = within(banner).getByLabelText("Career clock control");
+    const saveStatus = within(banner).getByLabelText("Save status");
+    const brandMark = banner.querySelector(".brand-mark");
+    const commandSearch = banner.querySelector(".command-search");
+    const date = banner.querySelector(".topbar-date");
+    const dailyAction = within(dailyCluster).getByRole("button", { name: "Advance Day" });
+
+    expect(brandMark).not.toBeNull();
+    expect(commandSearch).not.toBeNull();
+    expect(date).not.toBeNull();
+    expect(managedAthlete).toHaveTextContent(seededPlayers[0].player.name);
+    expect(managedAthlete.previousElementSibling).toBe(brandMark);
+    expect(managedAthlete.nextElementSibling).toBe(commandSearch);
+    expect(date?.nextElementSibling).toBe(dailyAction);
+    expect(saveStatus).toHaveTextContent("Career save");
+    expect(within(banner).queryByRole("button", { name: "Intel" })).not.toBeInTheDocument();
+    expect(within(banner).getByRole("button", { name: "Settings" })).toBeInTheDocument();
+  });
+
   it("routes the Live Match command into a due career opponent briefing", () => {
     const { career, event } = careerEnteredOnMetroStart();
     resetStoreForCareer(career);

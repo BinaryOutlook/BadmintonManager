@@ -24,7 +24,6 @@ import { OverviewView } from "../components/OverviewView";
 import { SaveManagerView } from "../components/SaveManagerView";
 import { SettingsOverlay, type ThemeAccent } from "../components/SettingsOverlay";
 import { SetupView, type LaunchSaveSummary } from "../components/SetupView";
-import { TacticalIntelPanel } from "../components/TacticalIntelPanel";
 import { playerMap } from "../game/content/players";
 import { getCareerDailyAction, type CareerDailyActionTone } from "../game/career/dailyAction";
 import { getCareerEvent } from "../game/career/events";
@@ -359,7 +358,6 @@ export function App() {
           : { id: "home" }
       : pageForPhase(phase)
   );
-  const [intelOpen, setIntelOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
   const [pendingCareerPlayerId, setPendingCareerPlayerId] = useState<string | null>(null);
@@ -838,21 +836,9 @@ export function App() {
     setActivePage(pageForPhase(phase));
   }
 
-  function renderSystemOverlays(includeIntel: boolean) {
+  function renderSystemOverlays() {
     return (
       <OverlayHost>
-        {includeIntel && (
-          <TacticalIntelPanel
-            open={intelOpen}
-            phase={phase}
-            selectedPlayerId={selectedPlayerId}
-            plannedTacticKey={plannedTacticKey}
-            tournament={tournament}
-            liveMatch={liveMatch}
-            onClose={() => setIntelOpen(false)}
-          />
-        )}
-
         <SettingsOverlay
           open={settingsOpen}
           themeAccent={themeAccent}
@@ -1237,7 +1223,7 @@ export function App() {
         <div className="command-shell command-shell-launch" data-accent={themeAccent}>
           <LaunchTopBar saveStatus={launchSaveStatus} onOpenSettings={() => setSettingsOpen(true)} />
           <PageCanvas>{renderPage()}</PageCanvas>
-          {renderSystemOverlays(false)}
+          {renderSystemOverlays()}
         </div>
       </PlayerNavigationProvider>
     );
@@ -1256,7 +1242,6 @@ export function App() {
           dateLabel={shellDate}
           saveStatus={saveStatus}
           onContinue={handleShellContinue}
-          onOpenIntel={() => setIntelOpen(true)}
           onOpenSettings={() => setSettingsOpen(true)}
         />
 
@@ -1272,7 +1257,7 @@ export function App() {
           <PageCanvas>{renderPage()}</PageCanvas>
         </div>
 
-        {renderSystemOverlays(true)}
+        {renderSystemOverlays()}
       </div>
     </PlayerNavigationProvider>
   );
@@ -1313,7 +1298,6 @@ function TopStatusBar(props: {
   dateLabel: string;
   saveStatus: string;
   onContinue: () => void;
-  onOpenIntel: () => void;
   onOpenSettings: () => void;
 }) {
   const continueClass = [
@@ -1330,27 +1314,32 @@ function TopStatusBar(props: {
     <header className="topbar">
       <div className="topbar-brand-block">
         <span className="brand-mark">BM</span>
+        <span className="topbar-athlete-chip" aria-label="Managed athlete">
+          <span>Managed</span>
+          <strong>{props.activeAthleteName}</strong>
+        </span>
         <label className="command-search">
           <span>Command</span>
           <input aria-label="Search or go to command" placeholder="Search or go to..." readOnly />
         </label>
       </div>
 
-      <div className="topbar-status" aria-label="Career and save status">
-        <span>{props.dateLabel}</span>
+      <div className="topbar-daily-cluster" aria-label="Career clock control">
+        <span className="topbar-date" aria-label={`Career date ${props.dateLabel}`}>
+          {props.dateLabel}
+        </span>
+        <button className={continueClass} data-tone={props.continueTone} type="button" onClick={props.onContinue}>
+          {props.continueLabel}
+        </button>
+      </div>
+
+      <div className="topbar-status topbar-save-status" aria-label="Save status">
         <span>{props.saveStatus}</span>
-        <span>{props.activeAthleteName}</span>
       </div>
 
       <div className="topbar-actions">
-        <button className="icon-command-button" type="button" onClick={props.onOpenIntel}>
-          Intel
-        </button>
         <button className="icon-command-button" type="button" onClick={props.onOpenSettings}>
           Settings
-        </button>
-        <button className={continueClass} data-tone={props.continueTone} type="button" onClick={props.onContinue}>
-          {props.continueLabel}
         </button>
       </div>
     </header>
