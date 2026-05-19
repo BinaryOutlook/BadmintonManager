@@ -1077,6 +1077,7 @@ export function App() {
           selectedPlayerId={career ? career.program.managedPlayerId : selectedPlayerId}
           phase={phase}
           careerPresent={Boolean(career)}
+          career={career}
           tournament={tournament}
           liveMatchSession={liveMatch?.session}
           onBack={() => setActivePage(pageForPhase(phase))}

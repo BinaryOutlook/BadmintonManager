@@ -72,6 +72,8 @@ export function createInitialCareerState(selectedPlayerId: string, seed: number)
     enteredEventIds: [],
     completedEventIds: [],
     eventHistory: [],
+    matchHistory: [],
+    playerAchievements: [],
     activeEventId: null,
     rankings,
     economy: createInitialEconomy(),

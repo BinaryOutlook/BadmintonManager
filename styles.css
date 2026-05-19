@@ -4935,6 +4935,93 @@ textarea:focus-visible {
   min-width: 0;
 }
 
+.profile-career-archive-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.profile-career-archive-block {
+  display: grid;
+  gap: 0.45rem;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 0.35rem;
+  padding: 0.62rem;
+  background: rgba(17, 19, 22, 0.9);
+}
+
+.profile-career-archive-block h3 {
+  margin: 0;
+  color: var(--lime-soft);
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.profile-career-archive-block p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.profile-achievement-list {
+  display: grid;
+  gap: 0.42rem;
+}
+
+.profile-achievement-row {
+  display: grid;
+  gap: 0.14rem;
+  min-width: 0;
+}
+
+.profile-achievement-row strong,
+.profile-achievement-row span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.profile-achievement-row span {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.profile-career-h2h-block {
+  overflow-x: auto;
+}
+
+.profile-h2h-table {
+  width: 100%;
+  min-width: 28rem;
+  border-collapse: collapse;
+}
+
+.profile-h2h-table th,
+.profile-h2h-table td {
+  border-bottom: 1px solid rgba(48, 54, 61, 0.82);
+  padding: 0.5rem 0.42rem;
+  color: var(--muted);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.profile-h2h-table th {
+  color: var(--muted-soft);
+  font-size: 0.63rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.profile-h2h-table td:first-child {
+  min-width: 10rem;
+}
+
+.profile-h2h-table .profile-name-button {
+  font-size: 0.86rem;
+}
+
 .profile-career-facts {
   display: flex;
   flex-wrap: wrap;
@@ -5597,6 +5684,7 @@ textarea:focus-visible {
 @media (max-width: 900px) {
   .profile-attributes-grid,
   .profile-performance-grid,
+  .profile-career-archive-grid,
   .profile-career-grid {
     grid-template-columns: 1fr;
   }

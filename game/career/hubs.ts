@@ -1,7 +1,14 @@
 import { playerMap } from "../content/players";
 import type { MatchResult } from "../core/models";
 import type { ManagedRunMatch, TournamentState } from "../tournament/tournament";
-import { appendPlayedCareerEventHistory, createCareerEventBracketSnapshot, getCareerEvent, roundKeyForPlacement } from "./events";
+import {
+  appendCareerMatchRecord,
+  appendCareerResultAchievements,
+  appendPlayedCareerEventHistory,
+  createCareerEventBracketSnapshot,
+  getCareerEvent,
+  roundKeyForPlacement
+} from "./events";
 import { applyMatchLoad } from "./health";
 import { psychologyReadinessModifier } from "./ecosystem";
 import type { CareerState, PostMatchReport, PreMatchBrief } from "./models";
@@ -147,6 +154,10 @@ export function settleCareerMatch(args: {
       state: args.state
     })
   };
+  const managedPlayerId = args.state.program.managedPlayerId;
+  const playerAId = args.managedSide === "A" ? managedPlayerId : args.opponentId;
+  const playerBId = args.managedSide === "B" ? managedPlayerId : args.opponentId;
+  const winnerId = args.result.winner === "A" ? playerAId : playerBId;
   const settledState: CareerState = {
     ...args.state,
     stage: "post_match",
@@ -170,9 +181,19 @@ export function settleCareerMatch(args: {
       ...args.state.notes
     ].slice(0, 6)
   };
+  const withMatchHistory = appendCareerMatchRecord({
+    state: settledState,
+    event,
+    matchId: args.matchId,
+    round: args.managedRunMatch.round,
+    playerAId,
+    playerBId,
+    winnerId,
+    scoreline: args.result.scoreline
+  });
   const withEventHistory = shouldSettleEvent
     ? appendPlayedCareerEventHistory({
-        state: settledState,
+        state: withMatchHistory,
         event,
         placementKey,
         pointsAwarded: pointsDelta,
@@ -184,8 +205,16 @@ export function settleCareerMatch(args: {
             ? createCareerEventBracketSnapshot(args.tournament)
             : undefined
       })
-    : settledState;
-  const next = syncManagedAthleteFromRankings(withEventHistory);
+    : withMatchHistory;
+  const withAchievements = shouldSettleEvent
+    ? appendCareerResultAchievements({
+        state: withEventHistory,
+        event,
+        tournament: args.tournament,
+        date: args.state.date
+      })
+    : withEventHistory;
+  const next = syncManagedAthleteFromRankings(withAchievements);
 
   return next;
 }

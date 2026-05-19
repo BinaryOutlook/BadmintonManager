@@ -838,6 +838,93 @@ export function appendPlayedCareerEventHistory(args: {
   };
 }
 
+export function appendCareerMatchRecord(args: {
+  state: CareerState;
+  event: CareerEventDefinition;
+  matchId: string;
+  date?: string;
+  round: "R16" | "QF" | "SF" | "F";
+  playerAId: string;
+  playerBId: string;
+  winnerId: string;
+  scoreline: string;
+}): CareerState {
+  const recordId = `${args.event.id}:${args.matchId}`;
+
+  if (args.state.matchHistory.some((record) => record.id === recordId)) {
+    return args.state;
+  }
+
+  return {
+    ...args.state,
+    matchHistory: [
+      ...args.state.matchHistory,
+      {
+        id: recordId,
+        eventId: args.event.id,
+        eventName: args.event.name,
+        date: args.date ?? args.state.date,
+        round: args.round,
+        playerAId: args.playerAId,
+        playerBId: args.playerBId,
+        winnerId: args.winnerId,
+        scoreline: args.scoreline
+      }
+    ]
+  };
+}
+
+export function appendCareerResultAchievements(args: {
+  state: CareerState;
+  event: CareerEventDefinition;
+  tournament?: TournamentState | null;
+  date?: string;
+}): CareerState {
+  const finalMatch = args.tournament?.rounds
+    .find((round) => round.name === "F")
+    ?.matches.find((match) => match.completed && match.winnerId);
+
+  if (!finalMatch?.winnerId) {
+    return args.state;
+  }
+
+  const runnerUpId = finalMatch.sideAId === finalMatch.winnerId ? finalMatch.sideBId : finalMatch.sideAId;
+  const candidates = [
+    {
+      playerId: finalMatch.winnerId,
+      eventId: args.event.id,
+      eventName: args.event.name,
+      date: args.date ?? args.state.date,
+      result: "champion" as const
+    },
+    {
+      playerId: runnerUpId,
+      eventId: args.event.id,
+      eventName: args.event.name,
+      date: args.date ?? args.state.date,
+      result: "runner_up" as const
+    }
+  ];
+  const additions = candidates.filter(
+    (candidate) =>
+      !args.state.playerAchievements.some(
+        (record) =>
+          record.playerId === candidate.playerId &&
+          record.eventId === candidate.eventId &&
+          record.result === candidate.result
+      )
+  );
+
+  if (additions.length === 0) {
+    return args.state;
+  }
+
+  return {
+    ...args.state,
+    playerAchievements: [...args.state.playerAchievements, ...additions]
+  };
+}
+
 export function recordPastCareerEvents(state: CareerState): CareerState {
   const records = state.events
     .filter((event) => {
