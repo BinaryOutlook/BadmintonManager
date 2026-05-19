@@ -7,6 +7,7 @@ import { getCareerEvent } from "../../game/career/events";
 import { createInitialCareerState } from "../../game/career/state";
 import { seededPlayers } from "../../game/content/players";
 import { useTournamentStore } from "../../game/store/store";
+import { createTournament, getManagedMatchContext } from "../../game/tournament/tournament";
 
 class MemoryStorage {
   private readonly values = new Map<string, string>();
@@ -445,6 +446,64 @@ describe("career rankings page", () => {
 });
 
 describe("career calendar event actions", () => {
+  it("renders Calendar View commitments with TBD, result markers, event actions, and profile links", () => {
+    const baseCareer = createInitialCareerState(seededPlayers[0].player.id, 9916);
+    const metro = getCareerEvent(baseCareer.events, "metro-open-300")!;
+    const harbor = getCareerEvent(baseCareer.events, "harbor-masters-500")!;
+    const tournament = {
+      ...createTournament(seededPlayers, baseCareer.program.managedPlayerId, 9916),
+      id: metro.id,
+      name: metro.name,
+      tier: metro.tier
+    };
+    const context = getManagedMatchContext(tournament)!;
+    const activeOpponentId =
+      context.playerAId === baseCareer.program.managedPlayerId ? context.playerBId : context.playerAId;
+    const activeOpponentName = seededPlayers.find((entry) => entry.player.id === activeOpponentId)!.player.name;
+    const pastOpponent = seededPlayers[4].player;
+    const onOpenTournamentHome = vi.fn();
+    const onOpenPlayerProfile = vi.fn();
+    const career = {
+      ...baseCareer,
+      date: metro.startDate,
+      activeEventId: metro.id,
+      enteredEventIds: [metro.id],
+      stage: "pre_match" as const,
+      matchHistory: [
+        {
+          id: `${harbor.id}:R16-1`,
+          eventId: harbor.id,
+          eventName: harbor.name,
+          date: harbor.startDate,
+          round: "R16" as const,
+          playerAId: baseCareer.program.managedPlayerId,
+          playerBId: pastOpponent.id,
+          winnerId: baseCareer.program.managedPlayerId,
+          scoreline: "21-14, 21-18"
+        }
+      ]
+    };
+
+    renderCalendarPage({ career, tournament, onOpenTournamentHome, onOpenPlayerProfile });
+
+    expect(screen.getByRole("tab", { name: "Upcoming" })).toBeVisible();
+    expect(screen.getByRole("tab", { name: "Past Events" })).toBeVisible();
+    fireEvent.click(screen.getByRole("tab", { name: "Calendar View" }));
+
+    expect(screen.getByRole("heading", { name: "Calendar View" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Metro Open: Round of 16" })).toBeInTheDocument();
+    expect(screen.getAllByText("TBD").length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: "Harbor Masters: Round of 16 (W)" })).toBeInTheDocument();
+
+    const activeCard = screen.getByRole("button", { name: "Metro Open: Round of 16" }).closest(".calendar-commitment-card") as HTMLElement;
+    fireEvent.click(within(activeCard).getByRole("button", { name: "Metro Open: Round of 16" }));
+    expect(onOpenTournamentHome).toHaveBeenCalledWith({ seasonId: career.seasonId, eventId: metro.id });
+
+    fireEvent.click(within(activeCard).getByRole("button", { name: activeOpponentName }));
+    expect(onOpenPlayerProfile).toHaveBeenCalledWith(activeOpponentId);
+    expect(onOpenTournamentHome).toHaveBeenCalledTimes(1);
+  });
+
   it("keeps an entered due event playable from the calendar row", () => {
     const { career, event } = careerEnteredOnMetroStart();
     const onOpenScheduledCareerMatch = vi.fn();

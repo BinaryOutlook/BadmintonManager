@@ -1,5 +1,7 @@
 import { addDays, daysBetween } from "./calendar";
+import { managedMatchScheduleForEvent, scheduledDateForRound } from "./matchSchedule";
 import { normalizeCareerTierLabel } from "./models";
+import { playerMap } from "../content/players";
 import type {
   CareerEventBracketSnapshot,
   CareerEventDefinition,
@@ -11,7 +13,7 @@ import type {
   ProgramEconomy,
   RankingEntry
 } from "./models";
-import type { TournamentState } from "../tournament/tournament";
+import { getManagedMatchContext, isTournamentComplete, type RoundName, type TournamentState } from "../tournament/tournament";
 
 export type CalendarEventStatus =
   | CareerEventStatus
@@ -697,6 +699,168 @@ export function pastCalendarRecords(career: CareerState): CareerEventHistoryReco
       right.completedAt.localeCompare(left.completedAt) ||
       left.eventName.localeCompare(right.eventName)
   );
+}
+
+export type CalendarCommitment = {
+  date: string;
+  eventId: string;
+  eventName: string;
+  round: RoundName;
+  opponentId: string | null;
+  opponentLabel: string;
+  result: "W" | "L" | null;
+};
+
+export type CalendarCommitmentDateGroup = {
+  date: string;
+  commitments: CalendarCommitment[];
+};
+
+const calendarCommitmentRounds: RoundName[] = ["R16", "QF", "SF", "F"];
+
+const calendarRoundOrder = Object.fromEntries(
+  calendarCommitmentRounds.map((round, index) => [round, index])
+) as Record<RoundName, number>;
+
+function playerLabel(playerId: string | null) {
+  if (!playerId) {
+    return "TBD";
+  }
+
+  return playerMap[playerId]?.name ?? playerId;
+}
+
+function isManagedCareerMatchRecord(career: CareerState, record: CareerState["matchHistory"][number]) {
+  const managedPlayerId = career.program.managedPlayerId;
+
+  return record.playerAId === managedPlayerId || record.playerBId === managedPlayerId;
+}
+
+function completedCommitmentForRecord(career: CareerState, record: CareerState["matchHistory"][number]): CalendarCommitment {
+  const managedPlayerId = career.program.managedPlayerId;
+  const opponentId = record.playerAId === managedPlayerId
+    ? record.playerBId
+    : record.playerBId === managedPlayerId
+      ? record.playerAId
+      : null;
+
+  return {
+    date: record.date,
+    eventId: record.eventId,
+    eventName: record.eventName,
+    round: record.round,
+    opponentId,
+    opponentLabel: playerLabel(opponentId),
+    result: record.winnerId === managedPlayerId ? "W" : "L"
+  };
+}
+
+function activeOpponentIdForRound(args: {
+  career: CareerState;
+  eventId: string;
+  round: RoundName;
+  tournament: TournamentState | null;
+}) {
+  if (!args.tournament || args.tournament.id !== args.eventId || isTournamentComplete(args.tournament)) {
+    return null;
+  }
+
+  const context = getManagedMatchContext(args.tournament);
+
+  if (!context || context.roundName !== args.round) {
+    return null;
+  }
+
+  return context.playerAId === args.career.program.managedPlayerId ? context.playerBId : context.playerAId;
+}
+
+function sortCalendarCommitments(commitments: CalendarCommitment[]) {
+  return [...commitments].sort(
+    (left, right) =>
+      left.date.localeCompare(right.date) ||
+      left.eventName.localeCompare(right.eventName) ||
+      calendarRoundOrder[left.round] - calendarRoundOrder[right.round] ||
+      left.eventId.localeCompare(right.eventId)
+  );
+}
+
+export function calendarCommitmentsForCareer(args: {
+  career: CareerState;
+  tournament: TournamentState | null;
+}): CalendarCommitment[] {
+  const managedMatchHistory = args.career.matchHistory.filter((record) =>
+    isManagedCareerMatchRecord(args.career, record)
+  );
+  const completedRoundKeys = new Set(
+    managedMatchHistory.map((record) => `${record.eventId}:${record.round}`)
+  );
+  const completedCommitments = managedMatchHistory.map((record) =>
+    completedCommitmentForRecord(args.career, record)
+  );
+  const enteredEventIds = new Set(args.career.enteredEventIds);
+  const completedEventIds = new Set(args.career.completedEventIds);
+  const scheduledCommitments = args.career.events.flatMap((event) => {
+    if (!enteredEventIds.has(event.id) || completedEventIds.has(event.id)) {
+      return [];
+    }
+
+    const activeSchedule = managedMatchScheduleForEvent({
+      career: args.career,
+      tournament: args.tournament,
+      eventId: event.id
+    });
+
+    return calendarCommitmentRounds.flatMap((round): CalendarCommitment[] => {
+      if (completedRoundKeys.has(`${event.id}:${round}`)) {
+        return [];
+      }
+
+      const date = scheduledDateForRound(event, round);
+      const isActiveResolverRound = activeSchedule?.round === round && activeSchedule.playable;
+
+      if (date < args.career.date && !isActiveResolverRound) {
+        return [];
+      }
+
+      const opponentId = activeOpponentIdForRound({
+        career: args.career,
+        eventId: event.id,
+        round,
+        tournament: args.tournament
+      });
+
+      return [
+        {
+          date,
+          eventId: event.id,
+          eventName: event.name,
+          round,
+          opponentId,
+          opponentLabel: playerLabel(opponentId),
+          result: null
+        }
+      ];
+    });
+  });
+
+  return sortCalendarCommitments([...completedCommitments, ...scheduledCommitments]);
+}
+
+export function groupCalendarCommitmentsByDate(commitments: CalendarCommitment[]): CalendarCommitmentDateGroup[] {
+  return sortCalendarCommitments(commitments).reduce<CalendarCommitmentDateGroup[]>((groups, commitment) => {
+    const latest = groups.at(-1);
+
+    if (latest?.date === commitment.date) {
+      latest.commitments.push(commitment);
+      return groups;
+    }
+
+    groups.push({
+      date: commitment.date,
+      commitments: [commitment]
+    });
+    return groups;
+  }, []);
 }
 
 export function createCareerEventBracketSnapshot(tournament: TournamentState): CareerEventBracketSnapshot {
