@@ -193,6 +193,24 @@ type CareerMatchRecordSource = "played" | "quick_sim" | "archive_import";
 The source field distinguishes manually played results from quick simulation. Legacy/imported match
 records without source metadata hydrate as `archive_import`.
 
+## Player Profile Records
+
+Player Profile Career records use persisted universe facts only:
+
+$$
+\text{Profile record} =
+\texttt{career.matchHistory}
++ \texttt{career.playerAchievements}
+$$
+
+All-time W-L, win percentage, and head-to-head leaders are derived from completed
+`career.matchHistory` rows for the player, including non-managed quick-simulated matches. Titles,
+runner-up finishes, and finals are derived from `career.playerAchievements` champion/runner-up rows.
+
+Bracket snapshots in `eventHistory.bracketSnapshot` are presentation archives for tournament homes and
+timeline context. They must not be re-read as player-profile match records; doing so would fabricate
+history for old saves and can double-count matches already persisted in `career.matchHistory`.
+
 ## Persistence
 
 Older current saves that predate event operations fields and `seasonPoints` remain valid.

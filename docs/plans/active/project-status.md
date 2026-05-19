@@ -87,6 +87,7 @@ What is now stable:
 - TIX-015 now adds universal tournament addressing: stable `seasonId + eventId` tournament links open tournament homes from Calendar, Portal, match hubs, Player Profile history, Save Manager, and safely addressable report/event surfaces while missing ids remain plain text
 - TIX-017A now completes the tournament universe after managed-player elimination, quick-sims only missing non-managed matches, preserves played results, writes sourced universe match records, awards non-managed ranking points from final bracket placements, and keeps legacy archive fallbacks safe
 - TIX-016 now renames the top-level career planning surface to `Schedule`, preserves the old chronological commitment list under `Timeline`, and adds a confirmed month-grid `Calendar` that hides future knockout rounds until the managed athlete qualifies
+- TIX-019 now makes Player Profile Career records universe-wide: W-L, win percentage, titles, runner-up finishes, finals, head-to-head leaders, and optional managed-player spotlights derive from recorded `career.matchHistory` and `career.playerAchievements` rather than managed-player-only slices or bracket snapshots
 
 ## Completed
 
@@ -182,6 +183,7 @@ What is now stable:
 - [x] implemented TIX-015 universal tournament addressing with a tournament navigation provider, reusable tournament links, stable-id event-name navigation, plain-text fallbacks, and focused provider/Calendar/Past/Profile coverage
 - [x] implemented TIX-017A tournament universe simulation and persistence foundation with post-elimination bracket completion, sourced match records, non-managed ranking awards, completed bracket snapshots, and legacy-safe source fallbacks
 - [x] implemented TIX-016 Schedule hub separation with Upcoming, Past Events, Timeline, and confirmed month-grid Calendar tabs
+- [x] implemented TIX-019 universe-wide player career records with non-managed H2H support, finals counts, managed-player spotlight context, old-save empty states, and duplicate-safe selector coverage
 
 ## In Progress
 
