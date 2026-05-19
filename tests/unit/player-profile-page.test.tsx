@@ -81,6 +81,7 @@ describe("player profile career tab", () => {
     expect(screen.getByRole("heading", { name: "Career Record" })).toBeInTheDocument();
     expect(screen.getByText("W-L: 1-1")).toBeInTheDocument();
     expect(screen.getByText("Win %: 50%")).toBeInTheDocument();
+    expect(screen.getByText("Finals: 2")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Titles" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Open tournament home for Metro Open" }));
     expect(onOpenTournamentHome).toHaveBeenCalledWith({ seasonId: career.seasonId, eventId: "metro-open-300" });
@@ -95,5 +96,105 @@ describe("player profile career tab", () => {
     fireEvent.click(within(table).getByRole("button", { name: opponent.name }));
 
     expect(onOpenPlayerProfile).toHaveBeenCalledWith(opponent.id);
+  });
+
+  it("renders non-managed universe records and an optional managed-player spotlight", () => {
+    const managed = seededPlayers[0].player;
+    const player = seededPlayers[1].player;
+    const universeOpponent = seededPlayers[2].player;
+    const onOpenPlayerProfile = vi.fn();
+    const career = {
+      ...createInitialCareerState(managed.id, 7421),
+      matchHistory: [
+        {
+          id: "metro-open-300:R16-2",
+          eventId: "metro-open-300",
+          eventName: "Metro Open",
+          date: "2026-06-03",
+          round: "R16" as const,
+          playerAId: player.id,
+          playerBId: universeOpponent.id,
+          winnerId: player.id,
+          scoreline: "21-16, 21-19",
+          source: "quick_sim" as const
+        },
+        {
+          id: "harbor-masters-500:QF-3",
+          eventId: "harbor-masters-500",
+          eventName: "Harbor Masters",
+          date: "2026-06-13",
+          round: "QF" as const,
+          playerAId: player.id,
+          playerBId: managed.id,
+          winnerId: managed.id,
+          scoreline: "18-21, 17-21",
+          source: "quick_sim" as const
+        }
+      ]
+    };
+
+    render(
+      <PlayerNavigationProvider onOpenPlayerProfile={onOpenPlayerProfile}>
+        <TournamentNavigationProvider onOpenTournamentHome={vi.fn()}>
+          <PlayerProfilePage
+            playerId={player.id}
+            selectedPlayerId={managed.id}
+            phase="setup"
+            careerPresent={true}
+            career={career}
+            tournament={null}
+            liveMatchSession={null}
+            onBack={vi.fn()}
+            onSelectPlayer={vi.fn()}
+          />
+        </TournamentNavigationProvider>
+      </PlayerNavigationProvider>
+    );
+
+    fireEvent.click(screen.getByRole("tab", { name: "Career" }));
+
+    expect(screen.getByText("W-L: 1-1")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Vs Managed Player" })).toBeInTheDocument();
+    expect(screen.getByText(`${managed.name}: 0-1 (0%)`)).toBeInTheDocument();
+
+    const table = screen.getByRole("table", { name: "Head-to-head records" });
+    expect(within(table).getByRole("button", { name: universeOpponent.name })).toBeInTheDocument();
+    fireEvent.click(within(table).getByRole("button", { name: managed.name }));
+
+    expect(onOpenPlayerProfile).toHaveBeenCalledWith(managed.id);
+  });
+
+  it("keeps old saves without match history in the honest empty state", () => {
+    const managed = seededPlayers[0].player;
+
+    render(
+      <PlayerNavigationProvider onOpenPlayerProfile={vi.fn()}>
+        <TournamentNavigationProvider onOpenTournamentHome={vi.fn()}>
+          <PlayerProfilePage
+            playerId={managed.id}
+            selectedPlayerId={managed.id}
+            phase="setup"
+            careerPresent={true}
+            career={{
+              ...createInitialCareerState(managed.id, 7422),
+              matchHistory: [],
+              playerAchievements: []
+            }}
+            tournament={null}
+            liveMatchSession={null}
+            onBack={vi.fn()}
+            onSelectPlayer={vi.fn()}
+          />
+        </TournamentNavigationProvider>
+      </PlayerNavigationProvider>
+    );
+
+    fireEvent.click(screen.getByRole("tab", { name: "Career" }));
+
+    expect(screen.getByText("W-L: 0-0")).toBeInTheDocument();
+    expect(screen.getByText("Win %: N/A")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Vs Managed Player" })).not.toBeInTheDocument();
+    expect(screen.getByText("No completed head-to-head matches recorded.")).toBeInTheDocument();
+    expect(screen.getByText("No persisted career history yet.")).toBeInTheDocument();
   });
 });

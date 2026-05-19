@@ -269,6 +269,10 @@ export function PlayerProfilePage(props: PlayerProfilePageProps) {
   const visibleWeaknesses = model.coachReport.weaknesses.slice(0, 2);
   const visibleRiskFlags = model.coachReport.riskFlags.slice(0, 2);
   const hiddenRiskFlagCount = Math.max(0, model.coachReport.riskFlags.length - visibleRiskFlags.length);
+  const managedPlayerSpotlight = model.career.managedPlayerSpotlight;
+  const managedPlayerSpotlightLabel = managedPlayerSpotlight
+    ? `${managedPlayerSpotlight.opponentName}: ${managedPlayerSpotlight.wins}-${managedPlayerSpotlight.losses} (${managedPlayerSpotlight.winPercentageLabel})`
+    : null;
 
   return (
     <section className="screen-shell player-profile-page">
@@ -562,6 +566,14 @@ export function PlayerProfilePage(props: PlayerProfilePageProps) {
                 )}
               </section>
             </div>
+            {managedPlayerSpotlight && managedPlayerSpotlightLabel && (
+              <section className="profile-career-archive-block profile-managed-spotlight">
+                <h3>Vs Managed Player</h3>
+                <p>
+                  <PlayerLink playerId={managedPlayerSpotlight.opponentId}>{managedPlayerSpotlightLabel}</PlayerLink>
+                </p>
+              </section>
+            )}
             <section className="profile-career-archive-block profile-career-h2h-block">
               <h3>Head-To-Head</h3>
               {model.career.headToHead.length > 0 ? (
