@@ -84,6 +84,7 @@ What is now stable:
 - the TIX-008 tournament-home slice now routes Calendar rows and Past Events through stable `seasonId + eventId` tournament homes, reduces Calendar row detail density, renders future/active/completed tournament states, and stores optional bracket snapshots for newly completed career events while old archives fall back safely
 - TIX-013 now persists completed managed career matches and final champion/runner-up achievements, letting Player Profile Career tabs show real W-L, win percentage, titles, finalist results, and profile-linked head-to-head archives without fabricating old history
 - TIX-014 adds a Calendar View commitments tab that date-groups managed match commitments from entered schedules, active known opponents, TBD future rounds, and recorded `career.matchHistory` W-L results while preserving Upcoming/Past Events
+- TIX-015 now adds universal tournament addressing: stable `seasonId + eventId` tournament links open tournament homes from Calendar, Portal, match hubs, Player Profile history, Save Manager, and safely addressable report/event surfaces while missing ids remain plain text
 
 ## Completed
 
@@ -176,6 +177,7 @@ What is now stable:
 - [x] implemented TIX-008 universal tournament homes with Calendar `Open Event`, Past Events archive navigation, active/archived bracket rendering, and old-save fallback behavior
 - [x] implemented TIX-013 player career history with persisted match records, champion/runner-up achievements, Career tab record cards, profile-linked head-to-head tables, migration defaults, and focused selector/store/UI coverage
 - [x] implemented TIX-014 Calendar View commitments with date blocks, opponent profile links, event-home actions, TBD handling, and focused selector/UI tests
+- [x] implemented TIX-015 universal tournament addressing with a tournament navigation provider, reusable tournament links, stable-id event-name navigation, plain-text fallbacks, and focused provider/Calendar/Past/Profile coverage
 
 ## In Progress
 

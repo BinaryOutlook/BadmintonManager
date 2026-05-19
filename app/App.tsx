@@ -36,6 +36,7 @@ import { isPhaseBoundPage, pageForPhase, type AppPage } from "./pages";
 import { PlayerProfilePage } from "./pages/PlayerProfilePage";
 import { SquadPage } from "./pages/SquadPage";
 import { PlayerNavigationProvider } from "./playerNavigation";
+import { TournamentNavigationProvider } from "./tournamentNavigation";
 
 export type CommandId =
   | "portal"
@@ -430,6 +431,10 @@ export function App() {
 
   function openPlayerProfile(playerId: string) {
     setActivePage({ id: "playerProfile", playerId });
+  }
+
+  function openTournamentHome(address: TournamentAddress) {
+    setActivePage({ id: "tournamentHome", ...address });
   }
 
   function requestReset() {
@@ -941,7 +946,7 @@ export function App() {
       onStartCareer: requestStartCareer,
       onOpenTraining: () => setActivePage({ id: "season" }),
       onOpenCalendar: () => setActivePage({ id: "calendar" }),
-      onOpenTournamentHome: (address: TournamentAddress) => setActivePage({ id: "tournamentHome", ...address }),
+      onOpenTournamentHome: openTournamentHome,
       onOpenHome: () => setActivePage({ id: "home" }),
       onOpenLiveMatch: openLiveMatchRoute,
       onOpenPostMatch: openCareerPostMatchRoute,
@@ -1242,45 +1247,49 @@ export function App() {
   if (shouldRenderLaunchShell) {
     return (
       <PlayerNavigationProvider onOpenPlayerProfile={openPlayerProfile}>
-        <div className="command-shell command-shell-launch" data-accent={themeAccent}>
-          <LaunchTopBar saveStatus={launchSaveStatus} onOpenSettings={() => setSettingsOpen(true)} />
-          <PageCanvas>{renderPage()}</PageCanvas>
-          {renderSystemOverlays()}
-        </div>
+        <TournamentNavigationProvider onOpenTournamentHome={openTournamentHome}>
+          <div className="command-shell command-shell-launch" data-accent={themeAccent}>
+            <LaunchTopBar saveStatus={launchSaveStatus} onOpenSettings={() => setSettingsOpen(true)} />
+            <PageCanvas>{renderPage()}</PageCanvas>
+            {renderSystemOverlays()}
+          </div>
+        </TournamentNavigationProvider>
       </PlayerNavigationProvider>
     );
   }
 
   return (
     <PlayerNavigationProvider onOpenPlayerProfile={openPlayerProfile}>
-      <div
-        className={sidebarCollapsed ? "command-shell command-shell-sidebar-collapsed" : "command-shell"}
-        data-accent={themeAccent}
-      >
-        <TopStatusBar
-          activeAthleteName={activeAthlete.name}
-          continueLabel={continueLabel}
-          continueTone={continueTone}
-          dateLabel={shellDate}
-          saveStatus={saveStatus}
-          onContinue={handleShellContinue}
-          onOpenSettings={() => setSettingsOpen(true)}
-        />
-
-        <div className="workspace-shell" style={workspaceStyle}>
-          <CommandSidebar
-            activeCommandId={activeCommandId}
-            commands={shellCommands}
-            collapsed={sidebarCollapsed}
-            onResizeStart={beginSidebarResize}
-            onToggleCollapsed={() => setSidebarCollapsed((current) => !current)}
+      <TournamentNavigationProvider onOpenTournamentHome={openTournamentHome}>
+        <div
+          className={sidebarCollapsed ? "command-shell command-shell-sidebar-collapsed" : "command-shell"}
+          data-accent={themeAccent}
+        >
+          <TopStatusBar
+            activeAthleteName={activeAthlete.name}
+            continueLabel={continueLabel}
+            continueTone={continueTone}
+            dateLabel={shellDate}
+            saveStatus={saveStatus}
+            onContinue={handleShellContinue}
+            onOpenSettings={() => setSettingsOpen(true)}
           />
 
-          <PageCanvas>{renderPage()}</PageCanvas>
-        </div>
+          <div className="workspace-shell" style={workspaceStyle}>
+            <CommandSidebar
+              activeCommandId={activeCommandId}
+              commands={shellCommands}
+              collapsed={sidebarCollapsed}
+              onResizeStart={beginSidebarResize}
+              onToggleCollapsed={() => setSidebarCollapsed((current) => !current)}
+            />
 
-        {renderSystemOverlays()}
-      </div>
+            <PageCanvas>{renderPage()}</PageCanvas>
+          </div>
+
+          {renderSystemOverlays()}
+        </div>
+      </TournamentNavigationProvider>
     </PlayerNavigationProvider>
   );
 }

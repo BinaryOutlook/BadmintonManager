@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { TournamentNavigationProvider } from "../../app/tournamentNavigation";
 import { CareerPostMatchHubPage, CareerPreMatchHubPage } from "../../components/CareerWorkbench";
 import { KnockoutTree } from "../../components/KnockoutTree";
 import { playerMap, seededPlayers } from "../../game/content/players";
@@ -219,7 +220,11 @@ describe("career bracket placement", () => {
     const { career, managedPlayerId, tournament } = careerEventSetup(7804);
     const onOpenPlayerProfile = vi.fn();
 
-    render(<CareerPreMatchHubPage {...buildCareerPageProps(career, tournament, onOpenPlayerProfile)} />);
+    render(
+      <TournamentNavigationProvider onOpenTournamentHome={vi.fn()}>
+        <CareerPreMatchHubPage {...buildCareerPageProps(career, tournament, onOpenPlayerProfile)} />
+      </TournamentNavigationProvider>
+    );
 
     expect(screen.getByRole("heading", { name: "Current Event Bracket" })).toBeInTheDocument();
     expect(screen.getByLabelText("Knockout tree")).toBeInTheDocument();
@@ -254,7 +259,11 @@ describe("career bracket placement", () => {
       }
     };
 
-    render(<CareerPostMatchHubPage {...buildCareerPageProps(postMatchCareer, advancedTournament)} />);
+    render(
+      <TournamentNavigationProvider onOpenTournamentHome={vi.fn()}>
+        <CareerPostMatchHubPage {...buildCareerPageProps(postMatchCareer, advancedTournament)} />
+      </TournamentNavigationProvider>
+    );
 
     expect(screen.getByRole("heading", { name: "Current Event Bracket" })).toBeInTheDocument();
     expect(screen.getByLabelText("Knockout tree")).toBeInTheDocument();

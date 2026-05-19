@@ -1,11 +1,13 @@
 import { useMemo, useState } from "react";
 import { playerMap } from "../game/content/players";
+import { getCareerEvent } from "../game/career/events";
 import type { CareerState } from "../game/career/models";
 import type { AppPhase, TacticKey } from "../game/store/store";
 import { CORRUPT_STORAGE_KEY, STORAGE_KEY } from "../game/store/store";
 import type { PersistedSave } from "../game/store/save";
 import { validateImportedSaveText, type SaveImportValidationResult } from "../game/store/save";
 import type { TournamentState } from "../game/tournament/tournament";
+import { TournamentLink } from "./TournamentLink";
 
 interface SaveManagerViewProps {
   activeSavePresent: boolean;
@@ -170,6 +172,9 @@ export function SaveManagerView(props: SaveManagerViewProps) {
   const activeSummary = useMemo(() => summarizeRuntime(props), [props]);
   const previewSummary = importResult?.ok ? summarizeSave(importResult.save) : null;
   const managedAthleteName = props.career ? playerName(props.career.program.managedPlayerId) : "No career athlete";
+  const activeCareerEvent =
+    props.career?.activeEventId ? getCareerEvent(props.career.events, props.career.activeEventId) : null;
+  const activeCareerEventLabel = activeCareerEvent?.name ?? props.career?.activeEventId ?? null;
   const saveVersion =
     activeSummary.rows.find((row) => row.label === "Top version")?.value ??
     activeSummary.rows.find((row) => row.label === "Save version")?.value ??
@@ -292,6 +297,14 @@ export function SaveManagerView(props: SaveManagerViewProps) {
             <span className="chip chip-primary">{activeSummary.mode}</span>
           </div>
           <h3 className="save-slot-headline">{activeSummary.headline}</h3>
+          {props.career?.activeEventId && activeCareerEventLabel && (
+            <p className="panel-summary panel-summary-tight">
+              Active event:{" "}
+              <TournamentLink seasonId={props.career.seasonId} eventId={props.career.activeEventId}>
+                {activeCareerEventLabel}
+              </TournamentLink>
+            </p>
+          )}
           <div className="save-metadata-grid">
             {activeSummary.rows.map((row) => (
               <div key={row.label}>

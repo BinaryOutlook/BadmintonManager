@@ -1125,6 +1125,7 @@ textarea:focus-visible {
   color: var(--text);
   font: inherit;
   text-align: left;
+  cursor: pointer;
 }
 
 .calendar-commitment-title strong {
@@ -1133,7 +1134,8 @@ textarea:focus-visible {
   line-height: 1.25;
 }
 
-.calendar-commitment-title:hover strong {
+.calendar-commitment-title:hover strong,
+.calendar-commitment-title:focus-visible strong {
   color: var(--lime);
   text-decoration: underline;
   text-underline-offset: 0.18rem;
@@ -3610,6 +3612,39 @@ textarea:focus-visible {
   color: var(--lime);
   text-decoration: underline;
   text-underline-offset: 0.18rem;
+}
+
+.tournament-link-button {
+  appearance: none;
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--lime-soft);
+  font: inherit;
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tournament-link-button:hover,
+.tournament-link-button:focus-visible {
+  color: var(--lime);
+  text-decoration: underline;
+  text-underline-offset: 0.18rem;
+}
+
+.tournament-link-compact {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
+  white-space: nowrap;
+}
+
+.career-day .tournament-link-button {
+  text-align: center;
 }
 
 .smart-player-link {
