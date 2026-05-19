@@ -43,6 +43,7 @@ import { isManagedPlayerStillInEvent, type TournamentState } from "../game/tourn
 import { KnockoutTree } from "./KnockoutTree";
 import { SmartPlayerText } from "./PlayerLink";
 import { TacticalMatchViewer } from "./TacticalMatchViewer";
+import { TournamentLink } from "./TournamentLink";
 
 interface CareerPageProps {
   career: CareerState | null;
@@ -130,10 +131,6 @@ function daysUntilLabel(date: string, targetDate: string) {
   return `${days} day(s)`;
 }
 
-function compactTierLabel(tier: string) {
-  return tier.replace(/^Circuit\s+/i, "C");
-}
-
 function calendarRoundLabel(round: "R16" | "QF" | "SF" | "F") {
   switch (round) {
     case "R16":
@@ -168,6 +165,25 @@ function ProfileNameButton(props: {
     >
       {props.children ?? player.name}
     </button>
+  );
+}
+
+function CareerTournamentLink(props: {
+  career: CareerState;
+  eventId?: string | null;
+  children: ReactNode;
+  className?: string;
+  ariaLabel?: string;
+}) {
+  return (
+    <TournamentLink
+      seasonId={props.career.seasonId}
+      eventId={props.eventId}
+      className={props.className}
+      ariaLabel={props.ariaLabel}
+    >
+      {props.children}
+    </TournamentLink>
   );
 }
 
@@ -531,7 +547,14 @@ export function CareerHomePage(props: CareerPageProps) {
           : props.career.stage === "pre_match"
             ? "Opponent briefing ready"
             : event
-              ? `${event.name} planning`
+              ? (
+                  <>
+                    <CareerTournamentLink career={props.career} eventId={event.id}>
+                      {event.name}
+                    </CareerTournamentLink>{" "}
+                    planning
+                  </>
+                )
               : "Season planning",
       action:
         props.career.stage === "post_match"
@@ -580,7 +603,14 @@ export function CareerHomePage(props: CareerPageProps) {
               onOpenPlayerProfile={props.onOpenPlayerProfile}
             />{" "}
             | Rank {athlete.currentRank} | {points(athlete.rankingPoints)} | Race{" "}
-            {points(ranking?.seasonPoints ?? 0)} | Next: {nextEventName}
+            {points(ranking?.seasonPoints ?? 0)} | Next:{" "}
+            {event ? (
+              <CareerTournamentLink career={props.career} eventId={event.id}>
+                {event.name}
+              </CareerTournamentLink>
+            ) : (
+              nextEventName
+            )}
           </p>
         </div>
         <div className="screen-meta screen-meta-actions career-portal-meta">
@@ -597,7 +627,15 @@ export function CareerHomePage(props: CareerPageProps) {
         </div>
         <div>
           <span>Next</span>
-          <strong>{nextEventName}</strong>
+          <strong>
+            {event ? (
+              <CareerTournamentLink career={props.career} eventId={event.id}>
+                {event.name}
+              </CareerTournamentLink>
+            ) : (
+              nextEventName
+            )}
+          </strong>
         </div>
         <div>
           <span>Deadline</span>
@@ -620,7 +658,15 @@ export function CareerHomePage(props: CareerPageProps) {
             <span>{event ? `${event.tier} / week ${event.weekNumber}` : "No event"}</span>
           </div>
           <div className="career-decision-block career-decision-block-compact">
-            <strong>{event?.name ?? "Season planning"}</strong>
+            <strong>
+              {event ? (
+                <CareerTournamentLink career={props.career} eventId={event.id}>
+                  {event.name}
+                </CareerTournamentLink>
+              ) : (
+                "Season planning"
+              )}
+            </strong>
             <p>{eventIntro}</p>
             {event && eventGate && (
               <div className="career-quick-stakes career-quick-stakes-compact" aria-label="Next event stakes summary">
@@ -709,12 +755,24 @@ export function CareerHomePage(props: CareerPageProps) {
           <div className="career-week-strip career-week-strip-compact" aria-label="Portal calendar snapshot">
             {week.map((day) => {
               const calendarEvent = props.career?.events.find((entry) => entry.startDate === day);
-              const dayLabel = calendarEvent ? compactTierLabel(calendarEvent.tier) : (day === props.career?.date ? "Today" : "Train");
+              const dayLabel = day === props.career?.date ? "Today" : "Train";
 
               return (
                 <div key={day} className={day === props.career?.date ? "career-day career-day-active" : "career-day"}>
                   <span>{day.slice(5)}</span>
-                  <strong>{dayLabel}</strong>
+                  <strong>
+                    {calendarEvent ? (
+                      <CareerTournamentLink
+                        career={props.career!}
+                        eventId={calendarEvent.id}
+                        className="tournament-link-button tournament-link-compact"
+                      >
+                        {calendarEvent.name}
+                      </CareerTournamentLink>
+                    ) : (
+                      dayLabel
+                    )}
+                  </strong>
                 </div>
               );
             })}
@@ -1130,7 +1188,15 @@ export function CareerRivalCircuitPage(props: CareerPageProps) {
               return (
                 <div key={pressure.eventId} className="program-log-row">
                   <span>{event?.tier ?? "event"} / {pressure.rivalCount} rivals</span>
-                  <strong>{event?.name ?? pressure.eventId}</strong>
+                  <strong>
+                    {event ? (
+                      <CareerTournamentLink career={props.career!} eventId={event.id}>
+                        {event.name}
+                      </CareerTournamentLink>
+                    ) : (
+                      pressure.eventId
+                    )}
+                  </strong>
                   <p>
                     {pressure.topThreatName} leads the field; average threat {Math.round(pressure.averageThreat)}, pressure{" "}
                     {Math.round(pressure.pressureScore)}.
@@ -1201,10 +1267,18 @@ export function CareerRivalCircuitPage(props: CareerPageProps) {
                   <p>
                     Latest selection:{" "}
                     {latestEntry
-                      ? `${latestEntry.eventName}, projected ${latestEntry.projectedRound}, ${latestEntry.status}${
-                          latestEntry.resultRound ? ` as ${latestEntry.resultRound}` : ""
-                        }`
-                      : "watching the calendar"}.
+                      ? (
+                          <>
+                            <CareerTournamentLink career={props.career!} eventId={latestEntry.eventId}>
+                              {latestEntry.eventName}
+                            </CareerTournamentLink>
+                            {`, projected ${latestEntry.projectedRound}, ${latestEntry.status}${
+                              latestEntry.resultRound ? ` as ${latestEntry.resultRound}` : ""
+                            }`}
+                          </>
+                        )
+                      : "watching the calendar"}
+                    .
                   </p>
                 </article>
               );
@@ -1449,7 +1523,11 @@ export function CareerFacilitiesPage(props: CareerPageProps) {
           {travelCosts && nextEvent && (
             <div className="program-log-row career-button-spaced">
               <span>{nextEvent.tier} travel quality</span>
-              <strong>{nextEvent.name}</strong>
+              <strong>
+                <CareerTournamentLink career={props.career} eventId={nextEvent.id}>
+                  {nextEvent.name}
+                </CareerTournamentLink>
+              </strong>
               <p>
                 Travel cost {money(travelCosts.travelCost)} with {money(travelCosts.savedTravelCost)} saved; travel load{" "}
                 {travelCosts.travelFatigue} fatigue.
@@ -2629,15 +2707,14 @@ export function CareerCalendarPage(props: CareerPageProps) {
   const commitmentDateGroups = groupCalendarCommitmentsByDate(calendarCommitments);
   const upcomingPage = paginateCalendarItems(upcomingEvents, upcomingPageIndex);
   const pastPage = paginateCalendarItems(pastRecords, pastPageIndex);
-  const nextEvent = career.activeEventId
-    ? getCareerEvent(career.events, career.activeEventId) ?? upcomingEvents[0]
-    : upcomingEvents[0];
+  const activeResolvedEvent = career.activeEventId ? getCareerEvent(career.events, career.activeEventId) ?? null : null;
+  const nextEvent = career.activeEventId ? activeResolvedEvent ?? upcomingEvents[0] : upcomingEvents[0];
   const nextGate = nextEvent ? eventEligibilityFor(career, nextEvent) : null;
   const nextStatus = nextEvent ? eventStatusFor(career, nextEvent) : null;
   const nextSnapshot = nextEvent ? buildEventSeedingSnapshot({ state: career, event: nextEvent }) : null;
   const nextEntryCosts = nextEvent ? effectiveEventEntryCosts(nextEvent, career.facilities) : null;
   const nextTotalCost = nextEntryCosts ? eventEntryCost(nextEntryCosts) : 0;
-  const activeEventLabel = career.activeEventId ? nextEvent?.name ?? "Active entry" : "No active entry";
+  const activeEventLabel = activeResolvedEvent?.name ?? career.activeEventId ?? "No active entry";
   const completedEventCount = career.completedEventIds.length;
   const handleSectionChange = (section: CalendarSection) => {
     setActiveSection(section);
@@ -2713,7 +2790,15 @@ export function CareerCalendarPage(props: CareerPageProps) {
         </div>
         <div>
           <span>Active event</span>
-          <strong>{activeEventLabel}</strong>
+          <strong>
+            {activeResolvedEvent ? (
+              <CareerTournamentLink career={career} eventId={activeResolvedEvent.id}>
+                {activeResolvedEvent.name}
+              </CareerTournamentLink>
+            ) : (
+              activeEventLabel
+            )}
+          </strong>
         </div>
         <div>
           <span>Next match/draw/deadline</span>
@@ -2745,7 +2830,11 @@ export function CareerCalendarPage(props: CareerPageProps) {
               <div className="career-event-brief calendar-brief-grid">
                 <div>
                   <span>Current Event</span>
-                  <strong>{nextEvent.name}</strong>
+                  <strong>
+                    <CareerTournamentLink career={career} eventId={nextEvent.id}>
+                      {nextEvent.name}
+                    </CareerTournamentLink>
+                  </strong>
                   <small>
                     {nextEvent.tier} / week {nextEvent.weekNumber} / {nextEvent.location.venue}
                   </small>
@@ -2850,7 +2939,11 @@ export function CareerCalendarPage(props: CareerPageProps) {
                   <article key={event.id} className={rowClassName}>
                     <div className="calendar-event-main">
                       <span>{event.tier} / week {event.weekNumber} / {statusLabel(status)}</span>
-                      <strong>{event.name}</strong>
+                      <strong>
+                        <CareerTournamentLink career={career} eventId={event.id}>
+                          {event.name}
+                        </CareerTournamentLink>
+                      </strong>
                       <p>{event.location.city}, {event.location.country} - {event.location.venue}.</p>
                     </div>
                     <div>
@@ -2924,7 +3017,15 @@ export function CareerCalendarPage(props: CareerPageProps) {
             <section className="command-panel">
               <div className="panel-header">
                 <h2>Milestones &amp; Seeding</h2>
-                <span>{nextEvent ? nextEvent.name : "No event"}</span>
+                <span>
+                  {nextEvent ? (
+                    <CareerTournamentLink career={career} eventId={nextEvent.id}>
+                      {nextEvent.name}
+                    </CareerTournamentLink>
+                  ) : (
+                    "No event"
+                  )}
+                </span>
               </div>
               {nextEvent && nextSnapshot ? (
                 <div className="career-decision-block calendar-secondary-panel-body">
@@ -3028,7 +3129,11 @@ export function CareerCalendarPage(props: CareerPageProps) {
                     <article key={record.eventId} className="calendar-event-row">
                       <div className="calendar-event-main">
                         <span>{record.tier} / {record.status.replace(/_/g, " ")}</span>
-                        <strong>{record.eventName}</strong>
+                        <strong>
+                          <CareerTournamentLink career={career} eventId={record.eventId}>
+                            {record.eventName}
+                          </CareerTournamentLink>
+                        </strong>
                         <p>{record.entered ? "Entered event" : "Not entered"} / completed {record.completedAt}</p>
                       </div>
                       <div>
@@ -3105,13 +3210,14 @@ export function CareerCalendarPage(props: CareerPageProps) {
                             className="calendar-commitment-card"
                           >
                             <div className="calendar-commitment-copy">
-                              <button
+                              <TournamentLink
+                                seasonId={career.seasonId}
+                                eventId={commitment.eventId}
                                 className="calendar-commitment-title"
-                                type="button"
-                                onClick={() => openTournamentHome(props, career, commitment.eventId)}
+                                ariaLabel={`Open tournament home for ${title}`}
                               >
                                 <strong>{title}</strong>
-                              </button>
+                              </TournamentLink>
                               <div className="calendar-commitment-opponent">
                                 <span>Opponent</span>
                                 <ProfileNameButton
@@ -3530,7 +3636,15 @@ export function CareerPreMatchHubPage(props: CareerPageProps) {
       <section className="management-status-strip" aria-label="Pre-match briefing status">
         <div>
           <span>Event</span>
-          <strong>{event?.name ?? "No event"}</strong>
+          <strong>
+            {event ? (
+              <CareerTournamentLink career={props.career} eventId={event.id}>
+                {event.name}
+              </CareerTournamentLink>
+            ) : (
+              "No event"
+            )}
+          </strong>
         </div>
         <div>
           <span>Opponent</span>
@@ -3710,7 +3824,19 @@ export function CareerPostMatchHubPage(props: CareerPageProps) {
       <section className="management-status-strip" aria-label="Post-match review status">
         <div>
           <span>Event</span>
-          <strong>{event?.name ?? report?.eventId ?? "No event"}</strong>
+          <strong>
+            {event ? (
+              <CareerTournamentLink career={props.career} eventId={event.id}>
+                {event.name}
+              </CareerTournamentLink>
+            ) : report?.eventId ? (
+              <CareerTournamentLink career={props.career} eventId={report.eventId}>
+                {report.eventId}
+              </CareerTournamentLink>
+            ) : (
+              "No event"
+            )}
+          </strong>
         </div>
         <div>
           <span>Round</span>

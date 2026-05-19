@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { App, commandIdForPage } from "../../app/App";
+import { TournamentNavigationProvider } from "../../app/tournamentNavigation";
 import { CareerCalendarPage, CareerRankingsPage, CareerTournamentHomePage } from "../../components/CareerWorkbench";
 import { addDays } from "../../game/career/calendar";
 import { getCareerEvent } from "../../game/career/events";
@@ -71,57 +72,60 @@ function careerEnteredOnMetroStart() {
 
 function renderCalendarPage(overrides: Partial<Parameters<typeof CareerCalendarPage>[0]> = {}) {
   const { career } = careerEnteredOnMetroStart();
+  const onOpenTournamentHome = overrides.onOpenTournamentHome ?? vi.fn();
 
   return render(
-    <CareerCalendarPage
-      career={career}
-      tournament={null}
-      saveRecovery={null}
-      activeSavePresent={true}
-      corruptSavePresent={false}
-      onStartCareer={vi.fn()}
-      onOpenTraining={vi.fn()}
-      onOpenCalendar={vi.fn()}
-      onOpenTournamentHome={vi.fn()}
-      onOpenHome={vi.fn()}
-      onOpenLiveMatch={vi.fn()}
-      onOpenPostMatch={vi.fn()}
-      onOpenProgram={vi.fn()}
-      onOpenRivals={vi.fn()}
-      onOpenMatchPlanning={vi.fn()}
-      onOpenSaveManager={vi.fn()}
-      onRequestNewSession={vi.fn()}
-      onOpenFacilities={vi.fn()}
-      onOpenMedia={vi.fn()}
-      onOpenScouting={vi.fn()}
-      onOpenRecruitment={vi.fn()}
-      onOpenYouth={vi.fn()}
-      onOpenStaff={vi.fn()}
-      onOpenPromises={vi.fn()}
-      onOpenPlayerProfile={vi.fn()}
-      onApplyTraining={vi.fn()}
-      onEnterEvent={vi.fn()}
-      onOpenScheduledCareerMatch={vi.fn()}
-      onStartManagedMatch={vi.fn()}
-      onContinueAfterPostMatch={vi.fn()}
-      onCommissionScoutReport={vi.fn()}
-      onMakeRecruitmentOffer={vi.fn()}
-      onTrainRosterAthlete={vi.fn()}
-      onEnterRosterAthleteLowerEvent={vi.fn()}
-      onDevelopYouthProspect={vi.fn()}
-      onEnterYouthLowerEvent={vi.fn()}
-      onHireStaffMember={vi.fn()}
-      onSetManagedAthletePromise={vi.fn()}
-      onWithdrawPromise={vi.fn()}
-      onAdvanceRivalCircuit={vi.fn()}
-      onUpgradeFacility={vi.fn()}
-      onResolveMediaObjectives={vi.fn()}
-      onUpdateAdvancedTacticPlan={vi.fn()}
-      onRefreshAssistantAdvice={vi.fn()}
-      onApplyAssistantAdvice={vi.fn()}
-      onOverrideAssistantAdvice={vi.fn()}
-      {...overrides}
-    />
+    <TournamentNavigationProvider onOpenTournamentHome={onOpenTournamentHome}>
+      <CareerCalendarPage
+        career={career}
+        tournament={null}
+        saveRecovery={null}
+        activeSavePresent={true}
+        corruptSavePresent={false}
+        onStartCareer={vi.fn()}
+        onOpenTraining={vi.fn()}
+        onOpenCalendar={vi.fn()}
+        onOpenHome={vi.fn()}
+        onOpenLiveMatch={vi.fn()}
+        onOpenPostMatch={vi.fn()}
+        onOpenProgram={vi.fn()}
+        onOpenRivals={vi.fn()}
+        onOpenMatchPlanning={vi.fn()}
+        onOpenSaveManager={vi.fn()}
+        onRequestNewSession={vi.fn()}
+        onOpenFacilities={vi.fn()}
+        onOpenMedia={vi.fn()}
+        onOpenScouting={vi.fn()}
+        onOpenRecruitment={vi.fn()}
+        onOpenYouth={vi.fn()}
+        onOpenStaff={vi.fn()}
+        onOpenPromises={vi.fn()}
+        onOpenPlayerProfile={vi.fn()}
+        onApplyTraining={vi.fn()}
+        onEnterEvent={vi.fn()}
+        onOpenScheduledCareerMatch={vi.fn()}
+        onStartManagedMatch={vi.fn()}
+        onContinueAfterPostMatch={vi.fn()}
+        onCommissionScoutReport={vi.fn()}
+        onMakeRecruitmentOffer={vi.fn()}
+        onTrainRosterAthlete={vi.fn()}
+        onEnterRosterAthleteLowerEvent={vi.fn()}
+        onDevelopYouthProspect={vi.fn()}
+        onEnterYouthLowerEvent={vi.fn()}
+        onHireStaffMember={vi.fn()}
+        onSetManagedAthletePromise={vi.fn()}
+        onWithdrawPromise={vi.fn()}
+        onAdvanceRivalCircuit={vi.fn()}
+        onUpgradeFacility={vi.fn()}
+        onResolveMediaObjectives={vi.fn()}
+        onUpdateAdvancedTacticPlan={vi.fn()}
+        onRefreshAssistantAdvice={vi.fn()}
+        onApplyAssistantAdvice={vi.fn()}
+        onOverrideAssistantAdvice={vi.fn()}
+        {...overrides}
+        onOpenTournamentHome={onOpenTournamentHome}
+      />
+    </TournamentNavigationProvider>
   );
 }
 
@@ -491,12 +495,12 @@ describe("career calendar event actions", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Calendar View" }));
 
     expect(screen.getByRole("heading", { name: "Calendar View" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Metro Open: Round of 16" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Open tournament home for Metro Open: Round of 16" })).toBeInTheDocument();
     expect(screen.getAllByText("TBD").length).toBeGreaterThan(0);
-    expect(screen.getByRole("button", { name: "Harbor Masters: Round of 16 (W)" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Open tournament home for Harbor Masters: Round of 16 (W)" })).toBeInTheDocument();
 
-    const activeCard = screen.getByRole("button", { name: "Metro Open: Round of 16" }).closest(".calendar-commitment-card") as HTMLElement;
-    fireEvent.click(within(activeCard).getByRole("button", { name: "Metro Open: Round of 16" }));
+    const activeCard = screen.getByRole("button", { name: "Open tournament home for Metro Open: Round of 16" }).closest(".calendar-commitment-card") as HTMLElement;
+    fireEvent.click(within(activeCard).getByRole("button", { name: "Open tournament home for Metro Open: Round of 16" }));
     expect(onOpenTournamentHome).toHaveBeenCalledWith({ seasonId: career.seasonId, eventId: metro.id });
 
     fireEvent.click(within(activeCard).getByRole("button", { name: activeOpponentName }));
@@ -533,7 +537,7 @@ describe("career calendar event actions", () => {
     expect(screen.getByText("Page 2 of 3")).toBeInTheDocument();
   });
 
-  it("opens entered tournament homes through a stable season/event address", () => {
+  it("opens upcoming event names through a stable season/event address", () => {
     const baseCareer = createInitialCareerState(seededPlayers[0].player.id, 9911);
     const harbor = getCareerEvent(baseCareer.events, "harbor-masters-500")!;
     const onOpenTournamentHome = vi.fn();
@@ -547,10 +551,31 @@ describe("career calendar event actions", () => {
 
     renderCalendarPage({ career, onOpenTournamentHome });
 
-    const harborRow = screen.getByText(harbor.name).closest(".calendar-event-row")!;
-    fireEvent.click(within(harborRow as HTMLElement).getByRole("button", { name: "Open Event" }));
+    const schedule = screen.getByLabelText("Upcoming event schedule");
+    const harborNameLink = within(schedule).getByRole("button", { name: `Open tournament home for ${harbor.name}` });
+    fireEvent.click(harborNameLink);
 
     expect(onOpenTournamentHome).toHaveBeenCalledWith({ seasonId: career.seasonId, eventId: harbor.id });
+  });
+
+  it("keeps unresolved active event ids as plain text instead of linking the next catalog event", () => {
+    const baseCareer = createInitialCareerState(seededPlayers[0].player.id, 9918);
+    const nextCatalogEvent = getCareerEvent(baseCareer.events, "metro-open-300")!;
+    const onOpenTournamentHome = vi.fn();
+    const career = {
+      ...baseCareer,
+      activeEventId: "legacy-missing-event",
+      stage: "event_entered" as const
+    };
+
+    renderCalendarPage({ career, onOpenTournamentHome });
+
+    const status = screen.getByLabelText("Calendar status");
+    expect(within(status).getByText("legacy-missing-event")).toBeInTheDocument();
+    expect(
+      within(status).queryByRole("button", { name: `Open tournament home for ${nextCatalogEvent.name}` })
+    ).not.toBeInTheDocument();
+    expect(onOpenTournamentHome).not.toHaveBeenCalled();
   });
 
   it("keeps calendar rows compact while exposing event homes for inspection", () => {
@@ -648,7 +673,7 @@ describe("career calendar event actions", () => {
 
     renderCalendarPage({ career, onOpenTournamentHome });
     fireEvent.click(screen.getByRole("tab", { name: "Past Events" }));
-    fireEvent.click(screen.getByRole("button", { name: "Open Event" }));
+    fireEvent.click(screen.getByRole("button", { name: `Open tournament home for ${event.name}` }));
 
     expect(onOpenTournamentHome).toHaveBeenCalledWith({ seasonId: career.seasonId, eventId: event.id });
 
@@ -656,5 +681,14 @@ describe("career calendar event actions", () => {
     expect(screen.getByRole("heading", { name: "Result Archive" })).toBeInTheDocument();
     expect(screen.getByText("Summary only")).toBeInTheDocument();
     expect(screen.getByText(/predates bracket snapshots/i)).toBeInTheDocument();
+  });
+
+  it("renders a safe not-found tournament home for legacy event ids", () => {
+    const career = createInitialCareerState(seededPlayers[0].player.id, 9917);
+
+    renderTournamentHomePage({ career, eventId: "legacy-missing-event" });
+
+    expect(screen.getByRole("heading", { name: "Tournament Not Found" })).toBeInTheDocument();
+    expect(screen.getByText(/Address:/)).toHaveTextContent(`${career.seasonId} / legacy-missing-event`);
   });
 });

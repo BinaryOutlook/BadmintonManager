@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { PlayerLink, SmartPlayerText } from "../../components/PlayerLink";
+import { TournamentLink } from "../../components/TournamentLink";
 import { createPlayerProfileViewModel } from "../../game/selectors/player";
 import type { AppPhase } from "../../game/store/store";
 import type { CareerState } from "../../game/career/models";
@@ -528,7 +529,11 @@ export function PlayerProfilePage(props: PlayerProfilePageProps) {
                   <div className="profile-achievement-list">
                     {model.career.titles.map((achievement) => (
                       <div key={`${achievement.eventId}-${achievement.result}`} className="profile-achievement-row">
-                        <strong>{achievement.eventName}</strong>
+                        <strong>
+                          <TournamentLink seasonId={props.career?.seasonId} eventId={achievement.eventId}>
+                            {achievement.eventName}
+                          </TournamentLink>
+                        </strong>
                         <span>{achievement.date} / {achievement.label}</span>
                       </div>
                     ))}
@@ -543,7 +548,11 @@ export function PlayerProfilePage(props: PlayerProfilePageProps) {
                   <div className="profile-achievement-list">
                     {model.career.runnerUpFinishes.map((achievement) => (
                       <div key={`${achievement.eventId}-${achievement.result}`} className="profile-achievement-row">
-                        <strong>{achievement.eventName}</strong>
+                        <strong>
+                          <TournamentLink seasonId={props.career?.seasonId} eventId={achievement.eventId}>
+                            {achievement.eventName}
+                          </TournamentLink>
+                        </strong>
                         <span>{achievement.date} / {achievement.label}</span>
                       </div>
                     ))}

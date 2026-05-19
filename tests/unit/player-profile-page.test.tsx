@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { PlayerNavigationProvider } from "../../app/playerNavigation";
+import { TournamentNavigationProvider } from "../../app/tournamentNavigation";
 import { PlayerProfilePage } from "../../app/pages/PlayerProfilePage";
 import { createInitialCareerState } from "../../game/career/state";
 import { seededPlayers } from "../../game/content/players";
@@ -10,6 +11,7 @@ describe("player profile career tab", () => {
     const managed = seededPlayers[0].player;
     const opponent = seededPlayers[1].player;
     const onOpenPlayerProfile = vi.fn();
+    const onOpenTournamentHome = vi.fn();
     const career = {
       ...createInitialCareerState(managed.id, 7420),
       matchHistory: [
@@ -56,17 +58,19 @@ describe("player profile career tab", () => {
 
     render(
       <PlayerNavigationProvider onOpenPlayerProfile={onOpenPlayerProfile}>
-        <PlayerProfilePage
-          playerId={managed.id}
-          selectedPlayerId={managed.id}
-          phase="setup"
-          careerPresent={true}
-          career={career}
-          tournament={null}
-          liveMatchSession={null}
-          onBack={vi.fn()}
-          onSelectPlayer={vi.fn()}
-        />
+        <TournamentNavigationProvider onOpenTournamentHome={onOpenTournamentHome}>
+          <PlayerProfilePage
+            playerId={managed.id}
+            selectedPlayerId={managed.id}
+            phase="setup"
+            careerPresent={true}
+            career={career}
+            tournament={null}
+            liveMatchSession={null}
+            onBack={vi.fn()}
+            onSelectPlayer={vi.fn()}
+          />
+        </TournamentNavigationProvider>
       </PlayerNavigationProvider>
     );
 
@@ -76,9 +80,11 @@ describe("player profile career tab", () => {
     expect(screen.getByText("W-L: 1-1")).toBeInTheDocument();
     expect(screen.getByText("Win %: 50%")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Titles" })).toBeInTheDocument();
-    expect(screen.getByText("Metro Open")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Open tournament home for Metro Open" }));
+    expect(onOpenTournamentHome).toHaveBeenCalledWith({ seasonId: career.seasonId, eventId: "metro-open-300" });
     expect(screen.getByRole("heading", { name: "Runner-Up Finishes" })).toBeInTheDocument();
-    expect(screen.getByText("Harbor Masters")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Open tournament home for Harbor Masters" }));
+    expect(onOpenTournamentHome).toHaveBeenCalledWith({ seasonId: career.seasonId, eventId: "harbor-masters-500" });
 
     const table = screen.getByRole("table", { name: "Head-to-head records" });
     expect(within(table).getByText("2")).toBeInTheDocument();
