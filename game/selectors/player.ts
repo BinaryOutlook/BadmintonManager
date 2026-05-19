@@ -3,7 +3,7 @@ import { tacticOptions } from "../content/tactics";
 import { deriveAthleteDossier, type AthleteDossier } from "../core/intel";
 import type { DerivedProfile, LiveMatchSession, Player } from "../core/models";
 import { deriveProfile } from "../core/ratings";
-import type { CareerState, PlayerCareerAchievement } from "../career/models";
+import type { CareerMatchRecord, CareerState, PlayerCareerAchievement } from "../career/models";
 import type { TournamentState } from "../tournament/tournament";
 
 export interface PlayerContextSummary {
@@ -57,11 +57,25 @@ export interface CareerSummary {
   narrative: string;
   milestones: string[];
   recordCards: Array<{ label: string; value: string }>;
+  profileRecord: PlayerCareerProfileRecord;
   titles: PlayerAchievementSummary[];
   runnerUpFinishes: PlayerAchievementSummary[];
   achievements: PlayerAchievementSummary[];
   headToHead: PlayerHeadToHeadSummary[];
+  managedPlayerSpotlight: PlayerHeadToHeadSummary | null;
   hasRecordedHistory: boolean;
+}
+
+export interface PlayerCareerProfileRecord {
+  playerId: string;
+  wins: number;
+  losses: number;
+  winPercentage: number | null;
+  titles: number;
+  runnerUps: number;
+  finals: number;
+  headToHeads: PlayerHeadToHeadSummary[];
+  managedPlayerSpotlight: PlayerHeadToHeadSummary | null;
 }
 
 export interface PlayerAchievementSummary {
@@ -672,6 +686,7 @@ function deriveCareerSummary(args: {
   overall: number;
   performance: PlayerPerformanceSummary;
   career?: CareerState | null;
+  selectedPlayerId: string;
 }): CareerSummary {
   const { player, overall, career } = args;
   const stage =
@@ -688,48 +703,163 @@ function deriveCareerSummary(args: {
       : player.age >= 31
         ? "Monitor decline"
         : "Stable";
-  const recordedMatches = (career?.matchHistory ?? []).filter(
-    (match) => match.playerAId === player.id || match.playerBId === player.id
-  );
-  const achievements = (career?.playerAchievements ?? [])
+  const recordedMatches = uniqueCareerMatchRecords(career?.matchHistory ?? []).filter(isMatchForPlayer(player.id));
+  const achievements = uniquePlayerCareerAchievements(career?.playerAchievements ?? [])
     .filter((achievement) => achievement.playerId === player.id)
     .map(toAchievementSummary)
     .sort((left, right) => right.date.localeCompare(left.date) || left.eventName.localeCompare(right.eventName));
   const titles = achievements.filter((achievement) => achievement.result === "champion");
   const runnerUpFinishes = achievements.filter((achievement) => achievement.result === "runner_up");
+  const finals = titles.length + runnerUpFinishes.length;
   const wins = recordedMatches.filter((match) => match.winnerId === player.id).length;
   const losses = recordedMatches.length - wins;
   const played = wins + losses;
   const hasRecordedHistory = played > 0 || achievements.length > 0;
   const headToHead = deriveHeadToHead(player.id, recordedMatches);
   const winPercentage = formatWinPercentage(wins, played);
+  const managedPlayerId = career?.program.managedPlayerId ?? args.selectedPlayerId;
+  const managedPlayerSpotlight = deriveManagedPlayerSpotlight({
+    playerId: player.id,
+    managedPlayerId,
+    headToHead
+  });
+  const profileRecord: PlayerCareerProfileRecord = {
+    playerId: player.id,
+    wins,
+    losses,
+    winPercentage: winPercentage.value,
+    titles: titles.length,
+    runnerUps: runnerUpFinishes.length,
+    finals,
+    headToHeads: headToHead,
+    managedPlayerSpotlight
+  };
 
   return {
     stage,
     trajectory,
     narrative: hasRecordedHistory
-      ? `${player.name} has ${wins} win${wins === 1 ? "" : "s"} and ${losses} loss${losses === 1 ? "" : "es"} in persisted career matches, with ${titles.length} title${titles.length === 1 ? "" : "s"} and ${runnerUpFinishes.length} runner-up finish${runnerUpFinishes.length === 1 ? "" : "es"} recorded.`
-      : `${player.name} has no persisted career match history yet. This archive only counts completed career matches and event results saved by the career system.`,
+      ? `${player.name} has ${wins} win${wins === 1 ? "" : "s"} and ${losses} loss${losses === 1 ? "" : "es"} in recorded universe matches, with ${titles.length} title${titles.length === 1 ? "" : "s"}, ${runnerUpFinishes.length} runner-up finish${runnerUpFinishes.length === 1 ? "" : "es"}, and ${finals} final${finals === 1 ? "" : "s"} recorded.`
+      : `${player.name} has no persisted universe match history yet. This archive only counts completed career matches and final results saved by the career system.`,
     milestones: [
       titles.length > 0 ? `${titles.length} title${titles.length === 1 ? "" : "s"} recorded` : "No titles recorded yet",
       runnerUpFinishes.length > 0
         ? `${runnerUpFinishes.length} runner-up finish${runnerUpFinishes.length === 1 ? "" : "es"} recorded`
         : "No runner-up finishes recorded yet",
-      played > 0 ? `${played} persisted career match${played === 1 ? "" : "es"} logged` : "No completed career matches recorded yet",
+      finals > 0 ? `${finals} final${finals === 1 ? "" : "s"} reached` : "No finals reached yet",
+      played > 0 ? `${played} universe match${played === 1 ? "" : "es"} logged` : "No completed universe matches recorded yet",
       overall >= 88 ? "Profiles as an elite event-level option" : "Profiles as a selectable tour-level option"
     ],
     recordCards: [
       { label: "W-L", value: `${wins}-${losses}` },
       { label: "Win %", value: winPercentage.label },
       { label: "Titles", value: String(titles.length) },
-      { label: "Runner-up", value: String(runnerUpFinishes.length) }
+      { label: "Runner-up", value: String(runnerUpFinishes.length) },
+      { label: "Finals", value: String(finals) }
     ],
+    profileRecord,
     titles,
     runnerUpFinishes,
     achievements,
     headToHead,
+    managedPlayerSpotlight,
     hasRecordedHistory
   };
+}
+
+export function selectPlayerCareerProfileRecord(args: {
+  playerId: string;
+  career?: CareerState | null;
+  managedPlayerId?: string | null;
+}): PlayerCareerProfileRecord {
+  const recordedMatches = uniqueCareerMatchRecords(args.career?.matchHistory ?? []).filter(isMatchForPlayer(args.playerId));
+  const achievements = uniquePlayerCareerAchievements(args.career?.playerAchievements ?? []).filter(
+    (achievement) => achievement.playerId === args.playerId
+  );
+  const titles = achievements.filter((achievement) => achievement.result === "champion").length;
+  const runnerUps = achievements.filter((achievement) => achievement.result === "runner_up").length;
+  const wins = recordedMatches.filter((match) => match.winnerId === args.playerId).length;
+  const losses = recordedMatches.length - wins;
+  const winPercentage = formatWinPercentage(wins, wins + losses);
+  const headToHeads = deriveHeadToHead(args.playerId, recordedMatches);
+  const managedPlayerSpotlight = deriveManagedPlayerSpotlight({
+    playerId: args.playerId,
+    managedPlayerId: args.managedPlayerId ?? args.career?.program.managedPlayerId ?? null,
+    headToHead: headToHeads
+  });
+
+  return {
+    playerId: args.playerId,
+    wins,
+    losses,
+    winPercentage: winPercentage.value,
+    titles,
+    runnerUps,
+    finals: titles + runnerUps,
+    headToHeads,
+    managedPlayerSpotlight
+  };
+}
+
+function isMatchForPlayer(playerId: string) {
+  return (match: CareerMatchRecord) => match.playerAId === playerId || match.playerBId === playerId;
+}
+
+function careerMatchDeduplicationKeys(match: CareerMatchRecord) {
+  return [
+    `id:${match.id}`,
+    `signature:${match.eventId}:${match.date}:${match.round}:${match.playerAId}:${match.playerBId}:${match.winnerId}:${match.scoreline}`
+  ];
+}
+
+function uniqueCareerMatchRecords(matches: CareerMatchRecord[]) {
+  const seen = new Set<string>();
+  const unique: CareerMatchRecord[] = [];
+
+  for (const match of matches) {
+    const keys = careerMatchDeduplicationKeys(match);
+
+    if (keys.some((key) => seen.has(key))) {
+      continue;
+    }
+
+    for (const key of keys) {
+      seen.add(key);
+    }
+    unique.push(match);
+  }
+
+  return unique;
+}
+
+function uniquePlayerCareerAchievements(achievements: PlayerCareerAchievement[]) {
+  const seen = new Set<string>();
+  const unique: PlayerCareerAchievement[] = [];
+
+  for (const achievement of achievements) {
+    const key = `${achievement.playerId}:${achievement.eventId}:${achievement.result}`;
+
+    if (seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+    unique.push(achievement);
+  }
+
+  return unique;
+}
+
+function deriveManagedPlayerSpotlight(args: {
+  playerId: string;
+  managedPlayerId?: string | null;
+  headToHead: PlayerHeadToHeadSummary[];
+}) {
+  if (!args.managedPlayerId || args.managedPlayerId === args.playerId) {
+    return null;
+  }
+
+  return args.headToHead.find((entry) => entry.opponentId === args.managedPlayerId) ?? null;
 }
 
 function toAchievementSummary(achievement: PlayerCareerAchievement): PlayerAchievementSummary {
@@ -835,6 +965,12 @@ export function createPlayerProfileViewModel(args: {
       performance
     }),
     performance,
-    career: deriveCareerSummary({ player, overall, performance, career: args.career })
+    career: deriveCareerSummary({
+      player,
+      overall,
+      performance,
+      career: args.career,
+      selectedPlayerId: args.selectedPlayerId
+    })
   };
 }
