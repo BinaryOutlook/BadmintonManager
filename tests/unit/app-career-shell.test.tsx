@@ -233,6 +233,7 @@ describe("career shell daily action", () => {
       "Squad",
       "Training",
       "Calendar",
+      "Rankings",
       "Tactics",
       "Live Match",
       "Reports",
@@ -242,6 +243,7 @@ describe("career shell daily action", () => {
       "Save Manager",
       "Settings"
     ]);
+    expect(labels).not.toContain("Competitions");
     expect(commandIdForPage({ id: "bracket" })).toBe("live");
   });
 
