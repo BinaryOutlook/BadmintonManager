@@ -24,7 +24,8 @@ describe("player profile career tab", () => {
           playerAId: managed.id,
           playerBId: opponent.id,
           winnerId: managed.id,
-          scoreline: "21-13, 21-15"
+          scoreline: "21-13, 21-15",
+          source: "played" as const
         },
         {
           id: "harbor-masters-500:F-1",
@@ -35,7 +36,8 @@ describe("player profile career tab", () => {
           playerAId: opponent.id,
           playerBId: managed.id,
           winnerId: opponent.id,
-          scoreline: "18-21, 19-21"
+          scoreline: "18-21, 19-21",
+          source: "played" as const
         }
       ],
       playerAchievements: [

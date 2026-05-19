@@ -165,6 +165,35 @@ function summarizeManagedStats(stats: MatchStats, managedSide: "A" | "B") {
   };
 }
 
+function simulateQuickTournamentMatch(args: {
+  match: TournamentMatch;
+  playerMap: Record<string, Player>;
+  rng: SeededRng;
+}): TournamentMatch {
+  const matchSeed = args.rng.nextInt(1, 2_147_483_000);
+  const playerA = args.playerMap[args.match.sideAId];
+  const playerB = args.playerMap[args.match.sideBId];
+  const result = simulateMatchByFidelity(
+    {
+      seed: matchSeed,
+      playerA,
+      playerB,
+      tacticA: chooseAutoplayTactic(playerA, args.rng),
+      tacticB: chooseAutoplayTactic(playerB, args.rng)
+    },
+    "quick"
+  );
+
+  return {
+    ...args.match,
+    winnerId: result.winner === "A" ? args.match.sideAId : args.match.sideBId,
+    scoreline: result.scoreline,
+    simulationFidelity: result.fidelity,
+    summaryEvents: result.summaryEvents,
+    completed: true
+  };
+}
+
 function createRound(args: {
   playerIds: string[];
   managedPlayerId: string;
@@ -190,22 +219,8 @@ function createRound(args: {
     };
 
     if (!managed) {
-      const matchSeed = rng.nextInt(1, 2_147_483_000);
-      const result = simulateMatchByFidelity(
-        {
-          seed: matchSeed,
-          playerA: playerMap[sideAId],
-          playerB: playerMap[sideBId],
-          tacticA: chooseAutoplayTactic(playerMap[sideAId], rng),
-          tacticB: chooseAutoplayTactic(playerMap[sideBId], rng)
-        },
-        "quick"
-      );
-      match.winnerId = result.winner === "A" ? sideAId : sideBId;
-      match.scoreline = result.scoreline;
-      match.simulationFidelity = result.fidelity;
-      match.summaryEvents = result.summaryEvents;
-      match.completed = true;
+      matches.push(simulateQuickTournamentMatch({ match, playerMap, rng }));
+      continue;
     }
 
     matches.push(match);
@@ -214,6 +229,61 @@ function createRound(args: {
   return {
     name: roundName,
     matches
+  };
+}
+
+function fillMissingNonManagedMatches(args: {
+  matches: TournamentMatch[];
+  playerMap: Record<string, Player>;
+  rng: SeededRng;
+}) {
+  return args.matches.map((match) => {
+    if (match.managed || match.completed || match.winnerId) {
+      return match;
+    }
+
+    return simulateQuickTournamentMatch({
+      match: {
+        ...match,
+        simulationFidelity: "quick"
+      },
+      playerMap: args.playerMap,
+      rng: args.rng
+    });
+  });
+}
+
+function completeNonManagedBracket(args: {
+  tournament: TournamentState;
+  rounds: TournamentRound[];
+  winners: string[];
+  playerMap: Record<string, Player>;
+  rng: SeededRng;
+  managedResults: ManagedRunMatch[];
+}): TournamentState {
+  const completedRounds = [...args.rounds];
+  let roundWinners = [...args.winners];
+
+  while (roundWinners.length > 1) {
+    const nextRound = createRound({
+      playerIds: roundWinners,
+      managedPlayerId: args.tournament.managedPlayerId,
+      playerMap: args.playerMap,
+      roundName: roundNameForSize(roundWinners.length),
+      rng: args.rng
+    });
+    completedRounds.push(nextRound);
+    roundWinners = nextRound.matches.flatMap((match) => match.winnerId ?? []);
+  }
+
+  return {
+    ...args.tournament,
+    rounds: completedRounds,
+    currentRoundIndex: Math.max(0, completedRounds.length - 1),
+    managedResults: args.managedResults,
+    championId: roundWinners[0],
+    eliminated: roundWinners[0] !== args.tournament.managedPlayerId,
+    rngState: args.rng.snapshot()
   };
 }
 
@@ -334,8 +404,9 @@ export function advanceTournament(args: {
   managedResult: MatchResult;
 }) {
   const playerMap = Object.fromEntries(args.seededEntries.map((entry) => [entry.player.id, entry.player]));
+  const rng = new SeededRng(args.tournament.rngState);
   const currentRound = getCurrentRound(args.tournament);
-  const matches = currentRound.matches.map((match) => {
+  const matchesWithManagedResult = currentRound.matches.map((match) => {
     if (match.id !== args.managedMatchId) {
       return match;
     }
@@ -351,11 +422,16 @@ export function advanceTournament(args: {
       summaryEvents: args.managedResult.summaryEvents
     };
   });
+  const matches = fillMissingNonManagedMatches({
+    matches: matchesWithManagedResult,
+    playerMap,
+    rng
+  });
 
   const updatedRounds = args.tournament.rounds.map((round, index) =>
     index === args.tournament.currentRoundIndex ? { ...round, matches } : round
   );
-  const winners = matches.map((match) => match.winnerId!).filter(Boolean);
+  const winners = matches.flatMap((match) => match.winnerId ?? []);
   const managedStillAlive = winners.includes(args.tournament.managedPlayerId);
   const managedMatch = currentRound.matches.find((match) => match.id === args.managedMatchId);
   const managedSide = managedMatch?.sideAId === args.tournament.managedPlayerId ? "A" : "B";
@@ -381,20 +457,22 @@ export function advanceTournament(args: {
       rounds: updatedRounds,
       managedResults,
       championId: winners[0],
-      eliminated: winners[0] !== args.tournament.managedPlayerId
+      eliminated: winners[0] !== args.tournament.managedPlayerId,
+      rngState: rng.snapshot()
     };
   }
 
   if (!managedStillAlive) {
-    return {
-      ...args.tournament,
+    return completeNonManagedBracket({
+      tournament: args.tournament,
       rounds: updatedRounds,
-      managedResults,
-      eliminated: true
-    };
+      winners,
+      playerMap,
+      rng,
+      managedResults
+    });
   }
 
-  const rng = new SeededRng(args.tournament.rngState);
   const nextRound = createRound({
     playerIds: winners,
     managedPlayerId: args.tournament.managedPlayerId,

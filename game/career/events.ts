@@ -8,12 +8,19 @@ import type {
   CareerEventHistoryRecord,
   CareerEventHistoryStatus,
   CareerEventStatus,
+  CareerMatchRecordSource,
   CareerState,
   CareerTier,
   ProgramEconomy,
   RankingEntry
 } from "./models";
-import { getManagedMatchContext, isTournamentComplete, type RoundName, type TournamentState } from "../tournament/tournament";
+import {
+  getManagedMatchContext,
+  isTournamentComplete,
+  type RoundName,
+  type TournamentMatch,
+  type TournamentState
+} from "../tournament/tournament";
 
 export type CalendarEventStatus =
   | CareerEventStatus
@@ -954,6 +961,8 @@ export function appendPlayedCareerEventHistory(args: {
   prizeMoney: number;
   matchId: string;
   scoreline: string;
+  matchIds?: string[];
+  scorelines?: string[];
   bracketSnapshot?: CareerEventBracketSnapshot;
 }): CareerState {
   if (args.state.eventHistory.some((record) => record.eventId === args.event.id)) {
@@ -986,8 +995,8 @@ export function appendPlayedCareerEventHistory(args: {
     travelCost,
     netCash: args.prizeMoney - entryCost - travelCost,
     completedAt: args.state.date,
-    matchIds: [args.matchId],
-    scorelines: [args.scoreline],
+    matchIds: args.matchIds ?? [args.matchId],
+    scorelines: args.scorelines ?? [args.scoreline],
     achievements: historyAchievements({
       state: args.state,
       status,
@@ -1012,6 +1021,7 @@ export function appendCareerMatchRecord(args: {
   playerBId: string;
   winnerId: string;
   scoreline: string;
+  source?: CareerMatchRecordSource;
 }): CareerState {
   const recordId = `${args.event.id}:${args.matchId}`;
 
@@ -1032,10 +1042,90 @@ export function appendCareerMatchRecord(args: {
         playerAId: args.playerAId,
         playerBId: args.playerBId,
         winnerId: args.winnerId,
-        scoreline: args.scoreline
+        scoreline: args.scoreline,
+        source: args.source ?? "archive_import"
       }
     ]
   };
+}
+
+function sourceForTournamentMatch(match: TournamentMatch): CareerMatchRecordSource {
+  if (match.managed) {
+    return "played";
+  }
+
+  return match.simulationFidelity === "quick" ? "quick_sim" : "archive_import";
+}
+
+export function completedTournamentMatches(tournament: TournamentState) {
+  return tournament.rounds.flatMap((round) =>
+    round.matches
+      .filter(
+        (match) =>
+          match.completed &&
+          Boolean(match.winnerId) &&
+          Boolean(match.scoreline)
+      )
+      .map((match) => ({
+        ...match,
+        round: round.name,
+        winnerId: match.winnerId!,
+        scoreline: match.scoreline!
+      }))
+  );
+}
+
+export function appendCompletedTournamentMatchRecords(args: {
+  state: CareerState;
+  event: CareerEventDefinition;
+  tournament: TournamentState;
+  date?: string;
+}): CareerState {
+  return completedTournamentMatches(args.tournament).reduce(
+    (state, match) =>
+      appendCareerMatchRecord({
+        state,
+        event: args.event,
+        matchId: match.id,
+        date: args.date,
+        round: match.round,
+        playerAId: match.sideAId,
+        playerBId: match.sideBId,
+        winnerId: match.winnerId,
+        scoreline: match.scoreline,
+        source: sourceForTournamentMatch(match)
+      }),
+    args.state
+  );
+}
+
+export function tournamentMatchArchiveIds(tournament: TournamentState) {
+  return completedTournamentMatches(tournament).map((match) => `${tournament.id}:${match.id}`);
+}
+
+export function tournamentMatchArchiveScorelines(tournament: TournamentState) {
+  return completedTournamentMatches(tournament).map((match) => match.scoreline);
+}
+
+export function tournamentPlacements(tournament: TournamentState) {
+  const placements = new Map<string, string>();
+
+  for (const round of tournament.rounds) {
+    for (const match of round.matches) {
+      if (!match.completed || !match.winnerId) {
+        continue;
+      }
+
+      const loserId = match.sideAId === match.winnerId ? match.sideBId : match.sideAId;
+      placements.set(loserId, round.name);
+
+      if (round.name === "F") {
+        placements.set(match.winnerId, "champion");
+      }
+    }
+  }
+
+  return placements;
 }
 
 export function appendCareerResultAchievements(args: {

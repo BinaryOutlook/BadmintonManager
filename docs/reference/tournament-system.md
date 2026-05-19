@@ -70,8 +70,10 @@ Each tournament round should follow this sequence:
 2. allow tactic selection
 3. simulate the match
 4. advance the winner
-5. update round state
-6. stop when the managed player loses or wins the final
+5. quick-sim any missing non-managed matches without rerolling completed facts
+6. update round state
+7. if the managed player is eliminated, quick-sim the remaining non-managed rounds to a champion
+8. stop when the full event has a champion
 
 ## Persistence Rule
 
@@ -84,6 +86,8 @@ At minimum, save:
 - next scheduled match
 - selected player
 - selected tactic package for the next match if needed
+- completed career-event bracket snapshots when a career event closes
+- universe match records with source metadata: `played`, `quick_sim`, or safe legacy/import fallback
 
 Legacy save compatibility:
 
@@ -91,6 +95,7 @@ Legacy save compatibility:
 - older saves that contain the previous quick-tournament real event name are accepted and normalized
   to `Harborline Open` during load/import
 - older public tier labels are accepted and normalized to fictional `Circuit` labels
+- older match-history rows without source metadata are accepted as `archive_import`
 
 ## Presentation Rule
 
