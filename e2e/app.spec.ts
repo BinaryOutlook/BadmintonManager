@@ -12,6 +12,7 @@ const expectedPrimaryCommandLabels = [
   "Squad",
   "Training",
   "Calendar",
+  "Rankings",
   "Tactics",
   "Live Match",
   "Reports",
