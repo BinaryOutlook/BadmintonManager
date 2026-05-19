@@ -718,6 +718,25 @@ export type CalendarCommitment = {
   result: "W" | "L" | null;
 };
 
+export type ScheduleCalendarMatchEntry = CalendarCommitment & {
+  id: string;
+  kind: "match";
+  state: "completed" | "confirmed";
+};
+
+export type ScheduleCalendarDeadlineEntry = {
+  id: string;
+  kind: "deadline";
+  state: "deadline";
+  date: string;
+  eventId: string;
+  eventName: string;
+  deadlineType: "entry" | "draw";
+  label: string;
+};
+
+export type ScheduleCalendarEntry = ScheduleCalendarMatchEntry | ScheduleCalendarDeadlineEntry;
+
 export type CalendarCommitmentDateGroup = {
   date: string;
   commitments: CalendarCommitment[];
@@ -762,6 +781,22 @@ function completedCommitmentForRecord(career: CareerState, record: CareerState["
   };
 }
 
+function scheduledCommitmentForRound(args: {
+  event: CareerEventDefinition;
+  round: RoundName;
+  opponentId: string | null;
+}): CalendarCommitment {
+  return {
+    date: scheduledDateForRound(args.event, args.round),
+    eventId: args.event.id,
+    eventName: args.event.name,
+    round: args.round,
+    opponentId: args.opponentId,
+    opponentLabel: playerLabel(args.opponentId),
+    result: null
+  };
+}
+
 function activeOpponentIdForRound(args: {
   career: CareerState;
   eventId: string;
@@ -791,7 +826,7 @@ function sortCalendarCommitments(commitments: CalendarCommitment[]) {
   );
 }
 
-export function calendarCommitmentsForCareer(args: {
+export function timelineCommitmentsForCareer(args: {
   career: CareerState;
   tournament: TournamentState | null;
 }): CalendarCommitment[] {
@@ -836,18 +871,58 @@ export function calendarCommitmentsForCareer(args: {
         tournament: args.tournament
       });
 
-      return [
-        {
-          date,
-          eventId: event.id,
-          eventName: event.name,
-          round,
-          opponentId,
-          opponentLabel: playerLabel(opponentId),
-          result: null
-        }
-      ];
+      return [scheduledCommitmentForRound({ event, round, opponentId })];
     });
+  });
+
+  return sortCalendarCommitments([...completedCommitments, ...scheduledCommitments]);
+}
+
+export function calendarCommitmentsForCareer(args: {
+  career: CareerState;
+  tournament: TournamentState | null;
+}): CalendarCommitment[] {
+  const managedMatchHistory = args.career.matchHistory.filter((record) =>
+    isManagedCareerMatchRecord(args.career, record)
+  );
+  const completedRoundKeys = new Set(
+    managedMatchHistory.map((record) => `${record.eventId}:${record.round}`)
+  );
+  const completedCommitments = managedMatchHistory.map((record) =>
+    completedCommitmentForRecord(args.career, record)
+  );
+  const enteredEventIds = new Set(args.career.enteredEventIds);
+  const completedEventIds = new Set(args.career.completedEventIds);
+  const scheduledCommitments = args.career.events.flatMap((event) => {
+    if (!enteredEventIds.has(event.id) || completedEventIds.has(event.id)) {
+      return [];
+    }
+
+    const activeSchedule = managedMatchScheduleForEvent({
+      career: args.career,
+      tournament: args.tournament,
+      eventId: event.id
+    });
+    const confirmedRound = activeSchedule?.round ?? (args.career.date >= event.drawDate ? "R16" : null);
+
+    if (!confirmedRound || completedRoundKeys.has(`${event.id}:${confirmedRound}`)) {
+      return [];
+    }
+
+    const date = scheduledDateForRound(event, confirmedRound);
+
+    if (date < args.career.date && !activeSchedule?.playable) {
+      return [];
+    }
+
+    const opponentId = activeOpponentIdForRound({
+      career: args.career,
+      eventId: event.id,
+      round: confirmedRound,
+      tournament: args.tournament
+    });
+
+    return [scheduledCommitmentForRound({ event, round: confirmedRound, opponentId })];
   });
 
   return sortCalendarCommitments([...completedCommitments, ...scheduledCommitments]);
@@ -868,6 +943,85 @@ export function groupCalendarCommitmentsByDate(commitments: CalendarCommitment[]
     });
     return groups;
   }, []);
+}
+
+function calendarDeadlineEntriesForCareer(career: CareerState): ScheduleCalendarDeadlineEntry[] {
+  const enteredEventIds = new Set(career.enteredEventIds);
+  const completedEventIds = new Set(career.completedEventIds);
+
+  return career.events.flatMap((event): ScheduleCalendarDeadlineEntry[] => {
+    if (completedEventIds.has(event.id)) {
+      return [];
+    }
+
+    const entered = enteredEventIds.has(event.id);
+    const eligibility = eventEligibilityFor(career, event);
+    const managerRelevant = entered || eligibility.allowed;
+    const entries: ScheduleCalendarDeadlineEntry[] = [];
+
+    if (managerRelevant && career.date <= event.entryDeadline) {
+      entries.push({
+        id: `deadline:${event.id}:entry`,
+        kind: "deadline",
+        state: "deadline",
+        date: event.entryDeadline,
+        eventId: event.id,
+        eventName: event.name,
+        deadlineType: "entry",
+        label: "Entry deadline"
+      });
+    }
+
+    if (entered && career.date <= event.drawDate) {
+      entries.push({
+        id: `deadline:${event.id}:draw`,
+        kind: "deadline",
+        state: "deadline",
+        date: event.drawDate,
+        eventId: event.id,
+        eventName: event.name,
+        deadlineType: "draw",
+        label: "Draw published"
+      });
+    }
+
+    return entries;
+  });
+}
+
+function scheduleCalendarEntryOrder(entry: ScheduleCalendarEntry) {
+  if (entry.kind === "deadline") {
+    return entry.deadlineType === "entry" ? 0 : 1;
+  }
+
+  return entry.state === "completed" ? 2 : 3;
+}
+
+function sortScheduleCalendarEntries(entries: ScheduleCalendarEntry[]) {
+  return [...entries].sort(
+    (left, right) =>
+      left.date.localeCompare(right.date) ||
+      left.eventName.localeCompare(right.eventName) ||
+      scheduleCalendarEntryOrder(left) - scheduleCalendarEntryOrder(right) ||
+      left.id.localeCompare(right.id)
+  );
+}
+
+export function scheduleCalendarEntriesForCareer(args: {
+  career: CareerState;
+  tournament: TournamentState | null;
+}): ScheduleCalendarEntry[] {
+  const matchEntries = calendarCommitmentsForCareer(args).map((commitment): ScheduleCalendarMatchEntry => ({
+    ...commitment,
+    id: `match:${commitment.eventId}:${commitment.round}:${commitment.result ?? "confirmed"}:${commitment.date}`,
+    kind: "match",
+    state: commitment.result ? "completed" : "confirmed"
+  }));
+
+  return sortScheduleCalendarEntries([
+    ...calendarDeadlineEntriesForCareer(args.career),
+    ...matchEntries
+  ]);
 }
 
 export function createCareerEventBracketSnapshot(tournament: TournamentState): CareerEventBracketSnapshot {

@@ -1159,6 +1159,200 @@ textarea:focus-visible {
   white-space: normal;
 }
 
+.calendar-month-grid-panel {
+  overflow: hidden;
+}
+
+.schedule-calendar-months {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.schedule-calendar-month {
+  display: grid;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.schedule-calendar-month-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: baseline;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.schedule-calendar-month-header h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: 1rem;
+  letter-spacing: 0.02em;
+}
+
+.schedule-calendar-month-header span {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.schedule-calendar-weekdays,
+.schedule-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  min-width: 0;
+}
+
+.schedule-calendar-weekdays {
+  gap: 0.3rem;
+}
+
+.schedule-calendar-weekdays span {
+  min-width: 0;
+  color: var(--muted-soft);
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.schedule-calendar-grid {
+  overflow: hidden;
+  border: 1px solid rgba(48, 54, 61, 0.92);
+  border-radius: 0.42rem;
+  background: rgba(12, 14, 17, 0.72);
+}
+
+.schedule-calendar-cell {
+  display: grid;
+  align-content: start;
+  gap: 0.35rem;
+  min-width: 0;
+  min-height: 7.2rem;
+  border-right: 1px solid rgba(48, 54, 61, 0.72);
+  border-bottom: 1px solid rgba(48, 54, 61, 0.72);
+  padding: 0.42rem;
+}
+
+.schedule-calendar-cell:nth-child(7n) {
+  border-right: 0;
+}
+
+.schedule-calendar-cell:nth-last-child(-n + 7) {
+  border-bottom: 0;
+}
+
+.schedule-calendar-cell-muted {
+  background: rgba(255, 255, 255, 0.018);
+  color: rgba(235, 246, 239, 0.32);
+}
+
+.schedule-calendar-day-number {
+  color: var(--muted-soft);
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.schedule-calendar-entry-stack {
+  display: grid;
+  gap: 0.28rem;
+  min-width: 0;
+}
+
+.schedule-calendar-badge {
+  appearance: none;
+  display: grid;
+  gap: 0.12rem;
+  width: 100%;
+  min-width: 0;
+  border: 1px solid rgba(57, 255, 20, 0.24);
+  border-radius: 0.32rem;
+  padding: 0.34rem;
+  background: rgba(57, 255, 20, 0.11);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.schedule-calendar-badge:hover,
+.schedule-calendar-badge:focus-visible {
+  border-color: rgba(57, 255, 20, 0.55);
+  background: rgba(57, 255, 20, 0.16);
+  outline: none;
+}
+
+.schedule-calendar-badge span,
+.schedule-calendar-badge small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.schedule-calendar-badge span {
+  color: var(--lime);
+  font-size: 0.58rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.schedule-calendar-badge strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 0.72rem;
+  line-height: 1.12;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.schedule-calendar-badge small {
+  color: var(--muted-soft);
+  font-size: 0.61rem;
+  line-height: 1.15;
+}
+
+.schedule-calendar-badge-completed {
+  border-color: rgba(120, 207, 255, 0.34);
+  background: rgba(120, 207, 255, 0.11);
+}
+
+.schedule-calendar-badge-completed span {
+  color: #78cfff;
+}
+
+.schedule-calendar-badge-result-w {
+  border-color: rgba(57, 255, 20, 0.44);
+}
+
+.schedule-calendar-badge-result-w span {
+  color: var(--lime);
+}
+
+.schedule-calendar-badge-result-l {
+  border-color: rgba(255, 101, 101, 0.38);
+}
+
+.schedule-calendar-badge-result-l span {
+  color: #ff8b8b;
+}
+
+.schedule-calendar-badge-deadline {
+  border-color: rgba(242, 193, 78, 0.36);
+  background: rgba(242, 193, 78, 0.11);
+}
+
+.schedule-calendar-badge-deadline span {
+  color: #f2c14e;
+}
+
 .rankings-status-strip {
   grid-template-columns: repeat(5, minmax(0, 1fr));
 }
@@ -6040,6 +6234,42 @@ textarea:focus-visible {
   .management-status-strip,
   .management-table-row {
     grid-template-columns: 1fr;
+  }
+
+  .schedule-calendar-weekdays {
+    gap: 0.12rem;
+  }
+
+  .schedule-calendar-weekdays span {
+    font-size: 0.52rem;
+    letter-spacing: 0.04em;
+  }
+
+  .schedule-calendar-cell {
+    min-height: 5.4rem;
+    padding: 0.25rem;
+  }
+
+  .schedule-calendar-day-number {
+    font-size: 0.58rem;
+  }
+
+  .schedule-calendar-badge {
+    gap: 0.08rem;
+    padding: 0.24rem;
+  }
+
+  .schedule-calendar-badge span {
+    font-size: 0.5rem;
+    letter-spacing: 0.04em;
+  }
+
+  .schedule-calendar-badge strong {
+    font-size: 0.62rem;
+  }
+
+  .schedule-calendar-badge small {
+    display: none;
   }
 
   .management-table-row small {

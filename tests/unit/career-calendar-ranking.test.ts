@@ -14,13 +14,55 @@ import {
   paginateCalendarItems,
   pastCalendarRecords,
   recordPastCareerEvents,
+  scheduleCalendarEntriesForCareer,
+  timelineCommitmentsForCareer,
   upcomingCalendarEvents
 } from "../../game/career/events";
 import { scheduledDateForRound } from "../../game/career/matchSchedule";
 import { awardRankingPoints, rankingsByCurrentRank } from "../../game/career/rankings";
 import { createInitialCareerState, managedAthlete } from "../../game/career/state";
+import type { MatchResult, Side } from "../../game/core/models";
 import { migratePersistedSave, persistedSavePayloadSchema, persistedSaveSchema } from "../../game/store/save";
-import { createTournament, getManagedMatchContext } from "../../game/tournament/tournament";
+import { advanceTournament, createTournament, getManagedMatchContext } from "../../game/tournament/tournament";
+
+function straightGamesResult(winner: Side): MatchResult {
+  return {
+    winner,
+    setsWonA: winner === "A" ? 2 : 0,
+    setsWonB: winner === "B" ? 2 : 0,
+    setSummaries: [
+      {
+        winner,
+        scoreA: winner === "A" ? 21 : 14,
+        scoreB: winner === "B" ? 21 : 14,
+        points: []
+      },
+      {
+        winner,
+        scoreA: winner === "A" ? 21 : 16,
+        scoreB: winner === "B" ? 21 : 16,
+        points: []
+      }
+    ],
+    stats: {
+      winnersA: winner === "A" ? 22 : 12,
+      winnersB: winner === "B" ? 22 : 12,
+      unforcedErrorsA: winner === "A" ? 8 : 17,
+      unforcedErrorsB: winner === "B" ? 8 : 17,
+      totalSmashesA: 16,
+      totalSmashesB: 15,
+      peakSmashSpeedA: 388,
+      peakSmashSpeedB: 381,
+      staminaDrainA: 8,
+      staminaDrainB: 10,
+      longestRally: 26,
+      totalPoints: 72
+    },
+    scoreline: winner === "A" ? "21-14, 21-16" : "14-21, 16-21",
+    fidelity: "detailed",
+    summaryEvents: []
+  };
+}
 
 describe("fictional career calendar and ranking model", () => {
   it("defines ordered fictional event operations metadata for every catalog event", () => {
@@ -121,7 +163,7 @@ describe("fictional career calendar and ranking model", () => {
     expect(secondPage.items).toHaveLength(1);
   });
 
-  it("builds date-grouped managed match commitments from schedules and match history", () => {
+  it("builds confirmed calendar commitments while preserving broader timeline commitments", () => {
     const baseCareer = createInitialCareerState(seededPlayers[0].player.id, 6812);
     const event = getCareerEvent(baseCareer.events, "metro-open-300")!;
     const tournament = {
@@ -180,10 +222,13 @@ describe("fictional career calendar and ranking model", () => {
     };
 
     const commitments = calendarCommitmentsForCareer({ career, tournament });
+    const timelineCommitments = timelineCommitmentsForCareer({ career, tournament });
     const activeCommitment = commitments.find((commitment) => commitment.eventId === event.id && commitment.round === "R16");
     const futureCommitment = commitments.find((commitment) => commitment.eventId === event.id && commitment.round === "QF");
+    const timelineFutureCommitment = timelineCommitments.find((commitment) => commitment.eventId === event.id && commitment.round === "QF");
     const completedCommitment = commitments.find((commitment) => commitment.eventId === "harbor-masters-500");
     const groups = groupCalendarCommitmentsByDate(commitments);
+    const calendarEntries = scheduleCalendarEntriesForCareer({ career, tournament });
 
     expect(commitments.map((commitment) => commitment.eventName)).not.toContain("Background Classic");
     expect(activeCommitment).toEqual({
@@ -195,7 +240,8 @@ describe("fictional career calendar and ranking model", () => {
       opponentLabel: seededPlayers.find((entry) => entry.player.id === opponentId)!.player.name,
       result: null
     });
-    expect(futureCommitment).toMatchObject({
+    expect(futureCommitment).toBeUndefined();
+    expect(timelineFutureCommitment).toMatchObject({
       date: scheduledDateForRound(event, "QF"),
       opponentId: null,
       opponentLabel: "TBD",
@@ -209,6 +255,60 @@ describe("fictional career calendar and ranking model", () => {
       result: "L"
     });
     expect(groups.map((group) => group.date)).toEqual([...groups.map((group) => group.date)].sort());
+    expect(calendarEntries.some((entry) => entry.kind === "match" && entry.eventId === event.id && entry.round === "QF")).toBe(false);
+  });
+
+  it("shows the next knockout round once the managed player has qualified", () => {
+    const baseCareer = createInitialCareerState(seededPlayers[0].player.id, 6813);
+    const event = getCareerEvent(baseCareer.events, "metro-open-300")!;
+    const tournament = {
+      ...createTournament(seededPlayers, baseCareer.program.managedPlayerId, 6813),
+      id: event.id,
+      name: event.name,
+      tier: event.tier
+    };
+    const openingContext = getManagedMatchContext(tournament)!;
+    const managedSide = openingContext.playerAId === baseCareer.program.managedPlayerId ? "A" : "B";
+    const advancedTournament = advanceTournament({
+      tournament,
+      seededEntries: seededPlayers,
+      managedMatchId: openingContext.matchId,
+      managedResult: straightGamesResult(managedSide)
+    });
+    const nextContext = getManagedMatchContext(advancedTournament)!;
+    const nextOpponentId =
+      nextContext.playerAId === baseCareer.program.managedPlayerId ? nextContext.playerBId : nextContext.playerAId;
+    const career = {
+      ...baseCareer,
+      date: event.startDate,
+      activeEventId: event.id,
+      enteredEventIds: [event.id],
+      stage: "between_rounds" as const,
+      matchHistory: [
+        {
+          id: `${event.id}:R16-1`,
+          eventId: event.id,
+          eventName: event.name,
+          date: event.startDate,
+          round: "R16" as const,
+          playerAId: openingContext.playerAId,
+          playerBId: openingContext.playerBId,
+          winnerId: baseCareer.program.managedPlayerId,
+          scoreline: "21-14, 21-16",
+          source: "played" as const
+        }
+      ]
+    };
+
+    const commitments = calendarCommitmentsForCareer({ career, tournament: advancedTournament });
+    const qualifiedCommitment = commitments.find((commitment) => commitment.eventId === event.id && commitment.round === "QF");
+
+    expect(qualifiedCommitment).toMatchObject({
+      date: scheduledDateForRound(event, "QF"),
+      opponentId: nextOpponentId,
+      opponentLabel: seededPlayers.find((entry) => entry.player.id === nextOpponentId)!.player.name,
+      result: null
+    });
   });
 
   it("returns deterministic missed-deadline states before charging entry costs", () => {

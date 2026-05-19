@@ -17,7 +17,7 @@ Start Career     -> locked-athlete local coaching program
 
 Use the Save Manager to continue a career, export the active JSON save, import a validated save with preview/confirm, delete the active local slot, or clear a quarantined corrupt backup. The active browser keys remain `badminton-manager-save` and `badminton-manager-save-corrupt`.
 
-Once a career is loaded, the Career Command Center becomes the operations hub. Training, Calendar, Match Planning, Live Match, Post-Match Review, Save Manager, and New Session controls are reachable from the command shell and page actions. The Calendar surfaces fictional circuit tiers, entry deadlines, eligibility gates, ranking cutoffs, seed snapshots, draw milestones, points, prize, cost, readiness, and season-race stakes while keeping rankings and seeding as simplified presentation models.
+Once a career is loaded, the Career Command Center becomes the operations hub. Training, Schedule, Match Planning, Live Match, Post-Match Review, Save Manager, and New Session controls are reachable from the command shell and page actions. Schedule houses Upcoming, Past Events, Timeline, and a confirmed month-grid Calendar while keeping rankings and seeding as simplified presentation models.
 
 ## Quick Start
 
