@@ -2,7 +2,14 @@ import { mkdirSync, readFileSync } from "node:fs";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { seededPlayers, playerMap } from "../game/content/players";
 import { createInitialCareerState } from "../game/career/state";
-import { getCareerEvent } from "../game/career/events";
+import {
+  appendCompletedTournamentMatchRecords,
+  eventEndDate,
+  getCareerEvent,
+  tournamentMatchArchiveIds,
+  tournamentMatchArchiveScorelines
+} from "../game/career/events";
+import { awardRankingPoints } from "../game/career/rankings";
 import type { MatchResult, Side } from "../game/core/models";
 import { advanceTournament, createTournament, getManagedMatchContext } from "../game/tournament/tournament";
 
@@ -220,6 +227,117 @@ function createPostMatchCloseoutCareerSave(outcome: "loss" | "title") {
     save,
     eventId: event.id,
     expectedButton: won ? "Collect Title And Continue" : "Close Event"
+  };
+}
+
+function createCompletedNonManagedArchiveSave() {
+  const managedPlayerId = seededPlayers[0].player.id;
+  const seed = 63043;
+  const career = createInitialCareerState(managedPlayerId, seed);
+  const event = getCareerEvent(career.events, "metro-open-300")!;
+  const tournament = {
+    ...createTournament(seededPlayers, managedPlayerId, seed),
+    id: event.id,
+    name: event.name,
+    tier: event.tier,
+    prizePoolUsd: event.prizeMoney.champion * 2
+  };
+  const context = getManagedMatchContext(tournament);
+
+  if (!context) {
+    throw new Error("Expected managed opening match.");
+  }
+
+  const managedSide = context.playerAId === managedPlayerId ? "A" : "B";
+  const completedTournament = advanceTournament({
+    tournament,
+    seededEntries: seededPlayers,
+    managedMatchId: context.matchId,
+    managedResult: forcedStraightGamesResult(managedSide === "A" ? "B" : "A")
+  });
+  const finalMatch = completedTournament.rounds.find((round) => round.name === "F")?.matches[0];
+
+  if (!finalMatch?.winnerId || !finalMatch.scoreline) {
+    throw new Error("Expected completed archive final.");
+  }
+
+  const runnerUpId = finalMatch.sideAId === finalMatch.winnerId ? finalMatch.sideBId : finalMatch.sideAId;
+  const archiveDate = eventEndDate(event);
+  const withMatchRecords = appendCompletedTournamentMatchRecords({
+    state: {
+      ...career,
+      date: archiveDate,
+      stage: "event_complete" as const,
+      activeEventId: null,
+      enteredEventIds: [event.id],
+      completedEventIds: [event.id]
+    },
+    event,
+    tournament: completedTournament,
+    date: archiveDate
+  });
+  const rankingsWithChampion = awardRankingPoints({
+    rankings: withMatchRecords.rankings,
+    playerId: finalMatch.winnerId,
+    eventId: event.id,
+    round: "champion",
+    points: event.rankingPoints.champion,
+    date: archiveDate,
+    seasonId: withMatchRecords.seasonId,
+    tier: event.tier
+  });
+  const rankingsWithRunnerUp = awardRankingPoints({
+    rankings: rankingsWithChampion,
+    playerId: runnerUpId,
+    eventId: event.id,
+    round: "F",
+    points: event.rankingPoints.F,
+    date: archiveDate,
+    seasonId: withMatchRecords.seasonId,
+    tier: event.tier
+  });
+  const save = {
+    version: 9,
+    selectedPlayerId: managedPlayerId,
+    plannedTacticKey: "balancedControl",
+    seed,
+    tournament: null,
+    liveMatch: null,
+    career: {
+      ...withMatchRecords,
+      rankings: rankingsWithRunnerUp,
+      eventHistory: [
+        {
+          eventId: event.id,
+          eventName: event.name,
+          tier: event.tier,
+          startDate: event.startDate,
+          endDate: archiveDate,
+          status: "round_of_16" as const,
+          entered: true,
+          resultRound: "R16",
+          pointsAwarded: event.rankingPoints.R16,
+          prizeMoney: event.prizeMoney.R16,
+          entryCost: event.entryFee,
+          travelCost: event.travelCost,
+          netCash: event.prizeMoney.R16 - event.entryFee - event.travelCost,
+          completedAt: archiveDate,
+          matchIds: tournamentMatchArchiveIds(completedTournament),
+          scorelines: tournamentMatchArchiveScorelines(completedTournament),
+          achievements: ["Points Finish"],
+          bracketSnapshot: null
+        }
+      ]
+    }
+  };
+
+  return {
+    save,
+    eventName: event.name,
+    championName: playerMap[finalMatch.winnerId].name,
+    runnerUpName: playerMap[runnerUpId].name,
+    finalScoreline: finalMatch.scoreline,
+    championPoints: event.rankingPoints.champion
   };
 }
 
@@ -953,6 +1071,36 @@ test("closes deterministic loss and title post-match CTA branches after reload",
       }
     }, closeout);
   }
+});
+
+test("surfaces completed tournament archive outcomes from complete match records", async ({ page }) => {
+  const archive = createCompletedNonManagedArchiveSave();
+
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/");
+  await page.evaluate((payload) => {
+    window.localStorage.setItem("badminton-manager-save", JSON.stringify(payload.save));
+  }, archive);
+  await page.reload();
+
+  await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
+  await page.getByRole("navigation", { name: "Primary commands" }).getByRole("button", { name: /Schedule/ }).click();
+  await expect(page.getByRole("heading", { name: "Schedule", exact: true })).toBeVisible();
+  await page.getByRole("tab", { name: "Past Events" }).click();
+  await page.getByRole("button", { name: `Open tournament home for ${archive.eventName}` }).click();
+
+  await expect(page.getByRole("heading", { name: archive.eventName })).toBeVisible();
+  const outcome = page.getByLabel(`${archive.eventName} complete event outcome`);
+  await expect(page.getByRole("heading", { name: "Full Event Outcome" })).toBeVisible();
+  await expect(outcome).toContainText(archive.championName);
+  await expect(outcome).toContainText(archive.runnerUpName);
+  await expect(outcome).toContainText(archive.finalScoreline);
+  await expect(outcome).toContainText("Reconstructed bracket");
+  await expect(outcome).toContainText(`Ranking ledger +${archive.championPoints.toLocaleString()} pts (champion).`);
+  await expect(page.getByRole("heading", { name: "Archived Knockout Draw" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Match Results And Scoreline Evidence" })).toBeVisible();
+  await expect(page.getByLabel(`${archive.eventName} match result evidence`)).toContainText("Quick simulation");
+  await expect(page.getByText("Not archived")).toHaveCount(0);
 });
 
 test("surfaces corrupt save recovery and blocks unaffordable event entry", async ({ page }) => {
