@@ -1207,7 +1207,8 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
               managedSide: state.liveMatch.managedSide,
               managedRunMatch,
               result: managedResult,
-              eventComplete: isTournamentComplete(tournament)
+              eventComplete: isTournamentComplete(tournament),
+              tournament
             })
           : state.career;
       const careerWithPsychology = career

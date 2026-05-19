@@ -803,7 +803,7 @@ test("can complete and reload the career core slice with tactical viewer proof",
   await expect(page.getByRole("heading", { name: "Calendar" })).toBeVisible();
   await expect(page.getByText(/prize \$15,000/)).toBeVisible();
   await page.getByRole("button", { name: "Enter Event" }).first().click();
-  await expect(page.getByRole("button", { name: "View Entry" }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Open Event" }).first()).toBeVisible();
 
   await page.getByRole("button", { name: "Advance Day" }).click();
   await page.getByRole("button", { name: "Advance Day" }).click();
@@ -991,8 +991,11 @@ test("surfaces corrupt save recovery and blocks unaffordable event entry", async
   await page.getByRole("main").getByRole("button", { name: "Calendar" }).click();
   await expect(page.getByRole("heading", { name: "Calendar" })).toBeVisible();
   await expect(page.getByText(/prize \$15,000/)).toBeVisible();
-  await expect(page.getByText(/Insufficient funds: program cash \$100/).first()).toBeVisible();
-  await expect(page.getByRole("button", { name: "Insufficient Funds" }).first()).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Open Event" }).first()).toBeVisible();
+  await page.getByRole("button", { name: "Open Event" }).first().click();
+  await expect(page.getByRole("heading", { name: "Metro Open" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Insufficient Funds" })).toBeDisabled();
+  await expect(page.getByLabel("Metro Open eligibility checks")).toContainText(/Cash \$100; short/);
 });
 
 test("keeps first-launch save trust surfaces bounded on mobile", async ({ page }) => {
@@ -1233,8 +1236,8 @@ test("integrates fictional calendar ranking stakes into career home and Calendar
   await expect(page.getByText(/Entry deadline 2026-06-01, draw milestone 2026-06-02/)).toBeVisible();
   await expect(page.getByText(/Champion prize \$15,000/)).toBeVisible();
   await expect(page.getByText(/Seed Snapshot/).first()).toBeVisible();
-  await expect(page.getByLabel("Metro Open deadline milestones")).toContainText("Ranking cutoff: 2026-05-29");
-  await expect(page.getByLabel("Metro Open deadline milestones")).toContainText("Draw published: 2026-06-02");
+  await expect(page.getByLabel("Metro Open active milestones")).toContainText("Ranking cutoff: 2026-05-29");
+  await expect(page.getByLabel("Metro Open active milestones")).toContainText("Draw published: 2026-06-02");
   await expect(page.getByText(/presentation, not full draw-engine replacement/)).toBeVisible();
   await expect(page.getByRole("heading", { name: "Simplification Boundary" })).toBeVisible();
   await expect(page.getByText(/playable match bridge remains the existing deterministic 16-player knockout/)).toBeVisible();
@@ -1244,8 +1247,15 @@ test("integrates fictional calendar ranking stakes into career home and Calendar
   await page.getByRole("tab", { name: "Upcoming" }).click();
   await expect(page.getByRole("heading", { name: "Upcoming Event Schedule" })).toBeVisible();
 
-  await page.getByRole("button", { name: "Enter Event" }).first().click();
-  await expect(page.getByRole("button", { name: "View Entry" }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Open Event" }).first()).toBeVisible();
+  await page.getByRole("button", { name: "Open Event" }).first().click();
+  await expect(page.getByRole("heading", { name: "Metro Open" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Decision Summary" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Knockout Draw" })).toBeVisible();
+  await expect(page.getByLabel("Metro Open tournament timeline")).toContainText("Ranking cutoff: 2026-05-29");
+  await expect(page.getByRole("heading", { name: "Rewards And Stakes" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Field And Scouting" })).toBeVisible();
+  await page.getByRole("button", { name: "Enter Event" }).click();
   await page.evaluate(() => {
     const raw = window.localStorage.getItem("badminton-manager-save");
     if (!raw) {
@@ -1548,7 +1558,11 @@ test("surfaces dynamic rival pressure and persists the circuit room", async ({ p
 
   await page.getByRole("button", { name: "Career Home" }).click();
   await page.getByRole("main").getByRole("button", { name: "Calendar" }).click();
-  await expect(page.getByText(/Rival field:/).first()).toContainText(/top threat/);
+  await page.getByRole("button", { name: "Open Event" }).first().click();
+  await expect(page.getByRole("heading", { name: "Metro Open" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Field And Scouting" })).toBeVisible();
+  await expect(page.getByText("Top Threat").first()).toBeVisible();
+  await expect(page.getByText(/rival programs entered/).first()).toBeVisible();
 });
 
 test("can edit advanced tactics and preserve assistant advice overrides", async ({ page }) => {

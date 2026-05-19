@@ -1,7 +1,7 @@
 import { playerMap } from "../content/players";
 import type { MatchResult } from "../core/models";
-import type { ManagedRunMatch } from "../tournament/tournament";
-import { appendPlayedCareerEventHistory, getCareerEvent, roundKeyForPlacement } from "./events";
+import type { ManagedRunMatch, TournamentState } from "../tournament/tournament";
+import { appendPlayedCareerEventHistory, createCareerEventBracketSnapshot, getCareerEvent, roundKeyForPlacement } from "./events";
 import { applyMatchLoad } from "./health";
 import { psychologyReadinessModifier } from "./ecosystem";
 import type { CareerState, PostMatchReport, PreMatchBrief } from "./models";
@@ -77,6 +77,7 @@ export function settleCareerMatch(args: {
   managedRunMatch: ManagedRunMatch;
   result: MatchResult;
   eventComplete?: boolean;
+  tournament?: TournamentState | null;
 }) {
   const event = args.state.activeEventId ? getCareerEvent(args.state.events, args.state.activeEventId) : undefined;
 
@@ -177,7 +178,11 @@ export function settleCareerMatch(args: {
         pointsAwarded: pointsDelta,
         prizeMoney: cashDelta,
         matchId: args.matchId,
-        scoreline: args.result.scoreline
+        scoreline: args.result.scoreline,
+        bracketSnapshot:
+          args.tournament && args.tournament.id === event.id
+            ? createCareerEventBracketSnapshot(args.tournament)
+            : undefined
       })
     : settledState;
   const next = syncManagedAthleteFromRankings(withEventHistory);

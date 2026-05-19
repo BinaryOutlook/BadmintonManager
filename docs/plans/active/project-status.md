@@ -80,6 +80,8 @@ What is now stable:
 - detailed match scorelines now use bounded score-shape safety rails, score-aware anti-collapse relief, and opt-in calibration assertions to prevent repeated pathological `21-0`, `21-1`, and `21-2` games in normal roster matchups
 - the command rail now keeps Calendar focused on event browsing and sends bracket, pre-match, and active-match paths through Live Match instead of a separate permanent competition command
 - TIX-011 adds a first-class career Rankings page from the command rail, sourced from `career.rankings`, with full rank-ascending rows, managed-athlete labelling, profile-addressable names, and bounded desktop/mobile proof
+- TIX-009 universal player addressing now gives profile links stable player-id navigation across setup, career hubs, live match, bracket, scouting, post-match, and prose surfaces
+- the TIX-008 tournament-home slice now routes Calendar rows and Past Events through stable `seasonId + eventId` tournament homes, reduces Calendar row detail density, renders future/active/completed tournament states, and stores optional bracket snapshots for newly completed career events while old archives fall back safely
 
 ## Completed
 
@@ -169,6 +171,7 @@ What is now stable:
 - [x] removed the legacy permanent competition sidebar route so Calendar handles event browsing and Live Match owns pre-match, bracket, and live command-center access
 - [x] implemented TIX-011 Rankings as a career command surface with `career.rankings` table data, managed-athlete highlight plus text label, profile navigation, focused unit coverage, and desktop/mobile visual QA artifacts
 - [x] implemented TIX-009 universal player addressing with stable-id profile links across setup, career hubs, live match, bracket, scouting, post-match, and prose surfaces
+- [x] implemented TIX-008 universal tournament homes with Calendar `Open Event`, Past Events archive navigation, active/archived bracket rendering, and old-save fallback behavior
 
 ## In Progress
 
@@ -180,7 +183,7 @@ What is now stable:
 - [ ] improve commentary variety and phrasing
 - [ ] expand post-match stats and scouting reads
 - [ ] polish responsive behavior and visual details across the new shell
-- [ ] add real Past Events records after the domain history model lands; the current Calendar tab is intentionally a safe coming-state
+- [ ] deepen Past Events archive fidelity for saves created before bracket snapshots; current fallback remains summary-only by design
 - [ ] track dense live-match directive labels as non-blocking polish debt; current proof does not require a Phase 4 source change
 - [ ] complete the broader Phase 5 screenshot matrix and visual review beyond the focused builder proof
 - [ ] run a manual playtest of the full Rescue MVP Plan 3 loop from explicit athlete selection through multi-event entry, event details, red match action, post-match review, next-day round spacing, Past Events movement, and the next due event
