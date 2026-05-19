@@ -11,6 +11,7 @@ import {
   CareerPostMatchHubPage,
   CareerPreMatchHubPage,
   CareerProgramHubPage,
+  CareerRankingsPage,
   CareerRecruitmentDeskPage,
   CareerRivalCircuitPage,
   CareerScoutingNetworkPage,
@@ -42,6 +43,7 @@ export type CommandId =
   | "squad"
   | "training"
   | "calendar"
+  | "rankings"
   | "tactics"
   | "live"
   | "reports"
@@ -272,6 +274,8 @@ export function commandIdForPage(page: AppPage): CommandId {
     case "calendar":
     case "eventDetails":
       return "calendar";
+    case "rankings":
+      return "rankings";
     case "bracket":
       return "live";
     case "matchPlanning":
@@ -636,6 +640,9 @@ export function App() {
       case "calendar":
         setActivePage(career ? { id: "calendar" } : { id: "games" });
         break;
+      case "rankings":
+        setActivePage({ id: "rankings" });
+        break;
       case "tactics":
         setActivePage(career && phase !== "match" ? { id: "matchPlanning" } : phase === "setup" ? { id: "setup" } : pageForPhase(phase));
         break;
@@ -724,6 +731,14 @@ export function App() {
         short: "CAL",
         description: career ? "Date and readiness" : "Career calendar",
         onActivate: () => activateCommand("calendar")
+      },
+      {
+        id: "rankings",
+        group: "Program",
+        label: "Rankings",
+        short: "RNK",
+        description: "Circuit table",
+        onActivate: () => activateCommand("rankings")
       },
       {
         id: "tactics",
@@ -1092,6 +1107,10 @@ export function App() {
 
     if (activePage.id === "calendar") {
       return <CareerCalendarPage {...careerPageProps} />;
+    }
+
+    if (activePage.id === "rankings") {
+      return <CareerRankingsPage {...careerPageProps} />;
     }
 
     if (activePage.id === "eventDetails") {

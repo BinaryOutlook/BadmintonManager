@@ -260,6 +260,30 @@ async function expectCalendarViewportBounded(page: Page) {
   });
 }
 
+async function expectRankingsViewportBounded(page: Page) {
+  await page.evaluate(() => {
+    const pageWidth = document.documentElement.scrollWidth;
+    const viewportWidth = window.innerWidth;
+
+    if (pageWidth > viewportWidth + 1) {
+      throw new Error(`Unexpected Rankings document overflow: ${pageWidth} > ${viewportWidth}`);
+    }
+
+    const checkedElements = Array.from(
+      document.querySelectorAll<HTMLElement>(
+        ".rankings-status-strip, .rankings-table, .rankings-row, .rankings-summary-grid"
+      )
+    );
+
+    for (const element of checkedElements) {
+      if (element.scrollWidth > element.clientWidth + 1) {
+        const label = element.className || element.tagName;
+        throw new Error(`Unexpected Rankings element overflow for ${label}: ${element.scrollWidth} > ${element.clientWidth}`);
+      }
+    }
+  });
+}
+
 async function expectPortalViewportBounded(page: Page, expectOnePage: boolean) {
   await page.evaluate((shouldFitInViewport) => {
     const pageWidth = document.documentElement.scrollWidth;
@@ -765,7 +789,7 @@ test("can complete and reload the career core slice with tactical viewer proof",
 
   await startNewCareer(page);
   await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
-  await expect(page.getByText(/Rank/).first()).toBeVisible();
+  await expect(page.getByRole("main")).toContainText(/Rank 1/);
 
   await page.getByRole("button", { name: "Training Desk" }).click();
   await expect(page.getByRole("heading", { name: "Load Management" })).toBeVisible();
@@ -1039,6 +1063,10 @@ test("exposes the grouped management shell as the primary command surface", asyn
   await expect(page.getByRole("heading", { name: "Calendar" })).toBeVisible();
   await expect(commandRail.getByRole("button", { name: /Calendar/ })).toHaveAttribute("aria-current", "page");
 
+  await commandRail.getByRole("button", { name: "Rankings: Circuit table" }).click();
+  await expect(page.getByRole("heading", { name: "Circuit Rankings" })).toBeVisible();
+  await expect(commandRail.getByRole("button", { name: /Rankings/ })).toHaveAttribute("aria-current", "page");
+
   await commandRail.getByRole("button", { name: /Tactics/ }).click();
   await expect(page.getByRole("heading", { name: "Advanced Tactics Creator" })).toBeVisible();
   await expect(commandRail.getByRole("button", { name: /Tactics/ })).toHaveAttribute("aria-current", "page");
@@ -1249,6 +1277,37 @@ test("keeps the compact Career Portal bounded across target viewports", async ({
     await expectPortalViewportBounded(page, viewport.onePage);
     await captureFocusedScreenshot(page, viewport.name);
     await captureFocusedScreenshot(page, `tix-012-topbar-${viewport.name}`);
+  }
+});
+
+test("opens the full career Rankings table with managed highlight and bounded mobile layout", async ({ page }) => {
+  for (const viewport of [
+    { width: 1440, height: 900, name: "rankings-1440x900" },
+    { width: 390, height: 844, name: "rankings-mobile" }
+  ]) {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    await page.goto("/");
+    await page.evaluate(() => {
+      window.localStorage.clear();
+      window.sessionStorage.clear();
+    });
+    await page.reload();
+
+    await startNewCareer(page);
+    const commandRail = page.getByRole("navigation", { name: "Primary commands" });
+    await commandRail.getByRole("button", { name: "Rankings: Circuit table" }).click();
+
+    await expect(page.getByRole("heading", { name: "Circuit Rankings" })).toBeVisible();
+    await expect(page.getByRole("table", { name: "Circuit rankings table" })).toBeVisible();
+    await expect(page.getByRole("row", { name: /Rank 1 Adrian Koh managed athlete/i })).toContainText("Managed athlete");
+    await expect(page.getByRole("row", { name: /Rank 1 Adrian Koh managed athlete/i })).toContainText("SGP");
+    await expect(page.getByRole("row", { name: /Rank 1 Adrian Koh managed athlete/i })).toContainText("pts");
+    await page.getByRole("row", { name: /Rank 1 Adrian Koh managed athlete/i }).getByRole("button", { name: "Adrian Koh" }).click();
+    await expect(page.getByRole("heading", { name: "Adrian Koh" })).toBeVisible();
+    await commandRail.getByRole("button", { name: "Rankings: Circuit table" }).click();
+    await expect(page.getByRole("heading", { name: "Circuit Rankings" })).toBeVisible();
+    await expectRankingsViewportBounded(page);
+    await captureFocusedScreenshot(page, viewport.name);
   }
 });
 

@@ -1051,6 +1051,110 @@ textarea:focus-visible {
   font-size: 1.02rem;
 }
 
+.rankings-status-strip {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.rankings-summary-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.rankings-table {
+  display: grid;
+  gap: 0.48rem;
+  min-width: 0;
+}
+
+.rankings-row {
+  display: grid;
+  grid-template-columns:
+    minmax(3.8rem, 0.42fr)
+    minmax(12rem, 1.45fr)
+    minmax(6.8rem, 0.72fr)
+    minmax(7.2rem, 0.72fr)
+    minmax(7.8rem, 0.78fr)
+    minmax(8.6rem, 0.9fr);
+  gap: 0.7rem;
+  align-items: center;
+  min-width: 0;
+  border: 1px solid rgba(48, 54, 61, 0.92);
+  border-radius: 0.38rem;
+  padding: 0.72rem 0.78rem;
+  background: rgba(12, 14, 17, 0.72);
+}
+
+.rankings-row-head {
+  border-color: transparent;
+  padding-block: 0.18rem;
+  background: transparent;
+}
+
+.rankings-row-head span,
+.rankings-cell::before {
+  color: var(--muted-soft);
+  font-size: 0.63rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.rankings-row-managed {
+  position: relative;
+  border-color: rgba(57, 255, 20, 0.62);
+  background:
+    linear-gradient(90deg, rgba(57, 255, 20, 0.12), rgba(12, 14, 17, 0.78) 42%),
+    rgba(12, 14, 17, 0.78);
+  box-shadow: inset 0.28rem 0 0 rgba(57, 255, 20, 0.74);
+}
+
+.rankings-cell {
+  min-width: 0;
+}
+
+.rankings-cell strong,
+.rankings-player-cell .profile-name-button {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--text);
+  line-height: 1.22;
+}
+
+.rankings-player-cell {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.42rem;
+}
+
+.rankings-player-cell .profile-name-button {
+  max-width: 100%;
+  font-size: 0.95rem;
+}
+
+.managed-ranking-label {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  border: 1px solid rgba(57, 255, 20, 0.46);
+  border-radius: 999px;
+  padding: 0.16rem 0.45rem;
+  background: rgba(57, 255, 20, 0.1);
+  color: var(--lime);
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.rankings-status-cell small {
+  display: block;
+  margin-top: 0.22rem;
+  color: var(--muted);
+  line-height: 1.3;
+}
+
 .calendar-event-actions .command-button {
   width: 100%;
   white-space: normal;
@@ -5210,12 +5314,46 @@ textarea:focus-visible {
   .calendar-secondary-grid,
   .calendar-cost-grid,
   .calendar-past-summary,
-  .calendar-status-strip {
+  .calendar-status-strip,
+  .rankings-status-strip,
+  .rankings-summary-grid {
     grid-template-columns: 1fr;
   }
 
-  .calendar-event-row-head {
+  .calendar-event-row-head,
+  .rankings-row-head {
     display: none;
+  }
+
+  .rankings-row {
+    grid-template-columns: 1fr;
+    gap: 0.42rem;
+    padding: 0.72rem;
+  }
+
+  .rankings-cell,
+  .rankings-player-cell {
+    display: grid;
+    grid-template-columns: minmax(5.8rem, 0.36fr) minmax(0, 1fr);
+    gap: 0.62rem;
+    align-items: start;
+  }
+
+  .rankings-cell::before {
+    content: attr(data-label);
+  }
+
+  .rankings-cell > *,
+  .rankings-player-cell > * {
+    grid-column: 2;
+  }
+
+  .rankings-player-cell .profile-name-button {
+    width: 100%;
+  }
+
+  .managed-ranking-label {
+    justify-self: start;
   }
 
   .roster-grid,
