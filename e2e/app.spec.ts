@@ -877,6 +877,14 @@ test("continues a deterministic career event from post-match into the next round
 
   await expect(page.getByRole("heading", { name: "Opponent Briefing" })).toBeVisible();
   await expect(page.getByText(betweenRounds.nextOpponentName).first()).toBeVisible();
+  await page
+    .getByLabel("Pre-match briefing status")
+    .getByRole("button", { name: betweenRounds.nextOpponentName })
+    .click();
+  await expect(page.getByRole("heading", { name: betweenRounds.nextOpponentName })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Coach Report" })).toBeVisible();
+  await page.getByRole("button", { name: "Back" }).click();
+  await expect(page.getByRole("heading", { name: "Opponent Briefing" })).toBeVisible();
   await page.evaluate((payload) => {
     const raw = window.localStorage.getItem("badminton-manager-save");
     if (!raw) {

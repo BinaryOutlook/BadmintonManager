@@ -333,7 +333,9 @@ export function PlayerProfilePage(props: PlayerProfilePageProps) {
               <h2>Coach Report</h2>
               <span>{model.context.label}</span>
             </div>
-            <p className="profile-context-copy">{model.coachReport.summary}</p>
+            <p className="profile-context-copy">
+              <SmartPlayerText text={model.coachReport.summary} />
+            </p>
             <div className="profile-report-columns">
               <div>
                 <h3>Strengths</h3>
@@ -355,7 +357,9 @@ export function PlayerProfilePage(props: PlayerProfilePageProps) {
             <div className="profile-decision-box">
               <span>Selection Recommendation</span>
               <strong>{model.coachReport.selectionRecommendation}</strong>
-              <p>{model.coachReport.bestUse}</p>
+              <p>
+                <SmartPlayerText text={model.coachReport.bestUse} />
+              </p>
             </div>
           </section>
 
@@ -494,7 +498,9 @@ export function PlayerProfilePage(props: PlayerProfilePageProps) {
             <span>{model.career.stage}</span>
           </div>
           <div className="profile-career-state">
-            <p>{model.career.narrative}</p>
+            <p>
+              <SmartPlayerText text={model.career.narrative} />
+            </p>
             <div className="profile-career-grid">
               <div className="profile-career-facts">
                 {model.career.recordCards.map((card) => (

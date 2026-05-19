@@ -46,6 +46,61 @@ export function placeholderLabel(
   return `Winner ${previousRound}-${sourceMatchIndex + 1}`;
 }
 
+function placeholderAddress(
+  tournament: TournamentState,
+  roundName: RoundName,
+  matchIndex: number,
+  side: "A" | "B"
+) {
+  const previousRound = previousRoundName[roundName];
+
+  if (!previousRound) {
+    return {
+      label: `Seed slot ${matchIndex * 2 + (side === "A" ? 1 : 2)}`,
+      playerId: null
+    };
+  }
+
+  const sourceMatchIndex = matchIndex * 2 + (side === "A" ? 0 : 1);
+  const sourceRound = tournament.rounds.find((entry) => entry.name === previousRound);
+  const winnerId = sourceRound?.matches[sourceMatchIndex]?.winnerId;
+  const winner = winnerId ? playerMap[winnerId] : undefined;
+
+  if (winner) {
+    return {
+      label: winner.name,
+      playerId: winner.id
+    };
+  }
+
+  return {
+    label: `Winner ${previousRound}-${sourceMatchIndex + 1}`,
+    playerId: null
+  };
+}
+
+function BracketPlayerButton(props: {
+  playerId: string | null;
+  label: string;
+  onOpenPlayerProfile: (playerId: string) => void;
+}) {
+  const playerId = props.playerId;
+
+  if (!playerId) {
+    return <span>{props.label}</span>;
+  }
+
+  return (
+    <button
+      className="profile-name-button bracket-profile-button"
+      type="button"
+      onClick={() => props.onOpenPlayerProfile(playerId)}
+    >
+      {props.label}
+    </button>
+  );
+}
+
 export function gridRowForMatch(roundIndex: number, matchIndex: number) {
   const roundSize = 2 ** (roundIndex + 1);
   const rowStart = matchIndex * roundSize + 1 + Math.floor((roundSize - 2) / 2);
@@ -83,6 +138,9 @@ export function KnockoutTree(props: KnockoutTreeProps) {
               };
 
               if (!match) {
+                const sideAPlaceholder = placeholderAddress(props.tournament, roundSlot.name, matchIndex, "A");
+                const sideBPlaceholder = placeholderAddress(props.tournament, roundSlot.name, matchIndex, "B");
+
                 return (
                   <div
                     key={`${roundSlot.name}-${matchIndex + 1}`}
@@ -91,11 +149,19 @@ export function KnockoutTree(props: KnockoutTreeProps) {
                   >
                     <article className="bracket-card bracket-card-tree bracket-card-placeholder">
                       <div className="bracket-row">
-                        <span>{placeholderLabel(props.tournament, roundSlot.name, matchIndex, "A")}</span>
+                        <BracketPlayerButton
+                          playerId={sideAPlaceholder.playerId}
+                          label={sideAPlaceholder.label}
+                          onOpenPlayerProfile={props.onOpenPlayerProfile}
+                        />
                         <span>TBD</span>
                       </div>
                       <div className="bracket-row">
-                        <span>{placeholderLabel(props.tournament, roundSlot.name, matchIndex, "B")}</span>
+                        <BracketPlayerButton
+                          playerId={sideBPlaceholder.playerId}
+                          label={sideBPlaceholder.label}
+                          onOpenPlayerProfile={props.onOpenPlayerProfile}
+                        />
                         <span>TBD</span>
                       </div>
                       <small>Awaiting previous winners</small>
@@ -121,36 +187,32 @@ export function KnockoutTree(props: KnockoutTreeProps) {
                   >
                     <div className="bracket-row">
                       <span>
-                        <button
-                          className="profile-name-button bracket-profile-button"
-                          type="button"
-                          onClick={() => props.onOpenPlayerProfile(sideA.id)}
-                        >
-                          {sideA.name}
-                        </button>
+                        <BracketPlayerButton
+                          playerId={sideA?.id ?? null}
+                          label={sideA?.name ?? match.sideAId}
+                          onOpenPlayerProfile={props.onOpenPlayerProfile}
+                        />
                       </span>
                       <span>
-                        {match.completed && match.winnerId === sideA.id
+                        {sideA && match.completed && match.winnerId === sideA.id
                           ? "W"
-                          : pendingManaged && sideA.id === props.selectedPlayerId
+                          : sideA && pendingManaged && sideA.id === props.selectedPlayerId
                             ? "UP NEXT"
                             : ""}
                       </span>
                     </div>
                     <div className="bracket-row">
                       <span>
-                        <button
-                          className="profile-name-button bracket-profile-button"
-                          type="button"
-                          onClick={() => props.onOpenPlayerProfile(sideB.id)}
-                        >
-                          {sideB.name}
-                        </button>
+                        <BracketPlayerButton
+                          playerId={sideB?.id ?? null}
+                          label={sideB?.name ?? match.sideBId}
+                          onOpenPlayerProfile={props.onOpenPlayerProfile}
+                        />
                       </span>
                       <span>
-                        {match.completed && match.winnerId === sideB.id
+                        {sideB && match.completed && match.winnerId === sideB.id
                           ? "W"
-                          : pendingManaged && sideB.id === props.selectedPlayerId
+                          : sideB && pendingManaged && sideB.id === props.selectedPlayerId
                             ? "UP NEXT"
                             : pendingManaged
                               ? "LIVE"

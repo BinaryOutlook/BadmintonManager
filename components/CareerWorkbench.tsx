@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { playerMap } from "../game/content/players";
 import { addDays, buildWeek, daysBetween } from "../game/career/calendar";
 import { canAffordEventEntry, eventEntryCost } from "../game/career/economy";
@@ -36,6 +36,7 @@ import { trainingPlans } from "../game/career/training";
 import { STORAGE_KEY, type SaveRecoveryNotice } from "../game/store/store";
 import { isManagedPlayerStillInEvent, type TournamentState } from "../game/tournament/tournament";
 import { KnockoutTree } from "./KnockoutTree";
+import { SmartPlayerText } from "./PlayerLink";
 import { TacticalMatchViewer } from "./TacticalMatchViewer";
 
 interface CareerPageProps {
@@ -126,6 +127,44 @@ function daysUntilLabel(date: string, targetDate: string) {
 
 function compactTierLabel(tier: string) {
   return tier.replace(/^Circuit\s+/i, "C");
+}
+
+function ProfileNameButton(props: {
+  playerId: string | null | undefined;
+  fallback: ReactNode;
+  onOpenPlayerProfile: (playerId: string) => void;
+  className?: string;
+  children?: ReactNode;
+}) {
+  const player = props.playerId ? playerMap[props.playerId] : null;
+
+  if (!player) {
+    return <>{props.fallback}</>;
+  }
+
+  return (
+    <button
+      className={props.className ?? "profile-name-button"}
+      type="button"
+      onClick={() => props.onOpenPlayerProfile(player.id)}
+    >
+      {props.children ?? player.name}
+    </button>
+  );
+}
+
+function SmartCareerText(props: {
+  text: string;
+  className?: string;
+  onOpenPlayerProfile: (playerId: string) => void;
+}) {
+  return (
+    <SmartPlayerText
+      text={props.text}
+      className={props.className}
+      onOpenPlayerProfile={props.onOpenPlayerProfile}
+    />
+  );
 }
 
 function activeEvent(career: CareerState) {
@@ -480,7 +519,13 @@ export function CareerHomePage(props: CareerPageProps) {
           <p className="screen-kicker">Portal Home</p>
           <h1 className="screen-title">Career Command Center</h1>
           <p className="screen-copy career-portal-summary">
-            {props.career.date} | {player.name} | Rank {athlete.currentRank} | {points(athlete.rankingPoints)} | Race{" "}
+            {props.career.date} |{" "}
+            <ProfileNameButton
+              playerId={player.id}
+              fallback={player.name}
+              onOpenPlayerProfile={props.onOpenPlayerProfile}
+            />{" "}
+            | Rank {athlete.currentRank} | {points(athlete.rankingPoints)} | Race{" "}
             {points(ranking?.seasonPoints ?? 0)} | Next: {nextEventName}
           </p>
         </div>
@@ -636,7 +681,9 @@ export function CareerHomePage(props: CareerPageProps) {
             {evidenceRows.map((entry, index) => (
               <div key={`${entry}-${index}`} className="management-table-row">
                 <span>{index + 1}</span>
-                <strong>{entry}</strong>
+                <strong>
+                  <SmartCareerText text={entry} onOpenPlayerProfile={props.onOpenPlayerProfile} />
+                </strong>
                 <small>{props.career?.lastMatchReport?.scoreline ?? "Pending"}</small>
               </div>
             ))}
@@ -808,7 +855,17 @@ export function CareerRankingsPage(props: CareerPageProps) {
         </div>
         <div>
           <span>Leader</span>
-          <strong>{leaderPlayer?.name ?? leader?.playerId ?? "No leader"}</strong>
+          <strong>
+            {leader ? (
+              <ProfileNameButton
+                playerId={leader.playerId}
+                fallback={leaderPlayer?.name ?? leader.playerId}
+                onOpenPlayerProfile={props.onOpenPlayerProfile}
+              />
+            ) : (
+              "No leader"
+            )}
+          </strong>
         </div>
         <div>
           <span>Our rank</span>
@@ -832,12 +889,38 @@ export function CareerRankingsPage(props: CareerPageProps) {
         <div className="career-event-brief rankings-summary-grid">
           <div>
             <span>Ahead</span>
-            <strong>{playerAhead ? `${playerAhead.rank}. ${playerMap[playerAhead.playerId]?.name ?? playerAhead.playerId}` : "Nobody"}</strong>
+            <strong>
+              {playerAhead ? (
+                <>
+                  {playerAhead.rank}.{" "}
+                  <ProfileNameButton
+                    playerId={playerAhead.playerId}
+                    fallback={playerMap[playerAhead.playerId]?.name ?? playerAhead.playerId}
+                    onOpenPlayerProfile={props.onOpenPlayerProfile}
+                  />
+                </>
+              ) : (
+                "Nobody"
+              )}
+            </strong>
             <small>{playerAhead ? `${points(gapAhead)} to the next rung.` : "Your athlete leads the list."}</small>
           </div>
           <div>
             <span>Managed athlete</span>
-            <strong>{managedRanking ? `#${managedRanking.rank} ${playerMap[managedPlayerId]?.name ?? managedPlayerId}` : "Not ranked"}</strong>
+            <strong>
+              {managedRanking ? (
+                <>
+                  #{managedRanking.rank}{" "}
+                  <ProfileNameButton
+                    playerId={managedPlayerId}
+                    fallback={playerMap[managedPlayerId]?.name ?? managedPlayerId}
+                    onOpenPlayerProfile={props.onOpenPlayerProfile}
+                  />
+                </>
+              ) : (
+                "Not ranked"
+              )}
+            </strong>
             <small>
               {managedRanking
                 ? `${points(managedRanking.points)} total, ${points(managedRanking.seasonPoints)} season race.`
@@ -846,7 +929,20 @@ export function CareerRankingsPage(props: CareerPageProps) {
           </div>
           <div>
             <span>Behind</span>
-            <strong>{playerBehind ? `${playerBehind.rank}. ${playerMap[playerBehind.playerId]?.name ?? playerBehind.playerId}` : "Nobody"}</strong>
+            <strong>
+              {playerBehind ? (
+                <>
+                  {playerBehind.rank}.{" "}
+                  <ProfileNameButton
+                    playerId={playerBehind.playerId}
+                    fallback={playerMap[playerBehind.playerId]?.name ?? playerBehind.playerId}
+                    onOpenPlayerProfile={props.onOpenPlayerProfile}
+                  />
+                </>
+              ) : (
+                "Nobody"
+              )}
+            </strong>
             <small>{playerBehind && managedRanking ? `${points(Math.max(0, managedRanking.points - playerBehind.points))} cushion.` : "No lower-ranked row."}</small>
           </div>
         </div>
@@ -884,13 +980,11 @@ export function CareerRankingsPage(props: CareerPageProps) {
                   <strong>#{entry.rank}</strong>
                 </div>
                 <div className="rankings-cell rankings-player-cell" role="cell" data-label="Player">
-                  <button
-                    className="profile-name-button"
-                    type="button"
-                    onClick={() => props.onOpenPlayerProfile(entry.playerId)}
-                  >
-                    {player?.name ?? entry.playerId}
-                  </button>
+                  <ProfileNameButton
+                    playerId={entry.playerId}
+                    fallback={player?.name ?? entry.playerId}
+                    onOpenPlayerProfile={props.onOpenPlayerProfile}
+                  />
                   {isManaged && <span className="managed-ranking-label">Managed athlete</span>}
                 </div>
                 <div className="rankings-cell" role="cell" data-label="Nationality">
@@ -1029,7 +1123,13 @@ export function CareerRivalCircuitPage(props: CareerPageProps) {
                   <div className="career-stat-grid">
                     <div>
                       <span>Lead</span>
-                      <strong>{lead?.name ?? "No athlete"}</strong>
+                      <strong>
+                        <ProfileNameButton
+                          playerId={lead?.playerId}
+                          fallback={lead?.name ?? "No athlete"}
+                          onOpenPlayerProfile={props.onOpenPlayerProfile}
+                        />
+                      </strong>
                     </div>
                     <div>
                       <span>Rating</span>
@@ -1485,7 +1585,21 @@ export function CareerScoutingNetworkPage(props: CareerPageProps) {
   const modifiers = staffModifiers(props.career.ecosystem);
   const facilities = facilityModifiers(props.career.facilities);
   const scoutDurationDays = modifiers.scouting >= 0.18 || facilities.scoutingAccuracy >= 5 ? 1 : 2;
+  const nextOpponent = props.career.lastPreMatchBrief
+    ? playerMap[props.career.lastPreMatchBrief.opponentId]
+    : undefined;
   const scoutSubjects = [
+    ...(nextOpponent
+      ? [
+          {
+            id: nextOpponent.id,
+            name: nextOpponent.name,
+            type: "opponent" as const,
+            detail: `${nextOpponent.nationality} / ${nextOpponent.styleLabel}`,
+            knowledge: "Known draw opponent; commission a profile report before trusting tactical assumptions."
+          }
+        ]
+      : []),
     ...props.career.ecosystem.recruitment.candidates.map((candidate) => ({
       id: candidate.id,
       name: candidate.name,
@@ -1505,6 +1619,11 @@ export function CareerScoutingNetworkPage(props: CareerPageProps) {
       }`
     }))
   ];
+  const scoutingSubjectName = (subjectId: string) =>
+    playerMap[subjectId]?.name ??
+    props.career?.ecosystem.recruitment.candidates.find((candidate) => candidate.id === subjectId)?.name ??
+    props.career?.ecosystem.academy.prospects.find((prospect) => prospect.id === subjectId)?.name ??
+    subjectId;
 
   return (
     <section className="screen-shell career-page">
@@ -1540,7 +1659,13 @@ export function CareerScoutingNetworkPage(props: CareerPageProps) {
               return (
                 <article key={subject.id} className="program-decision-card">
                   <span>{subject.type}</span>
-                  <strong>{subject.name}</strong>
+                  <strong>
+                    <ProfileNameButton
+                      playerId={subject.id}
+                      fallback={subject.name}
+                      onOpenPlayerProfile={props.onOpenPlayerProfile}
+                    />
+                  </strong>
                   <p>{subject.detail}</p>
                   <p>{subject.knowledge}</p>
                   <div className="knowledge-chip-row">
@@ -1581,15 +1706,29 @@ export function CareerScoutingNetworkPage(props: CareerPageProps) {
             {props.career.ecosystem.scouting.assignments.map((assignment) => (
               <div key={assignment.id} className="program-log-row">
                 <span>{assignment.status} / due {assignment.dueAt}</span>
-                <strong>{assignment.subjectId}</strong>
+                <strong>
+                  <ProfileNameButton
+                    playerId={assignment.subjectId}
+                    fallback={scoutingSubjectName(assignment.subjectId)}
+                    onOpenPlayerProfile={props.onOpenPlayerProfile}
+                  />
+                </strong>
                 <p>{assignment.scope} scope, cost {money(assignment.cost)}</p>
               </div>
             ))}
             {props.career.ecosystem.scouting.reports.map((report) => (
               <div key={report.id} className="program-log-row">
                 <span>{report.state} / {report.confidence}% confidence</span>
-                <strong>{report.subjectId}</strong>
-                <p>{report.recommendation}</p>
+                <strong>
+                  <ProfileNameButton
+                    playerId={report.subjectId}
+                    fallback={scoutingSubjectName(report.subjectId)}
+                    onOpenPlayerProfile={props.onOpenPlayerProfile}
+                  />
+                </strong>
+                <p>
+                  <SmartCareerText text={report.recommendation} onOpenPlayerProfile={props.onOpenPlayerProfile} />
+                </p>
               </div>
             ))}
           </div>
@@ -1693,7 +1832,13 @@ export function CareerRecruitmentDeskPage(props: CareerPageProps) {
               return (
                 <div key={slot.athleteId} className="program-log-row">
                   <span>{slot.role} / {slot.status}</span>
-                  <strong>{slot.name}</strong>
+                  <strong>
+                    <ProfileNameButton
+                      playerId={slot.athleteId}
+                      fallback={slot.name}
+                      onOpenPlayerProfile={props.onOpenPlayerProfile}
+                    />
+                  </strong>
                   <p>
                     {money(slot.contractCost)} weekly contract, joined {slot.joinedAt}.{" "}
                     {athleteState
@@ -1726,7 +1871,13 @@ export function CareerRecruitmentDeskPage(props: CareerPageProps) {
               .map((entry) => (
                 <div key={entry.id} className="program-log-row">
                   <span>{entry.tier} / {entry.resultRound}</span>
-                  <strong>{entry.subjectName}</strong>
+                  <strong>
+                    <ProfileNameButton
+                      playerId={entry.subjectId}
+                      fallback={entry.subjectName}
+                      onOpenPlayerProfile={props.onOpenPlayerProfile}
+                    />
+                  </strong>
                   <p>{entry.eventName} entered {entry.enteredAt}; readiness {entry.readinessAtEntry}.</p>
                 </div>
               ))}
@@ -1946,8 +2097,21 @@ export function CareerAthletePromisesPage(props: CareerPageProps) {
             {props.career.ecosystem.psychology.map((entry) => (
               <div key={entry.athleteId} className="program-log-row">
                 <span>{entry.athleteId === props.career?.program.managedPlayerId ? "managed athlete" : "program athlete"}</span>
-                <strong>{props.career?.ecosystem.recruitment.roster.find((slot) => slot.athleteId === entry.athleteId)?.name ?? playerMap[entry.athleteId]?.name ?? entry.athleteId}</strong>
-                <p>Form {entry.form}, morale {entry.morale}, confidence {entry.confidence}. Latest: {entry.recentDrivers[0]}</p>
+                <strong>
+                  <ProfileNameButton
+                    playerId={entry.athleteId}
+                    fallback={
+                      props.career?.ecosystem.recruitment.roster.find((slot) => slot.athleteId === entry.athleteId)?.name ??
+                      playerMap[entry.athleteId]?.name ??
+                      entry.athleteId
+                    }
+                    onOpenPlayerProfile={props.onOpenPlayerProfile}
+                  />
+                </strong>
+                <p>
+                  Form {entry.form}, morale {entry.morale}, confidence {entry.confidence}. Latest:{" "}
+                  <SmartCareerText text={entry.recentDrivers[0] ?? "No recent driver"} onOpenPlayerProfile={props.onOpenPlayerProfile} />
+                </p>
               </div>
             ))}
           </div>
@@ -1972,13 +2136,24 @@ export function CareerAthletePromisesPage(props: CareerPageProps) {
                 <span>{promise.status} / deadline {promise.deadline}</span>
                 <strong>{promise.targetValue}</strong>
                 <p>
-                  Owner: {props.career?.ecosystem.recruitment.roster.find((slot) => slot.athleteId === promise.athleteId)?.name ?? playerMap[promise.athleteId]?.name ?? promise.athleteId}
+                  Owner:{" "}
+                  <ProfileNameButton
+                    playerId={promise.athleteId}
+                    fallback={
+                      props.career?.ecosystem.recruitment.roster.find((slot) => slot.athleteId === promise.athleteId)?.name ??
+                      playerMap[promise.athleteId]?.name ??
+                      promise.athleteId
+                    }
+                    onOpenPlayerProfile={props.onOpenPlayerProfile}
+                  />
                 </p>
                 <p>
                   Reward morale {promise.reward.morale >= 0 ? "+" : ""}{promise.reward.morale}, confidence +
                   {promise.reward.confidence}; penalty morale {promise.penalty.morale}, confidence {promise.penalty.confidence}.
                 </p>
-                <p>{promise.resolutionLog[0]}</p>
+                <p>
+                  <SmartCareerText text={promise.resolutionLog[0] ?? "No resolution logged"} onOpenPlayerProfile={props.onOpenPlayerProfile} />
+                </p>
                 {promise.status === "active" && (
                   <div className="danger-zone">
                     <span>Danger zone</span>
@@ -2192,9 +2367,15 @@ export function CareerMatchPlanningPage(props: CareerPageProps) {
             {props.career.matchPlanning.advice.map((advice) => (
               <article key={advice.id} className={advice.overrideState === "pending" ? "program-decision-card advice-card" : "program-decision-card advice-card advice-card-muted"}>
                 <span>{advice.topic} / {roleLabel(advice.sourceRole)} / {advice.confidence}% confidence</span>
-                <strong>{advice.recommendation}</strong>
-                <p>{advice.rationale}</p>
-                <p>{advice.tradeoff}</p>
+                <strong>
+                  <SmartCareerText text={advice.recommendation} onOpenPlayerProfile={props.onOpenPlayerProfile} />
+                </strong>
+                <p>
+                  <SmartCareerText text={advice.rationale} onOpenPlayerProfile={props.onOpenPlayerProfile} />
+                </p>
+                <p>
+                  <SmartCareerText text={advice.tradeoff} onOpenPlayerProfile={props.onOpenPlayerProfile} />
+                </p>
                 <div className="knowledge-chip-row">
                   {advice.inputs.map((input) => (
                     <span key={input} className="knowledge-chip knowledge-chip-estimated">{input}</span>
@@ -2218,7 +2399,12 @@ export function CareerMatchPlanningPage(props: CareerPageProps) {
                     {advice.overrideState === "overridden" ? "Overridden" : "Override"}
                   </button>
                 </div>
-                {advice.overrideReason && <p>Override reason: {advice.overrideReason}</p>}
+                {advice.overrideReason && (
+                  <p>
+                    Override reason:{" "}
+                    <SmartCareerText text={advice.overrideReason} onOpenPlayerProfile={props.onOpenPlayerProfile} />
+                  </p>
+                )}
               </article>
             ))}
           </div>
@@ -3075,7 +3261,13 @@ export function CareerPreMatchHubPage(props: CareerPageProps) {
         </div>
         <div>
           <span>Opponent</span>
-          <strong>{opponent?.name ?? "Pending"}</strong>
+          <strong>
+            <ProfileNameButton
+              playerId={opponent?.id}
+              fallback="Pending"
+              onOpenPlayerProfile={props.onOpenPlayerProfile}
+            />
+          </strong>
         </div>
         <div>
           <span>Readiness</span>
@@ -3094,10 +3286,21 @@ export function CareerPreMatchHubPage(props: CareerPageProps) {
       <div className="career-hub-grid">
         <section className="command-panel command-panel-wide">
           <div className="panel-header">
-            <h2>{opponent?.name ?? "Opponent pending"}</h2>
+            <h2>
+              <ProfileNameButton
+                playerId={opponent?.id}
+                fallback="Opponent pending"
+                onOpenPlayerProfile={props.onOpenPlayerProfile}
+              />
+            </h2>
             <span>{event?.tier ?? "Event"}</span>
           </div>
-          <p className="panel-summary">{brief?.opponentBrief ?? "The draw will resolve when the event opens."}</p>
+          <p className="panel-summary">
+            <SmartCareerText
+              text={brief?.opponentBrief ?? "The draw will resolve when the event opens."}
+              onOpenPlayerProfile={props.onOpenPlayerProfile}
+            />
+          </p>
           <div className="career-brief-grid">
             <div>
               <span>Readiness</span>
@@ -3106,18 +3309,33 @@ export function CareerPreMatchHubPage(props: CareerPageProps) {
             <div>
               <span>Risk Note</span>
               <strong>
-                {athlete.injury.status === "healthy"
-                  ? brief?.riskNote ?? "No briefing yet"
-                  : `${athlete.injury.label}: ${athlete.injury.daysRemaining} day(s) remaining`}
+                <SmartCareerText
+                  text={
+                    athlete.injury.status === "healthy"
+                      ? brief?.riskNote ?? "No briefing yet"
+                      : `${athlete.injury.label}: ${athlete.injury.daysRemaining} day(s) remaining`
+                  }
+                  onOpenPlayerProfile={props.onOpenPlayerProfile}
+                />
               </strong>
             </div>
             <div>
               <span>Tier Stakes</span>
-              <strong>{brief?.tierStakes ?? "No event entered"}</strong>
+              <strong>
+                <SmartCareerText
+                  text={brief?.tierStakes ?? "No event entered"}
+                  onOpenPlayerProfile={props.onOpenPlayerProfile}
+                />
+              </strong>
             </div>
             <div>
               <span>Recommendation</span>
-              <strong>{brief?.recommendation ?? "Advance the calendar into match day."}</strong>
+              <strong>
+                <SmartCareerText
+                  text={brief?.recommendation ?? "Advance the calendar into match day."}
+                  onOpenPlayerProfile={props.onOpenPlayerProfile}
+                />
+              </strong>
             </div>
           </div>
         </section>
@@ -3130,20 +3348,28 @@ export function CareerPreMatchHubPage(props: CareerPageProps) {
             <div>
               <span>Selected Tactic</span>
               <strong>{planningBridge.planName}</strong>
-              <p>{planningBridge.tacticSummary}</p>
+              <p>
+                <SmartCareerText text={planningBridge.tacticSummary} onOpenPlayerProfile={props.onOpenPlayerProfile} />
+              </p>
             </div>
             <div>
               <span>Assistant Signal</span>
               <strong>{planningBridge.adviceLabel}</strong>
-              <p>{planningBridge.adviceDetail}</p>
+              <p>
+                <SmartCareerText text={planningBridge.adviceDetail} onOpenPlayerProfile={props.onOpenPlayerProfile} />
+              </p>
             </div>
             <div>
               <span>Rival Intel</span>
-              <strong>{planningBridge.rivalIntel}</strong>
+              <strong>
+                <SmartCareerText text={planningBridge.rivalIntel} onOpenPlayerProfile={props.onOpenPlayerProfile} />
+              </strong>
             </div>
             <div>
               <span>Objective Stakes</span>
-              <strong>{planningBridge.objectiveStakes}</strong>
+              <strong>
+                <SmartCareerText text={planningBridge.objectiveStakes} onOpenPlayerProfile={props.onOpenPlayerProfile} />
+              </strong>
             </div>
             <div>
               <span>Effect Projection</span>
@@ -3151,7 +3377,9 @@ export function CareerPreMatchHubPage(props: CareerPageProps) {
             </div>
             <div>
               <span>Fatigue / Strain Warning</span>
-              <strong>{planningBridge.strainWarning}</strong>
+              <strong>
+                <SmartCareerText text={planningBridge.strainWarning} onOpenPlayerProfile={props.onOpenPlayerProfile} />
+              </strong>
             </div>
           </div>
           <button className="command-button command-button-secondary career-button-spaced" type="button" onClick={props.onOpenMatchPlanning}>
@@ -3242,7 +3470,20 @@ export function CareerPostMatchHubPage(props: CareerPageProps) {
 
         <section className="command-panel">
           <div className="panel-header">
-            <h2>{report ? `${report.result.toUpperCase()} vs ${opponent?.name}` : "No report"}</h2>
+            <h2>
+              {report ? (
+                <>
+                  {report.result.toUpperCase()} vs{" "}
+                  <ProfileNameButton
+                    playerId={opponent?.id}
+                    fallback={report.opponentId}
+                    onOpenPlayerProfile={props.onOpenPlayerProfile}
+                  />
+                </>
+              ) : (
+                "No report"
+              )}
+            </h2>
             <span>{report?.scoreline ?? "Pending"}</span>
           </div>
           <div className="career-stat-grid">
@@ -3270,13 +3511,17 @@ export function CareerPostMatchHubPage(props: CareerPageProps) {
             <div>
               <h3>Match Evidence</h3>
               {(report?.evidence ?? ["Complete a managed match to generate evidence."]).map((entry) => (
-                <p key={entry}>{entry}</p>
+                <p key={entry}>
+                  <SmartCareerText text={entry} onOpenPlayerProfile={props.onOpenPlayerProfile} />
+                </p>
               ))}
             </div>
             <div>
               <h3>Training Recommendations</h3>
               {(report?.recommendations ?? ["Post-match recommendations will appear here."]).map((entry) => (
-                <p key={entry}>{entry}</p>
+                <p key={entry}>
+                  <SmartCareerText text={entry} onOpenPlayerProfile={props.onOpenPlayerProfile} />
+                </p>
               ))}
             </div>
           </div>

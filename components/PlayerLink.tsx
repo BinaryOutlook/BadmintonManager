@@ -1,6 +1,6 @@
 import { Fragment } from "react/jsx-runtime";
 import { playerMap } from "../game/content/players";
-import { usePlayerNavigation } from "../app/playerNavigation";
+import { useOptionalPlayerNavigation } from "../app/playerNavigation";
 
 interface PlayerLinkProps {
   playerId: string;
@@ -8,10 +8,25 @@ interface PlayerLinkProps {
   children?: string;
 }
 
-const playersByName = Object.values(playerMap).sort((left, right) => right.name.length - left.name.length);
-const playerByName = new Map(playersByName.map((player) => [player.name, player]));
+interface SmartPlayerTextProps {
+  text: string;
+  className?: string;
+  onOpenPlayerProfile?: (playerId: string) => void;
+}
+
+const playerNameGroups = Object.values(playerMap).reduce((groups, player) => {
+  const players = groups.get(player.name) ?? [];
+  groups.set(player.name, [...players, player]);
+  return groups;
+}, new Map<string, Array<(typeof playerMap)[string]>>());
+const uniquePlayersByName = new Map(
+  [...playerNameGroups.entries()]
+    .filter(([, players]) => players.length === 1)
+    .map(([name, players]) => [name, players[0]!])
+);
+const uniquePlayerNames = [...uniquePlayersByName.keys()].sort((left, right) => right.length - left.length);
 const playerNamePattern = new RegExp(
-  `(${playersByName.map((player) => escapeRegExp(player.name)).join("|")})`,
+  `(${uniquePlayerNames.map((name) => escapeRegExp(name)).join("|")})`,
   "g"
 );
 
@@ -20,11 +35,15 @@ function escapeRegExp(value: string) {
 }
 
 export function PlayerLink(props: PlayerLinkProps) {
-  const openPlayerProfile = usePlayerNavigation();
+  const openPlayerProfile = useOptionalPlayerNavigation();
   const player = playerMap[props.playerId];
 
   if (!player) {
     return <>{props.children ?? props.playerId}</>;
+  }
+
+  if (!openPlayerProfile) {
+    throw new Error("PlayerLink must be used inside PlayerNavigationProvider when playerId is known.");
   }
 
   return (
@@ -38,7 +57,7 @@ export function PlayerLink(props: PlayerLinkProps) {
   );
 }
 
-export function SmartPlayerText(props: { text: string; className?: string }) {
+export function SmartPlayerText(props: SmartPlayerTextProps) {
   const parts = props.text.split(playerNamePattern);
 
   if (parts.length === 1) {
@@ -48,10 +67,23 @@ export function SmartPlayerText(props: { text: string; className?: string }) {
   return (
     <span className={props.className}>
       {parts.map((part, index) => {
-        const player = playerByName.get(part);
+        const player = uniquePlayersByName.get(part);
 
         if (!player) {
           return <Fragment key={`${part}-${index}`}>{part}</Fragment>;
+        }
+
+        if (props.onOpenPlayerProfile) {
+          return (
+            <button
+              key={`${player.id}-${index}`}
+              className="smart-player-link"
+              type="button"
+              onClick={() => props.onOpenPlayerProfile?.(player.id)}
+            >
+              {player.name}
+            </button>
+          );
         }
 
         return (

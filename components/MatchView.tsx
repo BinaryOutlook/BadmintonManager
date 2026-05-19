@@ -2,6 +2,7 @@ import { liveDirectiveOptions } from "../game/content/tactics.js";
 import { telemetryForCompetitor } from "../game/core/intel.js";
 import type { LiveDirective, LiveMatchSession, Player, Side, TeamTalk } from "../game/core/models.js";
 import { projectTacticalViewerFromSession } from "../game/career/tacticalViewer.js";
+import { SmartPlayerText } from "./PlayerLink.js";
 import { TacticalMatchViewer } from "./TacticalMatchViewer.js";
 
 interface MatchViewProps {
@@ -205,9 +206,11 @@ interface PrimaryMatchActionProps {
   pendingTeamTalk?: TeamTalk;
   activeDirective?: LiveDirective;
   opponentName: string;
+  currentServer: Player;
   onSimulateNextPoint: () => void;
   onFinishSet: () => void;
   onAdvanceAfterMatch: () => void;
+  onOpenPlayerProfile: (playerId: string) => void;
 }
 
 function PrimaryMatchAction(props: PrimaryMatchActionProps) {
@@ -245,7 +248,16 @@ function PrimaryMatchAction(props: PrimaryMatchActionProps) {
           Games {props.session.setsWonA}-{props.session.setsWonB}
         </span>
         <span>{props.activeDirective ?? "No directive"}</span>
-        <span>{props.session.currentServer === "A" ? props.session.input.playerA.name : props.session.input.playerB.name} serves</span>
+        <span>
+          <button
+            className="profile-name-button"
+            type="button"
+            onClick={() => props.onOpenPlayerProfile(props.currentServer.id)}
+          >
+            {props.currentServer.name}
+          </button>{" "}
+          serves
+        </span>
       </div>
     </section>
   );
@@ -253,6 +265,7 @@ function PrimaryMatchAction(props: PrimaryMatchActionProps) {
 
 interface LiveFeedPanelProps {
   session: LiveMatchSession;
+  onOpenPlayerProfile: (playerId: string) => void;
 }
 
 function LiveFeedPanel(props: LiveFeedPanelProps) {
@@ -273,8 +286,14 @@ function LiveFeedPanel(props: LiveFeedPanelProps) {
                 <span>{entry.clockLabel}</span>
                 <span className="feed-kind">{entry.kind}</span>
               </div>
-              <strong>{entry.title}</strong>
-              {entry.detail && <p>{entry.detail}</p>}
+              <strong>
+                <SmartPlayerText text={entry.title} onOpenPlayerProfile={props.onOpenPlayerProfile} />
+              </strong>
+              {entry.detail && (
+                <p>
+                  <SmartPlayerText text={entry.detail} onOpenPlayerProfile={props.onOpenPlayerProfile} />
+                </p>
+              )}
             </article>
           ))
         ) : (
@@ -286,15 +305,26 @@ function LiveFeedPanel(props: LiveFeedPanelProps) {
 }
 
 interface TelemetryPanelProps {
+  player: Player;
   telemetry: CompetitorTelemetry;
   tone: "managed" | "opponent";
+  onOpenPlayerProfile: (playerId: string) => void;
 }
 
 function TelemetryPanel(props: TelemetryPanelProps) {
   return (
     <section className={`command-panel telemetry-card telemetry-card-${props.tone}`}>
       <div className="panel-header telemetry-card-header">
-        <h2>{props.telemetry.playerName} Telemetry</h2>
+        <h2>
+          <button
+            className="profile-name-button"
+            type="button"
+            onClick={() => props.onOpenPlayerProfile(props.player.id)}
+          >
+            {props.telemetry.playerName}
+          </button>{" "}
+          Telemetry
+        </h2>
         <span>{props.telemetry.momentumLabel}</span>
       </div>
 
@@ -448,7 +478,11 @@ export function MatchView(props: MatchViewProps) {
           <p className="screen-kicker">Live</p>
           <h1 className="screen-title">Match Command Center</h1>
           <p className="screen-copy">
-            {opponentPlayer.name} opened with {props.opponentTacticLabel}. Point flow is now live, with
+            <SmartPlayerText
+              text={`${opponentPlayer.name} opened with ${props.opponentTacticLabel}.`}
+              onOpenPlayerProfile={props.onOpenPlayerProfile}
+            />{" "}
+            Point flow is now live, with
             directives affecting only the next short tactical window.
           </p>
         </div>
@@ -467,12 +501,14 @@ export function MatchView(props: MatchViewProps) {
           pendingTeamTalk={pendingTeamTalk}
           activeDirective={activeDirective}
           opponentName={props.opponentName}
+          currentServer={props.session.currentServer === "A" ? props.session.input.playerA : props.session.input.playerB}
           onSimulateNextPoint={props.onSimulateNextPoint}
           onFinishSet={props.onFinishSet}
           onAdvanceAfterMatch={props.onAdvanceAfterMatch}
+          onOpenPlayerProfile={props.onOpenPlayerProfile}
         />
 
-        <LiveFeedPanel session={props.session} />
+        <LiveFeedPanel session={props.session} onOpenPlayerProfile={props.onOpenPlayerProfile} />
 
         <section className="command-panel tactical-viewer-live-panel match-command-viewer">
           <TacticalMatchViewer
@@ -483,8 +519,18 @@ export function MatchView(props: MatchViewProps) {
         </section>
 
         <aside className="match-side-column" aria-label="Managed and opponent telemetry with tactical options">
-          <TelemetryPanel telemetry={managedTelemetry} tone="managed" />
-          <TelemetryPanel telemetry={opponentTelemetry} tone="opponent" />
+          <TelemetryPanel
+            player={managedPlayer}
+            telemetry={managedTelemetry}
+            tone="managed"
+            onOpenPlayerProfile={props.onOpenPlayerProfile}
+          />
+          <TelemetryPanel
+            player={opponentPlayer}
+            telemetry={opponentTelemetry}
+            tone="opponent"
+            onOpenPlayerProfile={props.onOpenPlayerProfile}
+          />
           <TacticalOptionsPanel
             session={props.session}
             activeDirective={activeDirective}

@@ -1,6 +1,7 @@
 import { playerMap } from "../game/content/players";
 import { summarizeRun } from "../game/core/intel";
 import type { TournamentState } from "../game/tournament/tournament";
+import { SmartPlayerText } from "./PlayerLink";
 
 interface CompleteViewProps {
   tournament: TournamentState;
@@ -19,7 +20,9 @@ export function CompleteView(props: CompleteViewProps) {
         <div>
           <p className="screen-kicker">Brackets</p>
           <h1 className="screen-title">{summary.headline}</h1>
-          <p className="screen-copy">{summary.summary}</p>
+          <p className="screen-copy">
+            <SmartPlayerText text={summary.summary} onOpenPlayerProfile={props.onOpenPlayerProfile} />
+          </p>
         </div>
         <button className="command-button command-button-primary" onClick={props.onReset}>
           Start New Session
