@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { App } from "../../app/App";
+import { App, commandIdForPage } from "../../app/App";
 import { CareerCalendarPage } from "../../components/CareerWorkbench";
 import { addDays } from "../../game/career/calendar";
 import { getCareerEvent } from "../../game/career/events";
@@ -159,6 +159,62 @@ describe("career shell daily action", () => {
     expect(within(sidebar).queryByText("Managed Athlete")).not.toBeInTheDocument();
     expect(within(sidebar).queryByRole("button", { name: "Go Live" })).not.toBeInTheDocument();
     expect(within(screen.getByRole("main")).queryByRole("button", { name: "Continue" })).not.toBeInTheDocument();
+  });
+
+  it("keeps the command rail focused on calendar browsing and the match path", () => {
+    resetStoreForCareer();
+
+    render(<App />);
+
+    const commandRail = screen.getByRole("navigation", { name: "Primary commands" });
+    const labels = within(commandRail)
+      .getAllByRole("button")
+      .map((button) => button.querySelector("span")?.textContent ?? "");
+
+    expect(labels).toEqual([
+      "Portal",
+      "Inbox",
+      "Squad",
+      "Training",
+      "Calendar",
+      "Tactics",
+      "Live Match",
+      "Reports",
+      "Scouting",
+      "Staff",
+      "Facilities",
+      "Save Manager",
+      "Settings"
+    ]);
+    expect(commandIdForPage({ id: "bracket" })).toBe("live");
+  });
+
+  it("routes the Live Match command into a due career opponent briefing", () => {
+    const { career, event } = careerEnteredOnMetroStart();
+    resetStoreForCareer(career);
+
+    render(<App />);
+
+    const commandRail = screen.getByRole("navigation", { name: "Primary commands" });
+    fireEvent.click(within(commandRail).getByRole("button", { name: /Live Match/ }));
+
+    const afterOpen = useTournamentStore.getState();
+    expect(afterOpen.career?.date).toBe(event.startDate);
+    expect(afterOpen.career?.stage).toBe("pre_match");
+    expect(afterOpen.tournament?.id).toBe(event.id);
+    expect(screen.getByRole("heading", { name: "Opponent Briefing" })).toBeInTheDocument();
+    expect(within(commandRail).getByRole("button", { name: /Live Match/ })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("routes the Live Match command to match planning when no match is due", () => {
+    resetStoreForCareer();
+
+    render(<App />);
+
+    const commandRail = screen.getByRole("navigation", { name: "Primary commands" });
+    fireEvent.click(within(commandRail).getByRole("button", { name: /Live Match/ }));
+
+    expect(screen.getByRole("heading", { name: "Advanced Tactics Creator" })).toBeInTheDocument();
   });
 
   it("shows a red topbar action for a due scheduled match and opens it without advancing the date", () => {

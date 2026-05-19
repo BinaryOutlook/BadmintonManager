@@ -37,13 +37,12 @@ import { PlayerProfilePage } from "./pages/PlayerProfilePage";
 import { SquadPage } from "./pages/SquadPage";
 import { PlayerNavigationProvider } from "./playerNavigation";
 
-type CommandId =
+export type CommandId =
   | "portal"
   | "inbox"
   | "squad"
   | "training"
   | "calendar"
-  | "competitions"
   | "tactics"
   | "live"
   | "reports"
@@ -261,7 +260,7 @@ function loadSidebarCollapsed() {
   return window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === "true";
 }
 
-function commandIdForPage(page: AppPage): CommandId {
+export function commandIdForPage(page: AppPage): CommandId {
   switch (page.id) {
     case "saveManager":
       return "saveManager";
@@ -270,12 +269,12 @@ function commandIdForPage(page: AppPage): CommandId {
       return "squad";
     case "season":
       return "training";
+    case "games":
     case "calendar":
     case "eventDetails":
       return "calendar";
-    case "games":
     case "bracket":
-      return "competitions";
+      return "live";
     case "matchPlanning":
       return "tactics";
     case "liveMatch":
@@ -577,18 +576,40 @@ export function App() {
     setActivePage({ id: "liveMatch" });
   }
 
-  function openCareerLiveRoute() {
-    if (phase === "match") {
+  function openLiveMatchRoute() {
+    if (phase === "match" || liveMatch) {
       setActivePage({ id: "liveMatch" });
       return;
     }
 
-    if (career?.stage === "pre_match") {
+    if (career) {
+      if (career.stage === "pre_match") {
+        setActivePage({ id: "bracket" });
+        return;
+      }
+
+      const action = getCareerDailyAction({
+        career,
+        tournament,
+        phase,
+        liveMatchActive: false
+      });
+
+      if (action.kind === "play_scheduled_match") {
+        handleOpenScheduledCareerMatch(action.eventId);
+        return;
+      }
+
+      setActivePage({ id: "matchPlanning" });
+      return;
+    }
+
+    if (tournament && phase === "overview") {
       setActivePage({ id: "bracket" });
       return;
     }
 
-    setActivePage({ id: "matchPlanning" });
+    setActivePage(pageForPhase(phase));
   }
 
   function openCareerPostMatchRoute() {
@@ -617,14 +638,11 @@ export function App() {
       case "calendar":
         setActivePage(career ? { id: "calendar" } : { id: "games" });
         break;
-      case "competitions":
-        setActivePage(career ? { id: "calendar" } : tournament ? { id: "bracket" } : { id: "games" });
-        break;
       case "tactics":
         setActivePage(career && phase !== "match" ? { id: "matchPlanning" } : phase === "setup" ? { id: "setup" } : pageForPhase(phase));
         break;
       case "live":
-        openCareerLiveRoute();
+        openLiveMatchRoute();
         break;
       case "reports":
         openCareerPostMatchRoute();
@@ -648,6 +666,23 @@ export function App() {
   }
 
   function buildShellCommands(): ShellCommand[] {
+    const liveMatchDescription =
+      phase === "match" || liveMatch
+        ? "Point control"
+        : career?.stage === "pre_match"
+          ? "Opponent briefing"
+          : career &&
+              getCareerDailyAction({
+                career,
+                tournament,
+                phase,
+                liveMatchActive: false
+              }).kind === "play_scheduled_match"
+            ? "Opponent briefing"
+            : !career && tournament && phase === "overview"
+              ? "Bracket overview"
+              : "Match planning";
+
     return [
       {
         id: "portal",
@@ -693,14 +728,6 @@ export function App() {
         onActivate: () => activateCommand("calendar")
       },
       {
-        id: "competitions",
-        group: "Program",
-        label: "Competitions",
-        short: "CMP",
-        description: tournament ? "Active bracket" : career ? "Event entries" : "Quick tournament",
-        onActivate: () => activateCommand("competitions")
-      },
-      {
         id: "tactics",
         group: "Match",
         label: "Tactics",
@@ -713,7 +740,7 @@ export function App() {
         group: "Match",
         label: "Live Match",
         short: "LIV",
-        description: phase === "match" ? "Point control" : career?.stage === "pre_match" ? "Opponent briefing" : "Plan first",
+        description: liveMatchDescription,
         onActivate: () => activateCommand("live")
       },
       {
@@ -913,7 +940,7 @@ export function App() {
       onOpenCalendar: () => setActivePage({ id: "calendar" }),
       onOpenEventDetails: (eventId: string) => setActivePage({ id: "eventDetails", eventId }),
       onOpenHome: () => setActivePage({ id: "home" }),
-      onOpenLiveMatch: openCareerLiveRoute,
+      onOpenLiveMatch: openLiveMatchRoute,
       onOpenPostMatch: openCareerPostMatchRoute,
       onOpenProgram: () => setActivePage({ id: "program" }),
       onOpenRivals: () => setActivePage({ id: "rivals" }),
