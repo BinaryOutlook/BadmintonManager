@@ -1,10 +1,26 @@
 import { mkdirSync, readFileSync } from "node:fs";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { seededPlayers, playerMap } from "../game/content/players";
 import { createInitialCareerState } from "../game/career/state";
 import { getCareerEvent } from "../game/career/events";
 import type { MatchResult, Side } from "../game/core/models";
 import { advanceTournament, createTournament, getManagedMatchContext } from "../game/tournament/tournament";
+
+const expectedPrimaryCommandLabels = [
+  "Portal",
+  "Inbox",
+  "Squad",
+  "Training",
+  "Calendar",
+  "Tactics",
+  "Live Match",
+  "Reports",
+  "Scouting",
+  "Staff",
+  "Facilities",
+  "Save Manager",
+  "Settings"
+];
 
 function forcedStraightGamesResult(winner: Side): MatchResult {
   return {
@@ -319,6 +335,14 @@ async function expectLaunchViewportBounded(page: Page) {
       }
     }
   });
+}
+
+async function expectPrimaryCommandLabels(commandRail: Locator) {
+  const labels = await commandRail.getByRole("button").evaluateAll((buttons) =>
+    buttons.map((button) => button.querySelector("span")?.textContent ?? "")
+  );
+
+  expect(labels).toEqual(expectedPrimaryCommandLabels);
 }
 
 async function selectAthleteInSelectionModal(page: Page, athleteName: string) {
@@ -903,13 +927,13 @@ test("keeps first-launch save trust surfaces bounded on mobile", async ({ page }
   await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
 
   const commandRail = page.getByRole("navigation", { name: "Primary commands" });
+  await expectPrimaryCommandLabels(commandRail);
   await expect(commandRail.getByRole("button", { name: /Portal/ })).toHaveAttribute("aria-current", "page");
-  await expect(commandRail.getByRole("button", { name: /Competitions/ })).not.toHaveAttribute("aria-current", "page");
 
   await openSaveManager(page);
   await expect(page.getByRole("heading", { name: "Local Save Control" })).toBeVisible();
   await expect(commandRail.getByRole("button", { name: /Save Manager/ })).toHaveAttribute("aria-current", "page");
-  await expect(commandRail.getByRole("button", { name: /Competitions/ })).not.toHaveAttribute("aria-current", "page");
+  await expectPrimaryCommandLabels(commandRail);
 
   await page.getByRole("button", { name: "Start Tournament" }).click();
   await expect(page.getByRole("heading", { name: "Start tournament and replace career?" })).toBeVisible();
@@ -930,6 +954,7 @@ test("exposes the grouped management shell as the primary command surface", asyn
   }
 
   await expect(commandRail.getByRole("button", { name: /Portal/ })).toHaveAttribute("aria-current", "page");
+  await expectPrimaryCommandLabels(commandRail);
   await expect(commandRail.getByRole("button", { name: /Inbox preview/ })).toBeDisabled();
   await expect(page.getByRole("heading", { name: "Career Workspace Map" })).toHaveCount(0);
   await expect(page.getByRole("region", { name: "Career workspace navigation" })).toHaveCount(0);
@@ -952,6 +977,52 @@ test("exposes the grouped management shell as the primary command surface", asyn
 
   await requestNewSession(page);
   await expect(page.getByRole("heading", { name: "Reset tournament state?" })).toBeVisible();
+});
+
+test("routes the Live Match command through career and quick match paths", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/");
+
+  await startNewCareer(page);
+  const commandRail = page.getByRole("navigation", { name: "Primary commands" });
+
+  await commandRail.getByRole("button", { name: /Live Match/ }).click();
+  await expect(page.getByRole("heading", { name: "Advanced Tactics Creator" })).toBeVisible();
+
+  await commandRail.getByRole("button", { name: /Calendar/ }).click();
+  await page.getByRole("button", { name: "Enter Event" }).first().click();
+  await page.getByRole("button", { name: "Advance Day" }).click();
+  await page.getByRole("button", { name: "Advance Day" }).click();
+  await expect(page.getByRole("heading", { name: "Opponent Briefing" })).toBeVisible();
+  await expect(commandRail.getByRole("button", { name: /Live Match/ })).toHaveAttribute("aria-current", "page");
+
+  await commandRail.getByRole("button", { name: /Calendar/ }).click();
+  await expect(page.getByRole("heading", { name: "Calendar" })).toBeVisible();
+  await commandRail.getByRole("button", { name: /Live Match/ }).click();
+  await expect(page.getByRole("heading", { name: "Opponent Briefing" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Enter Match" }).click();
+  await expect(page.getByRole("button", { name: "Next Point", exact: true })).toBeVisible();
+  await commandRail.getByRole("button", { name: /Squad/ }).click();
+  await expect(page.getByRole("heading", { name: "Athlete Directory" })).toBeVisible();
+  await commandRail.getByRole("button", { name: /Live Match/ }).click();
+  await expect(page.getByRole("button", { name: "Next Point", exact: true })).toBeVisible();
+
+  await page.evaluate(() => {
+    window.localStorage.clear();
+    window.sessionStorage.clear();
+    window.location.reload();
+  });
+  await expect(page.getByRole("heading", { name: "Badminton Manager" })).toBeVisible();
+
+  await startQuickTournamentFromModal(page);
+  await expect(page.getByRole("heading", { name: "Next Opponent" })).toBeVisible();
+  const quickCommandRail = page.getByRole("navigation", { name: "Primary commands" });
+  await expect(quickCommandRail.getByRole("button", { name: /Live Match/ })).toHaveAttribute("aria-current", "page");
+  await quickCommandRail.getByRole("button", { name: /Calendar/ }).click();
+  await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
+  await quickCommandRail.getByRole("button", { name: /Live Match/ }).click();
+  await expect(page.getByRole("heading", { name: "Next Opponent" })).toBeVisible();
 });
 
 test("surfaces dense page contracts and Save Manager metadata", async ({ page }) => {
