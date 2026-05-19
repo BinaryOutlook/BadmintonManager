@@ -1,6 +1,6 @@
 # TIX-011: Rankings Page
 
-Status: Draft implementation ticket
+Status: Implemented, PR-ready
 Priority: High
 Target project: `BadmintonManager`
 Target screens: sidebar command rail, new career Rankings page
@@ -69,13 +69,13 @@ Do not overload Calendar with rankings table duties.
 
 ## 5. Acceptance Criteria
 
-- [ ] Sidebar shows `Rankings` during career mode.
-- [ ] Clicking `Rankings` opens a full rankings page.
-- [ ] Table is sorted from rank 1 downward.
-- [ ] Managed athlete row is highlighted and labelled.
-- [ ] Player names open player profiles.
-- [ ] Points and season race points are visible.
-- [ ] Mobile layout has no horizontal overflow.
+- [x] Sidebar shows `Rankings` during career mode.
+- [x] Clicking `Rankings` opens a full rankings page.
+- [x] Table is sorted from rank 1 downward.
+- [x] Managed athlete row is highlighted and labelled.
+- [x] Player names open player profiles.
+- [x] Points and season race points are visible.
+- [x] Mobile layout has no horizontal overflow.
 
 ## 6. Verification
 
@@ -99,4 +99,3 @@ $$
 \rightarrow
 \text{player profile addresses}
 $$
-
