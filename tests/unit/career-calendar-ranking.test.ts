@@ -141,6 +141,28 @@ describe("fictional career calendar and ranking model", () => {
       stage: "pre_match" as const,
       matchHistory: [
         {
+          id: `${event.id}:background-R16-1`,
+          eventId: event.id,
+          eventName: event.name,
+          date: event.startDate,
+          round: "R16" as const,
+          playerAId: seededPlayers[6].player.id,
+          playerBId: seededPlayers[7].player.id,
+          winnerId: seededPlayers[6].player.id,
+          scoreline: "21-15, 21-18"
+        },
+        {
+          id: "background-classic:QF-1",
+          eventId: "background-classic",
+          eventName: "Background Classic",
+          date: "2026-06-20",
+          round: "QF" as const,
+          playerAId: seededPlayers[8].player.id,
+          playerBId: seededPlayers[9].player.id,
+          winnerId: seededPlayers[9].player.id,
+          scoreline: "19-21, 21-16, 21-18"
+        },
+        {
           id: "harbor-masters-500:R16-1",
           eventId: "harbor-masters-500",
           eventName: "Harbor Masters",
@@ -160,6 +182,7 @@ describe("fictional career calendar and ranking model", () => {
     const completedCommitment = commitments.find((commitment) => commitment.eventId === "harbor-masters-500");
     const groups = groupCalendarCommitmentsByDate(commitments);
 
+    expect(commitments.map((commitment) => commitment.eventName)).not.toContain("Background Classic");
     expect(activeCommitment).toEqual({
       date: scheduledDateForRound(event, "R16"),
       eventId: event.id,

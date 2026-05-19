@@ -730,9 +730,14 @@ function playerLabel(playerId: string | null) {
   return playerMap[playerId]?.name ?? playerId;
 }
 
+function isManagedCareerMatchRecord(career: CareerState, record: CareerState["matchHistory"][number]) {
+  const managedPlayerId = career.program.managedPlayerId;
+
+  return record.playerAId === managedPlayerId || record.playerBId === managedPlayerId;
+}
+
 function completedCommitmentForRecord(career: CareerState, record: CareerState["matchHistory"][number]): CalendarCommitment {
   const managedPlayerId = career.program.managedPlayerId;
-  const managedInMatch = record.playerAId === managedPlayerId || record.playerBId === managedPlayerId;
   const opponentId = record.playerAId === managedPlayerId
     ? record.playerBId
     : record.playerBId === managedPlayerId
@@ -746,7 +751,7 @@ function completedCommitmentForRecord(career: CareerState, record: CareerState["
     round: record.round,
     opponentId,
     opponentLabel: playerLabel(opponentId),
-    result: managedInMatch ? record.winnerId === managedPlayerId ? "W" : "L" : null
+    result: record.winnerId === managedPlayerId ? "W" : "L"
   };
 }
 
@@ -783,10 +788,13 @@ export function calendarCommitmentsForCareer(args: {
   career: CareerState;
   tournament: TournamentState | null;
 }): CalendarCommitment[] {
-  const completedRoundKeys = new Set(
-    args.career.matchHistory.map((record) => `${record.eventId}:${record.round}`)
+  const managedMatchHistory = args.career.matchHistory.filter((record) =>
+    isManagedCareerMatchRecord(args.career, record)
   );
-  const completedCommitments = args.career.matchHistory.map((record) =>
+  const completedRoundKeys = new Set(
+    managedMatchHistory.map((record) => `${record.eventId}:${record.round}`)
+  );
+  const completedCommitments = managedMatchHistory.map((record) =>
     completedCommitmentForRecord(args.career, record)
   );
   const enteredEventIds = new Set(args.career.enteredEventIds);
