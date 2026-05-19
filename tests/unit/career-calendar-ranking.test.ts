@@ -14,7 +14,7 @@ import {
   recordPastCareerEvents,
   upcomingCalendarEvents
 } from "../../game/career/events";
-import { awardRankingPoints } from "../../game/career/rankings";
+import { awardRankingPoints, rankingsByCurrentRank } from "../../game/career/rankings";
 import { createInitialCareerState, managedAthlete } from "../../game/career/state";
 import { migratePersistedSave, persistedSavePayloadSchema, persistedSaveSchema } from "../../game/store/save";
 
@@ -182,6 +182,24 @@ describe("fictional career calendar and ranking model", () => {
       seasonId: career.seasonId,
       tier: event.tier
     })).toEqual(updated);
+  });
+
+  it("sorts persisted ranking entries by current rank without recalculating from points", () => {
+    const career = createInitialCareerState(seededPlayers[0].player.id, 6812);
+    const rankOne = career.rankings.find((entry) => entry.rank === 1)!;
+    const rankTwo = career.rankings.find((entry) => entry.rank === 2)!;
+    const rankThree = career.rankings.find((entry) => entry.rank === 3)!;
+    const outOfOrderRankings = [
+      { ...rankThree, points: 99_999 },
+      { ...rankOne, points: 1 },
+      { ...rankTwo, points: 2 }
+    ];
+
+    const sorted = rankingsByCurrentRank(outOfOrderRankings);
+
+    expect(sorted.map((entry) => entry.rank)).toEqual([1, 2, 3]);
+    expect(sorted.map((entry) => entry.playerId)).toEqual([rankOne.playerId, rankTwo.playerId, rankThree.playerId]);
+    expect(sorted[0]?.points).toBe(1);
   });
 
   it("builds an honest ranking-based seeding snapshot without claiming bracket seeding is changed", () => {

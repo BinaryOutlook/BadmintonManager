@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { App, commandIdForPage } from "../../app/App";
-import { CareerCalendarPage } from "../../components/CareerWorkbench";
+import { CareerCalendarPage, CareerRankingsPage } from "../../components/CareerWorkbench";
 import { addDays } from "../../game/career/calendar";
 import { getCareerEvent } from "../../game/career/events";
 import { createInitialCareerState } from "../../game/career/state";
@@ -124,6 +124,62 @@ function renderCalendarPage(overrides: Partial<Parameters<typeof CareerCalendarP
   );
 }
 
+function renderRankingsPage(overrides: Partial<Parameters<typeof CareerRankingsPage>[0]> = {}) {
+  const career = createInitialCareerState(seededPlayers[0].player.id, 9913);
+
+  return render(
+    <CareerRankingsPage
+      career={career}
+      tournament={null}
+      saveRecovery={null}
+      activeSavePresent={true}
+      corruptSavePresent={false}
+      onStartCareer={vi.fn()}
+      onOpenTraining={vi.fn()}
+      onOpenCalendar={vi.fn()}
+      onOpenEventDetails={vi.fn()}
+      onOpenHome={vi.fn()}
+      onOpenLiveMatch={vi.fn()}
+      onOpenPostMatch={vi.fn()}
+      onOpenProgram={vi.fn()}
+      onOpenRivals={vi.fn()}
+      onOpenMatchPlanning={vi.fn()}
+      onOpenSaveManager={vi.fn()}
+      onRequestNewSession={vi.fn()}
+      onOpenFacilities={vi.fn()}
+      onOpenMedia={vi.fn()}
+      onOpenScouting={vi.fn()}
+      onOpenRecruitment={vi.fn()}
+      onOpenYouth={vi.fn()}
+      onOpenStaff={vi.fn()}
+      onOpenPromises={vi.fn()}
+      onOpenPlayerProfile={vi.fn()}
+      onApplyTraining={vi.fn()}
+      onEnterEvent={vi.fn()}
+      onOpenScheduledCareerMatch={vi.fn()}
+      onStartManagedMatch={vi.fn()}
+      onContinueAfterPostMatch={vi.fn()}
+      onCommissionScoutReport={vi.fn()}
+      onMakeRecruitmentOffer={vi.fn()}
+      onTrainRosterAthlete={vi.fn()}
+      onEnterRosterAthleteLowerEvent={vi.fn()}
+      onDevelopYouthProspect={vi.fn()}
+      onEnterYouthLowerEvent={vi.fn()}
+      onHireStaffMember={vi.fn()}
+      onSetManagedAthletePromise={vi.fn()}
+      onWithdrawPromise={vi.fn()}
+      onAdvanceRivalCircuit={vi.fn()}
+      onUpgradeFacility={vi.fn()}
+      onResolveMediaObjectives={vi.fn()}
+      onUpdateAdvancedTacticPlan={vi.fn()}
+      onRefreshAssistantAdvice={vi.fn()}
+      onApplyAssistantAdvice={vi.fn()}
+      onOverrideAssistantAdvice={vi.fn()}
+      {...overrides}
+    />
+  );
+}
+
 describe("career shell daily action", () => {
   it("renders a clean standalone start screen before any save or run exists", () => {
     installWindowStorage();
@@ -177,6 +233,7 @@ describe("career shell daily action", () => {
       "Squad",
       "Training",
       "Calendar",
+      "Rankings",
       "Tactics",
       "Live Match",
       "Reports",
@@ -186,6 +243,7 @@ describe("career shell daily action", () => {
       "Save Manager",
       "Settings"
     ]);
+    expect(labels).not.toContain("Competitions");
     expect(commandIdForPage({ id: "bracket" })).toBe("live");
   });
 
@@ -274,6 +332,52 @@ describe("career shell daily action", () => {
     fireEvent.click(advanceButton);
 
     expect(useTournamentStore.getState().career?.date).toBe(addDays(career.date, 1));
+  });
+
+  it("opens a career Rankings page from the command rail with addressable managed-player rows", () => {
+    const baseCareer = createInitialCareerState(seededPlayers[0].player.id, 9914);
+    const career = {
+      ...baseCareer,
+      rankings: [...baseCareer.rankings].reverse()
+    };
+    resetStoreForCareer(career);
+
+    render(<App />);
+
+    const commandRail = screen.getByRole("navigation", { name: "Primary commands" });
+    const rankingsCommand = within(commandRail).getByRole("button", { name: "Rankings: Circuit table" });
+
+    expect(rankingsCommand).toBeInTheDocument();
+    fireEvent.click(rankingsCommand);
+
+    expect(screen.getByRole("heading", { name: "Circuit Rankings" })).toBeInTheDocument();
+    expect(rankingsCommand).toHaveAttribute("aria-current", "page");
+
+    const table = screen.getByRole("table", { name: "Circuit rankings table" });
+    const rows = within(table).getAllByRole("row");
+    const firstDataRow = rows[1]!;
+    const managedRanking = baseCareer.rankings.find((entry) => entry.playerId === baseCareer.program.managedPlayerId)!;
+
+    expect(within(firstDataRow).getByText("#1")).toBeInTheDocument();
+    expect(within(firstDataRow).getByRole("button", { name: "Adrian Koh" })).toBeInTheDocument();
+    expect(within(firstDataRow).getByText("Managed athlete")).toBeInTheDocument();
+    expect(within(firstDataRow).getByText("SGP")).toBeInTheDocument();
+    expect(within(firstDataRow).getByText(`${managedRanking.points.toLocaleString()} pts`)).toBeInTheDocument();
+    expect(within(firstDataRow).getByText(`${managedRanking.seasonPoints.toLocaleString()} pts`)).toBeInTheDocument();
+
+    fireEvent.click(within(firstDataRow).getByRole("button", { name: "Adrian Koh" }));
+
+    expect(screen.getByRole("heading", { name: "Adrian Koh" })).toBeInTheDocument();
+  });
+});
+
+describe("career rankings page", () => {
+  it("shows a career-required state when no career is loaded", () => {
+    renderRankingsPage({ career: null, activeSavePresent: false });
+
+    expect(screen.getByRole("heading", { name: "Career Command Center" })).toBeInTheDocument();
+    expect(screen.getByText("No Career Loaded")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Create Career Save" })).toBeInTheDocument();
   });
 });
 

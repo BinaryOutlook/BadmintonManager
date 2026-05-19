@@ -27,6 +27,10 @@ export function recalculateRanks(entries: RankingEntry[]) {
     }));
 }
 
+export function rankingsByCurrentRank(entries: RankingEntry[]) {
+  return [...entries].sort((left, right) => left.rank - right.rank || left.playerId.localeCompare(right.playerId));
+}
+
 export function awardRankingPoints(args: {
   rankings: RankingEntry[];
   playerId: string;

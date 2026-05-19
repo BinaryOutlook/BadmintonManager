@@ -79,6 +79,7 @@ What is now stable:
 - the TIX-007 Start Screen refinement tightens the hero into a launch title bar, makes saved career/tournament resume panels the dominant decision, groups Start New and Local Setup actions more naturally, adds restrained court-line badminton identity, and commits refreshed visual QA artifacts under `docs/rescue_MVP/visual_qa/TIX-007/`
 - detailed match scorelines now use bounded score-shape safety rails, score-aware anti-collapse relief, and opt-in calibration assertions to prevent repeated pathological `21-0`, `21-1`, and `21-2` games in normal roster matchups
 - the command rail now keeps Calendar focused on event browsing and sends bracket, pre-match, and active-match paths through Live Match instead of a separate permanent competition command
+- TIX-011 adds a first-class career Rankings page from the command rail, sourced from `career.rankings`, with full rank-ascending rows, managed-athlete labelling, profile-addressable names, and bounded desktop/mobile proof
 
 ## Completed
 
@@ -166,6 +167,7 @@ What is now stable:
 - [x] completed the TIX-007 Start Screen visual hierarchy pass with saved-slot primary action emphasis, simplified start/manage grouping, badminton court-line atmosphere, focused unit/e2e coverage, and refreshed TIX-007 screenshots
 - [x] rebalanced detailed match score shape with focused legality/low-score-prevention tests plus a 10-seed asserted calibration sweep
 - [x] removed the legacy permanent competition sidebar route so Calendar handles event browsing and Live Match owns pre-match, bracket, and live command-center access
+- [x] implemented TIX-011 Rankings as a career command surface with `career.rankings` table data, managed-athlete highlight plus text label, profile navigation, focused unit coverage, and desktop/mobile visual QA artifacts
 
 ## In Progress
 

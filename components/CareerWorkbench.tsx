@@ -17,6 +17,7 @@ import {
   upcomingCalendarEvents
 } from "../game/career/events";
 import { canCompeteWithInjury, canTrainWithInjury } from "../game/career/health";
+import { rankingsByCurrentRank } from "../game/career/rankings";
 import type {
   AdvancedTacticPlan,
   CareerEventDefinition,
@@ -345,6 +346,16 @@ function CalendarPager(props: {
 
 function pressureForEvent(career: CareerState, eventId: string) {
   return career.rivals.fieldPressure.find((entry) => entry.eventId === eventId);
+}
+
+function rankingStatus(entry: CareerState["rankings"][number]) {
+  const latest = entry.eventHistory.at(-1);
+
+  if (!latest) {
+    return "Steady";
+  }
+
+  return `Latest ${latest.round} +${points(latest.points)}`;
 }
 
 function modifierRows(modifiers: FacilityModifier) {
@@ -746,6 +757,160 @@ export function CareerHomePage(props: CareerPageProps) {
           </div>
         </section>
       </div>
+    </section>
+  );
+}
+
+export function CareerRankingsPage(props: CareerPageProps) {
+  if (!props.career) {
+    return <CareerEmpty onStartCareer={props.onStartCareer} saveRecovery={props.saveRecovery} />;
+  }
+
+  const career = props.career;
+  const managedPlayerId = career.program.managedPlayerId;
+  const orderedRankings = rankingsByCurrentRank(career.rankings);
+  const managedIndex = orderedRankings.findIndex((entry) => entry.playerId === managedPlayerId);
+  const managedRanking = managedIndex >= 0 ? orderedRankings[managedIndex] : undefined;
+  const leader = orderedRankings[0];
+  const last = orderedRankings.at(-1);
+  const playerAhead = managedIndex > 0 ? orderedRankings[managedIndex - 1] : undefined;
+  const playerBehind = managedIndex >= 0 ? orderedRankings[managedIndex + 1] : undefined;
+  const leaderPlayer = leader ? playerMap[leader.playerId] : undefined;
+  const gapToLeader = leader && managedRanking ? Math.max(0, leader.points - managedRanking.points) : 0;
+  const gapAhead = playerAhead && managedRanking ? Math.max(0, playerAhead.points - managedRanking.points) : 0;
+  const pointsSpread = leader && last ? Math.max(0, leader.points - last.points) : 0;
+
+  return (
+    <section className="screen-shell career-page rankings-page" data-page-contract="rankings">
+      <div className="screen-header">
+        <div>
+          <p className="screen-kicker">Career Rankings</p>
+          <h1 className="screen-title">Circuit Rankings</h1>
+          <p className="screen-copy">
+            Full fictional circuit table sorted by the current ranks stored in the career save. Names open scout profiles,
+            and your managed athlete is marked in-row as well as highlighted.
+          </p>
+        </div>
+        <div className="career-action-row">
+          <button className="command-button command-button-secondary" type="button" onClick={props.onOpenHome}>
+            Career Home
+          </button>
+          <button className="command-button command-button-secondary" type="button" onClick={props.onOpenCalendar}>
+            Calendar
+          </button>
+        </div>
+      </div>
+
+      <section className="management-status-strip rankings-status-strip" aria-label="Rankings status">
+        <div>
+          <span>Rows</span>
+          <strong>{orderedRankings.length}</strong>
+        </div>
+        <div>
+          <span>Leader</span>
+          <strong>{leaderPlayer?.name ?? leader?.playerId ?? "No leader"}</strong>
+        </div>
+        <div>
+          <span>Our rank</span>
+          <strong>{managedRanking ? `#${managedRanking.rank}` : "Unranked"}</strong>
+        </div>
+        <div>
+          <span>Leader gap</span>
+          <strong>{points(gapToLeader)}</strong>
+        </div>
+        <div>
+          <span>Field spread</span>
+          <strong>{points(pointsSpread)}</strong>
+        </div>
+      </section>
+
+      <section className="command-panel command-panel-full rankings-summary-panel">
+        <div className="panel-header">
+          <h2>Table Read</h2>
+          <span>who is ahead / where are we / point gaps</span>
+        </div>
+        <div className="career-event-brief rankings-summary-grid">
+          <div>
+            <span>Ahead</span>
+            <strong>{playerAhead ? `${playerAhead.rank}. ${playerMap[playerAhead.playerId]?.name ?? playerAhead.playerId}` : "Nobody"}</strong>
+            <small>{playerAhead ? `${points(gapAhead)} to the next rung.` : "Your athlete leads the list."}</small>
+          </div>
+          <div>
+            <span>Managed athlete</span>
+            <strong>{managedRanking ? `#${managedRanking.rank} ${playerMap[managedPlayerId]?.name ?? managedPlayerId}` : "Not ranked"}</strong>
+            <small>
+              {managedRanking
+                ? `${points(managedRanking.points)} total, ${points(managedRanking.seasonPoints)} season race.`
+                : "No ranking row found in the career save."}
+            </small>
+          </div>
+          <div>
+            <span>Behind</span>
+            <strong>{playerBehind ? `${playerBehind.rank}. ${playerMap[playerBehind.playerId]?.name ?? playerBehind.playerId}` : "Nobody"}</strong>
+            <small>{playerBehind && managedRanking ? `${points(Math.max(0, managedRanking.points - playerBehind.points))} cushion.` : "No lower-ranked row."}</small>
+          </div>
+        </div>
+      </section>
+
+      <section className="command-panel command-panel-full rankings-table-panel">
+        <div className="panel-header">
+          <h2>Full Circuit Table</h2>
+          <span>{orderedRankings.length} ranked athletes, no pagination</span>
+        </div>
+        <div className="rankings-table" role="table" aria-label="Circuit rankings table">
+          <div className="rankings-row rankings-row-head" role="row">
+            <span role="columnheader">Rank</span>
+            <span role="columnheader">Player</span>
+            <span role="columnheader">Nationality</span>
+            <span role="columnheader">Points</span>
+            <span role="columnheader">Season race</span>
+            <span role="columnheader">Status</span>
+          </div>
+          {orderedRankings.map((entry) => {
+            const player = playerMap[entry.playerId];
+            const isManaged = entry.playerId === managedPlayerId;
+            const rowClassName = isManaged
+              ? "rankings-row rankings-row-managed"
+              : "rankings-row";
+
+            return (
+              <div
+                key={entry.playerId}
+                className={rowClassName}
+                role="row"
+                aria-label={`Rank ${entry.rank} ${player?.name ?? entry.playerId}${isManaged ? " managed athlete" : ""}`}
+              >
+                <div className="rankings-cell rankings-rank-cell" role="cell" data-label="Rank">
+                  <strong>#{entry.rank}</strong>
+                </div>
+                <div className="rankings-cell rankings-player-cell" role="cell" data-label="Player">
+                  <button
+                    className="profile-name-button"
+                    type="button"
+                    onClick={() => props.onOpenPlayerProfile(entry.playerId)}
+                  >
+                    {player?.name ?? entry.playerId}
+                  </button>
+                  {isManaged && <span className="managed-ranking-label">Managed athlete</span>}
+                </div>
+                <div className="rankings-cell" role="cell" data-label="Nationality">
+                  <strong>{player?.nationality ?? "-"}</strong>
+                </div>
+                <div className="rankings-cell" role="cell" data-label="Points">
+                  <strong>{points(entry.points)}</strong>
+                </div>
+                <div className="rankings-cell" role="cell" data-label="Season race">
+                  <strong>{points(entry.seasonPoints)}</strong>
+                </div>
+                <div className="rankings-cell rankings-status-cell" role="cell" data-label="Status">
+                  <strong>{isManaged ? "Our program" : rankingStatus(entry)}</strong>
+                  {isManaged && <small>{rankingStatus(entry)}</small>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
     </section>
   );
 }
