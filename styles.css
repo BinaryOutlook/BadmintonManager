@@ -1051,6 +1051,112 @@ textarea:focus-visible {
   font-size: 1.02rem;
 }
 
+.calendar-commitment-list {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.calendar-commitment-day {
+  display: grid;
+  grid-template-columns: minmax(7.5rem, 0.18fr) minmax(0, 1fr);
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.calendar-commitment-date,
+.calendar-commitment-card {
+  min-width: 0;
+  border: 1px solid rgba(48, 54, 61, 0.92);
+  border-radius: 0.38rem;
+  background: rgba(12, 14, 17, 0.72);
+}
+
+.calendar-commitment-date {
+  align-self: start;
+  display: grid;
+  gap: 0.22rem;
+  padding: 0.78rem;
+}
+
+.calendar-commitment-date span,
+.calendar-commitment-opponent span {
+  color: var(--muted-soft);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+.calendar-commitment-date strong {
+  overflow-wrap: anywhere;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+.calendar-commitment-stack {
+  display: grid;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.calendar-commitment-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(7rem, auto);
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.78rem;
+}
+
+.calendar-commitment-copy {
+  display: grid;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.calendar-commitment-title {
+  appearance: none;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+
+.calendar-commitment-title strong {
+  display: block;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+}
+
+.calendar-commitment-title:hover strong {
+  color: var(--lime);
+  text-decoration: underline;
+  text-underline-offset: 0.18rem;
+}
+
+.calendar-commitment-opponent {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.calendar-commitment-opponent > strong,
+.calendar-opponent-link {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.calendar-commitment-action {
+  width: 100%;
+  white-space: normal;
+}
+
 .rankings-status-strip {
   grid-template-columns: repeat(5, minmax(0, 1fr));
 }
@@ -5403,6 +5509,8 @@ textarea:focus-visible {
   }
 
   .calendar-event-row,
+  .calendar-commitment-day,
+  .calendar-commitment-card,
   .calendar-secondary-grid,
   .calendar-cost-grid,
   .calendar-past-summary,

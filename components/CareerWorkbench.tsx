@@ -6,12 +6,14 @@ import { canCommissionScoutReport, roleLabel, staffModifiers } from "../game/car
 import {
   buildEventSeedingSnapshot,
   CALENDAR_PAGE_SIZE,
+  calendarCommitmentsForCareer,
   eventDeadlineMilestones,
   eventEndDate,
   eventEligibilityFor,
   eventStatusFor,
   getCareerEvent,
   getNextEvent,
+  groupCalendarCommitmentsByDate,
   paginateCalendarItems,
   pastCalendarRecords,
   upcomingCalendarEvents
@@ -132,6 +134,19 @@ function compactTierLabel(tier: string) {
   return tier.replace(/^Circuit\s+/i, "C");
 }
 
+function calendarRoundLabel(round: "R16" | "QF" | "SF" | "F") {
+  switch (round) {
+    case "R16":
+      return "Round of 16";
+    case "QF":
+      return "Quarter-Final";
+    case "SF":
+      return "Semi-Final";
+    case "F":
+      return "Final";
+  }
+}
+
 function ProfileNameButton(props: {
   playerId: string | null | undefined;
   fallback: ReactNode;
@@ -176,7 +191,7 @@ function activeEvent(career: CareerState) {
     : getNextEvent(career.events, career.date);
 }
 
-type CalendarSection = "upcoming" | "past";
+type CalendarSection = "upcoming" | "past" | "view";
 
 function nextCalendarMilestone(career: CareerState, event: CareerState["events"][number] | undefined) {
   if (career.stage === "pre_match") {
@@ -2607,6 +2622,11 @@ export function CareerCalendarPage(props: CareerPageProps) {
   const ranking = career.rankings.find((entry) => entry.playerId === career.program.managedPlayerId);
   const upcomingEvents = upcomingCalendarEvents(career);
   const pastRecords = pastCalendarRecords(career);
+  const calendarCommitments = calendarCommitmentsForCareer({
+    career,
+    tournament: props.tournament
+  });
+  const commitmentDateGroups = groupCalendarCommitmentsByDate(calendarCommitments);
   const upcomingPage = paginateCalendarItems(upcomingEvents, upcomingPageIndex);
   const pastPage = paginateCalendarItems(pastRecords, pastPageIndex);
   const nextEvent = career.activeEventId
@@ -2627,7 +2647,9 @@ export function CareerCalendarPage(props: CareerPageProps) {
       return;
     }
 
-    setPastPageIndex(0);
+    if (section === "past") {
+      setPastPageIndex(0);
+    }
   };
 
   return (
@@ -2670,6 +2692,17 @@ export function CareerCalendarPage(props: CareerPageProps) {
           onClick={() => handleSectionChange("past")}
         >
           Past Events
+        </button>
+        <button
+          id="calendar-tab-view"
+          className={activeSection === "view" ? "calendar-subnav-tab calendar-subnav-tab-active" : "calendar-subnav-tab"}
+          type="button"
+          role="tab"
+          aria-selected={activeSection === "view"}
+          aria-controls="calendar-panel-view"
+          onClick={() => handleSectionChange("view")}
+        >
+          Calendar View
         </button>
       </div>
 
@@ -2956,7 +2989,7 @@ export function CareerCalendarPage(props: CareerPageProps) {
             </p>
           </section>
         </div>
-      ) : (
+      ) : activeSection === "past" ? (
         <div id="calendar-panel-past" className="career-calendar-layout" role="tabpanel" aria-labelledby="calendar-tab-past">
           <section className="command-panel command-panel-full calendar-past-state">
             <div className="panel-header">
@@ -3043,6 +3076,72 @@ export function CareerCalendarPage(props: CareerPageProps) {
               <p className="panel-summary">
                 No past-event records have been written yet. Finished, skipped, and missed events will appear here after
                 the career calendar advances beyond their event window.
+              </p>
+            )}
+          </section>
+        </div>
+      ) : (
+        <div id="calendar-panel-view" className="career-calendar-layout" role="tabpanel" aria-labelledby="calendar-tab-view">
+          <section className="command-panel command-panel-full calendar-commitments-panel">
+            <div className="panel-header">
+              <h2>Calendar View</h2>
+              <span>{calendarCommitments.length} managed commitment(s)</span>
+            </div>
+            {commitmentDateGroups.length > 0 ? (
+              <div className="calendar-commitment-list" aria-label="Managed match commitments">
+                {commitmentDateGroups.map((group) => (
+                  <section key={group.date} className="calendar-commitment-day" aria-label={`Commitments on ${group.date}`}>
+                    <div className="calendar-commitment-date">
+                      <span>Date</span>
+                      <strong>{group.date}</strong>
+                    </div>
+                    <div className="calendar-commitment-stack">
+                      {group.commitments.map((commitment) => {
+                        const title = `${commitment.eventName}: ${calendarRoundLabel(commitment.round)}${commitment.result ? ` (${commitment.result})` : ""}`;
+
+                        return (
+                          <article
+                            key={`${commitment.eventId}-${commitment.round}-${commitment.result ?? "scheduled"}`}
+                            className="calendar-commitment-card"
+                          >
+                            <div className="calendar-commitment-copy">
+                              <button
+                                className="calendar-commitment-title"
+                                type="button"
+                                onClick={() => openTournamentHome(props, career, commitment.eventId)}
+                              >
+                                <strong>{title}</strong>
+                              </button>
+                              <div className="calendar-commitment-opponent">
+                                <span>Opponent</span>
+                                <ProfileNameButton
+                                  playerId={commitment.opponentId}
+                                  fallback={<strong>{commitment.opponentLabel}</strong>}
+                                  onOpenPlayerProfile={props.onOpenPlayerProfile}
+                                  className="profile-name-button calendar-opponent-link"
+                                >
+                                  {commitment.opponentLabel}
+                                </ProfileNameButton>
+                              </div>
+                            </div>
+                            <button
+                              className="command-button command-button-secondary calendar-commitment-action"
+                              type="button"
+                              onClick={() => openTournamentHome(props, career, commitment.eventId)}
+                            >
+                              Open Event
+                            </button>
+                          </article>
+                        );
+                      })}
+                    </div>
+                  </section>
+                ))}
+              </div>
+            ) : (
+              <p className="panel-summary">
+                No managed match commitments are scheduled yet. Enter an event or complete a managed match to build this
+                calendar.
               </p>
             )}
           </section>

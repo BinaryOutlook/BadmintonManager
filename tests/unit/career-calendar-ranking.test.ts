@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { seededPlayers } from "../../game/content/players";
 import { addDays } from "../../game/career/calendar";
 import {
+  calendarCommitmentsForCareer,
   buildEventSeedingSnapshot,
   careerEventCatalog,
   eventDeadlineMilestones,
@@ -9,14 +10,17 @@ import {
   eventEligibilityFor,
   eventStatusFor,
   getCareerEvent,
+  groupCalendarCommitmentsByDate,
   paginateCalendarItems,
   pastCalendarRecords,
   recordPastCareerEvents,
   upcomingCalendarEvents
 } from "../../game/career/events";
+import { scheduledDateForRound } from "../../game/career/matchSchedule";
 import { awardRankingPoints, rankingsByCurrentRank } from "../../game/career/rankings";
 import { createInitialCareerState, managedAthlete } from "../../game/career/state";
 import { migratePersistedSave, persistedSavePayloadSchema, persistedSaveSchema } from "../../game/store/save";
+import { createTournament, getManagedMatchContext } from "../../game/tournament/tournament";
 
 describe("fictional career calendar and ranking model", () => {
   it("defines ordered fictional event operations metadata for every catalog event", () => {
@@ -115,6 +119,70 @@ describe("fictional career calendar and ranking model", () => {
     expect(firstPage.items).toHaveLength(5);
     expect(firstPage.hasNext).toBe(true);
     expect(secondPage.items).toHaveLength(1);
+  });
+
+  it("builds date-grouped managed match commitments from schedules and match history", () => {
+    const baseCareer = createInitialCareerState(seededPlayers[0].player.id, 6812);
+    const event = getCareerEvent(baseCareer.events, "metro-open-300")!;
+    const tournament = {
+      ...createTournament(seededPlayers, baseCareer.program.managedPlayerId, 6812),
+      id: event.id,
+      name: event.name,
+      tier: event.tier
+    };
+    const context = getManagedMatchContext(tournament)!;
+    const opponentId =
+      context.playerAId === baseCareer.program.managedPlayerId ? context.playerBId : context.playerAId;
+    const career = {
+      ...baseCareer,
+      date: event.startDate,
+      activeEventId: event.id,
+      enteredEventIds: [event.id],
+      stage: "pre_match" as const,
+      matchHistory: [
+        {
+          id: "harbor-masters-500:R16-1",
+          eventId: "harbor-masters-500",
+          eventName: "Harbor Masters",
+          date: "2026-06-12",
+          round: "R16" as const,
+          playerAId: baseCareer.program.managedPlayerId,
+          playerBId: seededPlayers[3].player.id,
+          winnerId: seededPlayers[3].player.id,
+          scoreline: "18-21, 21-19, 17-21"
+        }
+      ]
+    };
+
+    const commitments = calendarCommitmentsForCareer({ career, tournament });
+    const activeCommitment = commitments.find((commitment) => commitment.eventId === event.id && commitment.round === "R16");
+    const futureCommitment = commitments.find((commitment) => commitment.eventId === event.id && commitment.round === "QF");
+    const completedCommitment = commitments.find((commitment) => commitment.eventId === "harbor-masters-500");
+    const groups = groupCalendarCommitmentsByDate(commitments);
+
+    expect(activeCommitment).toEqual({
+      date: scheduledDateForRound(event, "R16"),
+      eventId: event.id,
+      eventName: event.name,
+      round: "R16",
+      opponentId,
+      opponentLabel: seededPlayers.find((entry) => entry.player.id === opponentId)!.player.name,
+      result: null
+    });
+    expect(futureCommitment).toMatchObject({
+      date: scheduledDateForRound(event, "QF"),
+      opponentId: null,
+      opponentLabel: "TBD",
+      result: null
+    });
+    expect(completedCommitment).toMatchObject({
+      eventName: "Harbor Masters",
+      round: "R16",
+      opponentId: seededPlayers[3].player.id,
+      opponentLabel: seededPlayers[3].player.name,
+      result: "L"
+    });
+    expect(groups.map((group) => group.date)).toEqual([...groups.map((group) => group.date)].sort());
   });
 
   it("returns deterministic missed-deadline states before charging entry costs", () => {
