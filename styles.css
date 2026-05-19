@@ -1155,6 +1155,11 @@ textarea:focus-visible {
   line-height: 1.3;
 }
 
+.calendar-event-actions {
+  display: grid;
+  gap: 0.4rem;
+}
+
 .calendar-event-actions .command-button {
   width: 100%;
   white-space: normal;

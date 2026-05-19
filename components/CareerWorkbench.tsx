@@ -20,13 +20,16 @@ import { canCompeteWithInjury, canTrainWithInjury } from "../game/career/health"
 import { rankingsByCurrentRank } from "../game/career/rankings";
 import type {
   AdvancedTacticPlan,
+  CareerEventBracketSnapshot,
   CareerEventDefinition,
+  CareerEventHistoryRecord,
   CareerState,
   FacilityModifier,
   FacilityType,
   PlayerPromise,
   RallyLengthIntent,
-  TacticModule
+  TacticModule,
+  TournamentAddress
 } from "../game/career/models";
 import { managedMatchScheduleForEvent } from "../game/career/matchSchedule";
 import { effectiveEventEntryCosts, facilityModifiers } from "../game/career/facilitiesMedia";
@@ -48,7 +51,7 @@ interface CareerPageProps {
   onStartCareer: () => void;
   onOpenTraining: () => void;
   onOpenCalendar: () => void;
-  onOpenEventDetails: (eventId: string) => void;
+  onOpenTournamentHome: (address: TournamentAddress) => void;
   onOpenHome: () => void;
   onOpenLiveMatch: () => void;
   onOpenPostMatch: () => void;
@@ -231,7 +234,7 @@ type CalendarEventAction =
     }
   | {
       kind: "open_draw";
-      label: "View Entry" | "View Draw";
+      label: "Open Event";
       disabled: false;
       tone: "secondary";
       eventId: string;
@@ -304,7 +307,7 @@ function calendarEventActionFor(args: {
 
     return {
       kind: "open_draw",
-      label: args.tournament?.id === args.event.id ? "View Draw" : "View Entry",
+      label: "Open Event",
       disabled: false,
       tone: "secondary",
       eventId: args.event.id
@@ -395,6 +398,42 @@ function rankingStatus(entry: CareerState["rankings"][number]) {
   }
 
   return `Latest ${latest.round} +${points(latest.points)}`;
+}
+
+function openTournamentHome(props: CareerPageProps, career: CareerState, eventId: string) {
+  props.onOpenTournamentHome({ seasonId: career.seasonId, eventId });
+}
+
+function tournamentFromSnapshot(args: {
+  event: CareerEventDefinition | undefined;
+  record: CareerEventHistoryRecord;
+  snapshot: CareerEventBracketSnapshot;
+}): TournamentState {
+  return {
+    id: args.record.eventId,
+    name: args.event?.name ?? args.record.eventName,
+    tier: args.event?.tier ?? args.record.tier,
+    prizePoolUsd: (args.event?.prizeMoney.champion ?? args.record.prizeMoney) * 2,
+    managedPlayerId: args.snapshot.managedPlayerId,
+    rounds: args.snapshot.rounds.map((round) => ({
+      name: round.name,
+      matches: round.matches.map((match) => ({
+        id: match.id,
+        round: round.name,
+        sideAId: match.sideAId,
+        sideBId: match.sideBId,
+        winnerId: match.winnerId ?? undefined,
+        scoreline: match.scoreline ?? undefined,
+        managed: match.managed,
+        completed: Boolean(match.winnerId)
+      }))
+    })),
+    currentRoundIndex: Math.max(0, args.snapshot.rounds.length - 1),
+    rngState: 0,
+    eliminated: args.snapshot.championId !== args.snapshot.managedPlayerId,
+    managedResults: [],
+    championId: args.snapshot.championId ?? undefined
+  };
 }
 
 function modifierRows(modifiers: FacilityModifier) {
@@ -2726,10 +2765,8 @@ export function CareerCalendarPage(props: CareerPageProps) {
               {upcomingPage.items.map((event) => {
                 const entered = career.enteredEventIds.includes(event.id);
                 const completed = career.completedEventIds.includes(event.id);
-                const fieldPressure = pressureForEvent(career, event.id);
                 const tierGate = eventEligibilityFor(career, event);
                 const status = eventStatusFor(career, event);
-                const seedingSnapshot = buildEventSeedingSnapshot({ state: career, event });
                 const entryCosts = effectiveEventEntryCosts(event, career.facilities);
                 const totalCost = eventEntryCost(entryCosts);
                 const affordable = canAffordEventEntry({
@@ -2750,13 +2787,12 @@ export function CareerCalendarPage(props: CareerPageProps) {
                   tierAllowed,
                   affordable
                 });
-                const milestones = eventDeadlineMilestones(event);
                 const endDate = eventEndDate(event);
                 const rowClassName =
                   eventBlocked && !entered && !completed
                     ? "calendar-event-row calendar-event-row-blocked"
                     : "calendar-event-row";
-                const handleEventAction = () => {
+                const handleUrgentAction = () => {
                   switch (action.kind) {
                     case "enter_event":
                       props.onEnterEvent(action.eventId);
@@ -2765,7 +2801,6 @@ export function CareerCalendarPage(props: CareerPageProps) {
                       props.onOpenScheduledCareerMatch(action.eventId);
                       return;
                     case "open_draw":
-                      props.onOpenEventDetails(action.eventId);
                       return;
                     case "review_match":
                       props.onOpenPostMatch();
@@ -2775,13 +2810,15 @@ export function CareerCalendarPage(props: CareerPageProps) {
                       return;
                   }
                 };
+                const showUrgentAction =
+                  action.kind === "enter_event" || action.kind === "play_match" || action.kind === "review_match";
 
                 return (
                   <article key={event.id} className={rowClassName}>
                     <div className="calendar-event-main">
                       <span>{event.tier} / week {event.weekNumber} / {statusLabel(status)}</span>
                       <strong>{event.name}</strong>
-                      <p>{event.location.city}, {event.location.country} - {event.location.venue}. {event.stakesLabel}.</p>
+                      <p>{event.location.city}, {event.location.country} - {event.location.venue}.</p>
                     </div>
                     <div>
                       <span>Window</span>
@@ -2804,52 +2841,22 @@ export function CareerCalendarPage(props: CareerPageProps) {
                       <small>{points(event.rankingPoints.champion)} champion result</small>
                     </div>
                     <div className="calendar-event-actions">
+                      {showUrgentAction ? (
+                        <button
+                          className={calendarEventActionClass(action)}
+                          type="button"
+                          onClick={handleUrgentAction}
+                        >
+                          {action.label}
+                        </button>
+                      ) : null}
                       <button
-                        className={calendarEventActionClass(action)}
+                        className="command-button command-button-secondary"
                         type="button"
-                        disabled={action.disabled}
-                        onClick={handleEventAction}
+                        onClick={() => openTournamentHome(props, career, event.id)}
                       >
-                        {action.label}
+                        Open Event
                       </button>
-                    </div>
-                    <div className="calendar-event-row-details">
-                      <div className="career-deadline-row" aria-label={`${event.name} deadline milestones`}>
-                        {milestones.map((milestone) => (
-                          <span
-                            key={milestone.key}
-                            className={careerDate >= milestone.date ? "deadline-chip deadline-chip-past" : "deadline-chip"}
-                          >
-                            {milestone.label}: {milestone.date}
-                          </span>
-                        ))}
-                      </div>
-                      <p>
-                        Rival field: {fieldPressure
-                          ? `${fieldPressure.rivalCount} programs, ${Math.round(fieldPressure.pressureScore)} pressure, top threat ${fieldPressure.topThreatName}`
-                          : "open scouting field"}
-                      </p>
-                      <p>
-                        Eligibility: rank {tierGate.rank}, total {points(tierGate.points)}, season race {points(tierGate.seasonPoints)},
-                        readiness {tierGate.readiness}, {tierGate.completedEvents} completed event(s). {tierGate.reason}.
-                      </p>
-                      <p>
-                        Seed snapshot: {seedingSnapshot.managedSeed
-                          ? `projected seed ${seedingSnapshot.managedSeed.seed} from rank ${seedingSnapshot.managedSeed.rank}`
-                          : `outside the top ${event.seedCount} seeds`}
-                        . This calendar preview does not replace the current playable knockout draw engine.
-                      </p>
-                      {!affordable && !entered && !completed && (
-                        <p className="career-event-warning">
-                          Insufficient funds: program cash {money(career.economy.cash)} cannot cover entry.
-                        </p>
-                      )}
-                      {!tierAllowed && !entered && !completed && (
-                        <p className="career-event-warning">Tier gate: {tierGate.requirements.join(", ")}.</p>
-                      )}
-                      {!medicalGate.allowed && !entered && !completed && (
-                        <p className="career-event-warning">Medical hold: {medicalGate.reason}.</p>
-                      )}
                     </div>
                   </article>
                 );
@@ -2980,9 +2987,9 @@ export function CareerCalendarPage(props: CareerPageProps) {
                     <span>Event</span>
                     <span>Dates</span>
                     <span>Result</span>
-                    <span>Points / Prize</span>
-                    <span>Costs</span>
+                    <span>Rewards / Costs</span>
                     <span>Evidence</span>
+                    <span>Action</span>
                   </div>
                   {pastPage.items.map((record) => (
                     <article key={record.eventId} className="calendar-event-row">
@@ -3002,19 +3009,23 @@ export function CareerCalendarPage(props: CareerPageProps) {
                         <small>{record.achievements.length > 0 ? record.achievements.join(", ") : "No achievement tag"}</small>
                       </div>
                       <div>
-                        <span>Points / Prize</span>
+                        <span>Rewards / Costs</span>
                         <strong>{points(record.pointsAwarded)} / {money(record.prizeMoney)}</strong>
-                        <small>Net cash {signedMoney(record.netCash)}</small>
+                        <small>Costs {money(record.entryCost + record.travelCost)}; net {signedMoney(record.netCash)}</small>
                       </div>
                       <div>
-                        <span>Entry / Travel</span>
-                        <strong>{money(record.entryCost)} / {money(record.travelCost)}</strong>
-                        <small>Total cost {money(record.entryCost + record.travelCost)}</small>
-                      </div>
-                      <div>
-                        <span>Scoreline</span>
+                        <span>Evidence</span>
                         <strong>{record.scorelines[0] ?? "No match played"}</strong>
                         <small>{record.matchIds.length} match record(s)</small>
+                      </div>
+                      <div className="calendar-event-actions">
+                        <button
+                          className="command-button command-button-secondary"
+                          type="button"
+                          onClick={() => openTournamentHome(props, career, record.eventId)}
+                        >
+                          Open Event
+                        </button>
                       </div>
                     </article>
                   ))}
@@ -3041,22 +3052,25 @@ export function CareerCalendarPage(props: CareerPageProps) {
   );
 }
 
-export function CareerEventDetailsPage(props: CareerPageProps & { eventId: string }) {
+export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddress) {
   if (!props.career) {
     return <CareerEmpty onStartCareer={props.onStartCareer} saveRecovery={props.saveRecovery} />;
   }
 
   const career = props.career;
   const event = getCareerEvent(career.events, props.eventId);
+  const historyRecord = career.eventHistory.find((record) => record.eventId === props.eventId);
 
-  if (!event) {
+  if (!event || props.seasonId !== career.seasonId) {
     return (
       <section className="screen-shell career-page">
         <div className="screen-header">
           <div>
-            <p className="screen-kicker">Event Details</p>
-            <h1 className="screen-title">Event Not Found</h1>
-            <p className="screen-copy">The selected calendar entry is no longer available in the active career catalog.</p>
+            <p className="screen-kicker">Tournament Home</p>
+            <h1 className="screen-title">Tournament Not Found</h1>
+            <p className="screen-copy">
+              The selected tournament address is unavailable for this career season. Address: {props.seasonId} / {props.eventId}.
+            </p>
           </div>
           <div className="career-action-row">
             <button className="command-button command-button-secondary" type="button" onClick={props.onOpenCalendar}>
@@ -3071,10 +3085,11 @@ export function CareerEventDetailsPage(props: CareerPageProps & { eventId: strin
   const athlete = managedAthlete(career);
   const medicalGate = canCompeteWithInjury(athlete);
   const entered = career.enteredEventIds.includes(event.id);
-  const completed = career.completedEventIds.includes(event.id);
+  const completed = career.completedEventIds.includes(event.id) || Boolean(historyRecord);
   const tierGate = eventEligibilityFor(career, event);
   const seedingSnapshot = buildEventSeedingSnapshot({ state: career, event });
   const entryCosts = effectiveEventEntryCosts(event, career.facilities);
+  const totalCost = eventEntryCost(entryCosts);
   const affordable = canAffordEventEntry({
     economy: career.economy,
     travelCost: entryCosts.travelCost,
@@ -3091,6 +3106,27 @@ export function CareerEventDetailsPage(props: CareerPageProps & { eventId: strin
     tierAllowed: tierGate.allowed,
     affordable
   });
+  const status = historyRecord ? "completed" : eventStatusFor(career, event);
+  const activeTournament = props.tournament?.id === event.id ? props.tournament : null;
+  const archivedTournament =
+    !activeTournament && historyRecord?.bracketSnapshot
+      ? tournamentFromSnapshot({ event, record: historyRecord, snapshot: historyRecord.bracketSnapshot })
+      : null;
+  const displayTournament = activeTournament ?? archivedTournament;
+  const fieldPressure = pressureForEvent(career, event.id);
+  const championName = displayTournament?.championId
+    ? playerMap[displayTournament.championId]?.name ?? displayTournament.championId
+    : historyRecord?.status === "champion"
+      ? playerMap[career.program.managedPlayerId]?.name ?? "Managed athlete"
+      : null;
+  const mainActionLabel =
+    historyRecord || completed
+      ? "Completed"
+      : action.kind === "open_draw"
+        ? entered
+          ? "Entered"
+          : "Open Event"
+        : action.label;
   const handleAction = () => {
     switch (action.kind) {
       case "enter_event":
@@ -3108,16 +3144,31 @@ export function CareerEventDetailsPage(props: CareerPageProps & { eventId: strin
         return;
     }
   };
+  const actionDisabled = completed || action.disabled || action.kind === "open_draw";
+  const eligibilityRows = [
+    ["Rank", event.eligibility.minRank ? `Top ${event.eligibility.minRank}` : "Open", `Current rank ${tierGate.rank}`],
+    ["Points", event.eligibility.minPoints ? points(event.eligibility.minPoints) : "Open", `Current ${points(tierGate.points)}`],
+    ["Season race", event.tier === "Finals" ? points(event.eligibility.minPoints ?? 0) : "No finals gate", `Race ${points(tierGate.seasonPoints)}`],
+    ["Readiness", `${event.eligibility.readinessFloor}+`, `Current ${tierGate.readiness}`],
+    ["Completed events", event.eligibility.minCompletedEvents ? `${event.eligibility.minCompletedEvents}+` : "Open", `${tierGate.completedEvents} complete`],
+    [
+      "Affordability",
+      money(totalCost),
+      affordable ? `Cash ${money(career.economy.cash)}` : `Cash ${money(career.economy.cash)}; short ${money(totalCost - career.economy.cash)}`
+    ],
+    ["Medical", "Available", medicalGate.reason],
+    ["Deadline", event.entryDeadline, tierGate.status === "missed_deadline" && !entered ? "Closed" : "Open enough for current state"]
+  ];
 
   return (
     <section className="screen-shell career-page">
       <div className="screen-header">
         <div>
-          <p className="screen-kicker">Event Details</p>
+          <p className="screen-kicker">Tournament Home</p>
           <h1 className="screen-title">{event.name}</h1>
           <p className="screen-copy">
             {event.tier} event in week {event.weekNumber}, hosted at {event.location.venue} in {event.location.city},{" "}
-            {event.location.country}. {event.stakesLabel}.
+            {event.location.country}. Address: {career.seasonId} / {event.id}.
           </p>
         </div>
         <div className="career-action-row">
@@ -3127,10 +3178,10 @@ export function CareerEventDetailsPage(props: CareerPageProps & { eventId: strin
           <button
             className={calendarEventActionClass(action)}
             type="button"
-            disabled={action.disabled || action.kind === "open_draw"}
+            disabled={actionDisabled}
             onClick={handleAction}
           >
-            {action.label}
+            {mainActionLabel}
           </button>
         </div>
       </div>
@@ -3138,58 +3189,131 @@ export function CareerEventDetailsPage(props: CareerPageProps & { eventId: strin
       <section className="management-status-strip calendar-status-strip" aria-label="Event detail status">
         <div>
           <span>Status</span>
-          <strong>{statusLabel(eventStatusFor(career, event))}</strong>
+          <strong>{statusLabel(status)}</strong>
         </div>
         <div>
           <span>Window</span>
           <strong>{event.startDate} - {eventEndDate(event)}</strong>
         </div>
         <div>
-          <span>Entry deadline</span>
-          <strong>{event.entryDeadline}</strong>
+          <span>Venue</span>
+          <strong>{event.location.venue}</strong>
         </div>
         <div>
-          <span>Readiness</span>
-          <strong>{athlete.readiness}</strong>
+          <span>Champion</span>
+          <strong>{championName ?? (historyRecord ? "Not archived" : "Pending")}</strong>
         </div>
         <div>
           <span>Action</span>
-          <strong>{action.label}</strong>
+          <strong>{mainActionLabel}</strong>
         </div>
       </section>
 
       <div className="career-dashboard-grid">
-        <section className="command-panel">
+        {historyRecord ? (
+          <section className="command-panel command-panel-full">
+            <div className="panel-header">
+              <h2>Result Archive</h2>
+              <span>{historyRecord.status.replace(/_/g, " ")}</span>
+            </div>
+            <div className="career-event-brief calendar-brief-grid">
+              <div>
+                <span>Managed Result</span>
+                <strong>{historyRecord.resultRound ?? historyRecord.status.replace(/_/g, " ")}</strong>
+                <small>{historyRecord.scorelines[0] ?? "No match scoreline archived"}</small>
+              </div>
+              <div>
+                <span>Rewards</span>
+                <strong>{points(historyRecord.pointsAwarded)} / {money(historyRecord.prizeMoney)}</strong>
+                <small>Net cash {signedMoney(historyRecord.netCash)}</small>
+              </div>
+              <div>
+                <span>Costs</span>
+                <strong>{money(historyRecord.entryCost + historyRecord.travelCost)}</strong>
+                <small>Entry {money(historyRecord.entryCost)}, travel {money(historyRecord.travelCost)}</small>
+              </div>
+              <div>
+                <span>Archive</span>
+                <strong>{historyRecord.bracketSnapshot ? "Bracket snapshot available" : "Summary only"}</strong>
+                <small>{historyRecord.bracketSnapshot ? "Closed draw was saved at settlement." : "This save predates bracket snapshots or no draw was played."}</small>
+              </div>
+            </div>
+          </section>
+        ) : null}
+
+        <section className="command-panel command-panel-full">
           <div className="panel-header">
-            <h2>Entry Gate</h2>
-            <span>{tierGate.allowed && medicalGate.allowed && affordable ? "clear" : "attention needed"}</span>
+            <h2>Decision Summary</h2>
+            <span>{tierGate.allowed && medicalGate.allowed && affordable ? "ready" : "check gates"}</span>
           </div>
-          <div className="management-table" aria-label={`${event.name} entry gates`}>
-            <div className="management-table-row">
+          <div className="career-event-brief calendar-brief-grid">
+            <div>
+              <span>Entry Deadline</span>
+              <strong>{event.entryDeadline}</strong>
+              <small>{daysUntilLabel(career.date, event.entryDeadline)}</small>
+            </div>
+            <div>
               <span>Eligibility</span>
               <strong>{tierGate.allowed ? "Gate clear" : "Blocked"}</strong>
-              <small>{tierGate.reason}</small>
+              <small>Rank {tierGate.rank}, readiness {tierGate.readiness}</small>
             </div>
-            <div className="management-table-row">
-              <span>Medical</span>
-              <strong>{medicalGate.allowed ? "Available" : "Hold"}</strong>
-              <small>{medicalGate.reason}</small>
+            <div>
+              <span>Readiness</span>
+              <strong>{athlete.readiness}</strong>
+              <small>{medicalGate.allowed ? "Medical gate clear" : medicalGate.reason}</small>
             </div>
-            <div className="management-table-row">
-              <span>Cost</span>
-              <strong>{money(entryCosts.travelCost + entryCosts.entryFee)}</strong>
-              <small>{affordable ? "Program can afford entry" : `Cash ${money(career.economy.cash)}`}</small>
+            <div>
+              <span>Champion Upside</span>
+              <strong>{money(event.prizeMoney.champion)} / {points(event.rankingPoints.champion)}</strong>
+              <small>Net possible gain {signedMoney(event.prizeMoney.champion - totalCost)}</small>
             </div>
           </div>
         </section>
 
+        {displayTournament ? (
+          <KnockoutTree
+            tournament={displayTournament}
+            selectedPlayerId={career.program.managedPlayerId}
+            title={historyRecord ? "Archived Knockout Draw" : "Current Knockout Draw"}
+            subtitle={historyRecord ? "Saved bracket snapshot for this completed event" : "Live event path and background results"}
+            onOpenPlayerProfile={props.onOpenPlayerProfile}
+          />
+        ) : (
+          <section className="command-panel command-panel-full">
+            <div className="panel-header">
+              <h2>Knockout Draw</h2>
+              <span>{career.date >= event.drawDate ? "draw pending engine state" : "projected"}</span>
+            </div>
+            <div className="career-event-brief calendar-brief-grid">
+              <div>
+                <span>Draw Size</span>
+                <strong>{event.drawSize}</strong>
+                <small>{event.seedCount} seeds; draw publishes {event.drawDate}</small>
+              </div>
+              <div>
+                <span>Managed Seed</span>
+                <strong>{seedingSnapshot.managedSeed ? `Seed ${seedingSnapshot.managedSeed.seed}` : "Outside seeds"}</strong>
+                <small>{seedingSnapshot.status} from fictional circuit ranking</small>
+              </div>
+              <div>
+                <span>Draw State</span>
+                <strong>{entered ? "Entry registered" : "Not entered"}</strong>
+                <small>Playable bracket appears when the event reaches match day.</small>
+              </div>
+            </div>
+          </section>
+        )}
+
         <section className="command-panel">
           <div className="panel-header">
-            <h2>Deadlines</h2>
+            <h2>Timeline</h2>
             <span>{event.drawDate} draw</span>
           </div>
-          <div className="career-deadline-row" aria-label={`${event.name} details milestones`}>
-            {eventDeadlineMilestones(event).map((milestone) => (
+          <div className="career-deadline-row" aria-label={`${event.name} tournament timeline`}>
+            {[
+              ...eventDeadlineMilestones(event),
+              { key: "end", label: "Event ends", date: eventEndDate(event) }
+            ].map((milestone) => (
               <span
                 key={milestone.key}
                 className={career.date >= milestone.date ? "deadline-chip deadline-chip-past" : "deadline-chip"}
@@ -3200,26 +3324,76 @@ export function CareerEventDetailsPage(props: CareerPageProps & { eventId: strin
           </div>
         </section>
 
-        <section className="command-panel command-panel-full">
+        <section className="command-panel">
           <div className="panel-header">
-            <h2>Draw Snapshot</h2>
+            <h2>Eligibility</h2>
+            <span>{tierGate.allowed ? "clear" : "blocked"}</span>
+          </div>
+          <div className="management-table" aria-label={`${event.name} eligibility checks`}>
+            {eligibilityRows.map(([label, requirement, current]) => (
+              <div className="management-table-row" key={label}>
+                <span>{label}</span>
+                <strong>{requirement}</strong>
+                <small>{current}</small>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="command-panel">
+          <div className="panel-header">
+            <h2>Rewards And Stakes</h2>
+            <span>{event.tier}</span>
+          </div>
+          <div className="career-event-brief calendar-brief-grid">
+            <div>
+              <span>Prize Money</span>
+              <strong>{money(event.prizeMoney.champion)}</strong>
+              <small>R16 floor {money(event.prizeMoney.R16)}</small>
+            </div>
+            <div>
+              <span>Entry / Travel</span>
+              <strong>{money(entryCosts.entryFee)} / {money(entryCosts.travelCost)}</strong>
+              <small>Total cost {money(totalCost)}</small>
+            </div>
+            <div>
+              <span>Ranking Points</span>
+              <strong>{points(event.rankingPoints.champion)}</strong>
+              <small>R16 floor {points(event.rankingPoints.R16)}</small>
+            </div>
+            <div>
+              <span>Net Possible Gain</span>
+              <strong>{signedMoney(event.prizeMoney.champion - totalCost)}</strong>
+              <small>{event.stakesLabel}</small>
+            </div>
+          </div>
+        </section>
+
+        <section className="command-panel">
+          <div className="panel-header">
+            <h2>Field And Scouting</h2>
             <span>{seedingSnapshot.status}</span>
           </div>
           <div className="career-event-brief calendar-brief-grid">
             <div>
-              <span>Draw Size</span>
-              <strong>{event.drawSize}</strong>
-              <small>{event.seedCount} seeded entries</small>
+              <span>Rival Pressure</span>
+              <strong>{fieldPressure ? Math.round(fieldPressure.pressureScore) : "Open"}</strong>
+              <small>{fieldPressure ? `${fieldPressure.rivalCount} rival programs entered` : "No rival pressure estimate yet"}</small>
             </div>
             <div>
-              <span>Managed Seed</span>
-              <strong>{seedingSnapshot.managedSeed ? `Seed ${seedingSnapshot.managedSeed.seed}` : "Outside seeds"}</strong>
-              <small>{seedingSnapshot.source}</small>
+              <span>Top Threat</span>
+              <strong>{fieldPressure?.topThreatName ?? "Unknown"}</strong>
+              <small>Scout reports improve opponent certainty.</small>
             </div>
             <div>
-              <span>Champion Stakes</span>
-              <strong>{points(event.rankingPoints.champion)} / {money(event.prizeMoney.champion)}</strong>
-              <small>Entry {money(event.entryFee)}, travel {money(event.travelCost)}</small>
+              <span>Seed Snapshot</span>
+              <strong>{seedingSnapshot.managedSeed ? `Seed ${seedingSnapshot.managedSeed.seed}` : "Outside top seeds"}</strong>
+              <small>Locked on {event.seedingDate}, draw on {event.drawDate}</small>
+            </div>
+            <div>
+              <span>Draw Honesty</span>
+              <strong>{displayTournament ? "Actual draw" : "Projected until match day"}</strong>
+              <small>Presentation does not alter simulation, rankings, or match results.</small>
             </div>
           </div>
         </section>

@@ -25,6 +25,11 @@ export const careerTierSchema = z.preprocess(
 );
 export type CareerTier = z.infer<typeof careerTierSchema>;
 
+export type TournamentAddress = {
+  seasonId: string;
+  eventId: string;
+};
+
 export const careerEventStatusSchema = z.enum([
   "scheduled",
   "entry_open",
@@ -640,6 +645,27 @@ export const programEconomySchema = z.object({
 });
 export type ProgramEconomy = z.infer<typeof programEconomySchema>;
 
+export const careerEventBracketSnapshotSchema = z.object({
+  championId: z.string().nullable(),
+  managedPlayerId: z.string(),
+  rounds: z.array(
+    z.object({
+      name: z.enum(["R16", "QF", "SF", "F"]),
+      matches: z.array(
+        z.object({
+          id: z.string(),
+          sideAId: z.string(),
+          sideBId: z.string(),
+          winnerId: z.string().nullable(),
+          scoreline: z.string().nullable(),
+          managed: z.boolean()
+        })
+      )
+    })
+  )
+});
+export type CareerEventBracketSnapshot = z.infer<typeof careerEventBracketSnapshotSchema>;
+
 export const careerEventHistoryRecordSchema = z.object({
   eventId: z.string(),
   eventName: z.string(),
@@ -657,7 +683,8 @@ export const careerEventHistoryRecordSchema = z.object({
   completedAt: z.string(),
   matchIds: z.array(z.string()),
   scorelines: z.array(z.string()),
-  achievements: z.array(z.string())
+  achievements: z.array(z.string()),
+  bracketSnapshot: careerEventBracketSnapshotSchema.nullable().optional()
 });
 export type CareerEventHistoryRecord = z.infer<typeof careerEventHistoryRecordSchema>;
 

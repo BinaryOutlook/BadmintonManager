@@ -484,6 +484,11 @@ describe("career tournament state flow", () => {
       pointsAwarded: lossSetup.event.rankingPoints.R16,
       prizeMoney: lossSetup.event.prizeMoney.R16
     });
+    expect(afterLoss.career?.eventHistory[0].bracketSnapshot).toMatchObject({
+      managedPlayerId,
+      championId: null
+    });
+    expect(afterLoss.career?.eventHistory[0].bracketSnapshot?.rounds[0]?.matches).toHaveLength(8);
 
     useTournamentStore.getState().continueCareerAfterPostMatch();
 
@@ -515,7 +520,11 @@ describe("career tournament state flow", () => {
     expect(afterTitle.career?.eventHistory.find((record) => record.eventId === finalSetup.event.id)).toMatchObject({
       status: "champion",
       pointsAwarded: finalSetup.event.rankingPoints.champion,
-      prizeMoney: finalSetup.event.prizeMoney.champion
+      prizeMoney: finalSetup.event.prizeMoney.champion,
+      bracketSnapshot: {
+        championId: managedPlayerId,
+        managedPlayerId
+      }
     });
 
     useTournamentStore.getState().continueCareerAfterPostMatch();

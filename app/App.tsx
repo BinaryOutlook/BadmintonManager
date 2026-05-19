@@ -3,7 +3,6 @@ import { CompleteView } from "../components/CompleteView";
 import {
   CareerAthletePromisesPage,
   CareerCalendarPage,
-  CareerEventDetailsPage,
   CareerFacilitiesPage,
   CareerHomePage,
   CareerMatchPlanningPage,
@@ -16,6 +15,7 @@ import {
   CareerRivalCircuitPage,
   CareerScoutingNetworkPage,
   CareerStaffRoomPage,
+  CareerTournamentHomePage,
   CareerTrainingPage,
   CareerYouthAcademyPage
 } from "../components/CareerWorkbench";
@@ -29,7 +29,7 @@ import { playerMap } from "../game/content/players";
 import { getCareerDailyAction, type CareerDailyActionTone } from "../game/career/dailyAction";
 import { getCareerEvent } from "../game/career/events";
 import { useTournamentStore, type AppPhase, type TournamentStoreState } from "../game/store/store";
-import type { CareerStage, CareerState } from "../game/career/models";
+import type { CareerStage, CareerState, TournamentAddress } from "../game/career/models";
 import type { PersistedSave } from "../game/store/save";
 import { getManagedMatchContext, type TournamentState } from "../game/tournament/tournament";
 import { isPhaseBoundPage, pageForPhase, type AppPage } from "./pages";
@@ -274,7 +274,7 @@ export function commandIdForPage(page: AppPage): CommandId {
       return "training";
     case "games":
     case "calendar":
-    case "eventDetails":
+    case "tournamentHome":
       return "calendar";
     case "rankings":
       return "rankings";
@@ -941,7 +941,7 @@ export function App() {
       onStartCareer: requestStartCareer,
       onOpenTraining: () => setActivePage({ id: "season" }),
       onOpenCalendar: () => setActivePage({ id: "calendar" }),
-      onOpenEventDetails: (eventId: string) => setActivePage({ id: "eventDetails", eventId }),
+      onOpenTournamentHome: (address: TournamentAddress) => setActivePage({ id: "tournamentHome", ...address }),
       onOpenHome: () => setActivePage({ id: "home" }),
       onOpenLiveMatch: openLiveMatchRoute,
       onOpenPostMatch: openCareerPostMatchRoute,
@@ -1115,8 +1115,8 @@ export function App() {
       return <CareerRankingsPage {...careerPageProps} />;
     }
 
-    if (activePage.id === "eventDetails") {
-      return <CareerEventDetailsPage {...careerPageProps} eventId={activePage.eventId} />;
+    if (activePage.id === "tournamentHome") {
+      return <CareerTournamentHomePage {...careerPageProps} seasonId={activePage.seasonId} eventId={activePage.eventId} />;
     }
 
     if (activePage.id === "review" && career) {

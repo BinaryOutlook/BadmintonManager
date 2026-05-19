@@ -1,6 +1,7 @@
 import { addDays, daysBetween } from "./calendar";
 import { normalizeCareerTierLabel } from "./models";
 import type {
+  CareerEventBracketSnapshot,
   CareerEventDefinition,
   CareerEventHistoryRecord,
   CareerEventHistoryStatus,
@@ -10,6 +11,7 @@ import type {
   ProgramEconomy,
   RankingEntry
 } from "./models";
+import type { TournamentState } from "../tournament/tournament";
 
 export type CalendarEventStatus =
   | CareerEventStatus
@@ -697,6 +699,24 @@ export function pastCalendarRecords(career: CareerState): CareerEventHistoryReco
   );
 }
 
+export function createCareerEventBracketSnapshot(tournament: TournamentState): CareerEventBracketSnapshot {
+  return {
+    championId: tournament.championId ?? null,
+    managedPlayerId: tournament.managedPlayerId,
+    rounds: tournament.rounds.map((round) => ({
+      name: round.name,
+      matches: round.matches.map((match) => ({
+        id: match.id,
+        sideAId: match.sideAId,
+        sideBId: match.sideBId,
+        winnerId: match.winnerId ?? null,
+        scoreline: match.scoreline ?? null,
+        managed: match.managed
+      }))
+    }))
+  };
+}
+
 export function paginateCalendarItems<T>(
   items: T[],
   pageIndex: number,
@@ -770,6 +790,7 @@ export function appendPlayedCareerEventHistory(args: {
   prizeMoney: number;
   matchId: string;
   scoreline: string;
+  bracketSnapshot?: CareerEventBracketSnapshot;
 }): CareerState {
   if (args.state.eventHistory.some((record) => record.eventId === args.event.id)) {
     return args.state;
@@ -807,7 +828,8 @@ export function appendPlayedCareerEventHistory(args: {
       state: args.state,
       status,
       pointsAwarded: args.pointsAwarded
-    })
+    }),
+    bracketSnapshot: args.bracketSnapshot ?? null
   };
 
   return {
@@ -849,7 +871,8 @@ export function recordPastCareerEvents(state: CareerState): CareerState {
         completedAt: state.date,
         matchIds: [],
         scorelines: [],
-        achievements: []
+        achievements: [],
+        bracketSnapshot: null
       };
     });
 
