@@ -2707,15 +2707,14 @@ export function CareerCalendarPage(props: CareerPageProps) {
   const commitmentDateGroups = groupCalendarCommitmentsByDate(calendarCommitments);
   const upcomingPage = paginateCalendarItems(upcomingEvents, upcomingPageIndex);
   const pastPage = paginateCalendarItems(pastRecords, pastPageIndex);
-  const nextEvent = career.activeEventId
-    ? getCareerEvent(career.events, career.activeEventId) ?? upcomingEvents[0]
-    : upcomingEvents[0];
+  const activeResolvedEvent = career.activeEventId ? getCareerEvent(career.events, career.activeEventId) ?? null : null;
+  const nextEvent = career.activeEventId ? activeResolvedEvent ?? upcomingEvents[0] : upcomingEvents[0];
   const nextGate = nextEvent ? eventEligibilityFor(career, nextEvent) : null;
   const nextStatus = nextEvent ? eventStatusFor(career, nextEvent) : null;
   const nextSnapshot = nextEvent ? buildEventSeedingSnapshot({ state: career, event: nextEvent }) : null;
   const nextEntryCosts = nextEvent ? effectiveEventEntryCosts(nextEvent, career.facilities) : null;
   const nextTotalCost = nextEntryCosts ? eventEntryCost(nextEntryCosts) : 0;
-  const activeEventLabel = career.activeEventId ? nextEvent?.name ?? "Active entry" : "No active entry";
+  const activeEventLabel = activeResolvedEvent?.name ?? career.activeEventId ?? "No active entry";
   const completedEventCount = career.completedEventIds.length;
   const handleSectionChange = (section: CalendarSection) => {
     setActiveSection(section);
@@ -2792,9 +2791,9 @@ export function CareerCalendarPage(props: CareerPageProps) {
         <div>
           <span>Active event</span>
           <strong>
-            {career.activeEventId && nextEvent ? (
-              <CareerTournamentLink career={career} eventId={nextEvent.id}>
-                {nextEvent.name}
+            {activeResolvedEvent ? (
+              <CareerTournamentLink career={career} eventId={activeResolvedEvent.id}>
+                {activeResolvedEvent.name}
               </CareerTournamentLink>
             ) : (
               activeEventLabel

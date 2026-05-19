@@ -558,6 +558,26 @@ describe("career calendar event actions", () => {
     expect(onOpenTournamentHome).toHaveBeenCalledWith({ seasonId: career.seasonId, eventId: harbor.id });
   });
 
+  it("keeps unresolved active event ids as plain text instead of linking the next catalog event", () => {
+    const baseCareer = createInitialCareerState(seededPlayers[0].player.id, 9918);
+    const nextCatalogEvent = getCareerEvent(baseCareer.events, "metro-open-300")!;
+    const onOpenTournamentHome = vi.fn();
+    const career = {
+      ...baseCareer,
+      activeEventId: "legacy-missing-event",
+      stage: "event_entered" as const
+    };
+
+    renderCalendarPage({ career, onOpenTournamentHome });
+
+    const status = screen.getByLabelText("Calendar status");
+    expect(within(status).getByText("legacy-missing-event")).toBeInTheDocument();
+    expect(
+      within(status).queryByRole("button", { name: `Open tournament home for ${nextCatalogEvent.name}` })
+    ).not.toBeInTheDocument();
+    expect(onOpenTournamentHome).not.toHaveBeenCalled();
+  });
+
   it("keeps calendar rows compact while exposing event homes for inspection", () => {
     const career = createInitialCareerState(seededPlayers[0].player.id, 9913);
     const { container } = renderCalendarPage({ career });
