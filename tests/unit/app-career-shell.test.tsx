@@ -300,7 +300,7 @@ describe("career shell daily action", () => {
       "Inbox",
       "Squad",
       "Training",
-      "Calendar",
+      "Schedule",
       "Rankings",
       "Tactics",
       "Live Match",
@@ -450,7 +450,7 @@ describe("career rankings page", () => {
 });
 
 describe("career calendar event actions", () => {
-  it("renders Calendar View commitments with TBD, result markers, event actions, and profile links", () => {
+  it("renders Timeline commitments with TBD, result markers, event actions, and profile links", () => {
     const baseCareer = createInitialCareerState(seededPlayers[0].player.id, 9916);
     const metro = getCareerEvent(baseCareer.events, "metro-open-300")!;
     const harbor = getCareerEvent(baseCareer.events, "harbor-masters-500")!;
@@ -491,11 +491,15 @@ describe("career calendar event actions", () => {
 
     renderCalendarPage({ career, tournament, onOpenTournamentHome, onOpenPlayerProfile });
 
-    expect(screen.getByRole("tab", { name: "Upcoming" })).toBeVisible();
-    expect(screen.getByRole("tab", { name: "Past Events" })).toBeVisible();
-    fireEvent.click(screen.getByRole("tab", { name: "Calendar View" }));
+    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual([
+      "Upcoming",
+      "Past Events",
+      "Timeline",
+      "Calendar"
+    ]);
+    fireEvent.click(screen.getByRole("tab", { name: "Timeline" }));
 
-    expect(screen.getByRole("heading", { name: "Calendar View" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Timeline" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Open tournament home for Metro Open: Round of 16" })).toBeInTheDocument();
     expect(screen.getAllByText("TBD").length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "Open tournament home for Harbor Masters: Round of 16 (W)" })).toBeInTheDocument();
@@ -507,6 +511,54 @@ describe("career calendar event actions", () => {
     fireEvent.click(within(activeCard).getByRole("button", { name: activeOpponentName }));
     expect(onOpenPlayerProfile).toHaveBeenCalledWith(activeOpponentId);
     expect(onOpenTournamentHome).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders a month-grid Calendar with confirmed commitments and gated future rounds", () => {
+    const baseCareer = createInitialCareerState(seededPlayers[0].player.id, 9919);
+    const metro = getCareerEvent(baseCareer.events, "metro-open-300")!;
+    const tournament = {
+      ...createTournament(seededPlayers, baseCareer.program.managedPlayerId, 9919),
+      id: metro.id,
+      name: metro.name,
+      tier: metro.tier
+    };
+    const pastOpponent = seededPlayers[4].player;
+    const onOpenTournamentHome = vi.fn();
+    const career = {
+      ...baseCareer,
+      date: metro.startDate,
+      activeEventId: metro.id,
+      enteredEventIds: [metro.id],
+      stage: "pre_match" as const,
+      matchHistory: [
+        {
+          id: "harbor-masters-500:R16-1",
+          eventId: "harbor-masters-500",
+          eventName: "Harbor Masters",
+          date: "2026-06-12",
+          round: "R16" as const,
+          playerAId: baseCareer.program.managedPlayerId,
+          playerBId: pastOpponent.id,
+          winnerId: baseCareer.program.managedPlayerId,
+          scoreline: "21-14, 21-18",
+          source: "played" as const
+        }
+      ]
+    };
+    const { container } = renderCalendarPage({ career, tournament, onOpenTournamentHome });
+
+    fireEvent.click(screen.getByRole("tab", { name: "Calendar" }));
+
+    expect(screen.getByRole("heading", { name: "Calendar" })).toBeInTheDocument();
+    expect(screen.getByText("June 2026")).toBeInTheDocument();
+    expect(container.querySelector(".schedule-calendar-grid")).toBeInTheDocument();
+    expect(container.querySelector(".schedule-calendar-weekdays")?.querySelectorAll("span")).toHaveLength(7);
+    expect(screen.getByRole("button", { name: "Open match detail for Metro Open: Round of 16" })).toBeInTheDocument();
+    expect(screen.getByText("W")).toBeInTheDocument();
+    expect(screen.queryByText("Quarter-Final")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Open tournament home for Harbor Masters: Round of 16 (W)" }));
+    expect(onOpenTournamentHome).toHaveBeenCalledWith({ seasonId: career.seasonId, eventId: "harbor-masters-500" });
   });
 
   it("keeps an entered due event playable from the calendar row", () => {
@@ -571,7 +623,7 @@ describe("career calendar event actions", () => {
 
     renderCalendarPage({ career, onOpenTournamentHome });
 
-    const status = screen.getByLabelText("Calendar status");
+    const status = screen.getByLabelText("Schedule status");
     expect(within(status).getByText("legacy-missing-event")).toBeInTheDocument();
     expect(
       within(status).queryByRole("button", { name: `Open tournament home for ${nextCatalogEvent.name}` })

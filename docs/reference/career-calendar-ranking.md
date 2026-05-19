@@ -98,6 +98,34 @@ Career stage semantics:
 - `between_rounds`: a non-final managed win has been reviewed; the next round is scheduled for a future career date.
 - `event_complete`: the active event has closed.
 
+## Schedule, Timeline, And Calendar Split
+
+The top-level career planning surface is `Schedule`.
+
+```text
+Schedule = Upcoming + Past Events + Timeline + Calendar
+```
+
+- `Upcoming` and `Past Events` remain list-style operational surfaces.
+- `Timeline` preserves the broader chronological event-log view, including tournament progression context.
+- `Calendar` is a month grid of confirmed manager commitments only.
+
+The confirmed calendar rule is:
+
+$$
+\text{Calendar entry} \iff \text{played match} \lor \text{confirmed scheduled commitment}
+$$
+
+For knockout rounds:
+
+$$
+\text{Future round visible} \iff \text{managed player has qualified for that round}
+$$
+
+That means a completed managed match may appear with `W` or `L`, a current draw/first-round commitment may appear,
+and a qualified future round may appear. Speculative `QF`, `SF`, or `F` placeholders do not belong in the month-grid
+Calendar before qualification; those remain tournament-home or Timeline context.
+
 ## Seeding Snapshot
 
 `buildEventSeedingSnapshot` produces a deterministic seed preview or locked seed list from the current fictional circuit ranking.

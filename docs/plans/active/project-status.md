@@ -86,6 +86,7 @@ What is now stable:
 - TIX-014 adds a Calendar View commitments tab that date-groups managed match commitments from entered schedules, active known opponents, TBD future rounds, and recorded `career.matchHistory` W-L results while preserving Upcoming/Past Events
 - TIX-015 now adds universal tournament addressing: stable `seasonId + eventId` tournament links open tournament homes from Calendar, Portal, match hubs, Player Profile history, Save Manager, and safely addressable report/event surfaces while missing ids remain plain text
 - TIX-017A now completes the tournament universe after managed-player elimination, quick-sims only missing non-managed matches, preserves played results, writes sourced universe match records, awards non-managed ranking points from final bracket placements, and keeps legacy archive fallbacks safe
+- TIX-016 now renames the top-level career planning surface to `Schedule`, preserves the old chronological commitment list under `Timeline`, and adds a confirmed month-grid `Calendar` that hides future knockout rounds until the managed athlete qualifies
 
 ## Completed
 
@@ -180,6 +181,7 @@ What is now stable:
 - [x] implemented TIX-014 Calendar View commitments with date blocks, opponent profile links, event-home actions, TBD handling, and focused selector/UI tests
 - [x] implemented TIX-015 universal tournament addressing with a tournament navigation provider, reusable tournament links, stable-id event-name navigation, plain-text fallbacks, and focused provider/Calendar/Past/Profile coverage
 - [x] implemented TIX-017A tournament universe simulation and persistence foundation with post-elimination bracket completion, sourced match records, non-managed ranking awards, completed bracket snapshots, and legacy-safe source fallbacks
+- [x] implemented TIX-016 Schedule hub separation with Upcoming, Past Events, Timeline, and confirmed month-grid Calendar tabs
 
 ## In Progress
 

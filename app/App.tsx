@@ -734,9 +734,9 @@ export function App() {
       {
         id: "calendar",
         group: "Program",
-        label: "Calendar",
-        short: "CAL",
-        description: career ? "Date and readiness" : "Career calendar",
+        label: "Schedule",
+        short: "SCH",
+        description: career ? "Dates and commitments" : "Career schedule",
         onActivate: () => activateCommand("calendar")
       },
       {
