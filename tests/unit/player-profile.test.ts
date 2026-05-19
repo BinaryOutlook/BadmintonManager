@@ -62,7 +62,8 @@ describe("player profile view model", () => {
           playerAId: player.id,
           playerBId: mostPlayedOpponent.id,
           winnerId: player.id,
-          scoreline: "21-13, 21-15"
+          scoreline: "21-13, 21-15",
+          source: "played" as const
         },
         {
           id: "harbor-masters-500:QF-1",
@@ -73,7 +74,8 @@ describe("player profile view model", () => {
           playerAId: mostPlayedOpponent.id,
           playerBId: player.id,
           winnerId: mostPlayedOpponent.id,
-          scoreline: "17-21, 19-21"
+          scoreline: "17-21, 19-21",
+          source: "played" as const
         },
         {
           id: "summit-invitational-750:SF-1",
@@ -84,7 +86,8 @@ describe("player profile view model", () => {
           playerAId: player.id,
           playerBId: secondOpponent.id,
           winnerId: player.id,
-          scoreline: "21-18, 21-17"
+          scoreline: "21-18, 21-17",
+          source: "played" as const
         }
       ],
       playerAchievements: [

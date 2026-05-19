@@ -2,12 +2,16 @@ import { playerMap } from "../content/players";
 import type { MatchResult } from "../core/models";
 import type { ManagedRunMatch, TournamentState } from "../tournament/tournament";
 import {
+  appendCompletedTournamentMatchRecords,
   appendCareerMatchRecord,
   appendCareerResultAchievements,
   appendPlayedCareerEventHistory,
   createCareerEventBracketSnapshot,
   getCareerEvent,
-  roundKeyForPlacement
+  roundKeyForPlacement,
+  tournamentMatchArchiveIds,
+  tournamentMatchArchiveScorelines,
+  tournamentPlacements
 } from "./events";
 import { applyMatchLoad } from "./health";
 import { psychologyReadinessModifier } from "./ecosystem";
@@ -76,6 +80,32 @@ function evidenceFromResult(result: MatchResult, managedSide: "A" | "B") {
   ];
 }
 
+function awardCompletedTournamentRankingPoints(args: {
+  state: CareerState;
+  tournament: TournamentState;
+}) {
+  const event = args.state.activeEventId ? getCareerEvent(args.state.events, args.state.activeEventId) : undefined;
+
+  if (!event || !args.tournament.championId) {
+    return args.state.rankings;
+  }
+
+  return [...tournamentPlacements(args.tournament)].reduce(
+    (rankings, [playerId, placementKey]) =>
+      awardRankingPoints({
+        rankings,
+        playerId,
+        eventId: event.id,
+        round: placementKey,
+        points: event.rankingPoints[placementKey] ?? event.rankingPoints.R16,
+        date: args.state.date,
+        seasonId: args.state.seasonId,
+        tier: event.tier
+      }),
+    args.state.rankings
+  );
+}
+
 export function settleCareerMatch(args: {
   state: CareerState;
   matchId: string;
@@ -102,18 +132,24 @@ export function settleCareerMatch(args: {
   const staminaDrain =
     args.managedSide === "A" ? args.result.stats.staminaDrainA : args.result.stats.staminaDrainB;
   const athleteAfterMatch = applyMatchLoad(managedAthlete(args.state), staminaDrain, args.state.date);
-  const rankings = shouldSettleEvent
-    ? awardRankingPoints({
-        rankings: args.state.rankings,
-        playerId: args.state.program.managedPlayerId,
-        eventId: event.id,
-        round: placementKey,
-        points: pointsDelta,
-        date: args.state.date,
-        seasonId: args.state.seasonId,
-        tier: event.tier
-      })
-    : args.state.rankings;
+  const rankings =
+    shouldSettleEvent && args.tournament?.championId
+      ? awardCompletedTournamentRankingPoints({
+          state: args.state,
+          tournament: args.tournament
+        })
+      : shouldSettleEvent
+        ? awardRankingPoints({
+            rankings: args.state.rankings,
+            playerId: args.state.program.managedPlayerId,
+            eventId: event.id,
+            round: placementKey,
+            points: pointsDelta,
+            date: args.state.date,
+            seasonId: args.state.seasonId,
+            tier: event.tier
+          })
+        : args.state.rankings;
   const economy = shouldSettleEvent
     ? recordPrizeMoney({
         economy: args.state.economy,
@@ -189,23 +225,41 @@ export function settleCareerMatch(args: {
     playerAId,
     playerBId,
     winnerId,
-    scoreline: args.result.scoreline
+    scoreline: args.result.scoreline,
+    source: "played"
   });
+  const withTournamentMatchHistory =
+    shouldSettleEvent && args.tournament?.championId && args.tournament.id === event.id
+      ? appendCompletedTournamentMatchRecords({
+          state: withMatchHistory,
+          event,
+          tournament: args.tournament,
+          date: args.state.date
+        })
+      : withMatchHistory;
   const withEventHistory = shouldSettleEvent
     ? appendPlayedCareerEventHistory({
-        state: withMatchHistory,
+        state: withTournamentMatchHistory,
         event,
         placementKey,
         pointsAwarded: pointsDelta,
         prizeMoney: cashDelta,
         matchId: args.matchId,
         scoreline: args.result.scoreline,
+        matchIds:
+          args.tournament?.championId && args.tournament.id === event.id
+            ? tournamentMatchArchiveIds(args.tournament)
+            : undefined,
+        scorelines:
+          args.tournament?.championId && args.tournament.id === event.id
+            ? tournamentMatchArchiveScorelines(args.tournament)
+            : undefined,
         bracketSnapshot:
           args.tournament && args.tournament.id === event.id
             ? createCareerEventBracketSnapshot(args.tournament)
             : undefined
       })
-    : withMatchHistory;
+    : withTournamentMatchHistory;
   const withAchievements = shouldSettleEvent
     ? appendCareerResultAchievements({
         state: withEventHistory,

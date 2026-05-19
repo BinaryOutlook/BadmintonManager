@@ -483,7 +483,8 @@ describe("career calendar event actions", () => {
           playerAId: baseCareer.program.managedPlayerId,
           playerBId: pastOpponent.id,
           winnerId: baseCareer.program.managedPlayerId,
-          scoreline: "21-14, 21-18"
+          scoreline: "21-14, 21-18",
+          source: "played" as const
         }
       ]
     };

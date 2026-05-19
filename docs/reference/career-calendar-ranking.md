@@ -132,6 +132,12 @@ $$
 
 This is a deliberate simplification. The model does not implement official rolling-week windows, exact official point tables, or separate official tour lists.
 
+Completed entered tournaments now settle ranking truth from the completed bracket, not just the
+managed-player diary. When an event reaches a champion, champion, runner-up, semi-final, quarter-final,
+and round-of-16 placement points are written for every ranked player in that bracket. Existing ranking
+history rows for the same `playerId + eventId` are treated as settled facts so reloads or replayed
+closeouts do not double-count points.
+
 ## Career Event History
 
 `CareerState.eventHistory` stores one persistent record per event. Played closeouts are recorded when the managed run ends by title, final loss, or earlier elimination. Skipped or missed events are recorded after their event end date passes.
@@ -145,6 +151,20 @@ skipped | missed_deadline | withdrawn
 
 Records include event dates, tier, result status, awarded points, prize money, entry/travel costs, net cash, match ids, scorelines, and lightweight achievements such as `First Title`.
 
+For new completed tournament saves, the event history record also stores a closed bracket snapshot and
+the full set of completed match ids/scorelines when available. Older history rows can still be
+summary-only; UI should label those as fallback archives rather than inventing missing bracket truth.
+
+`CareerState.matchHistory` stores universe match records for both played managed matches and quick-simulated
+non-managed matches:
+
+```ts
+type CareerMatchRecordSource = "played" | "quick_sim" | "archive_import";
+```
+
+The source field distinguishes manually played results from quick simulation. Legacy/imported match
+records without source metadata hydrate as `archive_import`.
+
 ## Persistence
 
 Older current saves that predate event operations fields and `seasonPoints` remain valid.
@@ -155,5 +175,6 @@ Migration safety works in two layers:
 - `migratePersistedSave` hydrates saved event rows from the fictional catalog so deadlines, locations, draw dates, and eligibility metadata are present after load/import.
 - version `8` career saves migrate to version `9` with `eventHistory: []`.
 - legacy quick-tournament saves that contain the previous real event name are normalized to the fictional `Harborline Open` name during load/import.
+- legacy match history rows without a source hydrate with the honest `archive_import` fallback.
 
 The active local storage key remains `badminton-manager-save`.

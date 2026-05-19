@@ -368,6 +368,68 @@ describe("career tournament state flow", () => {
     expect(nextRoundDay.tournament).toBe(betweenRounds.tournament);
   });
 
+  it("fills only missing non-managed matches and preserves the played managed scoreline", () => {
+    const managedPlayerId = seededPlayers[0].player.id;
+    const tournament = createTournament(seededPlayers, managedPlayerId, 9324);
+    const currentRound = tournament.rounds[0]!;
+    const preservedBackgroundMatch = currentRound.matches.find((match) => !match.managed && match.completed)!;
+    const missingBackgroundMatch = currentRound.matches.find(
+      (match) => !match.managed && match.completed && match.id !== preservedBackgroundMatch.id
+    )!;
+    const managedContext = getManagedMatchContext(tournament)!;
+    const managedSide = managedContext.playerAId === managedPlayerId ? "A" : "B";
+    const preservedScoreline = "21-8, 21-9";
+    const tournamentWithArchiveGap: TournamentState = {
+      ...tournament,
+      rounds: [
+        {
+          ...currentRound,
+          matches: currentRound.matches.map((match) => {
+            if (match.id === preservedBackgroundMatch.id) {
+              return {
+                ...match,
+                winnerId: match.sideAId,
+                scoreline: preservedScoreline,
+                completed: true
+              };
+            }
+
+            if (match.id === missingBackgroundMatch.id) {
+              return {
+                ...match,
+                winnerId: undefined,
+                scoreline: undefined,
+                summaryEvents: undefined,
+                completed: false
+              };
+            }
+
+            return match;
+          })
+        }
+      ]
+    };
+
+    const advanced = advanceTournament({
+      tournament: tournamentWithArchiveGap,
+      seededEntries: seededPlayers,
+      managedMatchId: managedContext.matchId,
+      managedResult: straightGamesResult(managedSide)
+    });
+    const advancedOpeningRound = advanced.rounds[0]!;
+    const preserved = advancedOpeningRound.matches.find((match) => match.id === preservedBackgroundMatch.id)!;
+    const filled = advancedOpeningRound.matches.find((match) => match.id === missingBackgroundMatch.id)!;
+    const playedManaged = advancedOpeningRound.matches.find((match) => match.id === managedContext.matchId)!;
+
+    expect(preserved.scoreline).toBe(preservedScoreline);
+    expect(preserved.winnerId).toBe(preservedBackgroundMatch.sideAId);
+    expect(filled.completed).toBe(true);
+    expect(filled.scoreline).toBeTruthy();
+    expect(filled.simulationFidelity).toBe("quick");
+    expect(playedManaged.scoreline).toBe("21-13, 21-15");
+    expect(playedManaged.simulationFidelity).toBe("detailed");
+  });
+
   it("opens a due scheduled career match without advancing the saved career date", () => {
     const managedPlayerId = seededPlayers[0].player.id;
     const { career, event } = careerOnMetroEvent(managedPlayerId, 9304);
@@ -494,17 +556,48 @@ describe("career tournament state flow", () => {
     });
     expect(afterLoss.career?.eventHistory[0].bracketSnapshot).toMatchObject({
       managedPlayerId,
-      championId: null
+      championId: expect.any(String)
     });
+    expect(afterLoss.career?.eventHistory[0].bracketSnapshot?.rounds).toHaveLength(4);
     expect(afterLoss.career?.eventHistory[0].bracketSnapshot?.rounds[0]?.matches).toHaveLength(8);
-    expect(afterLoss.career?.matchHistory).toHaveLength(1);
-    expect(afterLoss.career?.matchHistory[0]).toMatchObject({
+    expect(afterLoss.career?.eventHistory[0].matchIds).toHaveLength(15);
+    expect(afterLoss.tournament?.championId).toBeTruthy();
+    expect(afterLoss.tournament?.championId).not.toBe(managedPlayerId);
+    expect(afterLoss.tournament?.rounds.at(-1)?.name).toBe("F");
+    expect(afterLoss.career?.matchHistory).toHaveLength(15);
+    expect(afterLoss.career?.matchHistory.find((record) => record.id === `${lossSetup.event.id}:R16-1`)).toMatchObject({
       eventId: lossSetup.event.id,
       eventName: lossSetup.event.name,
       round: "R16",
-      scoreline: "13-21, 15-21"
+      scoreline: "13-21, 15-21",
+      source: "played"
     });
-    expect(afterLoss.career?.playerAchievements).toEqual([]);
+    expect(afterLoss.career?.matchHistory.filter((record) => record.source === "quick_sim")).toHaveLength(14);
+    expect(afterLoss.career?.playerAchievements).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          playerId: afterLoss.tournament?.championId,
+          eventId: lossSetup.event.id,
+          result: "champion"
+        }),
+        expect.objectContaining({
+          eventId: lossSetup.event.id,
+          result: "runner_up"
+        })
+      ])
+    );
+    const nonManagedChampionRanking = afterLoss.career?.rankings.find(
+      (entry) => entry.playerId === afterLoss.tournament?.championId
+    );
+    expect(nonManagedChampionRanking?.eventHistory).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          eventId: lossSetup.event.id,
+          round: "champion",
+          points: lossSetup.event.rankingPoints.champion
+        })
+      ])
+    );
 
     useTournamentStore.getState().continueCareerAfterPostMatch();
 
@@ -712,6 +805,60 @@ describe("career tournament state flow", () => {
     expect(replayed.matchHistory.filter((entry) => entry.eventId === event.id)).toHaveLength(1);
     expect(replayed.lastMatchReport?.pointsDelta).toBe(0);
     expect(replayed.lastMatchReport?.cashDelta).toBe(0);
+  });
+
+  it("does not duplicate universe match records when a completed bracket closeout replays", () => {
+    const managedPlayerId = seededPlayers[0].player.id;
+    const { career, event, tournament } = careerOnMetroEvent(managedPlayerId, 9330);
+    const context = getManagedMatchContext(tournament);
+
+    if (!context) {
+      throw new Error("Expected managed match context.");
+    }
+
+    const managedSide = context.playerAId === managedPlayerId ? "A" : "B";
+    const opponentId = managedSide === "A" ? context.playerBId : context.playerAId;
+    const result = straightGamesResult(managedSide === "A" ? "B" : "A");
+    const completedTournament = advanceTournament({
+      tournament,
+      seededEntries: seededPlayers,
+      managedMatchId: context.matchId,
+      managedResult: result
+    });
+    const managedRunMatch = completedTournament.managedResults.at(-1);
+
+    if (!managedRunMatch) {
+      throw new Error("Expected managed result in completed tournament.");
+    }
+
+    const first = settleCareerMatch({
+      state: career,
+      matchId: context.matchId,
+      opponentId,
+      managedSide,
+      managedRunMatch,
+      result,
+      eventComplete: true,
+      tournament: completedTournament
+    });
+    const replayed = settleCareerMatch({
+      state: first,
+      matchId: context.matchId,
+      opponentId,
+      managedSide,
+      managedRunMatch,
+      result,
+      eventComplete: true,
+      tournament: completedTournament
+    });
+    const championRanking = replayed.rankings.find((entry) => entry.playerId === completedTournament.championId);
+
+    expect(first.matchHistory.filter((entry) => entry.eventId === event.id)).toHaveLength(15);
+    expect(replayed.matchHistory.filter((entry) => entry.eventId === event.id)).toHaveLength(15);
+    expect(replayed.matchHistory.filter((entry) => entry.eventId === event.id && entry.source === "played")).toHaveLength(1);
+    expect(replayed.matchHistory.filter((entry) => entry.eventId === event.id && entry.source === "quick_sim")).toHaveLength(14);
+    expect(championRanking?.eventHistory.filter((entry) => entry.eventId === event.id)).toHaveLength(1);
+    expect(eventCompletionCount(replayed.completedEventIds, event.id)).toBe(1);
   });
 });
 

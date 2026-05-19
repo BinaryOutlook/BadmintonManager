@@ -47,6 +47,10 @@ export function awardRankingPoints(args: {
         return entry;
       }
 
+      if (entry.eventHistory.some((history) => history.eventId === args.eventId)) {
+        return entry;
+      }
+
       return {
         ...entry,
         points: entry.points + args.points,

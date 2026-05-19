@@ -149,7 +149,8 @@ describe("fictional career calendar and ranking model", () => {
           playerAId: seededPlayers[6].player.id,
           playerBId: seededPlayers[7].player.id,
           winnerId: seededPlayers[6].player.id,
-          scoreline: "21-15, 21-18"
+          scoreline: "21-15, 21-18",
+          source: "quick_sim" as const
         },
         {
           id: "background-classic:QF-1",
@@ -160,7 +161,8 @@ describe("fictional career calendar and ranking model", () => {
           playerAId: seededPlayers[8].player.id,
           playerBId: seededPlayers[9].player.id,
           winnerId: seededPlayers[9].player.id,
-          scoreline: "19-21, 21-16, 21-18"
+          scoreline: "19-21, 21-16, 21-18",
+          source: "quick_sim" as const
         },
         {
           id: "harbor-masters-500:R16-1",
@@ -171,7 +173,8 @@ describe("fictional career calendar and ranking model", () => {
           playerAId: baseCareer.program.managedPlayerId,
           playerBId: seededPlayers[3].player.id,
           winnerId: seededPlayers[3].player.id,
-          scoreline: "18-21, 21-19, 17-21"
+          scoreline: "18-21, 21-19, 17-21",
+          source: "played" as const
         }
       ]
     };
@@ -358,6 +361,44 @@ describe("fictional career calendar and ranking model", () => {
     expect(migrated.career?.events[0]?.location.venue).toBe("Harborline Fieldhouse");
     expect(getCareerEvent(migrated.career?.events ?? [], "season-finals")?.startDate).toBe("2026-12-23");
     expect(migrated.career?.rankings[0]?.seasonPoints).toBe(0);
+    expect(persistedSaveSchema.parse(migrated)).toEqual(migrated);
+  });
+
+  it("loads legacy match records without a source as safe archive imports", () => {
+    const career = createInitialCareerState(seededPlayers[0].player.id, 6807);
+    const event = getCareerEvent(career.events, "metro-open-300")!;
+    const save = {
+      version: 9,
+      selectedPlayerId: seededPlayers[0].player.id,
+      plannedTacticKey: "balancedControl",
+      seed: 6807,
+      tournament: null,
+      liveMatch: null,
+      career: {
+        ...career,
+        matchHistory: [
+          {
+            id: `${event.id}:legacy-R16-1`,
+            eventId: event.id,
+            eventName: event.name,
+            date: event.startDate,
+            round: "R16" as const,
+            playerAId: seededPlayers[0].player.id,
+            playerBId: seededPlayers[1].player.id,
+            winnerId: seededPlayers[0].player.id,
+            scoreline: "21-16, 21-18"
+          }
+        ]
+      }
+    };
+
+    const parsed = persistedSavePayloadSchema.parse(save);
+    const migrated = migratePersistedSave(parsed);
+
+    expect(migrated.career?.matchHistory[0]).toMatchObject({
+      id: `${event.id}:legacy-R16-1`,
+      source: "archive_import"
+    });
     expect(persistedSaveSchema.parse(migrated)).toEqual(migrated);
   });
 });

@@ -697,9 +697,11 @@ export const careerMatchRecordSchema = z.object({
   playerAId: z.string(),
   playerBId: z.string(),
   winnerId: z.string(),
-  scoreline: z.string()
+  scoreline: z.string(),
+  source: z.enum(["played", "quick_sim", "archive_import"]).default("archive_import")
 });
 export type CareerMatchRecord = z.infer<typeof careerMatchRecordSchema>;
+export type CareerMatchRecordSource = CareerMatchRecord["source"];
 
 export const playerCareerAchievementSchema = z.object({
   playerId: z.string(),
