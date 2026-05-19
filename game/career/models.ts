@@ -688,6 +688,28 @@ export const careerEventHistoryRecordSchema = z.object({
 });
 export type CareerEventHistoryRecord = z.infer<typeof careerEventHistoryRecordSchema>;
 
+export const careerMatchRecordSchema = z.object({
+  id: z.string(),
+  eventId: z.string(),
+  eventName: z.string(),
+  date: z.string(),
+  round: z.enum(["R16", "QF", "SF", "F"]),
+  playerAId: z.string(),
+  playerBId: z.string(),
+  winnerId: z.string(),
+  scoreline: z.string()
+});
+export type CareerMatchRecord = z.infer<typeof careerMatchRecordSchema>;
+
+export const playerCareerAchievementSchema = z.object({
+  playerId: z.string(),
+  eventId: z.string(),
+  eventName: z.string(),
+  date: z.string(),
+  result: z.enum(["champion", "runner_up"])
+});
+export type PlayerCareerAchievement = z.infer<typeof playerCareerAchievementSchema>;
+
 export const rankingEntrySchema = z.object({
   playerId: z.string(),
   rank: z.number().int().positive(),
@@ -838,7 +860,9 @@ export type CareerStateV6 = z.infer<typeof careerStateV6Schema>;
 
 export const careerStateSchema = careerStateV5Schema.extend({
   version: z.literal(7),
-  eventHistory: z.array(careerEventHistoryRecordSchema)
+  eventHistory: z.array(careerEventHistoryRecordSchema),
+  matchHistory: z.array(careerMatchRecordSchema).default([]),
+  playerAchievements: z.array(playerCareerAchievementSchema).default([])
 });
 export type CareerState = z.infer<typeof careerStateSchema>;
 

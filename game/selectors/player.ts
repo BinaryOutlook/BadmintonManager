@@ -3,6 +3,7 @@ import { tacticOptions } from "../content/tactics";
 import { deriveAthleteDossier, type AthleteDossier } from "../core/intel";
 import type { DerivedProfile, LiveMatchSession, Player } from "../core/models";
 import { deriveProfile } from "../core/ratings";
+import type { CareerState, PlayerCareerAchievement } from "../career/models";
 import type { TournamentState } from "../tournament/tournament";
 
 export interface PlayerContextSummary {
@@ -56,6 +57,29 @@ export interface CareerSummary {
   narrative: string;
   milestones: string[];
   recordCards: Array<{ label: string; value: string }>;
+  titles: PlayerAchievementSummary[];
+  runnerUpFinishes: PlayerAchievementSummary[];
+  achievements: PlayerAchievementSummary[];
+  headToHead: PlayerHeadToHeadSummary[];
+  hasRecordedHistory: boolean;
+}
+
+export interface PlayerAchievementSummary {
+  eventId: string;
+  eventName: string;
+  date: string;
+  result: "champion" | "runner_up";
+  label: string;
+}
+
+export interface PlayerHeadToHeadSummary {
+  opponentId: string;
+  opponentName: string;
+  played: number;
+  wins: number;
+  losses: number;
+  winPercentage: number | null;
+  winPercentageLabel: string;
 }
 
 export interface PlayerProfileViewModel {
@@ -647,8 +671,9 @@ function deriveCareerSummary(args: {
   player: Player;
   overall: number;
   performance: PlayerPerformanceSummary;
+  career?: CareerState | null;
 }): CareerSummary {
-  const { player, overall, performance } = args;
+  const { player, overall, career } = args;
   const stage =
     player.age <= 22
       ? "Developing years"
@@ -663,26 +688,113 @@ function deriveCareerSummary(args: {
       : player.age >= 31
         ? "Monitor decline"
         : "Stable";
-  const wins = performance.entries.filter((entry) => entry.result === "won").length;
-  const losses = performance.entries.filter((entry) => entry.result === "lost").length;
+  const recordedMatches = (career?.matchHistory ?? []).filter(
+    (match) => match.playerAId === player.id || match.playerBId === player.id
+  );
+  const achievements = (career?.playerAchievements ?? [])
+    .filter((achievement) => achievement.playerId === player.id)
+    .map(toAchievementSummary)
+    .sort((left, right) => right.date.localeCompare(left.date) || left.eventName.localeCompare(right.eventName));
+  const titles = achievements.filter((achievement) => achievement.result === "champion");
+  const runnerUpFinishes = achievements.filter((achievement) => achievement.result === "runner_up");
+  const wins = recordedMatches.filter((match) => match.winnerId === player.id).length;
+  const losses = recordedMatches.length - wins;
   const played = wins + losses;
+  const hasRecordedHistory = played > 0 || achievements.length > 0;
+  const headToHead = deriveHeadToHead(player.id, recordedMatches);
+  const winPercentage = formatWinPercentage(wins, played);
 
   return {
     stage,
     trajectory,
-    narrative: `${player.name} is in the ${stage.toLowerCase()} as a ${player.styleLabel.toLowerCase()}. Long-term ranking history and season awards will attach here once the season model is active.`,
+    narrative: hasRecordedHistory
+      ? `${player.name} has ${wins} win${wins === 1 ? "" : "s"} and ${losses} loss${losses === 1 ? "" : "es"} in persisted career matches, with ${titles.length} title${titles.length === 1 ? "" : "s"} and ${runnerUpFinishes.length} runner-up finish${runnerUpFinishes.length === 1 ? "" : "es"} recorded.`
+      : `${player.name} has no persisted career match history yet. This archive only counts completed career matches and event results saved by the career system.`,
     milestones: [
-      player.traits?.length ? `${player.traits.length} identity traits recorded` : "No special traits recorded yet",
-      played > 0 ? `${played} current-run match${played === 1 ? "" : "es"} logged` : "No current-run match record yet",
+      titles.length > 0 ? `${titles.length} title${titles.length === 1 ? "" : "s"} recorded` : "No titles recorded yet",
+      runnerUpFinishes.length > 0
+        ? `${runnerUpFinishes.length} runner-up finish${runnerUpFinishes.length === 1 ? "" : "es"} recorded`
+        : "No runner-up finishes recorded yet",
+      played > 0 ? `${played} persisted career match${played === 1 ? "" : "es"} logged` : "No completed career matches recorded yet",
       overall >= 88 ? "Profiles as an elite event-level option" : "Profiles as a selectable tour-level option"
     ],
     recordCards: [
-      { label: "Career stage", value: stage },
-      { label: "Trajectory", value: trajectory },
-      { label: "Current-run W/L", value: `${wins}-${losses}` },
-      { label: "Best event result", value: wins > 0 ? "Active run evidence" : "Not recorded" }
-    ]
+      { label: "W-L", value: `${wins}-${losses}` },
+      { label: "Win %", value: winPercentage.label },
+      { label: "Titles", value: String(titles.length) },
+      { label: "Runner-up", value: String(runnerUpFinishes.length) }
+    ],
+    titles,
+    runnerUpFinishes,
+    achievements,
+    headToHead,
+    hasRecordedHistory
   };
+}
+
+function toAchievementSummary(achievement: PlayerCareerAchievement): PlayerAchievementSummary {
+  return {
+    ...achievement,
+    label: achievement.result === "champion" ? "Champion" : "Runner-up"
+  };
+}
+
+function formatWinPercentage(wins: number, played: number) {
+  if (played === 0) {
+    return {
+      value: null,
+      label: "N/A"
+    };
+  }
+
+  const value = Math.round((wins / played) * 100);
+
+  return {
+    value,
+    label: `${value}%`
+  };
+}
+
+function deriveHeadToHead(
+  playerId: string,
+  matches: CareerState["matchHistory"]
+): PlayerHeadToHeadSummary[] {
+  const groups = new Map<string, { opponentId: string; played: number; wins: number; losses: number }>();
+
+  for (const match of matches) {
+    const opponentId = match.playerAId === playerId ? match.playerBId : match.playerAId;
+    const group = groups.get(opponentId) ?? { opponentId, played: 0, wins: 0, losses: 0 };
+
+    group.played += 1;
+    if (match.winnerId === playerId) {
+      group.wins += 1;
+    } else {
+      group.losses += 1;
+    }
+    groups.set(opponentId, group);
+  }
+
+  return [...groups.values()]
+    .map((group) => {
+      const winPercentage = formatWinPercentage(group.wins, group.played);
+
+      return {
+        opponentId: group.opponentId,
+        opponentName: playerMap[group.opponentId]?.name ?? group.opponentId,
+        played: group.played,
+        wins: group.wins,
+        losses: group.losses,
+        winPercentage: winPercentage.value,
+        winPercentageLabel: winPercentage.label
+      };
+    })
+    .sort(
+      (left, right) =>
+        right.played - left.played ||
+        right.wins - left.wins ||
+        left.opponentName.localeCompare(right.opponentName)
+    )
+    .slice(0, 10);
 }
 
 export function createPlayerProfileViewModel(args: {
@@ -690,6 +802,7 @@ export function createPlayerProfileViewModel(args: {
   selectedPlayerId: string;
   tournament: TournamentState | null;
   liveMatch?: LiveMatchSession | null;
+  career?: CareerState | null;
 }): PlayerProfileViewModel | null {
   const player = playerMap[args.playerId];
 
@@ -722,6 +835,6 @@ export function createPlayerProfileViewModel(args: {
       performance
     }),
     performance,
-    career: deriveCareerSummary({ player, overall, performance })
+    career: deriveCareerSummary({ player, overall, performance, career: args.career })
   };
 }

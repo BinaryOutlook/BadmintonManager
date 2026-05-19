@@ -82,6 +82,7 @@ What is now stable:
 - TIX-011 adds a first-class career Rankings page from the command rail, sourced from `career.rankings`, with full rank-ascending rows, managed-athlete labelling, profile-addressable names, and bounded desktop/mobile proof
 - TIX-009 universal player addressing now gives profile links stable player-id navigation across setup, career hubs, live match, bracket, scouting, post-match, and prose surfaces
 - the TIX-008 tournament-home slice now routes Calendar rows and Past Events through stable `seasonId + eventId` tournament homes, reduces Calendar row detail density, renders future/active/completed tournament states, and stores optional bracket snapshots for newly completed career events while old archives fall back safely
+- TIX-013 now persists completed managed career matches and final champion/runner-up achievements, letting Player Profile Career tabs show real W-L, win percentage, titles, finalist results, and profile-linked head-to-head archives without fabricating old history
 
 ## Completed
 
@@ -172,6 +173,7 @@ What is now stable:
 - [x] implemented TIX-011 Rankings as a career command surface with `career.rankings` table data, managed-athlete highlight plus text label, profile navigation, focused unit coverage, and desktop/mobile visual QA artifacts
 - [x] implemented TIX-009 universal player addressing with stable-id profile links across setup, career hubs, live match, bracket, scouting, post-match, and prose surfaces
 - [x] implemented TIX-008 universal tournament homes with Calendar `Open Event`, Past Events archive navigation, active/archived bracket rendering, and old-save fallback behavior
+- [x] implemented TIX-013 player career history with persisted match records, champion/runner-up achievements, Career tab record cards, profile-linked head-to-head tables, migration defaults, and focused selector/store/UI coverage
 
 ## In Progress
 

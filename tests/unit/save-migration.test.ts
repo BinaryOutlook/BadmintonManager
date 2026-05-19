@@ -276,9 +276,39 @@ describe("career save migration", () => {
     expect(persistedSaveSchema.parse(save).career).toEqual(careerStateSchema.parse(career));
   });
 
+  it("defaults missing player career history arrays on current saves", () => {
+    const career = createInitialCareerState(seededPlayers[0].player.id, 4562);
+    const {
+      matchHistory: _matchHistory,
+      playerAchievements: _playerAchievements,
+      ...careerWithoutProfileHistory
+    } = career;
+    const save = {
+      version: 9,
+      selectedPlayerId: seededPlayers[0].player.id,
+      plannedTacticKey: "balancedControl",
+      seed: 4562,
+      tournament: null,
+      liveMatch: null,
+      career: careerWithoutProfileHistory
+    };
+
+    const parsed = persistedSavePayloadSchema.parse(save);
+    const migrated = migratePersistedSave(parsed);
+
+    expect(migrated.career?.matchHistory).toEqual([]);
+    expect(migrated.career?.playerAchievements).toEqual([]);
+    expect(persistedSaveSchema.parse(migrated)).toEqual(migrated);
+  });
+
   it("migrates version 8 career saves with an empty event history", () => {
     const career = createInitialCareerState(seededPlayers[0].player.id, 4561);
-    const { eventHistory: _eventHistory, ...careerWithoutHistory } = career;
+    const {
+      eventHistory: _eventHistory,
+      matchHistory: _matchHistory,
+      playerAchievements: _playerAchievements,
+      ...careerWithoutHistory
+    } = career;
     const oldSave = {
       version: 8,
       selectedPlayerId: seededPlayers[0].player.id,
@@ -298,6 +328,8 @@ describe("career save migration", () => {
     expect(migrated.version).toBe(9);
     expect(migrated.career?.version).toBe(7);
     expect(migrated.career?.eventHistory).toEqual([]);
+    expect(migrated.career?.matchHistory).toEqual([]);
+    expect(migrated.career?.playerAchievements).toEqual([]);
     expect(persistedSaveSchema.parse(migrated)).toEqual(migrated);
   });
 

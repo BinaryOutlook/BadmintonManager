@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { SmartPlayerText } from "../../components/PlayerLink";
+import { PlayerLink, SmartPlayerText } from "../../components/PlayerLink";
 import { createPlayerProfileViewModel } from "../../game/selectors/player";
 import type { AppPhase } from "../../game/store/store";
+import type { CareerState } from "../../game/career/models";
 import type { LiveMatchSession } from "../../game/core/models";
 import type { TournamentState } from "../../game/tournament/tournament";
 
@@ -12,6 +13,7 @@ interface PlayerProfilePageProps {
   selectedPlayerId: string;
   phase: AppPhase;
   careerPresent: boolean;
+  career: CareerState | null;
   tournament: TournamentState | null;
   liveMatchSession?: LiveMatchSession | null;
   onBack: () => void;
@@ -215,7 +217,8 @@ export function PlayerProfilePage(props: PlayerProfilePageProps) {
     playerId: props.playerId,
     selectedPlayerId: props.selectedPlayerId,
     tournament: props.tournament,
-    liveMatch: props.liveMatchSession
+    liveMatch: props.liveMatchSession,
+    career: props.career
   });
 
   if (!model) {
@@ -494,7 +497,7 @@ export function PlayerProfilePage(props: PlayerProfilePageProps) {
       {activeTab === "career" && (
         <section className="command-panel">
           <div className="panel-header">
-            <h2>Career Story</h2>
+            <h2>Career Record</h2>
             <span>{model.career.stage}</span>
           </div>
           <div className="profile-career-state">
@@ -518,10 +521,73 @@ export function PlayerProfilePage(props: PlayerProfilePageProps) {
                 </ul>
               </div>
             </div>
-            <ProfileEmptyState
-              title="Season history pending."
-              copy="Long-term titles, rankings, and progression will stay empty until the future season model records them."
-            />
+            <div className="profile-career-archive-grid">
+              <section className="profile-career-archive-block">
+                <h3>Titles</h3>
+                {model.career.titles.length > 0 ? (
+                  <div className="profile-achievement-list">
+                    {model.career.titles.map((achievement) => (
+                      <div key={`${achievement.eventId}-${achievement.result}`} className="profile-achievement-row">
+                        <strong>{achievement.eventName}</strong>
+                        <span>{achievement.date} / {achievement.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p>No titles recorded.</p>
+                )}
+              </section>
+              <section className="profile-career-archive-block">
+                <h3>Runner-Up Finishes</h3>
+                {model.career.runnerUpFinishes.length > 0 ? (
+                  <div className="profile-achievement-list">
+                    {model.career.runnerUpFinishes.map((achievement) => (
+                      <div key={`${achievement.eventId}-${achievement.result}`} className="profile-achievement-row">
+                        <strong>{achievement.eventName}</strong>
+                        <span>{achievement.date} / {achievement.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p>No runner-up finishes recorded.</p>
+                )}
+              </section>
+            </div>
+            <section className="profile-career-archive-block profile-career-h2h-block">
+              <h3>Head-To-Head</h3>
+              {model.career.headToHead.length > 0 ? (
+                <table className="profile-h2h-table" aria-label="Head-to-head records">
+                  <thead>
+                    <tr>
+                      <th>Opponent</th>
+                      <th>Played</th>
+                      <th>W-L</th>
+                      <th>Win %</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {model.career.headToHead.map((entry) => (
+                      <tr key={entry.opponentId}>
+                        <td>
+                          <PlayerLink playerId={entry.opponentId}>{entry.opponentName}</PlayerLink>
+                        </td>
+                        <td>{entry.played}</td>
+                        <td>{entry.wins}-{entry.losses}</td>
+                        <td>{entry.winPercentageLabel}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <p>No completed head-to-head matches recorded.</p>
+              )}
+            </section>
+            {!model.career.hasRecordedHistory && (
+              <ProfileEmptyState
+                title="No persisted career history yet."
+                copy="Completed career matches and final results will populate this archive without fabricating past records."
+              />
+            )}
           </div>
         </section>
       )}

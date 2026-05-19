@@ -340,6 +340,14 @@ describe("career tournament state flow", () => {
     expect(afterWin.career?.completedEventIds).not.toContain(event.id);
     expect(afterWin.career?.lastMatchReport?.pointsDelta).toBe(0);
     expect(afterWin.career?.lastMatchReport?.cashDelta).toBe(0);
+    expect(afterWin.career?.matchHistory).toHaveLength(1);
+    expect(afterWin.career?.matchHistory[0]).toMatchObject({
+      eventId: event.id,
+      eventName: event.name,
+      round: "R16",
+      winnerId: managedPlayerId
+    });
+    expect(afterWin.career?.playerAchievements).toEqual([]);
     expect(nextOpponentId).toBeTruthy();
 
     useTournamentStore.getState().continueCareerAfterPostMatch();
@@ -489,6 +497,14 @@ describe("career tournament state flow", () => {
       championId: null
     });
     expect(afterLoss.career?.eventHistory[0].bracketSnapshot?.rounds[0]?.matches).toHaveLength(8);
+    expect(afterLoss.career?.matchHistory).toHaveLength(1);
+    expect(afterLoss.career?.matchHistory[0]).toMatchObject({
+      eventId: lossSetup.event.id,
+      eventName: lossSetup.event.name,
+      round: "R16",
+      scoreline: "13-21, 15-21"
+    });
+    expect(afterLoss.career?.playerAchievements).toEqual([]);
 
     useTournamentStore.getState().continueCareerAfterPostMatch();
 
@@ -499,6 +515,9 @@ describe("career tournament state flow", () => {
 
     const finalSetup = careerOnMetroEvent(managedPlayerId, 9302);
     const finalTournament = advanceManagedPlayerToFinal(finalSetup.tournament, managedPlayerId);
+    const finalContext = getManagedMatchContext(finalTournament)!;
+    const finalOpponentId =
+      finalContext.playerAId === managedPlayerId ? finalContext.playerBId : finalContext.playerAId;
     resetStoreForCareerFlow(managedPlayerId);
     useTournamentStore.setState({
       selectedPlayerId: managedPlayerId,
@@ -526,6 +545,23 @@ describe("career tournament state flow", () => {
         managedPlayerId
       }
     });
+    expect(afterTitle.career?.matchHistory.some((record) => record.round === "F" && record.eventId === finalSetup.event.id)).toBe(true);
+    expect(afterTitle.career?.playerAchievements).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          playerId: managedPlayerId,
+          eventId: finalSetup.event.id,
+          eventName: finalSetup.event.name,
+          result: "champion"
+        }),
+        expect.objectContaining({
+          playerId: finalOpponentId,
+          eventId: finalSetup.event.id,
+          eventName: finalSetup.event.name,
+          result: "runner_up"
+        })
+      ])
+    );
 
     useTournamentStore.getState().continueCareerAfterPostMatch();
 
@@ -672,6 +708,8 @@ describe("career tournament state flow", () => {
     expect(replayedPrizeLedger).toHaveLength(1);
     expect(eventCompletionCount(replayed.completedEventIds, event.id)).toBe(1);
     expect(replayed.eventHistory.filter((entry) => entry.eventId === event.id)).toHaveLength(1);
+    expect(first.matchHistory.filter((entry) => entry.eventId === event.id)).toHaveLength(1);
+    expect(replayed.matchHistory.filter((entry) => entry.eventId === event.id)).toHaveLength(1);
     expect(replayed.lastMatchReport?.pointsDelta).toBe(0);
     expect(replayed.lastMatchReport?.cashDelta).toBe(0);
   });

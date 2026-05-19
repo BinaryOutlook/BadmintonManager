@@ -17,7 +17,8 @@ import {
   careerStateV4Schema,
   careerStateV5Schema,
   careerStateV6Schema,
-  normalizeCareerTierLabel
+  normalizeCareerTierLabel,
+  type CareerState
 } from "../career/models";
 import { upgradeCareerStateV3 } from "../career/tactics";
 import { refreshAssistantAdvice } from "../career/tactics";
@@ -267,12 +268,25 @@ export type SaveImportValidationResult =
       issues?: string[];
     };
 
-function refreshMigratedCareer(career: PersistedSave["career"]) {
+type MigratableCurrentCareer = Omit<CareerState, "matchHistory" | "playerAchievements"> &
+  Partial<Pick<CareerState, "matchHistory" | "playerAchievements">>;
+
+function withCareerHistoryDefaults(career: MigratableCurrentCareer): CareerState {
+  return {
+    ...career,
+    matchHistory: career.matchHistory ?? [],
+    playerAchievements: career.playerAchievements ?? []
+  };
+}
+
+function refreshMigratedCareer(career: MigratableCurrentCareer | null) {
   return career
-    ? refreshAssistantAdvice({
-        ...career,
-        events: hydrateCareerEvents(career.events)
-      })
+    ? refreshAssistantAdvice(
+        withCareerHistoryDefaults({
+          ...career,
+          events: hydrateCareerEvents(career.events)
+        })
+      )
     : null;
 }
 
