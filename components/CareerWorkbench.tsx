@@ -41,7 +41,12 @@ import { managedAthlete } from "../game/career/state";
 import { activeAdvancedTacticPlan, buildPreMatchPlanningBridge, calculateTacticEffectProfile, tacticPlanToMatchTactic } from "../game/career/tactics";
 import { trainingPlans } from "../game/career/training";
 import { STORAGE_KEY, type SaveRecoveryNotice } from "../game/store/store";
-import { isManagedPlayerStillInEvent, type TournamentState } from "../game/tournament/tournament";
+import {
+  isManagedPlayerStillInEvent,
+  type RoundName,
+  type TournamentMatch,
+  type TournamentState
+} from "../game/tournament/tournament";
 import { KnockoutTree } from "./KnockoutTree";
 import { SmartPlayerText } from "./PlayerLink";
 import { TacticalMatchViewer } from "./TacticalMatchViewer";
@@ -653,6 +658,326 @@ function tournamentFromSnapshot(args: {
     eliminated: args.snapshot.championId !== args.snapshot.managedPlayerId,
     managedResults: [],
     championId: args.snapshot.championId ?? undefined
+  };
+}
+
+type CareerMatchHistoryRecord = CareerState["matchHistory"][number];
+type EventOutcomeConfidence = "complete" | "partial" | "legacy";
+
+type EventOutcome = {
+  championId: string | null;
+  runnerUpId: string | null;
+  finalScoreline: string | null;
+  sourceLabel: string;
+  confidence: EventOutcomeConfidence;
+};
+
+type EventMatchEvidence = {
+  id: string;
+  round: RoundName;
+  playerAId: string;
+  playerBId: string;
+  winnerId: string;
+  loserId: string;
+  scoreline: string;
+  sourceLabel: string;
+};
+
+const archiveRoundOrder: RoundName[] = ["R16", "QF", "SF", "F"];
+const archiveRoundIndex: Record<RoundName, number> = {
+  R16: 0,
+  QF: 1,
+  SF: 2,
+  F: 3
+};
+const completeBracketMatchCount: Record<RoundName, number> = {
+  R16: 8,
+  QF: 4,
+  SF: 2,
+  F: 1
+};
+
+function eventMatchHistory(career: CareerState, eventId: string) {
+  return [...career.matchHistory]
+    .filter((record) => record.eventId === eventId)
+    .sort(
+      (left, right) =>
+        archiveRoundIndex[left.round] - archiveRoundIndex[right.round] ||
+        matchNumberFromId(left.id) - matchNumberFromId(right.id) ||
+        left.id.localeCompare(right.id)
+    );
+}
+
+function matchNumberFromId(id: string) {
+  const match = /-(\d+)$/.exec(id);
+
+  return match ? Number(match[1]) : Number.MAX_SAFE_INTEGER;
+}
+
+function removeEventPrefix(eventId: string, recordId: string) {
+  const prefix = `${eventId}:`;
+
+  return recordId.startsWith(prefix) ? recordId.slice(prefix.length) : recordId;
+}
+
+function sourceLabelForRecord(source: CareerMatchHistoryRecord["source"]) {
+  switch (source) {
+    case "played":
+      return "Played managed match";
+    case "quick_sim":
+      return "Quick simulation";
+    case "archive_import":
+      return "Archive import";
+  }
+}
+
+function sourceLabelForTournamentMatch(match: TournamentMatch) {
+  if (match.managed) {
+    return "Played managed match";
+  }
+
+  return match.simulationFidelity === "quick" ? "Quick simulation" : "Archived result";
+}
+
+function completedFinalMatch(tournament: TournamentState) {
+  const finalMatch = tournament.rounds
+    .find((round) => round.name === "F")
+    ?.matches.find((match) => match.completed && Boolean(match.winnerId));
+
+  return finalMatch ?? null;
+}
+
+function runnerUpIdForMatch(match: Pick<TournamentMatch, "sideAId" | "sideBId" | "winnerId">) {
+  if (!match.winnerId) {
+    return null;
+  }
+
+  return match.sideAId === match.winnerId ? match.sideBId : match.sideAId;
+}
+
+function tournamentOutcome(tournament: TournamentState, sourceLabel: string): EventOutcome | null {
+  const finalMatch = completedFinalMatch(tournament);
+
+  if (finalMatch?.winnerId) {
+    return {
+      championId: finalMatch.winnerId,
+      runnerUpId: runnerUpIdForMatch(finalMatch),
+      finalScoreline: finalMatch.scoreline ?? null,
+      sourceLabel,
+      confidence: "complete"
+    };
+  }
+
+  if (tournament.championId) {
+    return {
+      championId: tournament.championId,
+      runnerUpId: null,
+      finalScoreline: null,
+      sourceLabel,
+      confidence: "partial"
+    };
+  }
+
+  return null;
+}
+
+function achievementOutcome(career: CareerState, eventId: string): EventOutcome | null {
+  const champion = career.playerAchievements.find(
+    (achievement) => achievement.eventId === eventId && achievement.result === "champion"
+  );
+  const runnerUp = career.playerAchievements.find(
+    (achievement) => achievement.eventId === eventId && achievement.result === "runner_up"
+  );
+
+  if (!champion && !runnerUp) {
+    return null;
+  }
+
+  return {
+    championId: champion?.playerId ?? null,
+    runnerUpId: runnerUp?.playerId ?? null,
+    finalScoreline: null,
+    sourceLabel: "Career achievement archive",
+    confidence: champion && runnerUp ? "partial" : "legacy"
+  };
+}
+
+function managedHistoryOnlyOutcome(args: {
+  record: CareerEventHistoryRecord | undefined;
+  managedPlayerId: string;
+}): EventOutcome | null {
+  if (!args.record) {
+    return null;
+  }
+
+  if (args.record.status === "champion") {
+    return {
+      championId: args.managedPlayerId,
+      runnerUpId: null,
+      finalScoreline: args.record.scorelines.at(-1) ?? null,
+      sourceLabel: "Managed-result archive",
+      confidence: "legacy"
+    };
+  }
+
+  if (args.record.status === "runner_up") {
+    return {
+      championId: null,
+      runnerUpId: args.managedPlayerId,
+      finalScoreline: args.record.scorelines.at(-1) ?? null,
+      sourceLabel: "Managed-result archive",
+      confidence: "legacy"
+    };
+  }
+
+  return null;
+}
+
+function completeTournamentFromMatchHistory(args: {
+  event: CareerEventDefinition;
+  records: CareerMatchHistoryRecord[];
+  managedPlayerId: string;
+}): TournamentState | null {
+  const recordsByRound = Object.fromEntries(
+    archiveRoundOrder.map((round) => [
+      round,
+      args.records.filter((record) => record.round === round)
+    ])
+  ) as Record<RoundName, CareerMatchHistoryRecord[]>;
+  const hasCompleteShape = archiveRoundOrder.every(
+    (round) => recordsByRound[round].length === completeBracketMatchCount[round]
+  );
+
+  if (!hasCompleteShape) {
+    return null;
+  }
+
+  const finalRecord = recordsByRound.F[0];
+
+  if (!finalRecord) {
+    return null;
+  }
+
+  return {
+    id: args.event.id,
+    name: args.event.name,
+    tier: args.event.tier,
+    prizePoolUsd: args.event.prizeMoney.champion * 2,
+    managedPlayerId: args.managedPlayerId,
+    rounds: archiveRoundOrder.map((round) => ({
+      name: round,
+      matches: recordsByRound[round].map((record) => ({
+        id: removeEventPrefix(args.event.id, record.id),
+        round,
+        sideAId: record.playerAId,
+        sideBId: record.playerBId,
+        winnerId: record.winnerId,
+        scoreline: record.scoreline,
+        simulationFidelity: record.source === "quick_sim" ? "quick" : "detailed",
+        managed: record.playerAId === args.managedPlayerId || record.playerBId === args.managedPlayerId,
+        completed: true
+      }))
+    })),
+    currentRoundIndex: archiveRoundOrder.length - 1,
+    rngState: 0,
+    eliminated: finalRecord.winnerId !== args.managedPlayerId,
+    managedResults: [],
+    championId: finalRecord.winnerId
+  };
+}
+
+function evidenceFromMatchRecords(records: CareerMatchHistoryRecord[]): EventMatchEvidence[] {
+  return records.map((record) => ({
+    id: record.id,
+    round: record.round,
+    playerAId: record.playerAId,
+    playerBId: record.playerBId,
+    winnerId: record.winnerId,
+    loserId: record.playerAId === record.winnerId ? record.playerBId : record.playerAId,
+    scoreline: record.scoreline,
+    sourceLabel: sourceLabelForRecord(record.source)
+  }));
+}
+
+function evidenceFromTournament(tournament: TournamentState): EventMatchEvidence[] {
+  return tournament.rounds.flatMap((round) =>
+    round.matches.flatMap((match): EventMatchEvidence[] => {
+      if (!match.completed || !match.winnerId || !match.scoreline) {
+        return [];
+      }
+
+      return [
+        {
+          id: match.id,
+          round: round.name,
+          playerAId: match.sideAId,
+          playerBId: match.sideBId,
+          winnerId: match.winnerId,
+          loserId: match.sideAId === match.winnerId ? match.sideBId : match.sideAId,
+          scoreline: match.scoreline,
+          sourceLabel: sourceLabelForTournamentMatch(match)
+        }
+      ];
+    })
+  );
+}
+
+function rankingLedgerLine(args: {
+  career: CareerState;
+  eventId: string;
+  playerId: string | null;
+  fallbackPoints: number | null;
+  fallbackLabel: string;
+}) {
+  if (!args.playerId) {
+    return "Unknown athlete; no ranking ledger lookup possible.";
+  }
+
+  const entry = args.career.rankings.find((ranking) => ranking.playerId === args.playerId);
+  const history = entry?.eventHistory.find((record) => record.eventId === args.eventId);
+
+  if (history) {
+    return `Ranking ledger +${points(history.points)} (${history.round}).`;
+  }
+
+  if (args.fallbackPoints !== null) {
+    return `${args.fallbackLabel} value ${points(args.fallbackPoints)}; no ranking ledger entry in this save.`;
+  }
+
+  return "No ranking ledger entry in this save.";
+}
+
+function playerDisplayName(playerId: string | null | undefined) {
+  return playerId ? playerMap[playerId]?.name ?? playerId : "Unknown";
+}
+
+function managedOutcomeSummary(args: {
+  career: CareerState;
+  record: CareerEventHistoryRecord | undefined;
+  matchRecords: CareerMatchHistoryRecord[];
+}) {
+  const managedPlayerId = args.career.program.managedPlayerId;
+  const managedRecords = args.matchRecords.filter(
+    (record) => record.playerAId === managedPlayerId || record.playerBId === managedPlayerId
+  );
+  const latestManagedRecord = managedRecords.at(-1);
+  const statusLabelText = args.record?.status.replace(/_/g, " ") ?? "Not entered";
+  const label = args.record?.resultRound ?? statusLabelText;
+
+  if (!latestManagedRecord) {
+    return {
+      label,
+      detail: args.record?.scorelines[0] ?? (args.record ? "Legacy summary has no managed match scoreline." : "No managed result yet.")
+    };
+  }
+
+  const opponentId =
+    latestManagedRecord.playerAId === managedPlayerId ? latestManagedRecord.playerBId : latestManagedRecord.playerAId;
+  const result = latestManagedRecord.winnerId === managedPlayerId ? "Win" : "Loss";
+
+  return {
+    label: `${result} / ${latestManagedRecord.round}`,
+    detail: `${latestManagedRecord.scoreline} vs ${playerDisplayName(opponentId)} (${sourceLabelForRecord(latestManagedRecord.source)}).`
   };
 }
 
@@ -3540,13 +3865,75 @@ export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddr
     !activeTournament && historyRecord?.bracketSnapshot
       ? tournamentFromSnapshot({ event, record: historyRecord, snapshot: historyRecord.bracketSnapshot })
       : null;
-  const displayTournament = activeTournament ?? archivedTournament;
-  const fieldPressure = pressureForEvent(career, event.id);
-  const championName = displayTournament?.championId
-    ? playerMap[displayTournament.championId]?.name ?? displayTournament.championId
-    : historyRecord?.status === "champion"
-      ? playerMap[career.program.managedPlayerId]?.name ?? "Managed athlete"
+  const matchRecords = eventMatchHistory(career, event.id);
+  const reconstructedTournament =
+    !activeTournament && !archivedTournament
+      ? completeTournamentFromMatchHistory({
+          event,
+          records: matchRecords,
+          managedPlayerId: career.program.managedPlayerId
+        })
       : null;
+  const displayTournament = activeTournament ?? archivedTournament ?? reconstructedTournament;
+  const displayTournamentSource = activeTournament
+    ? "Live event state"
+    : archivedTournament
+      ? "Archived bracket snapshot"
+      : reconstructedTournament
+        ? "Reconstructed from complete match records"
+        : null;
+  const tournamentEventOutcome =
+    displayTournament && displayTournamentSource
+      ? tournamentOutcome(displayTournament, displayTournamentSource)
+      : null;
+  const eventOutcome =
+    tournamentEventOutcome ??
+    achievementOutcome(career, event.id) ??
+    managedHistoryOnlyOutcome({
+      record: historyRecord,
+      managedPlayerId: career.program.managedPlayerId
+    });
+  const matchEvidenceRows =
+    matchRecords.length > 0
+      ? evidenceFromMatchRecords(matchRecords)
+      : displayTournament
+        ? evidenceFromTournament(displayTournament)
+        : [];
+  const managedOutcome = managedOutcomeSummary({ career, record: historyRecord, matchRecords });
+  const archiveStatus = activeTournament
+    ? {
+        title: activeTournament.championId ? "Live complete bracket" : "Active draw",
+        detail: activeTournament.championId
+          ? "The active tournament state already contains the final outcome."
+          : "The draw is still in progress; no champion is claimed yet."
+      }
+    : historyRecord?.bracketSnapshot
+      ? {
+          title: "Bracket snapshot available",
+          detail: "Closed draw was saved at settlement."
+        }
+      : reconstructedTournament
+        ? {
+            title: "Reconstructed bracket",
+            detail: "Complete match records rebuild the archived draw without fabricating missing results."
+          }
+        : matchRecords.length > 0
+          ? {
+              title: "Partial match evidence",
+              detail: `${matchRecords.length} recorded match result(s); champion stays unknown until final evidence exists.`
+            }
+          : historyRecord
+            ? {
+                title: "Legacy summary only",
+                detail: "This save predates complete bracket truth, so unknown champions are not claimed."
+              }
+            : {
+                title: "Pending draw",
+                detail: "Bracket evidence appears after the event reaches match day."
+              };
+  const fieldPressure = pressureForEvent(career, event.id);
+  const championName = eventOutcome?.championId ? playerDisplayName(eventOutcome.championId) : null;
+  const runnerUpName = eventOutcome?.runnerUpId ? playerDisplayName(eventOutcome.runnerUpId) : null;
   const mainActionLabel =
     historyRecord || completed
       ? "Completed"
@@ -3614,7 +4001,7 @@ export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddr
         </div>
       </div>
 
-      <section className="management-status-strip calendar-status-strip" aria-label="Event detail status">
+      <section className="management-status-strip tournament-status-strip" aria-label="Event detail status">
         <div>
           <span>Status</span>
           <strong>{statusLabel(status)}</strong>
@@ -3629,7 +4016,35 @@ export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddr
         </div>
         <div>
           <span>Champion</span>
-          <strong>{championName ?? (historyRecord ? "Not archived" : "Pending")}</strong>
+          <strong>
+            {eventOutcome?.championId ? (
+              <ProfileNameButton
+                playerId={eventOutcome.championId}
+                fallback={championName ?? "Unknown"}
+                onOpenPlayerProfile={props.onOpenPlayerProfile}
+              />
+            ) : historyRecord ? (
+              "Unknown"
+            ) : (
+              "Pending"
+            )}
+          </strong>
+        </div>
+        <div>
+          <span>Runner-up</span>
+          <strong>
+            {eventOutcome?.runnerUpId ? (
+              <ProfileNameButton
+                playerId={eventOutcome.runnerUpId}
+                fallback={runnerUpName ?? "Unknown"}
+                onOpenPlayerProfile={props.onOpenPlayerProfile}
+              />
+            ) : historyRecord ? (
+              "Unknown"
+            ) : (
+              "Pending"
+            )}
+          </strong>
         </div>
         <div>
           <span>Action</span>
@@ -3638,6 +4053,78 @@ export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddr
       </section>
 
       <div className="career-dashboard-grid">
+        {completed || eventOutcome ? (
+          <section className="command-panel command-panel-full" aria-label={`${event.name} complete event outcome`}>
+            <div className="panel-header">
+              <h2>Full Event Outcome</h2>
+              <span>{eventOutcome?.sourceLabel ?? archiveStatus.title}</span>
+            </div>
+            <div className="career-event-brief calendar-brief-grid">
+              <div>
+                <span>Champion</span>
+                <strong>
+                  {eventOutcome?.championId ? (
+                    <ProfileNameButton
+                      playerId={eventOutcome.championId}
+                      fallback={playerDisplayName(eventOutcome.championId)}
+                      onOpenPlayerProfile={props.onOpenPlayerProfile}
+                    />
+                  ) : (
+                    "Unknown"
+                  )}
+                </strong>
+                <small>
+                  {rankingLedgerLine({
+                    career,
+                    eventId: event.id,
+                    playerId: eventOutcome?.championId ?? null,
+                    fallbackPoints: eventOutcome?.championId ? event.rankingPoints.champion : null,
+                    fallbackLabel: "Champion"
+                  })}
+                </small>
+              </div>
+              <div>
+                <span>Runner-up</span>
+                <strong>
+                  {eventOutcome?.runnerUpId ? (
+                    <ProfileNameButton
+                      playerId={eventOutcome.runnerUpId}
+                      fallback={playerDisplayName(eventOutcome.runnerUpId)}
+                      onOpenPlayerProfile={props.onOpenPlayerProfile}
+                    />
+                  ) : (
+                    "Unknown"
+                  )}
+                </strong>
+                <small>
+                  {rankingLedgerLine({
+                    career,
+                    eventId: event.id,
+                    playerId: eventOutcome?.runnerUpId ?? null,
+                    fallbackPoints: eventOutcome?.runnerUpId ? event.rankingPoints.F : null,
+                    fallbackLabel: "Runner-up"
+                  })}
+                </small>
+              </div>
+              <div>
+                <span>Final Scoreline</span>
+                <strong>{eventOutcome?.finalScoreline ?? "Unavailable"}</strong>
+                <small>{eventOutcome ? `${eventOutcome.confidence} outcome evidence` : "No final evidence in this save."}</small>
+              </div>
+              <div>
+                <span>Managed Result</span>
+                <strong>{managedOutcome.label}</strong>
+                <small>{managedOutcome.detail}</small>
+              </div>
+              <div>
+                <span>Archive Trust</span>
+                <strong>{archiveStatus.title}</strong>
+                <small>{archiveStatus.detail}</small>
+              </div>
+            </div>
+          </section>
+        ) : null}
+
         {historyRecord ? (
           <section className="command-panel command-panel-full">
             <div className="panel-header">
@@ -3662,10 +4149,48 @@ export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddr
               </div>
               <div>
                 <span>Archive</span>
-                <strong>{historyRecord.bracketSnapshot ? "Bracket snapshot available" : "Summary only"}</strong>
-                <small>{historyRecord.bracketSnapshot ? "Closed draw was saved at settlement." : "This save predates bracket snapshots or no draw was played."}</small>
+                <strong>{archiveStatus.title}</strong>
+                <small>{archiveStatus.detail}</small>
               </div>
             </div>
+          </section>
+        ) : null}
+
+        {completed || matchEvidenceRows.length > 0 ? (
+          <section className="command-panel command-panel-full">
+            <div className="panel-header">
+              <h2>Match Results And Scoreline Evidence</h2>
+              <span>{matchEvidenceRows.length > 0 ? `${matchEvidenceRows.length} result(s)` : "legacy fallback"}</span>
+            </div>
+            {matchEvidenceRows.length > 0 ? (
+              <div className="management-table tournament-evidence-table" aria-label={`${event.name} match result evidence`}>
+                {matchEvidenceRows.map((row) => (
+                  <div className="management-table-row" key={row.id}>
+                    <span>{calendarRoundLabel(row.round)}</span>
+                    <strong>
+                      <ProfileNameButton
+                        playerId={row.winnerId}
+                        fallback={playerDisplayName(row.winnerId)}
+                        onOpenPlayerProfile={props.onOpenPlayerProfile}
+                      />{" "}
+                      def.{" "}
+                      <ProfileNameButton
+                        playerId={row.loserId}
+                        fallback={playerDisplayName(row.loserId)}
+                        onOpenPlayerProfile={props.onOpenPlayerProfile}
+                      />
+                    </strong>
+                    <small>{row.scoreline} / {row.sourceLabel}</small>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="panel-summary">
+                {historyRecord?.scorelines.length
+                  ? `Legacy summary scorelines: ${historyRecord.scorelines.join(" | ")}. The save does not contain enough bracket evidence to identify a champion or runner-up.`
+                  : "This legacy archive has no match scorelines, so the page keeps champion and runner-up unknown."}
+              </p>
+            )}
           </section>
         ) : null}
 
@@ -3703,7 +4228,7 @@ export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddr
             tournament={displayTournament}
             selectedPlayerId={career.program.managedPlayerId}
             title={historyRecord ? "Archived Knockout Draw" : "Current Knockout Draw"}
-            subtitle={historyRecord ? "Saved bracket snapshot for this completed event" : "Live event path and background results"}
+            subtitle={historyRecord ? archiveStatus.detail : "Live event path and background results"}
             onOpenPlayerProfile={props.onOpenPlayerProfile}
           />
         ) : (

@@ -4,11 +4,19 @@ import { App, commandIdForPage } from "../../app/App";
 import { TournamentNavigationProvider } from "../../app/tournamentNavigation";
 import { CareerCalendarPage, CareerRankingsPage, CareerTournamentHomePage } from "../../components/CareerWorkbench";
 import { addDays } from "../../game/career/calendar";
-import { getCareerEvent } from "../../game/career/events";
+import {
+  appendCompletedTournamentMatchRecords,
+  eventEndDate,
+  getCareerEvent,
+  tournamentMatchArchiveIds,
+  tournamentMatchArchiveScorelines
+} from "../../game/career/events";
+import { awardRankingPoints } from "../../game/career/rankings";
 import { createInitialCareerState } from "../../game/career/state";
-import { seededPlayers } from "../../game/content/players";
+import { playerMap, seededPlayers } from "../../game/content/players";
+import type { MatchResult, Side } from "../../game/core/models";
 import { useTournamentStore } from "../../game/store/store";
-import { createTournament, getManagedMatchContext } from "../../game/tournament/tournament";
+import { advanceTournament, createTournament, getManagedMatchContext } from "../../game/tournament/tournament";
 
 class MemoryStorage {
   private readonly values = new Map<string, string>();
@@ -67,6 +75,52 @@ function careerEnteredOnMetroStart() {
       enteredEventIds: [event.id],
       stage: "event_entered" as const
     }
+  };
+}
+
+function forcedUiResult(winner: Side): MatchResult {
+  return {
+    winner,
+    setsWonA: winner === "A" ? 2 : 0,
+    setsWonB: winner === "B" ? 2 : 0,
+    setSummaries: [
+      {
+        winner,
+        scoreA: winner === "A" ? 21 : 13,
+        scoreB: winner === "B" ? 21 : 13,
+        points: []
+      },
+      {
+        winner,
+        scoreA: winner === "A" ? 21 : 15,
+        scoreB: winner === "B" ? 21 : 15,
+        points: []
+      }
+    ],
+    stats: {
+      winnersA: winner === "A" ? 20 : 10,
+      winnersB: winner === "B" ? 20 : 10,
+      unforcedErrorsA: winner === "A" ? 8 : 18,
+      unforcedErrorsB: winner === "B" ? 8 : 18,
+      totalSmashesA: 14,
+      totalSmashesB: 13,
+      peakSmashSpeedA: 386,
+      peakSmashSpeedB: 379,
+      staminaDrainA: 8,
+      staminaDrainB: 10,
+      longestRally: 24,
+      totalPoints: 70
+    },
+    scoreline: winner === "A" ? "21-13, 21-15" : "13-21, 15-21",
+    fidelity: "detailed",
+    summaryEvents: [
+      {
+        kind: "straight_games",
+        side: winner,
+        title: "Forced UI test result",
+        detail: "Unit test supplies the managed result so archive presentation stays deterministic."
+      }
+    ]
   };
 }
 
@@ -658,6 +712,106 @@ describe("career calendar event actions", () => {
     expect(screen.getByRole("button", { name: "Enter Event" })).toBeEnabled();
   });
 
+  it("renders a completed non-managed champion from complete match-record truth without a snapshot", () => {
+    const managedPlayerId = seededPlayers[0].player.id;
+    const baseCareer = createInitialCareerState(managedPlayerId, 9920);
+    const event = getCareerEvent(baseCareer.events, "metro-open-300")!;
+    const tournament = {
+      ...createTournament(seededPlayers, managedPlayerId, 9920),
+      id: event.id,
+      name: event.name,
+      tier: event.tier,
+      prizePoolUsd: event.prizeMoney.champion * 2
+    };
+    const context = getManagedMatchContext(tournament)!;
+    const managedSide = context.playerAId === managedPlayerId ? "A" : "B";
+    const completedTournament = advanceTournament({
+      tournament,
+      seededEntries: seededPlayers,
+      managedMatchId: context.matchId,
+      managedResult: forcedUiResult(managedSide === "A" ? "B" : "A")
+    });
+    const finalMatch = completedTournament.rounds.find((round) => round.name === "F")?.matches[0];
+
+    if (!finalMatch?.winnerId || !finalMatch.scoreline) {
+      throw new Error("Expected a completed non-managed final.");
+    }
+
+    const runnerUpId = finalMatch.sideAId === finalMatch.winnerId ? finalMatch.sideBId : finalMatch.sideAId;
+    const withMatchRecords = appendCompletedTournamentMatchRecords({
+      state: {
+        ...baseCareer,
+        date: eventEndDate(event),
+        activeEventId: null,
+        enteredEventIds: [event.id],
+        completedEventIds: [event.id]
+      },
+      event,
+      tournament: completedTournament,
+      date: eventEndDate(event)
+    });
+    const rankingsWithChampion = awardRankingPoints({
+      rankings: withMatchRecords.rankings,
+      playerId: finalMatch.winnerId,
+      eventId: event.id,
+      round: "champion",
+      points: event.rankingPoints.champion,
+      date: eventEndDate(event),
+      seasonId: withMatchRecords.seasonId,
+      tier: event.tier
+    });
+    const rankingsWithRunnerUp = awardRankingPoints({
+      rankings: rankingsWithChampion,
+      playerId: runnerUpId,
+      eventId: event.id,
+      round: "F",
+      points: event.rankingPoints.F,
+      date: eventEndDate(event),
+      seasonId: withMatchRecords.seasonId,
+      tier: event.tier
+    });
+    const career = {
+      ...withMatchRecords,
+      rankings: rankingsWithRunnerUp,
+      eventHistory: [
+        {
+          eventId: event.id,
+          eventName: event.name,
+          tier: event.tier,
+          startDate: event.startDate,
+          endDate: eventEndDate(event),
+          status: "round_of_16" as const,
+          entered: true,
+          resultRound: "R16",
+          pointsAwarded: event.rankingPoints.R16,
+          prizeMoney: event.prizeMoney.R16,
+          entryCost: event.entryFee,
+          travelCost: event.travelCost,
+          netCash: event.prizeMoney.R16 - event.entryFee - event.travelCost,
+          completedAt: eventEndDate(event),
+          matchIds: tournamentMatchArchiveIds(completedTournament),
+          scorelines: tournamentMatchArchiveScorelines(completedTournament),
+          achievements: ["Points Finish"],
+          bracketSnapshot: null
+        }
+      ]
+    };
+
+    renderTournamentHomePage({ career, eventId: event.id });
+
+    const outcome = screen.getByLabelText(`${event.name} complete event outcome`);
+    expect(screen.getByRole("heading", { name: "Full Event Outcome" })).toBeInTheDocument();
+    expect(within(outcome).getByRole("button", { name: playerMap[finalMatch.winnerId].name })).toBeInTheDocument();
+    expect(within(outcome).getByRole("button", { name: playerMap[runnerUpId].name })).toBeInTheDocument();
+    expect(within(outcome).getByText(finalMatch.scoreline)).toBeInTheDocument();
+    expect(within(outcome).getByText("Reconstructed bracket")).toBeInTheDocument();
+    expect(within(outcome).getByText(`Ranking ledger +${event.rankingPoints.champion.toLocaleString()} pts (champion).`)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Archived Knockout Draw" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Match Results And Scoreline Evidence" })).toBeInTheDocument();
+    expect(screen.getByLabelText(`${event.name} match result evidence`)).toHaveTextContent("Quick simulation");
+    expect(screen.queryByText("Not archived")).not.toBeInTheDocument();
+  });
+
   it("renders real paged past-event records", () => {
     const baseCareer = createInitialCareerState(seededPlayers[0].player.id, 9912);
     const career = {
@@ -732,8 +886,11 @@ describe("career calendar event actions", () => {
 
     renderTournamentHomePage({ career, eventId: event.id });
     expect(screen.getByRole("heading", { name: "Result Archive" })).toBeInTheDocument();
-    expect(screen.getByText("Summary only")).toBeInTheDocument();
-    expect(screen.getByText(/predates bracket snapshots/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Full Event Outcome" })).toBeInTheDocument();
+    expect(screen.getAllByText("Legacy summary only").length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/predates complete bracket truth/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Unknown").length).toBeGreaterThanOrEqual(2);
+    expect(screen.queryByText("Not archived")).not.toBeInTheDocument();
   });
 
   it("renders a safe not-found tournament home for legacy event ids", () => {
