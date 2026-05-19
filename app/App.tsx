@@ -152,7 +152,7 @@ function buildLaunchSaveSummary(args: {
 
     if (matchContext) {
       const opponentId = matchContext.playerAId === managedPlayerId ? matchContext.playerBId : matchContext.playerAId;
-      details.push({ label: "Opponent", value: playerName(opponentId) });
+      details.push({ label: "Opponent", value: playerName(opponentId), playerId: opponentId });
     }
 
     if (athlete) {
@@ -162,6 +162,7 @@ function buildLaunchSaveSummary(args: {
     return {
       mode: "career",
       title: "Resume Career",
+      managedPlayerId,
       managedName,
       context: `${args.career.date} | ${eventContext}`,
       nextAction,
@@ -202,12 +203,13 @@ function buildLaunchSaveSummary(args: {
     ];
 
     if (opponentName !== "Draw pending") {
-      details.push({ label: "Opponent", value: opponentName });
+      details.push({ label: "Opponent", value: opponentName, playerId: opponentId ?? undefined });
     }
 
     return {
       mode: "quickTournament",
       title: "Continue Tournament",
+      managedPlayerId,
       managedName: playerName(managedPlayerId),
       context: `${tournament?.name ?? "Quick tournament"} | ${roundLabel}`,
       nextAction,

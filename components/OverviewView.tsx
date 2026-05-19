@@ -4,6 +4,7 @@ import { deriveAthleteDossier, deriveThreatReport } from "../game/core/intel";
 import type { TournamentState } from "../game/tournament/tournament";
 import type { TacticKey } from "../game/store/store";
 import { KnockoutTree } from "./KnockoutTree";
+import { SmartPlayerText } from "./PlayerLink";
 
 interface OverviewViewProps {
   tournament: TournamentState;
@@ -162,7 +163,12 @@ export function OverviewView(props: OverviewViewProps) {
                 ))}
               </div>
 
-              <p className="panel-summary">{threatReport?.matchupSummary}</p>
+              <p className="panel-summary">
+                <SmartPlayerText
+                  text={threatReport?.matchupSummary ?? ""}
+                  onOpenPlayerProfile={props.onOpenPlayerProfile}
+                />
+              </p>
             </>
           ) : (
             <p className="panel-summary">The bracket is waiting on your managed match result.</p>

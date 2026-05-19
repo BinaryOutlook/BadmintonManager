@@ -183,6 +183,8 @@ describe("KnockoutTree", () => {
     expect(screen.getByText("Winner QF-1")).toBeInTheDocument();
     expect(screen.getByText("Winner SF-1")).toBeInTheDocument();
     expect(screen.getAllByText("Awaiting previous winners").length).toBeGreaterThan(0);
+    expect(screen.queryByRole("button", { name: "Winner R16-1" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "TBD" })).not.toBeInTheDocument();
     expect(screen.getByText("Managed match pending").closest(".bracket-card")).toHaveClass("bracket-card-managed");
     expect(screen.getByText(backgroundMatch.summaryEvents![0]!.title)).toBeInTheDocument();
 

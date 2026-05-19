@@ -22,3 +22,7 @@ export function usePlayerNavigation() {
 
   return openPlayerProfile;
 }
+
+export function useOptionalPlayerNavigation() {
+  return useContext(PlayerNavigationContext);
+}

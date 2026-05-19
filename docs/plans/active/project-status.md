@@ -168,6 +168,7 @@ What is now stable:
 - [x] rebalanced detailed match score shape with focused legality/low-score-prevention tests plus a 10-seed asserted calibration sweep
 - [x] removed the legacy permanent competition sidebar route so Calendar handles event browsing and Live Match owns pre-match, bracket, and live command-center access
 - [x] implemented TIX-011 Rankings as a career command surface with `career.rankings` table data, managed-athlete highlight plus text label, profile navigation, focused unit coverage, and desktop/mobile visual QA artifacts
+- [x] implemented TIX-009 universal player addressing with stable-id profile links across setup, career hubs, live match, bracket, scouting, post-match, and prose surfaces
 
 ## In Progress
 

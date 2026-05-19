@@ -8,11 +8,12 @@ import { useModalFocus } from "./useModalFocus";
 export interface LaunchSaveSummary {
   mode: "career" | "quickTournament";
   title: string;
+  managedPlayerId?: string;
   managedName: string;
   context: string;
   nextAction: string;
   primaryActionLabel: "Continue Career" | "Continue Tournament";
-  details: Array<{ label: string; value: string }>;
+  details: Array<{ label: string; value: string; playerId?: string }>;
   readiness?: number;
 }
 
@@ -720,7 +721,15 @@ export function SetupView(props: SetupViewProps) {
               <div className="dossier-identity">
                 <div>
                   <p className="dossier-overline">{previewedAthlete.entry.player.nationality}</p>
-                  <h3>{previewedAthlete.entry.player.name}</h3>
+                  <h3>
+                    <button
+                      className="profile-name-button profile-name-button-large"
+                      type="button"
+                      onClick={() => props.onOpenPlayerProfile(previewedAthlete.entry.player.id)}
+                    >
+                      {previewedAthlete.entry.player.name}
+                    </button>
+                  </h3>
                   <p>{previewedAthlete.entry.player.styleLabel}</p>
                 </div>
                 <div className="dossier-avatar">{previewedAthlete.entry.player.nationality}</div>
@@ -1000,16 +1009,48 @@ export function SetupView(props: SetupViewProps) {
                 </div>
                 <span className="start-shuttle-chip">{resumeCourtLabel}</span>
               </div>
-              <p className="start-resume-athlete">{launchSaveSummary.managedName}</p>
+              <p className="start-resume-athlete">
+                {launchSaveSummary.managedPlayerId
+                  ? (() => {
+                      const managedPlayerId = launchSaveSummary.managedPlayerId;
+
+                      return (
+                        <button
+                          className="profile-name-button profile-name-button-large"
+                          type="button"
+                          onClick={() => props.onOpenPlayerProfile(managedPlayerId)}
+                        >
+                          {launchSaveSummary.managedName}
+                        </button>
+                      );
+                    })()
+                  : launchSaveSummary.managedName}
+              </p>
               <p className="start-resume-context">{launchSaveSummary.context}</p>
 
               <div className="start-resume-detail-grid" aria-label="Active save details">
-                {launchSaveSummary.details.map((detail) => (
-                  <div key={detail.label}>
-                    <span>{detail.label}</span>
-                    <strong>{detail.value}</strong>
-                  </div>
-                ))}
+                {launchSaveSummary.details.map((detail) => {
+                  const detailPlayerId = detail.playerId;
+
+                  return (
+                    <div key={detail.label}>
+                      <span>{detail.label}</span>
+                      <strong>
+                        {detailPlayerId ? (
+                          <button
+                            className="profile-name-button"
+                            type="button"
+                            onClick={() => props.onOpenPlayerProfile(detailPlayerId)}
+                          >
+                            {detail.value}
+                          </button>
+                        ) : (
+                          detail.value
+                        )}
+                      </strong>
+                    </div>
+                  );
+                })}
               </div>
 
               {typeof launchSaveSummary.readiness === "number" && (
