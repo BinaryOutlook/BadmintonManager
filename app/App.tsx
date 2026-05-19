@@ -32,7 +32,7 @@ import { useTournamentStore, type AppPhase, type TournamentStoreState } from "..
 import type { CareerStage, CareerState, TournamentAddress } from "../game/career/models";
 import type { PersistedSave } from "../game/store/save";
 import { getManagedMatchContext, type TournamentState } from "../game/tournament/tournament";
-import { isPhaseBoundPage, pageForPhase, type AppPage } from "./pages";
+import { isPhaseBoundPage, pageForPhase, type AppPage, type ScheduleSection } from "./pages";
 import { PlayerProfilePage } from "./pages/PlayerProfilePage";
 import { SquadPage } from "./pages/SquadPage";
 import { PlayerNavigationProvider } from "./playerNavigation";
@@ -40,10 +40,11 @@ import { TournamentNavigationProvider } from "./tournamentNavigation";
 
 export type CommandId =
   | "portal"
+  | "timeline"
+  | "calendar"
   | "inbox"
   | "squad"
   | "training"
-  | "calendar"
   | "rankings"
   | "tactics"
   | "live"
@@ -53,7 +54,7 @@ export type CommandId =
   | "facilities"
   | "saveManager"
   | "settings";
-type CommandGroupId = "Core" | "Program" | "Match" | "Operations" | "System";
+type CommandGroupId = "CORE" | "PROGRAM" | "MATCH" | "OPERATIONS" | "SYSTEM";
 type PendingConfirm = "resetSession" | "startTournamentReplaceCareer" | "startCareerReplaceSave";
 
 type ShellCommand = {
@@ -75,7 +76,7 @@ const SIDEBAR_DEFAULT_WIDTH = 240;
 const SIDEBAR_MAX_WIDTH = 340;
 const SIDEBAR_COLLAPSED_WIDTH = 64;
 
-const commandGroupOrder: CommandGroupId[] = ["Core", "Program", "Match", "Operations", "System"];
+const commandGroupOrder: CommandGroupId[] = ["CORE", "PROGRAM", "MATCH", "OPERATIONS", "SYSTEM"];
 
 const advanceableCareerStages: ReadonlySet<CareerStage> = new Set([
   "planning",
@@ -274,9 +275,10 @@ export function commandIdForPage(page: AppPage): CommandId {
     case "season":
       return "training";
     case "games":
-    case "calendar":
     case "tournamentHome":
       return "calendar";
+    case "calendar":
+      return page.section === "timeline" ? "timeline" : "calendar";
     case "rankings":
       return "rankings";
     case "bracket":
@@ -437,6 +439,10 @@ export function App() {
     setActivePage({ id: "tournamentHome", ...address });
   }
 
+  function openScheduleSection(section: ScheduleSection) {
+    setActivePage({ id: "calendar", section });
+  }
+
   function requestReset() {
     setSettingsOpen(false);
     setPendingConfirm("resetSession");
@@ -565,13 +571,13 @@ export function App() {
   function handleAdvanceCareerDay() {
     advanceCareerDay();
     const next = useTournamentStore.getState();
-    setActivePage(next.career?.stage === "pre_match" ? { id: "bracket" } : { id: "calendar" });
+    setActivePage(next.career?.stage === "pre_match" ? { id: "bracket" } : { id: "calendar", section: "upcoming" });
   }
 
   function handleOpenScheduledCareerMatch(eventId?: string) {
     openScheduledCareerMatch(eventId);
     const next = useTournamentStore.getState();
-    setActivePage(next.career?.stage === "pre_match" ? { id: "bracket" } : { id: "calendar" });
+    setActivePage(next.career?.stage === "pre_match" ? { id: "bracket" } : { id: "calendar", section: "upcoming" });
   }
 
   function handleContinueCareerAfterPostMatch() {
@@ -636,6 +642,12 @@ export function App() {
       case "portal":
         setActivePage(career && phase !== "match" ? { id: "home" } : pageForPhase(phase));
         break;
+      case "timeline":
+        setActivePage(career ? { id: "calendar", section: "timeline" } : { id: "games" });
+        break;
+      case "calendar":
+        setActivePage(career ? { id: "calendar", section: "calendar" } : { id: "games" });
+        break;
       case "inbox":
         break;
       case "squad":
@@ -643,9 +655,6 @@ export function App() {
         break;
       case "training":
         setActivePage(career ? { id: "season" } : { id: "setup" });
-        break;
-      case "calendar":
-        setActivePage(career ? { id: "calendar" } : { id: "games" });
         break;
       case "rankings":
         setActivePage({ id: "rankings" });
@@ -698,25 +707,41 @@ export function App() {
     return [
       {
         id: "portal",
-        group: "Core",
+        group: "CORE",
         label: career ? "Portal" : "Start",
         short: career ? "POR" : "STA",
         description: career ? "Career command center" : "Start screen",
         onActivate: () => activateCommand("portal")
       },
       {
+        id: "timeline",
+        group: "CORE",
+        label: "Timeline",
+        short: "TIM",
+        description: career ? "Schedule event log" : "Career required",
+        onActivate: () => activateCommand("timeline")
+      },
+      {
+        id: "calendar",
+        group: "CORE",
+        label: "Calendar",
+        short: "CAL",
+        description: career ? "Confirmed month grid" : "Career schedule",
+        onActivate: () => activateCommand("calendar")
+      },
+      {
         id: "inbox",
-        group: "Core",
-        label: "Inbox",
+        group: "CORE",
+        label: "Inbox Preview",
         short: "INB",
-        description: "Task feed preview",
+        description: "Preview only - not live",
         disabled: true,
         preview: true,
         onActivate: () => activateCommand("inbox")
       },
       {
         id: "squad",
-        group: "Program",
+        group: "PROGRAM",
         label: "Squad",
         short: "SQU",
         description: career ? "Inspect locked athlete" : "Browse athletes",
@@ -724,7 +749,7 @@ export function App() {
       },
       {
         id: "training",
-        group: "Program",
+        group: "PROGRAM",
         label: "Training",
         short: "TRN",
         description: career ? "Load and recovery" : "Career required",
@@ -732,32 +757,24 @@ export function App() {
         onActivate: () => activateCommand("training")
       },
       {
-        id: "calendar",
-        group: "Program",
-        label: "Schedule",
-        short: "SCH",
-        description: career ? "Dates and commitments" : "Career schedule",
-        onActivate: () => activateCommand("calendar")
-      },
-      {
-        id: "rankings",
-        group: "Program",
-        label: "Rankings",
-        short: "RNK",
-        description: "Circuit table",
-        onActivate: () => activateCommand("rankings")
-      },
-      {
         id: "tactics",
-        group: "Match",
+        group: "PROGRAM",
         label: "Tactics",
         short: "TAC",
         description: career ? "Advanced match plan" : "Quick tactic setup",
         onActivate: () => activateCommand("tactics")
       },
       {
+        id: "rankings",
+        group: "PROGRAM",
+        label: "Rankings",
+        short: "RNK",
+        description: "Circuit table",
+        onActivate: () => activateCommand("rankings")
+      },
+      {
         id: "live",
-        group: "Match",
+        group: "MATCH",
         label: "Live Match",
         short: "LIV",
         description: liveMatchDescription,
@@ -765,7 +782,7 @@ export function App() {
       },
       {
         id: "reports",
-        group: "Match",
+        group: "MATCH",
         label: "Reports",
         short: "REP",
         description: career?.lastMatchReport ? "Post-match evidence" : "Report pending",
@@ -774,7 +791,7 @@ export function App() {
       },
       {
         id: "scouting",
-        group: "Operations",
+        group: "MATCH",
         label: "Scouting",
         short: "SCT",
         description: career ? "Assignments and reports" : "Career required",
@@ -783,7 +800,7 @@ export function App() {
       },
       {
         id: "staff",
-        group: "Operations",
+        group: "OPERATIONS",
         label: "Staff",
         short: "STF",
         description: career ? "Staff and promises" : "Career required",
@@ -792,7 +809,7 @@ export function App() {
       },
       {
         id: "facilities",
-        group: "Operations",
+        group: "OPERATIONS",
         label: "Facilities",
         short: "FAC",
         description: career ? "Infrastructure" : "Career required",
@@ -801,7 +818,7 @@ export function App() {
       },
       {
         id: "saveManager",
-        group: "System",
+        group: "SYSTEM",
         label: "Save Manager",
         short: "SAV",
         description: activeSavePresent ? "Active slot online" : "Import/export",
@@ -809,7 +826,7 @@ export function App() {
       },
       {
         id: "settings",
-        group: "System",
+        group: "SYSTEM",
         label: "Settings",
         short: "SET",
         description: "Preferences overlay",
@@ -945,7 +962,7 @@ export function App() {
       corruptSavePresent,
       onStartCareer: requestStartCareer,
       onOpenTraining: () => setActivePage({ id: "season" }),
-      onOpenCalendar: () => setActivePage({ id: "calendar" }),
+      onOpenCalendar: () => setActivePage({ id: "calendar", section: "upcoming" }),
       onOpenTournamentHome: openTournamentHome,
       onOpenHome: () => setActivePage({ id: "home" }),
       onOpenLiveMatch: openLiveMatchRoute,
@@ -1114,7 +1131,13 @@ export function App() {
     }
 
     if (activePage.id === "calendar") {
-      return <CareerCalendarPage {...careerPageProps} />;
+      return (
+        <CareerCalendarPage
+          {...careerPageProps}
+          activeSection={activePage.section ?? "upcoming"}
+          onActiveSectionChange={openScheduleSection}
+        />
+      );
     }
 
     if (activePage.id === "rankings") {
@@ -1386,23 +1409,6 @@ function CommandSidebar(props: {
 }) {
   return (
     <aside className="sidebar command-sidebar" aria-label="Primary command sidebar">
-      <div className="sidebar-brand">
-        <div className="sidebar-logo">BM</div>
-        <div>
-          <h2>Command Rail</h2>
-          <p>Local-first career shell</p>
-        </div>
-        <button
-          className="sidebar-collapse-button"
-          type="button"
-          aria-label={props.collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          aria-expanded={!props.collapsed}
-          onClick={props.onToggleCollapsed}
-        >
-          {props.collapsed ? ">" : "<"}
-        </button>
-      </div>
-
       <nav className="sidenav command-groups" aria-label="Primary commands">
         {commandGroupOrder.map((group) => (
           <section className="command-group" key={group} aria-labelledby={`command-group-${group}`}>
@@ -1421,12 +1427,12 @@ function CommandSidebar(props: {
                       data-short={command.short}
                       disabled={command.disabled}
                       aria-current={active ? "page" : undefined}
-                      aria-label={`${command.label}${command.preview ? " preview" : ""}: ${command.description}`}
+                      aria-label={`${command.label}${command.preview ? " preview-only" : ""}: ${command.description}`}
                       title={`${command.label}: ${command.description}`}
                       onClick={command.onActivate}
                     >
                       <span>{command.label}</span>
-                      {command.preview && <small>Preview</small>}
+                      {command.preview && <small>Preview only</small>}
                     </button>
                   );
                 })}
@@ -1434,6 +1440,16 @@ function CommandSidebar(props: {
           </section>
         ))}
       </nav>
+
+      <button
+        className="sidebar-collapse-button"
+        type="button"
+        aria-label={props.collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        aria-expanded={!props.collapsed}
+        onClick={props.onToggleCollapsed}
+      >
+        {props.collapsed ? ">" : "<"}
+      </button>
 
       <button
         className="sidebar-resize-handle"

@@ -15,12 +15,13 @@ import { advanceTournament, createTournament, getManagedMatchContext } from "../
 
 const expectedPrimaryCommandLabels = [
   "Portal",
-  "Inbox",
+  "Timeline",
+  "Calendar",
+  "Inbox Preview",
   "Squad",
   "Training",
-  "Schedule",
-  "Rankings",
   "Tactics",
+  "Rankings",
   "Live Match",
   "Reports",
   "Scouting",
@@ -1204,14 +1205,19 @@ test("exposes the grouped management shell as the primary command surface", asyn
 
   await startNewCareer(page);
   const commandRail = page.getByRole("navigation", { name: "Primary commands" });
+  const sidebar = page.getByRole("complementary", { name: "Primary command sidebar" });
 
-  for (const group of ["Core", "Program", "Match", "Operations", "System"]) {
+  await expect(sidebar.getByText("BM", { exact: true })).toHaveCount(0);
+  await expect(sidebar.getByText("Command Rail")).toHaveCount(0);
+  await expect(sidebar.getByText("Local-first career shell")).toHaveCount(0);
+
+  for (const group of ["CORE", "PROGRAM", "MATCH", "OPERATIONS", "SYSTEM"]) {
     await expect(commandRail.getByRole("heading", { name: group })).toBeVisible();
   }
 
   await expect(commandRail.getByRole("button", { name: /Portal/ })).toHaveAttribute("aria-current", "page");
   await expectPrimaryCommandLabels(commandRail);
-  await expect(commandRail.getByRole("button", { name: /Inbox preview/ })).toBeDisabled();
+  await expect(commandRail.getByRole("button", { name: /Inbox Preview preview-only/ })).toBeDisabled();
   await expect(page.getByRole("heading", { name: "Career Workspace Map" })).toHaveCount(0);
   await expect(page.getByRole("region", { name: "Career workspace navigation" })).toHaveCount(0);
 
@@ -1219,9 +1225,15 @@ test("exposes the grouped management shell as the primary command surface", asyn
   await expect(page.getByRole("heading", { name: "Load Management" })).toBeVisible();
   await expect(commandRail.getByRole("button", { name: /Training/ })).toHaveAttribute("aria-current", "page");
 
-  await commandRail.getByRole("button", { name: /Schedule/ }).click();
+  await commandRail.getByRole("button", { name: /Timeline/ }).click();
   await expect(page.getByRole("heading", { name: "Schedule", exact: true })).toBeVisible();
-  await expect(commandRail.getByRole("button", { name: /Schedule/ })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("tab", { name: "Timeline" })).toHaveAttribute("aria-selected", "true");
+  await expect(commandRail.getByRole("button", { name: /Timeline/ })).toHaveAttribute("aria-current", "page");
+
+  await commandRail.getByRole("button", { name: /Calendar/ }).click();
+  await expect(page.getByRole("tab", { name: "Calendar" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("heading", { name: "Calendar" })).toBeVisible();
+  await expect(commandRail.getByRole("button", { name: /Calendar/ })).toHaveAttribute("aria-current", "page");
 
   await commandRail.getByRole("button", { name: "Rankings: Circuit table" }).click();
   await expect(page.getByRole("heading", { name: "Circuit Rankings" })).toBeVisible();
@@ -1249,15 +1261,17 @@ test("routes the Live Match command through career and quick match paths", async
   await commandRail.getByRole("button", { name: /Live Match/ }).click();
   await expect(page.getByRole("heading", { name: "Advanced Tactics Creator" })).toBeVisible();
 
-  await commandRail.getByRole("button", { name: /Schedule/ }).click();
+  await commandRail.getByRole("button", { name: /Calendar/ }).click();
+  await page.getByRole("tab", { name: "Upcoming" }).click();
   await page.getByRole("button", { name: "Enter Event" }).first().click();
   await page.getByRole("button", { name: "Advance Day" }).click();
   await page.getByRole("button", { name: "Advance Day" }).click();
   await expect(page.getByRole("heading", { name: "Opponent Briefing" })).toBeVisible();
   await expect(commandRail.getByRole("button", { name: /Live Match/ })).toHaveAttribute("aria-current", "page");
 
-  await commandRail.getByRole("button", { name: /Schedule/ }).click();
+  await commandRail.getByRole("button", { name: /Timeline/ }).click();
   await expect(page.getByRole("heading", { name: "Schedule", exact: true })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Timeline" })).toHaveAttribute("aria-selected", "true");
   await commandRail.getByRole("button", { name: /Live Match/ }).click();
   await expect(page.getByRole("heading", { name: "Opponent Briefing" })).toBeVisible();
 
@@ -1279,7 +1293,7 @@ test("routes the Live Match command through career and quick match paths", async
   await expect(page.getByRole("heading", { name: "Next Opponent" })).toBeVisible();
   const quickCommandRail = page.getByRole("navigation", { name: "Primary commands" });
   await expect(quickCommandRail.getByRole("button", { name: /Live Match/ })).toHaveAttribute("aria-current", "page");
-  await quickCommandRail.getByRole("button", { name: /Schedule/ }).click();
+  await quickCommandRail.getByRole("button", { name: /Calendar/ }).click();
   await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
   await quickCommandRail.getByRole("button", { name: /Live Match/ }).click();
   await expect(page.getByRole("heading", { name: "Next Opponent" })).toBeVisible();
@@ -1326,8 +1340,9 @@ test("surfaces dense page contracts and Save Manager metadata", async ({ page })
   await expect(page.getByLabel("Training status")).toContainText("Selected block");
   await expect(page.getByLabel("Training status")).toContainText("Next action");
 
-  await commandRail.getByRole("button", { name: /Schedule/ }).click();
+  await commandRail.getByRole("button", { name: /Calendar/ }).click();
   await expect(page.getByRole("heading", { name: "Schedule", exact: true })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Calendar" })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByLabel("Schedule status")).toContainText("Active event");
   await expect(page.getByLabel("Schedule status")).toContainText("Next match/draw/deadline");
 

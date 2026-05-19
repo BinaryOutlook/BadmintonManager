@@ -89,6 +89,7 @@ What is now stable:
 - TIX-017B now surfaces the completed tournament universe on tournament homes and archives: champion/runner-up truth, managed-player result context, bracket or reconstructed match-record evidence, ranking-ledger notes, and honest legacy fallback states without changing tournament simulation or player-profile selectors
 - TIX-016 now renames the top-level career planning surface to `Schedule`, preserves the old chronological commitment list under `Timeline`, and adds a confirmed month-grid `Calendar` that hides future knockout rounds until the managed athlete qualifies
 - TIX-019 now makes Player Profile Career records universe-wide: W-L, win percentage, titles, runner-up finishes, finals, head-to-head leaders, and optional managed-player spotlights derive from recorded `career.matchHistory` and `career.playerAchievements` rather than managed-player-only slices or bracket snapshots
+- TIX-018 now mediates the sidebar schedule rail by removing the duplicated sidebar brand/player identity block, ordering commands around the requested Core/Program/Match/Operations/System flow, marking `Inbox Preview` as disabled preview-only, and routing `Timeline`/`Calendar` commands into the `Schedule` subtabs
 
 ## Completed
 
@@ -186,6 +187,7 @@ What is now stable:
 - [x] implemented TIX-017B tournament-home/archive presentation for complete event outcomes, including non-managed champion/runner-up display, managed result side-by-side context, bracket/reconstructed evidence, ranking truth notes, and non-fabricating legacy fallbacks
 - [x] implemented TIX-016 Schedule hub separation with Upcoming, Past Events, Timeline, and confirmed month-grid Calendar tabs
 - [x] implemented TIX-019 universe-wide player career records with non-managed H2H support, finals counts, managed-player spotlight context, old-save empty states, and duplicate-safe selector coverage
+- [x] implemented TIX-018 sidebar schedule rail mediation with a pure navigation sidebar, disabled Inbox Preview, and Timeline/Calendar shortcuts into the Schedule split
 
 ## In Progress
 
