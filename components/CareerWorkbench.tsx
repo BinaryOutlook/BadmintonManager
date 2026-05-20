@@ -4170,7 +4170,7 @@ export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddr
           </div>
         </details>
 
-        <section className="command-panel">
+        <section className="command-panel tournament-secondary-panel tournament-timeline-panel">
           <div className="panel-header">
             <h2>Timeline</h2>
             <span>{event.drawDate} draw</span>
@@ -4190,7 +4190,7 @@ export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddr
           </div>
         </section>
 
-        <section className="command-panel">
+        <section className="command-panel tournament-secondary-panel tournament-eligibility-panel">
           <div className="panel-header">
             <h2>Eligibility</h2>
             <span>{tierGate.allowed ? "clear" : "blocked"}</span>
@@ -4206,7 +4206,7 @@ export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddr
           </div>
         </section>
 
-        <section className="command-panel">
+        <section className="command-panel tournament-secondary-panel tournament-rewards-panel">
           <div className="panel-header">
             <h2>Rewards And Stakes</h2>
             <span>{event.tier}</span>
@@ -4235,7 +4235,7 @@ export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddr
           </div>
         </section>
 
-        <section className="command-panel">
+        <section className="command-panel tournament-secondary-panel tournament-field-panel">
           <div className="panel-header">
             <h2>Field And Scouting</h2>
             <span>{seedingSnapshot.status}</span>
