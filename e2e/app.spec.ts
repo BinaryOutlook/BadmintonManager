@@ -9,7 +9,7 @@ import {
   tournamentMatchArchiveIds,
   tournamentMatchArchiveScorelines
 } from "../game/career/events";
-import { awardRankingPoints } from "../game/career/rankings";
+import { appendRankingResultsAndRebuild, createRankingResult } from "../game/career/rankings";
 import type { MatchResult, Side } from "../game/core/models";
 import { advanceTournament, createTournament, getManagedMatchContext } from "../game/tournament/tournament";
 
@@ -77,6 +77,15 @@ function forcedStraightGamesResult(winner: Side): MatchResult {
   };
 }
 
+async function fillImportSaveJson(page: Page, value: string) {
+  await page.getByLabel("Import Save JSON", { exact: true }).evaluate((element, text) => {
+    const textarea = element as HTMLTextAreaElement;
+    const valueSetter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
+    valueSetter?.call(textarea, text);
+    textarea.dispatchEvent(new Event("input", { bubbles: true }));
+  }, value);
+}
+
 function createBetweenRoundsCareerSave() {
   const managedPlayerId = seededPlayers[0].player.id;
   const career = createInitialCareerState(managedPlayerId, 61001);
@@ -110,7 +119,7 @@ function createBetweenRoundsCareerSave() {
   const nextOpponentId = nextContext.playerAId === managedPlayerId ? nextContext.playerBId : nextContext.playerAId;
   const opponentId = context.playerAId === managedPlayerId ? context.playerBId : context.playerAId;
   const save = {
-    version: 10,
+    version: 11,
     selectedPlayerId: managedPlayerId,
     plannedTacticKey: "balancedControl",
     seed: 61001,
@@ -194,7 +203,7 @@ function createPostMatchCloseoutCareerSave(outcome: "loss" | "title") {
   });
   const placementKey = won ? "champion" : context.roundName;
   const save = {
-    version: 10,
+    version: 11,
     selectedPlayerId: managedPlayerId,
     plannedTacticKey: "balancedControl",
     seed: outcome === "title" ? 62002 : 62001,
@@ -277,36 +286,45 @@ function createCompletedNonManagedArchiveSave() {
     tournament: completedTournament,
     date: archiveDate
   });
-  const rankingsWithChampion = awardRankingPoints({
-    rankings: withMatchRecords.rankings,
-    playerId: finalMatch.winnerId,
-    eventId: event.id,
-    round: "champion",
-    points: event.rankingPoints.champion,
-    date: archiveDate,
-    seasonId: withMatchRecords.seasonId,
-    tier: event.tier
-  });
-  const rankingsWithRunnerUp = awardRankingPoints({
-    rankings: rankingsWithChampion,
-    playerId: runnerUpId,
-    eventId: event.id,
-    round: "F",
-    points: event.rankingPoints.F,
-    date: archiveDate,
-    seasonId: withMatchRecords.seasonId,
-    tier: event.tier
+  const withRankingResults = appendRankingResultsAndRebuild({
+    career: withMatchRecords,
+    results: [
+      createRankingResult({
+        seasonId: withMatchRecords.seasonId,
+        playerId: finalMatch.winnerId,
+        eventId: event.id,
+        eventName: event.name,
+        tier: event.tier,
+        date: archiveDate,
+        resultRound: "champion",
+        points: event.rankingPoints.champion,
+        source: "archive_import",
+        artificial: false
+      }),
+      createRankingResult({
+        seasonId: withMatchRecords.seasonId,
+        playerId: runnerUpId,
+        eventId: event.id,
+        eventName: event.name,
+        tier: event.tier,
+        date: archiveDate,
+        resultRound: "F",
+        points: event.rankingPoints.F,
+        source: "archive_import",
+        artificial: false
+      })
+    ],
+    asOfDate: archiveDate
   });
   const save = {
-    version: 10,
+    version: 11,
     selectedPlayerId: managedPlayerId,
     plannedTacticKey: "balancedControl",
     seed,
     tournament: null,
     liveMatch: null,
     career: {
-      ...withMatchRecords,
-      rankings: rankingsWithRunnerUp,
+      ...withRankingResults,
       eventHistory: [
         {
           eventId: event.id,
@@ -926,7 +944,7 @@ test("can complete and reload the career core slice with tactical viewer proof",
 
   await startNewCareer(page);
   await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
-  await expect(page.getByRole("main")).toContainText(/Rank 1/);
+  await expect(page.getByRole("main")).toContainText(/Rank \d+/);
 
   await page.getByRole("button", { name: "Training Desk" }).click();
   await expect(page.getByRole("heading", { name: "Load Management" })).toBeVisible();
@@ -1509,20 +1527,61 @@ test("opens the full career Rankings table with managed highlight and bounded mo
     await expect(page.getByText(`1-8 of ${seededPlayers.length}`, { exact: true })).toBeVisible();
     await expect(page.getByLabel("Rankings pagination").getByRole("button", { name: "Prev" })).toBeDisabled();
     await expect(page.getByLabel("Rankings pagination").getByRole("button", { name: "Next" })).toBeEnabled();
-    await expect(page.getByRole("row", { name: /Rank 1 Adrian Koh managed athlete/i })).toContainText("Managed athlete");
-    await expect(page.getByRole("row", { name: /Rank 1 Adrian Koh managed athlete/i })).toContainText("SGP");
-    await expect(page.getByRole("row", { name: /Rank 1 Adrian Koh managed athlete/i })).toContainText("pts");
-    await page.getByRole("row", { name: /Rank 1 Adrian Koh managed athlete/i }).getByRole("button", { name: "Adrian Koh" }).click();
-    await expect(page.getByRole("heading", { name: "Adrian Koh" })).toBeVisible();
+    const rankingSnapshot = await page.evaluate(() => {
+      const raw = window.localStorage.getItem("badminton-manager-save");
+      if (!raw) {
+        throw new Error("Expected active career save.");
+      }
+
+      const save = JSON.parse(raw);
+      const rankings = [...save.career.rankings].sort(
+        (left, right) => left.rank - right.rank || left.playerId.localeCompare(right.playerId)
+      );
+
+      return {
+        managedPlayerId: save.career.program.managedPlayerId,
+        rankings: rankings.map((entry) => ({ playerId: entry.playerId, rank: entry.rank }))
+      };
+    });
+    const firstRanking = rankingSnapshot.rankings[0]!;
+    const ninthRanking = rankingSnapshot.rankings[8]!;
+    const managedRanking = rankingSnapshot.rankings.find(
+      (entry) => entry.playerId === rankingSnapshot.managedPlayerId
+    )!;
+    const firstName = playerMap[firstRanking.playerId].name;
+    const ninthName = playerMap[ninthRanking.playerId].name;
+    const managedPlayer = playerMap[rankingSnapshot.managedPlayerId];
+    const managedPage = Math.floor((managedRanking.rank - 1) / 8);
+    const pagination = page.getByLabel("Rankings pagination");
+
+    await expect(page.getByRole("row", { name: new RegExp(`Rank 1 ${escapeRegExp(firstName)}`, "i") })).toContainText("pts");
+    for (let pageAdvance = 0; pageAdvance < managedPage; pageAdvance += 1) {
+      await pagination.getByRole("button", { name: "Next" }).click();
+    }
+    const managedRow = page.getByRole("row", {
+      name: new RegExp(`Rank ${managedRanking.rank} ${escapeRegExp(managedPlayer.name)} managed athlete`, "i")
+    });
+    await expect(managedRow).toContainText("Managed athlete");
+    await expect(managedRow).toContainText(managedPlayer.nationality);
+    await expect(managedRow).toContainText("pts");
+    await managedRow.getByRole("button", { name: managedPlayer.name }).click();
+    await expect(page.getByRole("heading", { name: managedPlayer.name })).toBeVisible();
     await commandRail.getByRole("button", { name: "Rankings: Circuit table" }).click();
     await expect(page.getByRole("heading", { name: "Circuit Rankings" })).toBeVisible();
-    await page.getByLabel("Rankings pagination").getByRole("button", { name: "Next" }).click();
+    for (let pageAdvance = 0; pageAdvance < 6; pageAdvance += 1) {
+      const prevButton = pagination.getByRole("button", { name: "Prev" });
+      if (await prevButton.isDisabled()) {
+        break;
+      }
+      await prevButton.click();
+    }
+    await pagination.getByRole("button", { name: "Next" }).click();
     await expect(page.getByText(`9-16 of ${seededPlayers.length}`, { exact: true })).toBeVisible();
-    await expect(page.getByRole("row", { name: /Rank 9 Arif Hadi/i })).toBeVisible();
-    await page.getByLabel("Rankings pagination").getByRole("button", { name: "Prev" }).click();
-    await expect(page.getByRole("row", { name: /Rank 1 Adrian Koh managed athlete/i })).toBeVisible();
+    await expect(page.getByRole("row", { name: new RegExp(`Rank 9 ${escapeRegExp(ninthName)}`, "i") })).toBeVisible();
+    await pagination.getByRole("button", { name: "Prev" }).click();
+    await expect(page.getByRole("row", { name: new RegExp(`Rank 1 ${escapeRegExp(firstName)}`, "i") })).toBeVisible();
     for (let pageAdvance = 0; pageAdvance < 5; pageAdvance += 1) {
-      await page.getByLabel("Rankings pagination").getByRole("button", { name: "Next" }).click();
+      await pagination.getByRole("button", { name: "Next" }).click();
     }
     await expect(page.getByText(`41-${seededPlayers.length} of ${seededPlayers.length}`, { exact: true })).toBeVisible();
     await expect(page.locator(".rankings-row:not(.rankings-row-head)")).toHaveCount(7);
@@ -1639,7 +1698,7 @@ test("manages export import delete and overwrite warnings from the visible Save 
   });
 
   await openSaveManager(page);
-  await page.getByLabel("Import Save JSON", { exact: true }).fill(exportedSave);
+  await fillImportSaveJson(page, exportedSave);
   await page.getByRole("button", { name: "Preview Import" }).click();
   await expect(page.getByText(/Import parsed, validated, and migrated/)).toBeVisible();
   await page.getByRole("button", { name: "Confirm Import" }).click();

@@ -21,17 +21,17 @@ Settings and shell preferences use separate local-storage keys and are not part 
 
 ## Current Save Versions
 
-The current top-level persisted save version is `10`.
+The current top-level persisted save version is `11`.
 
-The current career schema version inside a version-10 save is `8`.
+The current career schema version inside a version-11 save is `9`.
 
-`game/store/save.ts` supports legacy top-level versions `2` through `9` and migrates them to the current `PersistedSave` shape before hydration or import confirmation.
+`game/store/save.ts` supports legacy top-level versions `2` through `10` and migrates them to the current `PersistedSave` shape before hydration or import confirmation.
 
 Current payload shape, simplified:
 
 ```ts
 PersistedSave = {
-  version: 10;
+  version: 11;
   selectedPlayerId: string;
   plannedTacticKey: TacticKey;
   seed: number;
@@ -63,7 +63,7 @@ Quarantine writes the raw invalid active save to `badminton-manager-save-corrupt
 
 Current responsibilities include:
 
-- migrating legacy tournament-only saves to top-level version `10`
+- migrating legacy tournament-only saves to top-level version `11`
 - upgrading career versions through ecosystem, rivals, tactics, facilities/media, event history, match history, player achievements, universe event records, and tactical-viewer defaults
 - defaulting missing `career.universeEvents` to `[]` before runtime hydration
 - hydrating career events from the current fictional catalog
@@ -157,3 +157,25 @@ When save shape, migration, import, or persistence behavior changes, tests shoul
 - legacy label/name/source normalization when affected
 
 The focused file today is `tests/unit/save-migration.test.ts`; browser proof for the Save Manager lives in `e2e/app.spec.ts`.
+
+## Version 11 Rolling Ranking Migration
+
+TIX-023 bumps the active save shape to top-level version `11` and career version `9`.
+
+New career fields:
+
+- `career.rankingResults`
+- `career.rankingSettings`
+- extended cached `career.rankings` rows with counted-result metadata
+- optional `fieldSnapshot` on universe event records
+
+Migration rules:
+
+- saves without `rankingResults` remain loadable
+- old aggregate ranking rows are bridged with honest `legacy_snapshot` ranking rows
+- dated old ranking history rows become `archive_import` ranking results when event/date evidence exists
+- migration does not fabricate precise old brackets or pre-save match truth
+- migrated saves rebuild `career.rankings` from the resulting ledger
+- boot load and import preview both run migration before runtime hydration
+
+`legacy_snapshot` rows are a compatibility bridge, not match history. They may support old-save continuity, but they must not masquerade as played tournament records in player profiles.

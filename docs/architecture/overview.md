@@ -36,11 +36,11 @@ Persistence is browser-local and portable:
 
 - active local save key: `badminton-manager-save`
 - corrupt active-save quarantine key: `badminton-manager-save-corrupt`
-- current top-level save version: `10`
-- current career schema version: `8`
+- current top-level save version: `11`
+- current career schema version: `9`
 - import path: parse -> validate -> migrate -> universe simulation through saved date -> preview -> confirm
 
-Version `10` / career `8` saves include `career.universeEvents`, the tournament-world archive that backs completed event homes, rankings, match records, and player achievements even when the managed athlete skipped an event. `game/store/save.ts` owns load/import migration and runs `simulateUniverseThroughDate()` through the saved career date; React routes must render the resolved world state rather than trigger universe simulation.
+Version `11` / career `9` saves include `career.universeEvents`, `career.rankingResults`, and rolling ranking settings. Universe records back completed event homes, match records, player achievements, and field snapshots even when the managed athlete skipped an event. `game/store/save.ts` owns load/import migration and runs `simulateUniverseThroughDate()` through the saved career date; React routes must render the resolved world state rather than trigger universe simulation.
 
 See `docs/reference/save-and-persistence.md` for the persistence contract.
 

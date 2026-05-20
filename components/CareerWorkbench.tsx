@@ -542,10 +542,12 @@ function rankingStatus(entry: CareerState["rankings"][number]) {
   const latest = entry.eventHistory.at(-1);
 
   if (!latest) {
-    return "Steady";
+    return entry.countedResults > 0
+      ? `${entry.countedResults}/${entry.eligibleResults} counted`
+      : "No counted results";
   }
 
-  return `Latest ${latest.round} +${points(latest.points)}`;
+  return `Latest ${latest.round} +${points(latest.points)} / ${entry.countedResults} counted`;
 }
 
 const RANKINGS_PAGE_SIZE = 8;
@@ -911,6 +913,20 @@ function managedOutcomeSummary(args: {
     label: `${result} / ${latestManagedRecord.round}`,
     detail: `${latestManagedRecord.scoreline} vs ${playerDisplayName(opponentId)} (${sourceLabelForRecord(latestManagedRecord.source)}).`
   };
+}
+
+function fieldChangeSummary(record: CareerState["universeEvents"][number] | undefined) {
+  const snapshot = record?.fieldSnapshot;
+
+  if (!snapshot) {
+    return "Final fields publish through the draw engine once the event reaches draw day.";
+  }
+
+  if (snapshot.nonEntries.length === 0 && snapshot.alternateEntries.length === 0) {
+    return "Final field matched the invited list; seeds were assigned from current rolling rank.";
+  }
+
+  return `${snapshot.nonEntries.length} ranked invitee(s) skipped; ${snapshot.alternateEntries.length} alternate(s) entered before final rank-based seeding.`;
 }
 
 function modifierRows(modifiers: FacilityModifier) {
@@ -1387,13 +1403,11 @@ export function CareerRankingsPage(props: CareerPageProps) {
   const managedIndex = orderedRankings.findIndex((entry) => entry.playerId === managedPlayerId);
   const managedRanking = managedIndex >= 0 ? orderedRankings[managedIndex] : undefined;
   const leader = orderedRankings[0];
-  const last = orderedRankings.at(-1);
   const playerAhead = managedIndex > 0 ? orderedRankings[managedIndex - 1] : undefined;
   const playerBehind = managedIndex >= 0 ? orderedRankings[managedIndex + 1] : undefined;
   const leaderPlayer = leader ? playerMap[leader.playerId] : undefined;
   const gapToLeader = leader && managedRanking ? Math.max(0, leader.points - managedRanking.points) : 0;
   const gapAhead = playerAhead && managedRanking ? Math.max(0, playerAhead.points - managedRanking.points) : 0;
-  const pointsSpread = leader && last ? Math.max(0, leader.points - last.points) : 0;
 
   return (
     <section className="screen-shell career-page rankings-page" data-page-contract="rankings">
@@ -1402,8 +1416,9 @@ export function CareerRankingsPage(props: CareerPageProps) {
           <p className="screen-kicker">Career Rankings</p>
           <h1 className="screen-title">Circuit Rankings</h1>
           <p className="screen-copy">
-            Full fictional circuit table sorted by the current ranks stored in the career save. Names open scout profiles,
-            and your managed athlete is marked in-row as well as highlighted.
+            BWF-inspired, fictional rankings built from dated result rows inside a rolling 52-week window. Only the best
+            {career.rankingSettings.maxCountedResults} eligible results count toward ranking points; season race points
+            remain separate from the world list.
           </p>
         </div>
         <div className="career-action-row">
@@ -1444,8 +1459,12 @@ export function CareerRankingsPage(props: CareerPageProps) {
           <strong>{points(gapToLeader)}</strong>
         </div>
         <div>
-          <span>Field spread</span>
-          <strong>{points(pointsSpread)}</strong>
+          <span>Window</span>
+          <strong>{career.rankingSettings.windowDays} days</strong>
+        </div>
+        <div>
+          <span>Best cap</span>
+          <strong>{career.rankingSettings.maxCountedResults}</strong>
         </div>
       </section>
 
@@ -1491,7 +1510,7 @@ export function CareerRankingsPage(props: CareerPageProps) {
             </strong>
             <small>
               {managedRanking
-                ? `${points(managedRanking.points)} total, ${points(managedRanking.seasonPoints)} season race.`
+                ? `${points(managedRanking.points)} rolling, ${points(managedRanking.seasonPoints)} season race.`
                 : "No ranking row found in the career save."}
             </small>
           </div>
@@ -1526,7 +1545,9 @@ export function CareerRankingsPage(props: CareerPageProps) {
             <span role="columnheader">Rank</span>
             <span role="columnheader">Player</span>
             <span role="columnheader">Nationality</span>
-            <span role="columnheader">Points</span>
+            <span role="columnheader">Rolling points</span>
+            <span role="columnheader">Counted</span>
+            <span role="columnheader">Next expiry</span>
             <span role="columnheader">Season race</span>
             <span role="columnheader">Status</span>
           </div>
@@ -1560,6 +1581,14 @@ export function CareerRankingsPage(props: CareerPageProps) {
                 </div>
                 <div className="rankings-cell" role="cell" data-label="Points">
                   <strong>{points(entry.points)}</strong>
+                </div>
+                <div className="rankings-cell" role="cell" data-label="Counted">
+                  <strong>{entry.countedResults}/{entry.eligibleResults}</strong>
+                  <small>best results</small>
+                </div>
+                <div className="rankings-cell" role="cell" data-label="Next expiry">
+                  <strong>{entry.nextExpiryDate ?? "None"}</strong>
+                  <small>{entry.bestResultPoints ? `Best ${points(entry.bestResultPoints)}` : "No active row"}</small>
                 </div>
                 <div className="rankings-cell" role="cell" data-label="Season race">
                   <strong>{points(entry.seasonPoints)}</strong>
@@ -3752,6 +3781,8 @@ export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddr
                 detail: "Bracket evidence appears after the event reaches match day."
               };
   const fieldPressure = pressureForEvent(career, event.id);
+  const fieldSnapshot = universeRecord?.fieldSnapshot ?? null;
+  const fieldSummary = fieldChangeSummary(universeRecord);
   const championName = eventOutcome?.championId ? playerDisplayName(eventOutcome.championId) : null;
   const runnerUpName = eventOutcome?.runnerUpId ? playerDisplayName(eventOutcome.runnerUpId) : null;
   const mainActionLabel =
@@ -4043,6 +4074,37 @@ export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddr
           </div>
         </section>
 
+        {fieldSnapshot ? (
+          <section className="command-panel command-panel-full">
+            <div className="panel-header">
+              <h2>Field Changes</h2>
+              <span>final seeds after alternates</span>
+            </div>
+            <div className="career-event-brief calendar-brief-grid">
+              <div>
+                <span>Invited</span>
+                <strong>{fieldSnapshot.invitedPlayerIds.length}</strong>
+                <small>Initial rank invitations before non-entry resolution.</small>
+              </div>
+              <div>
+                <span>Skipped</span>
+                <strong>{fieldSnapshot.nonEntries.length}</strong>
+                <small>{fieldSnapshot.nonEntries.slice(0, 3).map((entry) => entry.reason.replace(/_/g, " ")).join(", ") || "No skipped invitees."}</small>
+              </div>
+              <div>
+                <span>Alternates</span>
+                <strong>{fieldSnapshot.alternateEntries.length}</strong>
+                <small>{fieldSnapshot.alternateEntries.slice(0, 3).map((entry) => playerDisplayName(entry.playerId)).join(", ") || "No alternates needed."}</small>
+              </div>
+              <div>
+                <span>Final seeding</span>
+                <strong>{fieldSnapshot.finalPlayerIds.length}</strong>
+                <small>{fieldSummary}</small>
+              </div>
+            </div>
+          </section>
+        ) : null}
+
         {displayTournament ? (
           <KnockoutTree
             tournament={displayTournament}
@@ -4184,8 +4246,8 @@ export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddr
             </div>
             <div>
               <span>Draw Honesty</span>
-              <strong>{displayTournament ? "Actual draw" : "Projected until match day"}</strong>
-              <small>Presentation does not alter simulation, rankings, or match results.</small>
+              <strong>{displayTournament ? "Actual draw" : fieldSnapshot ? "Final field published" : "Projected until match day"}</strong>
+              <small>{fieldSummary}</small>
             </div>
           </div>
         </section>

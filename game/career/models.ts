@@ -735,6 +735,46 @@ export const careerUniverseTournamentPlacementSchema = z.object({
 });
 export type CareerUniverseTournamentPlacement = z.infer<typeof careerUniverseTournamentPlacementSchema>;
 
+export const eventNonEntryReasonSchema = z.enum([
+  "rest",
+  "travel",
+  "fatigue",
+  "injury_management",
+  "schedule_choice",
+  "tier_priority",
+  "wildcard_not_taken"
+]);
+export type EventNonEntryReason = z.infer<typeof eventNonEntryReasonSchema>;
+
+export const eventFieldChangeSchema = z.object({
+  eventId: z.string(),
+  playerId: z.string(),
+  action: z.enum(["non_entry", "alternate_in"]),
+  reason: z.union([eventNonEntryReasonSchema, z.literal("alternate_queue")]),
+  replacedPlayerId: z.string().optional()
+});
+export type EventFieldChange = z.infer<typeof eventFieldChangeSchema>;
+
+export const eventFieldSeedSchema = z.object({
+  seed: z.number().int().positive(),
+  playerId: z.string(),
+  rank: z.number().int().positive(),
+  points: z.number().int().nonnegative()
+});
+export type EventFieldSeed = z.infer<typeof eventFieldSeedSchema>;
+
+export const eventFieldSnapshotSchema = z.object({
+  eventId: z.string(),
+  drawSize: z.number().int().positive(),
+  asOfDate: z.string(),
+  invitedPlayerIds: z.array(z.string()),
+  nonEntries: z.array(eventFieldChangeSchema),
+  alternateEntries: z.array(eventFieldChangeSchema),
+  finalPlayerIds: z.array(z.string()),
+  seeds: z.array(eventFieldSeedSchema)
+});
+export type EventFieldSnapshot = z.infer<typeof eventFieldSnapshotSchema>;
+
 export const careerUniverseTournamentRecordSchema = z.object({
   seasonId: z.string(),
   eventId: z.string(),
@@ -748,7 +788,8 @@ export const careerUniverseTournamentRecordSchema = z.object({
   championId: z.string().nullable(),
   runnerUpId: z.string().nullable(),
   placements: z.array(careerUniverseTournamentPlacementSchema),
-  managedPlayerResult: universeManagedPlayerResultSchema
+  managedPlayerResult: universeManagedPlayerResultSchema,
+  fieldSnapshot: eventFieldSnapshotSchema.nullable().default(null)
 });
 export type CareerUniverseTournamentRecord = z.infer<typeof careerUniverseTournamentRecordSchema>;
 
@@ -775,9 +816,57 @@ export const rankingEntrySchema = z.object({
       seasonId: z.string().optional(),
       tier: careerTierSchema.optional()
     })
-  )
+  ),
+  countedResults: z.number().int().nonnegative().default(0),
+  eligibleResults: z.number().int().nonnegative().default(0),
+  bestResultPoints: z.number().int().nonnegative().default(0),
+  nextExpiryDate: z.string().nullable().default(null),
+  movement: z.number().int().nullable().default(null),
+  countedResultIds: z.array(z.string()).default([])
 });
 export type RankingEntry = z.infer<typeof rankingEntrySchema>;
+
+export const rankingResultSourceSchema = z.enum([
+  "legacy_snapshot",
+  "bootstrap_sim",
+  "played",
+  "quick_sim",
+  "universe_sim",
+  "backfill_sim",
+  "archive_import"
+]);
+export type RankingResultSource = z.infer<typeof rankingResultSourceSchema>;
+
+export const rankingResultRoundSchema = z.enum(["R32", "R16", "QF", "SF", "F", "champion"]);
+export type RankingResultRound = z.infer<typeof rankingResultRoundSchema>;
+
+export const rankingResultSchema = z.object({
+  id: z.string(),
+  seasonId: z.string(),
+  playerId: z.string(),
+  eventId: z.string(),
+  eventName: z.string(),
+  tier: careerTierSchema,
+  date: z.string(),
+  resultRound: rankingResultRoundSchema,
+  points: z.number().int().nonnegative(),
+  source: rankingResultSourceSchema,
+  artificial: z.boolean()
+});
+export type RankingResult = z.infer<typeof rankingResultSchema>;
+
+export const rankingSettingsSchema = z.object({
+  windowDays: z.number().int().positive().default(364),
+  maxCountedResults: z.number().int().positive().default(10),
+  bootstrapWeeks: z.number().int().positive().default(52)
+});
+export type RankingSettings = z.infer<typeof rankingSettingsSchema>;
+
+export const defaultRankingSettings = {
+  windowDays: 364,
+  maxCountedResults: 10,
+  bootstrapWeeks: 52
+} satisfies RankingSettings;
 
 export const preMatchBriefSchema = z.object({
   eventId: z.string(),
@@ -917,9 +1006,16 @@ export const careerStateV7Schema = careerStateV5Schema.extend({
 });
 export type CareerStateV7 = z.infer<typeof careerStateV7Schema>;
 
-export const careerStateSchema = careerStateV7Schema.extend({
+export const careerStateV8Schema = careerStateV7Schema.extend({
   version: z.literal(8),
   universeEvents: z.array(careerUniverseTournamentRecordSchema).default([])
+});
+export type CareerStateV8 = z.infer<typeof careerStateV8Schema>;
+
+export const careerStateSchema = careerStateV8Schema.extend({
+  version: z.literal(9),
+  rankingResults: z.array(rankingResultSchema).default([]),
+  rankingSettings: rankingSettingsSchema.default(defaultRankingSettings)
 });
 export type CareerState = z.infer<typeof careerStateSchema>;
 

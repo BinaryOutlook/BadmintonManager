@@ -1351,6 +1351,8 @@ textarea:focus-visible {
     minmax(12rem, 1.45fr)
     minmax(6.8rem, 0.72fr)
     minmax(7.2rem, 0.72fr)
+    minmax(6.4rem, 0.64fr)
+    minmax(8.4rem, 0.84fr)
     minmax(7.8rem, 0.78fr)
     minmax(8.6rem, 0.9fr);
   gap: 0.7rem;

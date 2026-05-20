@@ -3,6 +3,7 @@ import { tacticLibrary } from "../content/tactics";
 import { simulateMatchByFidelity } from "../core/match";
 import type { MatchTactic, Player } from "../core/models";
 import { SeededRng } from "../core/rng";
+import { daysBetween } from "./calendar";
 import {
   completedTournamentMatches,
   createCareerEventBracketSnapshot,
@@ -14,15 +15,18 @@ import {
 import { scheduledDateForRound } from "./matchSchedule";
 import type {
   CareerEventDefinition,
+  EventFieldChange,
+  EventFieldSnapshot,
   CareerMatchRecord,
   CareerMatchRecordSource,
   CareerState,
   CareerUniverseTournamentPlacement,
   CareerUniverseTournamentRecord,
+  RankingResultSource,
   UniverseEventRecordSource,
   UniverseManagedPlayerResult
 } from "./models";
-import { awardRankingPoints } from "./rankings";
+import { appendRankingResultsAndRebuild, createRankingResult, rebuildCareerRankingSnapshot } from "./rankings";
 import { syncManagedAthleteFromRankings } from "./state";
 import type { RoundName, TournamentState } from "../tournament/tournament";
 
@@ -94,17 +98,295 @@ function rankedCandidateIds(career: CareerState) {
   return uniquePlayerIds([...ranked, ...roster]);
 }
 
-function shuffled<T>(items: T[], rng: SeededRng) {
-  const copy = [...items];
+function rankingForPlayer(career: CareerState, playerId: string) {
+  return career.rankings.find((entry) => entry.playerId === playerId) ?? null;
+}
 
-  for (let index = copy.length - 1; index > 0; index -= 1) {
-    const swapIndex = rng.nextInt(0, index);
-    const current = copy[index]!;
-    copy[index] = copy[swapIndex]!;
-    copy[swapIndex] = current;
+function tierDropoutPressure(tier: CareerEventDefinition["tier"]) {
+  switch (tier) {
+    case "National":
+      return 0.22;
+    case "Invitational":
+      return 0.2;
+    case "Circuit 300":
+      return 0.18;
+    case "Circuit 500":
+      return 0.14;
+    case "Circuit 750":
+      return 0.1;
+    case "Circuit 1000":
+      return 0.06;
+    case "Finals":
+      return 0.02;
+  }
+}
+
+function nonEntryReason(args: {
+  event: CareerEventDefinition;
+  playerId: string;
+  rng: SeededRng;
+}): EventFieldChange["reason"] {
+  const options: EventFieldChange["reason"][] =
+    args.event.tier === "Circuit 1000" || args.event.tier === "Finals"
+      ? ["rest", "injury_management", "schedule_choice", "tier_priority"]
+      : args.event.tier === "National" || args.event.tier === "Invitational"
+        ? ["travel", "fatigue", "schedule_choice", "wildcard_not_taken"]
+        : ["rest", "travel", "fatigue", "schedule_choice", "tier_priority"];
+
+  return options[args.rng.nextInt(0, options.length - 1)] ?? "rest";
+}
+
+function guaranteedNonEntryCount(drawSize: number, availableNonManaged: number) {
+  return Math.min(5, Math.ceil(drawSize * 0.15), availableNonManaged);
+}
+
+function targetAppearancesForRank(rank: number, tier: CareerEventDefinition["tier"]) {
+  if (tier === "National" || tier === "Invitational" || tier === "Circuit 300") {
+    return rank > 32 ? 5 : rank > 16 ? 6 : 7;
   }
 
-  return copy;
+  if (tier === "Circuit 500") {
+    return rank > 32 ? 3 : rank > 16 ? 5 : 6;
+  }
+
+  if (tier === "Circuit 750") {
+    return rank > 32 ? 2 : rank > 16 ? 4 : 5;
+  }
+
+  return rank > 32 ? 1 : rank > 16 ? 3 : 5;
+}
+
+function appearancesLast52Weeks(args: {
+  career: CareerState;
+  playerId: string;
+  asOfDate: string;
+}) {
+  return args.career.rankingResults.filter(
+    (result) =>
+      result.playerId === args.playerId &&
+      daysBetween(result.date, args.asOfDate) >= 0 &&
+      daysBetween(result.date, args.asOfDate) <= args.career.rankingSettings.windowDays
+  ).length;
+}
+
+function weeksSinceRecentAppearance(args: {
+  career: CareerState;
+  playerId: string;
+  asOfDate: string;
+}) {
+  const recent = args.career.rankingResults
+    .filter((result) => result.playerId === args.playerId && result.date <= args.asOfDate)
+    .sort((left, right) => right.date.localeCompare(left.date))[0];
+
+  if (!recent) {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  return daysBetween(recent.date, args.asOfDate) / 7;
+}
+
+function tierFitWeight(args: {
+  rank: number;
+  tier: CareerEventDefinition["tier"];
+}) {
+  if (args.tier === "National" || args.tier === "Invitational" || args.tier === "Circuit 300") {
+    return args.rank > 32 ? 1.25 : 1;
+  }
+
+  if (args.tier === "Circuit 1000" || args.tier === "Finals") {
+    return args.rank > 32 ? 0.75 : 1;
+  }
+
+  return 1;
+}
+
+function alternateWeight(args: {
+  career: CareerState;
+  event: CareerEventDefinition;
+  playerId: string;
+}) {
+  const ranking = rankingForPlayer(args.career, args.playerId);
+  const rank = ranking?.rank ?? args.career.rankings.length + 1;
+  const appearances = appearancesLast52Weeks({
+    career: args.career,
+    playerId: args.playerId,
+    asOfDate: args.event.drawDate
+  });
+  const targetAppearances = targetAppearancesForRank(rank, args.event.tier);
+  const appearanceDebt = Math.max(0, targetAppearances - appearances);
+  const inactiveWeeks = weeksSinceRecentAppearance({
+    career: args.career,
+    playerId: args.playerId,
+    asOfDate: args.event.drawDate
+  });
+  const inactivityFactor = inactiveWeeks >= 8 ? 1.25 : inactiveWeeks <= 2 ? 0.7 : 1;
+  const rankWeight = 1 / Math.pow(Math.max(1, rank), 0.65);
+
+  return rankWeight * (1 + 0.35 * appearanceDebt) * inactivityFactor * tierFitWeight({ rank, tier: args.event.tier });
+}
+
+function weightedAlternatesWithoutReplacement(args: {
+  career: CareerState;
+  event: CareerEventDefinition;
+  candidates: string[];
+  count: number;
+  rng: SeededRng;
+}) {
+  const remaining = [...args.candidates];
+  const selected: string[] = [];
+
+  while (selected.length < args.count && remaining.length > 0) {
+    const picked = args.rng.weightedPick(
+      remaining.map((playerId) => ({
+        item: playerId,
+        weight: Math.max(0.0001, alternateWeight({ career: args.career, event: args.event, playerId }))
+      }))
+    );
+    selected.push(picked);
+    remaining.splice(remaining.indexOf(picked), 1);
+  }
+
+  return selected;
+}
+
+function seededField(args: {
+  career: CareerState;
+  event: CareerEventDefinition;
+  playerIds: string[];
+}) {
+  return [...args.playerIds]
+    .sort((left, right) => {
+      const leftRanking = rankingForPlayer(args.career, left);
+      const rightRanking = rankingForPlayer(args.career, right);
+      const leftRank = leftRanking?.rank ?? Number.MAX_SAFE_INTEGER;
+      const rightRank = rightRanking?.rank ?? Number.MAX_SAFE_INTEGER;
+
+      return leftRank - rightRank || left.localeCompare(right);
+    })
+    .map((playerId, index) => {
+      const ranking = rankingForPlayer(args.career, playerId);
+
+      return {
+        seed: index + 1,
+        playerId,
+        rank: ranking?.rank ?? Number.MAX_SAFE_INTEGER,
+        points: ranking?.points ?? 0
+      };
+    });
+}
+
+function fieldSnapshotFromFinalPlayerIds(args: {
+  career: CareerState;
+  event: CareerEventDefinition;
+  playerIds: string[];
+  asOfDate?: string;
+}): EventFieldSnapshot {
+  const finalPlayerIds = seededField({ career: args.career, event: args.event, playerIds: args.playerIds }).map(
+    (entry) => entry.playerId
+  );
+
+  return {
+    eventId: args.event.id,
+    drawSize: args.event.drawSize,
+    asOfDate: args.asOfDate ?? args.event.drawDate,
+    invitedPlayerIds: finalPlayerIds,
+    nonEntries: [],
+    alternateEntries: [],
+    finalPlayerIds,
+    seeds: seededField({ career: args.career, event: args.event, playerIds: finalPlayerIds })
+  };
+}
+
+export function createEventFieldSnapshot(args: {
+  career: CareerState;
+  event: CareerEventDefinition;
+  includeManagedEntry?: boolean;
+  asOfDate?: string;
+}): EventFieldSnapshot {
+  const rng = new SeededRng(universeSeed({ career: args.career, event: args.event, salt: "event-field" }));
+  const managedPlayerId = args.career.program.managedPlayerId;
+  const enteredManagedPlayer = args.includeManagedEntry ?? args.career.enteredEventIds.includes(args.event.id);
+  const candidateIds = rankedCandidateIds(args.career).filter(
+    (playerId) => enteredManagedPlayer || playerId !== managedPlayerId
+  );
+  let invitedPlayerIds = candidateIds.slice(0, args.event.drawSize);
+
+  if (enteredManagedPlayer && !invitedPlayerIds.includes(managedPlayerId)) {
+    invitedPlayerIds = [managedPlayerId, ...invitedPlayerIds.filter((playerId) => playerId !== managedPlayerId)]
+      .slice(0, args.event.drawSize)
+      .sort((left, right) => {
+        const leftRank = rankingForPlayer(args.career, left)?.rank ?? Number.MAX_SAFE_INTEGER;
+        const rightRank = rankingForPlayer(args.career, right)?.rank ?? Number.MAX_SAFE_INTEGER;
+
+        return leftRank - rightRank || left.localeCompare(right);
+      });
+  }
+
+  const nonManagedInvited = invitedPlayerIds.filter((playerId) => playerId !== managedPlayerId);
+  const guaranteed = guaranteedNonEntryCount(args.event.drawSize, nonManagedInvited.length);
+  const dropoutOrder = nonManagedInvited
+    .map((playerId) => ({
+      playerId,
+      score: rng.nextFloat()
+    }))
+    .sort((left, right) => left.score - right.score || left.playerId.localeCompare(right.playerId));
+  const dropoutIds = new Set<string>();
+
+  for (const candidate of dropoutOrder.slice(0, guaranteed)) {
+    dropoutIds.add(candidate.playerId);
+  }
+
+  for (const candidate of dropoutOrder.slice(guaranteed)) {
+    if (rng.chance(tierDropoutPressure(args.event.tier))) {
+      dropoutIds.add(candidate.playerId);
+    }
+  }
+
+  const nonEntries = [...dropoutIds].map((playerId): EventFieldChange => ({
+    eventId: args.event.id,
+    playerId,
+    action: "non_entry",
+    reason: nonEntryReason({ event: args.event, playerId, rng })
+  }));
+  const keptInvited = invitedPlayerIds.filter((playerId) => !dropoutIds.has(playerId));
+  const alternatePool = candidateIds.filter(
+    (playerId) =>
+      !invitedPlayerIds.includes(playerId) &&
+      !dropoutIds.has(playerId) &&
+      (enteredManagedPlayer || playerId !== managedPlayerId)
+  );
+  const alternateIds = weightedAlternatesWithoutReplacement({
+    career: args.career,
+    event: args.event,
+    candidates: alternatePool,
+    count: args.event.drawSize - keptInvited.length,
+    rng
+  });
+  const alternateEntries = alternateIds.map((playerId, index): EventFieldChange => ({
+    eventId: args.event.id,
+    playerId,
+    action: "alternate_in",
+    reason: "alternate_queue",
+    replacedPlayerId: nonEntries[index]?.playerId
+  }));
+  const finalPlayerIds = uniquePlayerIds([...keptInvited, ...alternateIds]).slice(0, args.event.drawSize);
+
+  if (finalPlayerIds.length !== args.event.drawSize) {
+    throw new Error(`Unable to fill ${args.event.drawSize}-player field for ${args.event.id}.`);
+  }
+
+  return {
+    eventId: args.event.id,
+    drawSize: args.event.drawSize,
+    asOfDate: args.asOfDate ?? args.event.drawDate,
+    invitedPlayerIds,
+    nonEntries,
+    alternateEntries,
+    finalPlayerIds: seededField({ career: args.career, event: args.event, playerIds: finalPlayerIds }).map(
+      (entry) => entry.playerId
+    ),
+    seeds: seededField({ career: args.career, event: args.event, playerIds: finalPlayerIds })
+  };
 }
 
 export function deterministicUniverseEntrants(args: {
@@ -112,35 +394,16 @@ export function deterministicUniverseEntrants(args: {
   event: CareerEventDefinition;
   includeManagedEntry?: boolean;
 }) {
-  const rng = new SeededRng(universeSeed({ ...args, salt: "entrants" }));
-  const managedPlayerId = args.career.program.managedPlayerId;
-  const enteredManagedPlayer = args.includeManagedEntry ?? args.career.enteredEventIds.includes(args.event.id);
-  const candidateIds = rankedCandidateIds(args.career).filter(
-    (playerId) => enteredManagedPlayer || playerId !== managedPlayerId
-  );
-  const field: string[] = enteredManagedPlayer ? [managedPlayerId] : [];
-  const remaining = candidateIds.filter((playerId) => playerId !== managedPlayerId);
-  const candidateWindow = remaining.slice(0, Math.max(args.event.drawSize, args.event.drawSize * 2));
-  const fallbackWindow = remaining.slice(Math.max(args.event.drawSize, args.event.drawSize * 2));
+  return createEventFieldSnapshot(args).finalPlayerIds;
+}
 
-  for (const playerId of [...shuffled(candidateWindow, rng), ...fallbackWindow]) {
-    if (field.length >= args.event.drawSize) {
-      break;
-    }
-
-    if (!field.includes(playerId)) {
-      field.push(playerId);
-    }
-  }
-
-  return field
-    .slice(0, args.event.drawSize)
-    .sort((left, right) => {
-      const leftRank = args.career.rankings.find((entry) => entry.playerId === left)?.rank ?? Number.MAX_SAFE_INTEGER;
-      const rightRank = args.career.rankings.find((entry) => entry.playerId === right)?.rank ?? Number.MAX_SAFE_INTEGER;
-
-      return leftRank - rightRank || left.localeCompare(right);
-    });
+export function eventFieldSnapshotForFinalField(args: {
+  career: CareerState;
+  event: CareerEventDefinition;
+  playerIds: string[];
+  asOfDate?: string;
+}) {
+  return fieldSnapshotFromFinalPlayerIds(args);
 }
 
 function bracketOrder(entrants: string[]) {
@@ -455,7 +718,7 @@ function upsertUniverseRecord(career: CareerState, record: CareerUniverseTournam
 function createDrawRecord(args: {
   career: CareerState;
   event: CareerEventDefinition;
-  entrants: string[];
+  fieldSnapshot: EventFieldSnapshot;
   source: UniverseEventRecordSource;
 }) {
   return {
@@ -466,12 +729,13 @@ function createDrawRecord(args: {
     drawDate: args.event.drawDate,
     startDate: args.event.startDate,
     completedAt: null,
-    entrants: args.entrants,
+    entrants: args.fieldSnapshot.finalPlayerIds,
     matchIds: [],
     championId: null,
     runnerUpId: null,
     placements: [],
-    managedPlayerResult: args.entrants.includes(args.career.program.managedPlayerId) ? null : "not_entered" as const
+    managedPlayerResult: args.fieldSnapshot.finalPlayerIds.includes(args.career.program.managedPlayerId) ? null : "not_entered" as const,
+    fieldSnapshot: args.fieldSnapshot
   } satisfies CareerUniverseTournamentRecord;
 }
 
@@ -482,6 +746,7 @@ function createCompletedRecord(args: {
   matchIds: string[];
   completedAt: string;
   source: UniverseEventRecordSource;
+  fieldSnapshot: EventFieldSnapshot | null;
 }) {
   return {
     seasonId: args.career.seasonId,
@@ -501,7 +766,8 @@ function createCompletedRecord(args: {
       event: args.event,
       placements: args.bracket.placements,
       entrants: args.bracket.entrants
-    })
+    }),
+    fieldSnapshot: args.fieldSnapshot
   } satisfies CareerUniverseTournamentRecord;
 }
 
@@ -531,7 +797,8 @@ function inProgressRecordFromMatchHistory(args: {
       event: args.event,
       placements,
       entrants
-    })
+    }),
+    fieldSnapshot: null
   };
 }
 
@@ -540,24 +807,51 @@ function settleUniverseRankingPoints(args: {
   event: CareerEventDefinition;
   placements: CareerUniverseTournamentPlacement[];
   completedAt: string;
+  source: UniverseEventRecordSource;
 }) {
-  return {
-    ...args.career,
-    rankings: args.placements.reduce(
-      (rankings, placement) =>
-        awardRankingPoints({
-          rankings,
-          playerId: placement.playerId,
-          eventId: args.event.id,
-          round: placement.resultRound,
-          points: placement.pointsAwarded,
-          date: args.completedAt,
-          seasonId: args.career.seasonId,
-          tier: args.event.tier
-        }),
-      args.career.rankings
-    )
-  };
+  const results = args.placements.map((placement) =>
+    createRankingResult({
+      seasonId: args.career.seasonId,
+      playerId: placement.playerId,
+      eventId: args.event.id,
+      eventName: args.event.name,
+      tier: args.event.tier,
+      date: args.completedAt,
+      resultRound: placement.resultRound,
+      points: placement.pointsAwarded,
+      source: rankingResultSourceForUniverse({
+        universeSource: args.source,
+        playerId: placement.playerId,
+        managedPlayerId: args.career.program.managedPlayerId
+      }),
+      artificial: false
+    })
+  );
+
+  return appendRankingResultsAndRebuild({
+    career: args.career,
+    results,
+    asOfDate: args.completedAt
+  });
+}
+
+function rankingResultSourceForUniverse(args: {
+  universeSource: UniverseEventRecordSource;
+  playerId: string;
+  managedPlayerId: string;
+}): RankingResultSource {
+  switch (args.universeSource) {
+    case "live_progression":
+    case "post_elimination":
+      return args.playerId === args.managedPlayerId ? "played" : "quick_sim";
+    case "unentered_sim":
+      return "universe_sim";
+    case "backfill_sim":
+      return "backfill_sim";
+    case "archive_import":
+    case "legacy_unavailable":
+      return "archive_import";
+  }
 }
 
 function appendUniverseAchievements(args: {
@@ -622,6 +916,7 @@ function completeUniverseEvent(args: {
   bracket: UniverseBracket;
   completedAt: string;
   source: UniverseEventRecordSource;
+  fieldSnapshot?: EventFieldSnapshot | null;
 }) {
   const withMatchRecords = ensureUniverseMatchRecords({
     career: args.career,
@@ -632,7 +927,8 @@ function completeUniverseEvent(args: {
     career: withMatchRecords.career,
     event: args.event,
     placements: args.bracket.placements,
-    completedAt: args.completedAt
+    completedAt: args.completedAt,
+    source: args.source
   });
   const withAchievements = appendUniverseAchievements({
     career: withRankings,
@@ -647,7 +943,8 @@ function completeUniverseEvent(args: {
     bracket: args.bracket,
     matchIds: withMatchRecords.matchIds,
     completedAt: args.completedAt,
-    source: args.source
+    source: args.source,
+    fieldSnapshot: args.fieldSnapshot ?? existingUniverseRecord(withAchievements, args.event)?.fieldSnapshot ?? null
   });
 
   return syncManagedAthleteFromRankings(markCompletedEvent(upsertUniverseRecord(withAchievements, record), args.event.id));
@@ -663,7 +960,8 @@ function completeUniverseEventFromArchiveRecord(args: {
     career: args.career,
     event: args.event,
     placements: args.record.placements,
-    completedAt
+    completedAt,
+    source: args.record.source
   });
   const withAchievements = appendUniverseAchievements({
     career: withRankings,
@@ -699,6 +997,7 @@ export function simulateUniverseThroughDate(args: {
       continue;
     }
 
+    career = rebuildCareerRankingSnapshot(career, event.drawDate);
     const existing = existingUniverseRecord(career, event);
 
     if (existing?.status === "completed" || existing?.status === "legacy_unavailable") {
@@ -709,12 +1008,21 @@ export function simulateUniverseThroughDate(args: {
 
     if (activeTournament?.championId) {
       const bracket = bracketFromTournament({ career, event, tournament: activeTournament });
+      const fieldSnapshot =
+        existing?.fieldSnapshot ??
+        fieldSnapshotFromFinalPlayerIds({
+          career,
+          event,
+          playerIds: bracket.entrants,
+          asOfDate: event.drawDate
+        });
       career = completeUniverseEvent({
         career,
         event,
         bracket,
         completedAt: args.targetDate,
-        source: sourceForActiveTournament(activeTournament)
+        source: sourceForActiveTournament(activeTournament),
+        fieldSnapshot
       });
       eventsSimulated.push(event.id);
       continue;
@@ -722,10 +1030,18 @@ export function simulateUniverseThroughDate(args: {
 
     if (activeTournament) {
       const entrants = uniquePlayerIds(activeTournament.rounds[0]?.matches.flatMap((match) => [match.sideAId, match.sideBId]) ?? []);
+      const fieldSnapshot =
+        existing?.fieldSnapshot ??
+        fieldSnapshotFromFinalPlayerIds({
+          career,
+          event,
+          playerIds: entrants,
+          asOfDate: event.drawDate
+        });
       const drawRecord = createDrawRecord({
         career,
         event,
-        entrants,
+        fieldSnapshot,
         source: "live_progression"
       });
       career = upsertUniverseRecord(career, {
@@ -773,7 +1089,7 @@ export function simulateUniverseThroughDate(args: {
         continue;
       }
 
-      const entrants = deterministicUniverseEntrants({
+      const fieldSnapshot = existing?.fieldSnapshot ?? createEventFieldSnapshot({
         career,
         event,
         includeManagedEntry: false
@@ -781,7 +1097,7 @@ export function simulateUniverseThroughDate(args: {
       const bracket = simulateCompletedUniverseBracket({
         career,
         event,
-        entrants,
+        entrants: fieldSnapshot.finalPlayerIds,
         source: career.enteredEventIds.includes(event.id) ? "backfill_sim" : "universe_sim"
       });
       career = completeUniverseEvent({
@@ -789,17 +1105,18 @@ export function simulateUniverseThroughDate(args: {
         event,
         bracket,
         completedAt: args.targetDate,
-        source: career.enteredEventIds.includes(event.id) ? "backfill_sim" : "unentered_sim"
+        source: career.enteredEventIds.includes(event.id) ? "backfill_sim" : "unentered_sim",
+        fieldSnapshot
       });
       eventsSimulated.push(event.id);
       continue;
     }
 
-    const entrants = deterministicUniverseEntrants({ career, event });
+    const fieldSnapshot = existing?.fieldSnapshot ?? createEventFieldSnapshot({ career, event });
     const drawRecord = createDrawRecord({
       career,
       event,
-      entrants,
+      fieldSnapshot,
       source: career.enteredEventIds.includes(event.id) ? "live_progression" : "unentered_sim"
     });
     career = upsertUniverseRecord(career, drawRecord);
@@ -807,7 +1124,7 @@ export function simulateUniverseThroughDate(args: {
   }
 
   return {
-    career,
+    career: rebuildCareerRankingSnapshot(career, args.targetDate),
     activeTournament: args.activeTournament,
     eventsSimulated
   };
@@ -864,7 +1181,8 @@ function archiveRecordFromMatchHistory(args: {
     championId: finalRecord.winnerId,
     runnerUpId,
     placements,
-    managedPlayerResult: managedPlayerResult({ career: args.career, event: args.event, placements })
+    managedPlayerResult: managedPlayerResult({ career: args.career, event: args.event, placements }),
+    fieldSnapshot: null
   };
 }
 
@@ -903,7 +1221,8 @@ export function hydrateLegacyUniverseEventRecords(career: CareerState): CareerSt
         placements: [],
         managedPlayerResult: historyRecord.entered
           ? (roundKeyForPlacement(historyRecord.resultRound ?? "R16", historyRecord.status === "champion") as UniverseManagedPlayerResult)
-          : "not_entered"
+          : "not_entered",
+        fieldSnapshot: null
       }
     );
   }

@@ -49,7 +49,7 @@ import {
 import type { LiveDirective, LiveMatchSession, MatchTactic, Side, TeamTalk } from "../core/models";
 import type { AdvancedTacticPlan, CareerState, FacilityType, PlayerPromise } from "../career/models";
 import { createInitialCareerState } from "../career/state";
-import { simulateUniverseThroughDate } from "../career/universe";
+import { createEventFieldSnapshot, simulateUniverseThroughDate } from "../career/universe";
 import { applyTrainingPlan, getTrainingPlan } from "../career/training";
 import { advanceRivalCircuit } from "../career/rivals";
 import {
@@ -64,6 +64,7 @@ import {
   advanceTournament,
   createManagedMatchInput,
   createTournament,
+  createTournamentFromPlayerIds,
   getManagedMatchContext,
   getNextManagedOpponentId,
   isManagedPlayerStillInEvent,
@@ -198,7 +199,7 @@ function createPersistedSavePayload(
   >
 ): PersistedSave {
   return {
-    version: 10,
+    version: 11,
     selectedPlayerId: state.selectedPlayerId,
     plannedTacticKey: state.plannedTacticKey,
     seed: state.seed,
@@ -350,19 +351,27 @@ function currentManagedTactic(state: TournamentStoreState): MatchTactic {
 
 function tournamentForCareerEvent(career: CareerState, seed: number) {
   const event = career.activeEventId ? getCareerEvent(career.events, career.activeEventId) : undefined;
-  const tournament = createTournament(seededPlayers, career.program.managedPlayerId, seed);
 
   if (!event) {
-    return tournament;
+    return createTournament(seededPlayers, career.program.managedPlayerId, seed);
   }
 
-  return {
-    ...tournament,
+  const fieldSnapshot = createEventFieldSnapshot({
+    career,
+    event,
+    includeManagedEntry: true
+  });
+
+  return createTournamentFromPlayerIds({
+    seededEntries: seededPlayers,
+    playerIds: fieldSnapshot.finalPlayerIds,
+    managedPlayerId: career.program.managedPlayerId,
+    seed,
     id: event.id,
     name: event.name,
     tier: event.tier,
     prizePoolUsd: event.prizeMoney.champion * 2
-  };
+  });
 }
 
 function buildPreMatchBriefForTournament(career: CareerState, tournament: TournamentState) {

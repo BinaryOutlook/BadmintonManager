@@ -18,14 +18,19 @@ import {
   careerStateV5Schema,
   careerStateV6Schema,
   careerStateV7Schema,
+  careerStateV8Schema,
+  defaultRankingSettings,
   normalizeCareerTierLabel,
-  type CareerState
+  type CareerState,
+  type RankingEntry,
+  type RankingResult
 } from "../career/models";
 import { upgradeCareerStateV3 } from "../career/tactics";
 import { refreshAssistantAdvice } from "../career/tactics";
 import { upgradeCareerStateV4 } from "../career/facilitiesMedia";
 import { normalizeTournamentName } from "../tournament/metadata";
 import { hydrateLegacyUniverseEventRecords, simulateUniverseThroughDate } from "../career/universe";
+import { rebuildCareerRankingSnapshot } from "../career/rankings";
 
 const matchSummaryEventSchema = z.object({
   kind: z.enum([
@@ -244,13 +249,19 @@ export const phase5UniversePersistedSaveSchema = legacyPersistedSaveSchema.exten
   career: careerStateV7Schema.nullable()
 });
 
-export const persistedSaveSchema = legacyPersistedSaveSchema.extend({
+export const phase6UniverseRecordsPersistedSaveSchema = legacyPersistedSaveSchema.extend({
   version: z.literal(10),
+  career: careerStateV8Schema.nullable()
+});
+
+export const persistedSaveSchema = legacyPersistedSaveSchema.extend({
+  version: z.literal(11),
   career: careerStateSchema.nullable()
 });
 
 export const persistedSavePayloadSchema = z.union([
   persistedSaveSchema,
+  phase6UniverseRecordsPersistedSaveSchema,
   phase5UniversePersistedSaveSchema,
   phase4CareerHistoryPersistedSaveSchema,
   phase3FacilitiesPersistedSaveSchema,
@@ -276,16 +287,83 @@ export type SaveImportValidationResult =
       issues?: string[];
     };
 
-type MigratableCurrentCareer = Omit<CareerState, "matchHistory" | "playerAchievements" | "universeEvents"> &
-  Partial<Pick<CareerState, "matchHistory" | "playerAchievements" | "universeEvents">>;
+type MigratableCurrentCareer = Omit<
+  CareerState,
+  "version" | "matchHistory" | "playerAchievements" | "universeEvents" | "rankingResults" | "rankingSettings"
+> & {
+  version: number;
+  matchHistory?: CareerState["matchHistory"];
+  playerAchievements?: CareerState["playerAchievements"];
+  universeEvents?: CareerState["universeEvents"];
+  rankingResults?: RankingResult[];
+  rankingSettings?: CareerState["rankingSettings"];
+};
+
+function legacyRankingResultsFromSnapshot(career: Pick<CareerState, "date" | "seasonId" | "events"> & {
+  rankings: RankingEntry[];
+}): RankingResult[] {
+  const results: RankingResult[] = [];
+  const eventNameById = new Map(career.events.map((event) => [event.id, event.name]));
+  const eventTierById = new Map(career.events.map((event) => [event.id, event.tier]));
+
+  for (const entry of career.rankings) {
+    const eventRows = entry.eventHistory
+      .filter((history) => history.eventId && history.points > 0)
+      .map((history): RankingResult => ({
+        id: `${history.seasonId ?? career.seasonId}:${history.eventId}:${entry.playerId}:ranking`,
+        seasonId: history.seasonId ?? career.seasonId,
+        playerId: entry.playerId,
+        eventId: history.eventId,
+        eventName: eventNameById.get(history.eventId) ?? history.eventId,
+        tier: history.tier ?? eventTierById.get(history.eventId) ?? "Invitational",
+        date: history.date ?? career.date,
+        resultRound: history.round === "champion" || history.round === "F" || history.round === "SF" || history.round === "QF" || history.round === "R16"
+          ? history.round
+          : "R16",
+        points: history.points,
+        source: history.date ? "archive_import" : "legacy_snapshot",
+        artificial: !history.date
+      }));
+    const eventPointTotal = eventRows.reduce((total, result) => total + result.points, 0);
+    const remainingSnapshotPoints = Math.max(0, entry.points - eventPointTotal);
+
+    results.push(...eventRows);
+
+    if (remainingSnapshotPoints > 0 || eventRows.length === 0) {
+      results.push({
+        id: `legacy:${career.seasonId}:ranking-snapshot:${entry.playerId}`,
+        seasonId: career.seasonId,
+        playerId: entry.playerId,
+        eventId: "legacy-ranking-snapshot",
+        eventName: "Legacy Ranking Snapshot",
+        tier: "Invitational",
+        date: career.date,
+        resultRound: "R16",
+        points: remainingSnapshotPoints,
+        source: "legacy_snapshot",
+        artificial: true
+      });
+    }
+  }
+
+  return results;
+}
 
 function withCareerHistoryDefaults(career: MigratableCurrentCareer): CareerState {
-  return {
+  const baseCareer: CareerState = {
     ...career,
+    version: 9,
     matchHistory: career.matchHistory ?? [],
     playerAchievements: career.playerAchievements ?? [],
-    universeEvents: career.universeEvents ?? []
+    universeEvents: career.universeEvents ?? [],
+    rankingSettings: career.rankingSettings ?? defaultRankingSettings,
+    rankingResults:
+      career.rankingResults && career.rankingResults.length > 0
+        ? career.rankingResults
+        : legacyRankingResultsFromSnapshot(career)
   };
+
+  return rebuildCareerRankingSnapshot(baseCareer, baseCareer.date);
 }
 
 function refreshMigratedCareer(career: MigratableCurrentCareer | null) {
@@ -320,45 +398,53 @@ function simulateMigratedSaveUniverse(save: PersistedSave): PersistedSave {
 }
 
 export function migratePersistedSave(payload: PersistedSavePayload): PersistedSave {
-  if (payload.version === 9) {
-    return simulateMigratedSaveUniverse({
-      ...payload,
-      version: 10,
-      career: payload.career ? refreshMigratedCareer({ ...payload.career, version: 8 }) : null
-    });
-  }
-
-  if (payload.version === 8) {
-    return simulateMigratedSaveUniverse({
-      ...payload,
-      version: 10,
-      career: payload.career ? refreshMigratedCareer({ ...payload.career, version: 8, eventHistory: [] }) : null
-    });
-  }
-
-  if (payload.version === 7) {
-    return simulateMigratedSaveUniverse({
-      ...payload,
-      version: 10,
-      career: payload.career ? refreshMigratedCareer({ ...payload.career, version: 8, eventHistory: [] }) : null
-    });
-  }
-
-  if (payload.version === 10) {
+  if (payload.version === 11) {
     return simulateMigratedSaveUniverse({
       ...payload,
       career: refreshMigratedCareer(payload.career)
     });
   }
 
+  if (payload.version === 10) {
+    return simulateMigratedSaveUniverse({
+      ...payload,
+      version: 11,
+      career: payload.career ? refreshMigratedCareer({ ...payload.career, version: 9 }) : null
+    });
+  }
+
+  if (payload.version === 9) {
+    return simulateMigratedSaveUniverse({
+      ...payload,
+      version: 11,
+      career: payload.career ? refreshMigratedCareer({ ...payload.career, version: 9 }) : null
+    });
+  }
+
+  if (payload.version === 8) {
+    return simulateMigratedSaveUniverse({
+      ...payload,
+      version: 11,
+      career: payload.career ? refreshMigratedCareer({ ...payload.career, version: 9, eventHistory: [] }) : null
+    });
+  }
+
+  if (payload.version === 7) {
+    return simulateMigratedSaveUniverse({
+      ...payload,
+      version: 11,
+      career: payload.career ? refreshMigratedCareer({ ...payload.career, version: 9, eventHistory: [] }) : null
+    });
+  }
+
   if (payload.version === 3) {
     return simulateMigratedSaveUniverse({
       ...payload,
-      version: 10,
+      version: 11,
       career: payload.career
         ? refreshMigratedCareer({
             ...upgradeCareerStateV4(upgradeCareerStateV3(upgradeCareerStateV1(payload.career))),
-            version: 8,
+            version: 9,
             eventHistory: []
           })
         : null
@@ -368,11 +454,11 @@ export function migratePersistedSave(payload: PersistedSavePayload): PersistedSa
   if (payload.version === 4) {
     return simulateMigratedSaveUniverse({
       ...payload,
-      version: 10,
+      version: 11,
       career: payload.career
         ? refreshMigratedCareer({
             ...upgradeCareerStateV4(upgradeCareerStateV3(upgradeCareerStateV2(payload.career))),
-            version: 8,
+            version: 9,
             eventHistory: []
           })
         : null
@@ -382,11 +468,11 @@ export function migratePersistedSave(payload: PersistedSavePayload): PersistedSa
   if (payload.version === 5) {
     return simulateMigratedSaveUniverse({
       ...payload,
-      version: 10,
+      version: 11,
       career: payload.career
         ? refreshMigratedCareer({
             ...upgradeCareerStateV4(upgradeCareerStateV3(payload.career)),
-            version: 8,
+            version: 9,
             eventHistory: []
           })
         : null
@@ -396,16 +482,16 @@ export function migratePersistedSave(payload: PersistedSavePayload): PersistedSa
   if (payload.version === 6) {
     return simulateMigratedSaveUniverse({
       ...payload,
-      version: 10,
+      version: 11,
       career: payload.career
-        ? refreshMigratedCareer({ ...upgradeCareerStateV4(payload.career), version: 8, eventHistory: [] })
+        ? refreshMigratedCareer({ ...upgradeCareerStateV4(payload.career), version: 9, eventHistory: [] })
         : null
     });
   }
 
   return simulateMigratedSaveUniverse({
     ...payload,
-    version: 10,
+    version: 11,
     career: null
   });
 }

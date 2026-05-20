@@ -314,6 +314,56 @@ export function createTournament(seededEntries: SeededPlayer[], managedPlayerId:
   } satisfies TournamentState;
 }
 
+export function createTournamentFromPlayerIds(args: {
+  seededEntries: SeededPlayer[];
+  playerIds: string[];
+  managedPlayerId: string;
+  seed: number;
+  id: string;
+  name: string;
+  tier: string;
+  prizePoolUsd: number;
+}) {
+  const rng = new SeededRng(args.seed);
+  const byPlayerId = new Map(args.seededEntries.map((entry) => [entry.player.id, entry.player]));
+  const uniquePlayerIds = [...new Set(args.playerIds)].filter((playerId) => byPlayerId.has(playerId));
+
+  if (uniquePlayerIds.length !== TOURNAMENT_FIELD_SIZE) {
+    throw new Error(`Tournament needs exactly ${TOURNAMENT_FIELD_SIZE} unique players.`);
+  }
+
+  if (!uniquePlayerIds.includes(args.managedPlayerId)) {
+    throw new Error(`Managed player ${args.managedPlayerId} is not in the event field.`);
+  }
+
+  const entrants = uniquePlayerIds.map((playerId, index) => ({
+    seed: index + 1,
+    player: byPlayerId.get(playerId)!
+  }));
+  const playerIds = orderedBracket(entrants);
+  const playerMap = Object.fromEntries(entrants.map((entry) => [entry.player.id, entry.player]));
+  const round = createRound({
+    playerIds,
+    managedPlayerId: args.managedPlayerId,
+    playerMap,
+    roundName: "R16",
+    rng
+  });
+
+  return {
+    id: args.id,
+    name: args.name,
+    tier: args.tier,
+    prizePoolUsd: args.prizePoolUsd,
+    managedPlayerId: args.managedPlayerId,
+    rounds: [round],
+    currentRoundIndex: 0,
+    rngState: rng.snapshot(),
+    managedResults: [],
+    eliminated: false
+  } satisfies TournamentState;
+}
+
 export function getCurrentRound(tournament: TournamentState) {
   return tournament.rounds[tournament.currentRoundIndex];
 }
