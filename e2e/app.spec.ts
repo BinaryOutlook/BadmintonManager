@@ -408,7 +408,7 @@ async function expectRankingsViewportBounded(page: Page) {
 
     const checkedElements = Array.from(
       document.querySelectorAll<HTMLElement>(
-        ".rankings-status-strip, .rankings-table, .rankings-row, .rankings-summary-grid"
+        ".rankings-status-strip, .rankings-table, .rankings-row, .rankings-summary-grid, .rankings-pagination"
       )
     );
 
@@ -1501,6 +1501,10 @@ test("opens the full career Rankings table with managed highlight and bounded mo
 
     await expect(page.getByRole("heading", { name: "Circuit Rankings" })).toBeVisible();
     await expect(page.getByRole("table", { name: "Circuit rankings table" })).toBeVisible();
+    await expect(page.locator(".rankings-row:not(.rankings-row-head)")).toHaveCount(8);
+    await expect(page.getByText(`1-8 of ${seededPlayers.length}`, { exact: true })).toBeVisible();
+    await expect(page.getByLabel("Rankings pagination").getByRole("button", { name: "Prev" })).toBeDisabled();
+    await expect(page.getByLabel("Rankings pagination").getByRole("button", { name: "Next" })).toBeEnabled();
     await expect(page.getByRole("row", { name: /Rank 1 Adrian Koh managed athlete/i })).toContainText("Managed athlete");
     await expect(page.getByRole("row", { name: /Rank 1 Adrian Koh managed athlete/i })).toContainText("SGP");
     await expect(page.getByRole("row", { name: /Rank 1 Adrian Koh managed athlete/i })).toContainText("pts");
@@ -1508,6 +1512,18 @@ test("opens the full career Rankings table with managed highlight and bounded mo
     await expect(page.getByRole("heading", { name: "Adrian Koh" })).toBeVisible();
     await commandRail.getByRole("button", { name: "Rankings: Circuit table" }).click();
     await expect(page.getByRole("heading", { name: "Circuit Rankings" })).toBeVisible();
+    await page.getByLabel("Rankings pagination").getByRole("button", { name: "Next" }).click();
+    await expect(page.getByText(`9-16 of ${seededPlayers.length}`, { exact: true })).toBeVisible();
+    await expect(page.getByRole("row", { name: /Rank 9 Arif Hadi/i })).toBeVisible();
+    await page.getByLabel("Rankings pagination").getByRole("button", { name: "Prev" }).click();
+    await expect(page.getByRole("row", { name: /Rank 1 Adrian Koh managed athlete/i })).toBeVisible();
+    for (let pageAdvance = 0; pageAdvance < 5; pageAdvance += 1) {
+      await page.getByLabel("Rankings pagination").getByRole("button", { name: "Next" }).click();
+    }
+    await expect(page.getByText(`41-${seededPlayers.length} of ${seededPlayers.length}`, { exact: true })).toBeVisible();
+    await expect(page.locator(".rankings-row:not(.rankings-row-head)")).toHaveCount(7);
+    await expect(page.getByRole("row", { name: /Rank 47/i })).toBeVisible();
+    await expect(page.getByLabel("Rankings pagination").getByRole("button", { name: "Next" })).toBeDisabled();
     await expectRankingsViewportBounded(page);
     await captureFocusedScreenshot(page, viewport.name);
   }
