@@ -1,106 +1,114 @@
-# Documentation Harness
+# Documentation Map
 
-This repo uses an agent-first documentation harness: the repository is the shared memory layer for humans and AI agents.
+This directory is the durable system memory for **Badminton Manager**. Start here when you need to know which document owns product truth, architecture boundaries, subsystem contracts, active work, or historical context.
 
-The goal is faster re-entry, fewer pasted prompts, and more reliable implementation loops.
-
-$$
-\text{Agent I/O speed} \approx \frac{\text{discoverable context} + \text{tests} + \text{clear boundaries}}{\text{manual explanation}}
-$$
-
-## Map
-
-```text
-AGENTS.md
-  |
-  v
-docs/README.md
-  |
-  +-- product/              stable product truth and versioned release packets
-  +-- architecture/         implementation strategy and module boundaries
-  +-- reference/            subsystem contracts
-  +-- plans/active/         current execution state
-  +-- decisions/            architecture decision records
-```
-
-## Current Version
-
-The project is now at **`v0.3 Stable Career System`**.
-
-`v0.3` introduces a stable local-first career loop: career launch, a locked managed athlete, the dense
-Career Command Center, training/recovery, calendar entry, scheduled match days, live match
-management, post-match review, rankings, budget ledger, and Save Manager trust surfaces.
-
-The career system is stable, but intentionally limited. This release is a controlled foundation, not
-a claim that every long-term sports-management feature is complete:
+The first stop for agents is still `AGENTS.md`; the first stop for documentation routing is this file.
 
 $$
-\text{v0.3 career scope}
+\text{maintainable system memory}
 =
-\text{stable loop}
-+ \text{limited flexibility}
-+ \text{clear expansion path}
+\text{orientation}
++ \text{contracts}
++ \text{decision history}
++ \text{update discipline}
 $$
 
-Future versions should expand both flexibility and realism gradually, without breaking the
-local-first save model or turning the UI back into a crowded panel stack.
+## First Stops
 
-## Source Of Truth
-
-| Need | Read | Update when |
+| Need | Read first | Why |
 | --- | --- | --- |
-| Fast session entry | `AGENTS.md` | Routing or required commands change |
-| Product direction | `docs/product/PRD.md` | The product thesis, scope, or non-goals change |
-| Milestone sequence | `docs/product/ROADMAP.md` | Version order, goals, or exit criteria change |
-| Current release work | `docs/product/versions/v0.3/v0.3.md` | The active stable career-system scope changes |
-| Completed UI/career/save bridge | `docs/product/versions/v0.2.4/v0.2.4.md` | Historical UI framework or season-ready bridge context needs clarification |
-| Match-algorithm baseline | `docs/product/versions/v0.2.3/v0.2.3.md` | Detailed/quick simulation scope or calibration baseline changes |
-| `v0.2.4` player page and shell cleanup | `docs/product/versions/v0.2.4/player-profile-and-shell-amendment.md` | Player profile, player-name navigation, or settings consolidation direction changes |
-| Current project state | `docs/plans/active/project-status.md` | Work completes, next work changes, blockers appear |
-| Architecture boundaries | `docs/architecture/overview.md` | Module ownership or runtime boundaries change |
-| Subsystem rules | `docs/reference/*.md` | Engine, tactics, player, or tournament contracts change |
-| Career calendar/ranking rules | `docs/reference/career-calendar-ranking.md` | Event deadlines, eligibility, seeding snapshots, or ranking behavior change |
-| Simulation fidelity design | `docs/reference/match-simulation-fidelity.md` | Detailed/quick match algorithm design or calibration strategy changes |
-| Match balance calibration | `docs/reference/match-balance-calibration.md` | OVR fairness, upset probability, or rally-shape tuning changes |
-| Stat composition calibration | `docs/reference/stat-composition-calibration.md` | Rating-field influence, archetype balance, or displayed OVR formulas change |
-| Big technical decisions | `docs/decisions/ADR-*.md` | A costly-to-reverse decision is accepted or superseded |
-| Archived Rescue MVP tickets | `docs/rescue_MVP/arc_tix/` | Historical ticket wording needs review |
+| Fast agent entry | [`../AGENTS.md`](../AGENTS.md) | Compact mission, rules, commands, and documentation discipline |
+| Documentation routing | [`docs/README.md`](README.md) | The map you are reading now |
+| Current project state | [`plans/active/project-status.md`](plans/active/project-status.md) | Current phase, completed work, next work, blockers |
+| Stable product truth | [`product/PRD.md`](product/PRD.md) | Product identity, goals, non-goals, and player fantasy |
+| Active release packet | [`product/versions/v0.3/v0.3.md`](product/versions/v0.3/v0.3.md) | Stable career-system release context |
+| Architecture map | [`architecture/overview.md`](architecture/overview.md) | Runtime layers, module ownership, and test strategy |
+| Subsystem contracts | [`reference/`](reference/) | Durable gameplay, engine, persistence, and code-structure references |
+| Costly decisions | [`decisions/`](decisions/) | ADRs; append or supersede rather than rewrite history |
 
-## Versioning Rules
+## Sources Of Truth
 
-- Stable product truth lives in `docs/product/PRD.md`.
-- Release-specific scope lives in `docs/product/versions/vX.Y/` or `docs/product/versions/vX.Y.Z/`.
-- UI demo inputs and design references stay inside the version folder that uses them.
-- ADRs are append-only historical context. Supersede them with a new ADR instead of deleting old decisions.
-- Active execution state lives in `docs/plans/active/`; completed plans can later move to `docs/plans/completed/`.
+### Product Truth
 
-## Progressive Disclosure
+- [`product/PRD.md`](product/PRD.md) owns the stable product thesis: the player is the coach and manager, not the athlete controller.
+- [`product/ROADMAP.md`](product/ROADMAP.md) owns version sequencing and exit criteria.
+- [`product/versions/v0.3/v0.3.md`](product/versions/v0.3/v0.3.md) is the active stable career-system packet.
+- Older version packets under `product/versions/` explain historical delivery context. They are useful references, not the primary current contract.
 
-For most coding tasks, read in this order:
+### Architecture Truth
 
-1. `AGENTS.md`
-2. `docs/plans/active/project-status.md`
-3. The narrow source or test files for the task
-4. The relevant subsystem reference in `docs/reference/`
-5. The active version packet only if product intent is unclear
+- [`architecture/overview.md`](architecture/overview.md) owns the high-level local-first SPA map, runtime boundaries, module ownership, and verification strategy.
+- Major irreversible architecture or process decisions belong in [`decisions/`](decisions/).
 
-For product or architecture tasks, start with:
+### Subsystem Contracts
 
-1. `docs/product/PRD.md`
-2. `docs/product/versions/v0.3/v0.3.md`
-3. `docs/product/versions/v0.2.4/v0.2.4.md` when UI/career/save bridge context is relevant
-4. `docs/product/versions/v0.2.3/v0.2.3.md` when match-algorithm intent is relevant
-5. `docs/architecture/overview.md`
-6. Related ADRs in `docs/decisions/`
+Use the smallest matching reference before changing behavior:
+
+- [`reference/game-mechanics.md`](reference/game-mechanics.md) - player fantasy, controllable inputs, simulated outputs, match/career/world flow
+- [`reference/code-structure.md`](reference/code-structure.md) - practical source-tree map and dangerous-change zones
+- [`reference/save-and-persistence.md`](reference/save-and-persistence.md) - local save keys, schemas, migration, import/export, and recovery invariants
+- [`reference/maintainer-workflow.md`](reference/maintainer-workflow.md) - short operational workflow for humans and agents
+- [`reference/match-engine.md`](reference/match-engine.md) - compact match-engine contract
+- [`reference/match-simulation-fidelity.md`](reference/match-simulation-fidelity.md) - detailed versus quick simulation plan and fidelity rules
+- [`reference/match-balance-calibration.md`](reference/match-balance-calibration.md) - OVR-gap balance harness and calibration bands
+- [`reference/stat-composition-calibration.md`](reference/stat-composition-calibration.md) - rating-field influence and same-OVR archetype harness
+- [`reference/career-calendar-ranking.md`](reference/career-calendar-ranking.md) - calendar, deadlines, rankings, event history, and profile-record truth
+- [`reference/tournament-system.md`](reference/tournament-system.md) - 16-player knockout, quick background matches, bracket progression, archives
+- [`reference/player-model.md`](reference/player-model.md) - player schema, ratings, derived attributes, traits
+- [`reference/tactics-system.md`](reference/tactics-system.md) - tactical inputs, team talks, bounded tactical effects
+
+### Active Work And History
+
+- Active ticket specs live in [`active_tix/`](active_tix/).
+- Archived ticket specs live in [`arc_tix/`](arc_tix/).
+- Rescue-MVP planning history lives in [`rescue_MVP/`](rescue_MVP/).
+- Scratch notes are not source of truth unless promoted into product, architecture, reference, plan, or ADR docs.
+
+Historical tickets and release packets explain why the project moved, but current implementation work should route through the product, architecture, reference, plan, and decision documents above.
+
+## Documentation Ownership
+
+| Change type | Required doc update |
+| --- | --- |
+| Game mechanic changes | Matching `docs/reference/` file, usually `reference/game-mechanics.md` or a narrower subsystem reference |
+| Match simulation changes | `reference/match-engine.md` or `reference/match-simulation-fidelity.md`; update calibration references if tuning changes |
+| Career calendar/ranking changes | `reference/career-calendar-ranking.md` |
+| Tournament-world changes | `reference/tournament-system.md` or a new world-simulation reference if the current file is too narrow |
+| Save schema/migration changes | `reference/save-and-persistence.md` |
+| Module boundary changes | `architecture/overview.md` |
+| Route/page structure changes | `architecture/overview.md` and, if practical routing changed, `reference/code-structure.md` |
+| Public data contract changes | Matching `reference/` file and affected product/version packet when player-facing |
+| Product scope or player-facing behavior changes | `product/PRD.md` or the active version packet |
+| Setup, command, or verification changes | `../README.md`, `../AGENTS.md`, or this file |
+| Current execution-state changes | `plans/active/project-status.md` |
+| Major irreversible decisions | New ADR in `decisions/` that supersedes older ADRs when needed |
 
 ## Update Contract
 
-When code changes materially, update the smallest doc that would help the next session:
+When code changes materially, update documentation in the same work session.
 
-- new gameplay behavior -> active version packet or subsystem reference
-- changed module boundary -> architecture overview
-- changed accepted technical direction -> ADR
-- changed work status -> active project status
-- changed verification command or setup -> `README.md` and `AGENTS.md`
+$$
+\text{code change} + \text{stale docs}
+= \text{future archaeology}
+$$
 
-The rule of thumb: if a future agent would otherwise need a chat transcript to understand the change, put the knowledge in the repo.
+Rules of thumb:
+
+1. Update the smallest durable document that would help the next maintainer.
+2. Prefer one precise subsystem reference over broad release-history narration.
+3. Keep `AGENTS.md` compact; route to this map instead of pasting manuals there.
+4. Treat ADRs as append-only decision history. Supersede with a new ADR rather than deleting prior context.
+5. If the next agent would need your chat transcript, document it.
+
+## Verification
+
+For documentation-only work, at minimum check links and search for the expected anchors. For system changes, run the relevant project checks from the root README and `AGENTS.md`.
+
+Useful commands:
+
+```sh
+rg -n "game-mechanics|code-structure|save-and-persistence|maintainer-workflow|Documentation Discipline" AGENTS.md docs
+rg -n "badminton-manager-save|badminton-manager-save-corrupt|SAVE|migration|import" game docs/reference
+npm run typecheck
+npm run test
+```
