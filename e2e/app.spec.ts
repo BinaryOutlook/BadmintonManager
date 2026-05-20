@@ -110,7 +110,7 @@ function createBetweenRoundsCareerSave() {
   const nextOpponentId = nextContext.playerAId === managedPlayerId ? nextContext.playerBId : nextContext.playerAId;
   const opponentId = context.playerAId === managedPlayerId ? context.playerBId : context.playerAId;
   const save = {
-    version: 9,
+    version: 10,
     selectedPlayerId: managedPlayerId,
     plannedTacticKey: "balancedControl",
     seed: 61001,
@@ -194,7 +194,7 @@ function createPostMatchCloseoutCareerSave(outcome: "loss" | "title") {
   });
   const placementKey = won ? "champion" : context.roundName;
   const save = {
-    version: 9,
+    version: 10,
     selectedPlayerId: managedPlayerId,
     plannedTacticKey: "balancedControl",
     seed: outcome === "title" ? 62002 : 62001,
@@ -298,7 +298,7 @@ function createCompletedNonManagedArchiveSave() {
     tier: event.tier
   });
   const save = {
-    version: 9,
+    version: 10,
     selectedPlayerId: managedPlayerId,
     plannedTacticKey: "balancedControl",
     seed,

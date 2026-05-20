@@ -61,6 +61,51 @@ Every playable `16`-player career event must have at least four event days. The 
 
 The source of truth is `game/career/matchSchedule.ts`. Store-level day advancement must consult that helper so a due or overdue managed match cannot be skipped by a direct `advanceCareerDay()` call.
 
+
+## Autonomous Universe Simulation
+
+Career time advances the circuit, not only the managed-athlete diary. The domain service
+`simulateUniverseThroughDate` in `game/career/universe.ts` is the universe clock contract:
+
+```ts
+function simulateUniverseThroughDate(args: {
+  career: CareerState;
+  activeTournament: TournamentState | null;
+  targetDate: string;
+}): {
+  career: CareerState;
+  activeTournament: TournamentState | null;
+  eventsSimulated: string[];
+};
+```
+
+For new saves, the invariant is:
+
+$$
+\forall e \in \texttt{career.events},\quad
+\texttt{career.date} > \texttt{eventEndDate}(e)\Rightarrow\texttt{CareerUniverseTournamentRecord}(e)
+$$
+
+The simulator is deterministic and idempotent. Running it twice for the same save/date must not
+duplicate universe event rows, match records, ranking settlements, or player achievements.
+
+The service may publish a deterministic field at `event.drawDate`, and it completes overdue
+non-entered events with a full 16-player bracket, scorelines, champion, runner-up, placements,
+ranking points, and champion/runner-up achievements. It also archives completed active
+tournaments after managed title runs or post-elimination closeouts.
+
+Managed-match immutability is stricter than the overdue invariant. If an active entered event is
+still waiting for user-played managed match resolution, universe simulation records the draw as
+`in_progress` but does **not** auto-complete that managed match.
+
+The product boundary is:
+
+$$
+\text{Universe} > \text{Managed Athlete Diary}
+$$
+
+React components consume these records; they do not run tournament simulation.
+
 ## Entry Eligibility
 
 `eventEligibilityFor(state, event)` is the entry gate used by store actions and tests.
@@ -174,9 +219,30 @@ and round-of-16 placement points are written for every ranked player in that bra
 history rows for the same `playerId + eventId` are treated as settled facts so reloads or replayed
 closeouts do not double-count points.
 
-## Career Event History
+## Universe Event Records And Career Event History
 
-`CareerState.eventHistory` stores one persistent record per event. Played closeouts are recorded when the managed run ends by title, final loss, or earlier elimination. Skipped or missed events are recorded after their event end date passes.
+`CareerState.universeEvents` is the tournament-world archive. It is not a managed-player diary.
+Each `CareerUniverseTournamentRecord` stores:
+
+- season id and event id
+- source: `live_progression`, `post_elimination`, `unentered_sim`, `backfill_sim`, `archive_import`, or `legacy_unavailable`
+- status: `scheduled`, `drawn`, `in_progress`, `completed`, or `legacy_unavailable`
+- draw/start/completion dates
+- deterministic entrants
+- completed match ids
+- champion and runner-up
+- placement rows with points awarded
+- managed-player result, including `not_entered` when the athlete skipped or missed the field
+
+Legacy saves with enough match truth may hydrate completed `archive_import` universe records. If an
+old save only has summary history and cannot prove entrants, bracket, champion, and runner-up, the
+record is labeled `legacy_unavailable`; the UI must not invent champions for that gap.
+
+`CareerState.eventHistory` remains a managed-program summary archive for prior UI surfaces. Played
+closeouts are recorded when the managed run ends by title, final loss, or earlier elimination. New
+skipped/non-entered event truth is carried by `universeEvents`; Past Events may synthesize list rows
+from completed universe records for navigation, but the authoritative tournament record is
+`career.universeEvents`.
 
 History statuses are:
 
@@ -185,21 +251,22 @@ champion | runner_up | semi_final | quarter_final | round_of_16
 skipped | missed_deadline | withdrawn
 ```
 
-Records include event dates, tier, result status, awarded points, prize money, entry/travel costs, net cash, match ids, scorelines, and lightweight achievements such as `First Title`.
-
-For new completed tournament saves, the event history record also stores a closed bracket snapshot and
-the full set of completed match ids/scorelines when available. Older history rows can still be
-summary-only; UI should label those as fallback archives rather than inventing missing bracket truth.
-
-`CareerState.matchHistory` stores universe match records for both played managed matches and quick-simulated
-non-managed matches:
+`CareerState.matchHistory` stores authoritative completed universe match records for played managed
+matches, quick-simulated active-bracket matches, autonomous universe simulations, deterministic
+backfills, and legacy imports:
 
 ```ts
-type CareerMatchRecordSource = "played" | "quick_sim" | "archive_import";
+type CareerMatchRecordSource =
+  | "played"
+  | "quick_sim"
+  | "universe_sim"
+  | "backfill_sim"
+  | "archive_import";
 ```
 
-The source field distinguishes manually played results from quick simulation. Legacy/imported match
-records without source metadata hydrate as `archive_import`.
+The source field distinguishes manually played results from simulation/import paths. Legacy/imported
+match records without source metadata hydrate as `archive_import`. New universe match ids use stable
+season/event/round/slot material rather than randomness.
 
 ## Player Profile Records
 
@@ -227,7 +294,9 @@ Migration safety works in two layers:
 
 - Zod defaults let old ranking/event rows parse.
 - `migratePersistedSave` hydrates saved event rows from the fictional catalog so deadlines, locations, draw dates, and eligibility metadata are present after load/import.
-- version `8` career saves migrate to version `9` with `eventHistory: []`.
+- version `8` career saves migrate through the current version with `eventHistory: []`.
+- version `9` career saves migrate to version `10` with `universeEvents: []` or honest legacy universe records when old `eventHistory` exists.
+- current version `10` saves run `simulateUniverseThroughDate` safely on load/import for the save date.
 - legacy quick-tournament saves that contain the previous real event name are normalized to the fictional `Harborline Open` name during load/import.
 - legacy match history rows without a source hydrate with the honest `archive_import` fallback.
 
