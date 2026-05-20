@@ -9661,3 +9661,107 @@ textarea:focus-visible {
     gap: 0.72rem;
   }
 }
+
+@media (max-width: 780px) {
+  .workspace-shell-profile,
+  .workspace-shell:has(.player-profile-page) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .workspace-shell-profile .sidebar,
+  .workspace-shell:has(.player-profile-page) .sidebar {
+    display: block;
+    overflow-x: auto;
+    padding: 0.38rem 0.5rem;
+    border-right: 0;
+    border-bottom: 1px solid rgba(48, 54, 61, 0.9);
+  }
+
+  .workspace-shell-profile .main-canvas,
+  .workspace-shell:has(.player-profile-page) .main-canvas {
+    padding: 0.75rem;
+  }
+
+  .workspace-shell-profile .sidebar-collapse-button,
+  .workspace-shell-profile .sidebar-resize-handle,
+  .workspace-shell:has(.player-profile-page) .sidebar-collapse-button,
+  .workspace-shell:has(.player-profile-page) .sidebar-resize-handle {
+    display: none;
+  }
+
+  .workspace-shell-profile .sidenav,
+  .workspace-shell:has(.player-profile-page) .sidenav {
+    display: flex;
+    gap: 0.35rem;
+    overflow-x: auto;
+    padding-top: 0;
+  }
+
+  .workspace-shell-profile .command-group,
+  .workspace-shell:has(.player-profile-page) .command-group {
+    min-width: max-content;
+  }
+
+  .workspace-shell-profile .command-group h3,
+  .workspace-shell:has(.player-profile-page) .command-group h3 {
+    display: none;
+  }
+
+  .workspace-shell-profile .command-group-list,
+  .workspace-shell:has(.player-profile-page) .command-group-list {
+    display: flex;
+    gap: 0.35rem;
+  }
+
+  .workspace-shell-profile .sidenav-item,
+  .workspace-shell:has(.player-profile-page) .sidenav-item {
+    min-width: 4.45rem;
+    padding: 0.5rem 0.42rem;
+    border-left: 0;
+    font-size: 0;
+    white-space: nowrap;
+  }
+
+  .workspace-shell-profile .sidenav-item::after,
+  .workspace-shell:has(.player-profile-page) .sidenav-item::after {
+    content: attr(data-short);
+    font-size: 0.64rem;
+    letter-spacing: 0.08em;
+  }
+
+  .profile-attribute-row {
+    display: grid;
+    gap: 0.34rem;
+    padding-bottom: 0.82rem;
+    border-bottom: 1px solid rgba(48, 54, 61, 0.72);
+  }
+
+  .profile-attribute-row:last-child {
+    padding-bottom: 0;
+    border-bottom: 0;
+  }
+
+  .profile-attribute-context {
+    color: var(--muted);
+    font-size: 0.76rem;
+    font-weight: 700;
+    line-height: 1.38;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  .profile-attribute-context-positive,
+  .profile-attribute-context-info,
+  .profile-attribute-context-warning {
+    color: var(--muted);
+  }
+
+  .profile-attribute-row-head > span {
+    font-size: 0.95rem;
+    line-height: 1.2;
+  }
+
+  .profile-attribute-row-head strong {
+    font-size: 0.98rem;
+  }
+}
