@@ -548,6 +548,8 @@ function rankingStatus(entry: CareerState["rankings"][number]) {
   return `Latest ${latest.round} +${points(latest.points)}`;
 }
 
+const RANKINGS_PAGE_SIZE = 8;
+
 function openTournamentHome(props: CareerPageProps, career: CareerState, eventId: string) {
   props.onOpenTournamentHome({ seasonId: career.seasonId, eventId });
 }
@@ -1365,6 +1367,8 @@ export function CareerHomePage(props: CareerPageProps) {
 }
 
 export function CareerRankingsPage(props: CareerPageProps) {
+  const [requestedRankingsPageIndex, setRequestedRankingsPageIndex] = useState(0);
+
   if (!props.career) {
     return <CareerEmpty onStartCareer={props.onStartCareer} saveRecovery={props.saveRecovery} />;
   }
@@ -1372,6 +1376,14 @@ export function CareerRankingsPage(props: CareerPageProps) {
   const career = props.career;
   const managedPlayerId = career.program.managedPlayerId;
   const orderedRankings = rankingsByCurrentRank(career.rankings);
+  const rankingsPageCount = Math.max(1, Math.ceil(orderedRankings.length / RANKINGS_PAGE_SIZE));
+  const rankingsPageIndex = Math.min(requestedRankingsPageIndex, rankingsPageCount - 1);
+  const rankingsPageStartIndex = rankingsPageIndex * RANKINGS_PAGE_SIZE;
+  const visibleRankings = orderedRankings.slice(rankingsPageStartIndex, rankingsPageStartIndex + RANKINGS_PAGE_SIZE);
+  const visibleRangeStart = orderedRankings.length > 0 ? rankingsPageStartIndex + 1 : 0;
+  const visibleRangeEnd = rankingsPageStartIndex + visibleRankings.length;
+  const hasPreviousRankingsPage = rankingsPageIndex > 0;
+  const hasNextRankingsPage = rankingsPageIndex < rankingsPageCount - 1;
   const managedIndex = orderedRankings.findIndex((entry) => entry.playerId === managedPlayerId);
   const managedRanking = managedIndex >= 0 ? orderedRankings[managedIndex] : undefined;
   const leader = orderedRankings[0];
@@ -1507,7 +1519,7 @@ export function CareerRankingsPage(props: CareerPageProps) {
       <section className="command-panel command-panel-full rankings-table-panel">
         <div className="panel-header">
           <h2>Full Circuit Table</h2>
-          <span>{orderedRankings.length} ranked athletes, no pagination</span>
+          <span>{visibleRangeStart}-{visibleRangeEnd} of {orderedRankings.length} ranked athletes</span>
         </div>
         <div className="rankings-table" role="table" aria-label="Circuit rankings table">
           <div className="rankings-row rankings-row-head" role="row">
@@ -1518,7 +1530,7 @@ export function CareerRankingsPage(props: CareerPageProps) {
             <span role="columnheader">Season race</span>
             <span role="columnheader">Status</span>
           </div>
-          {orderedRankings.map((entry) => {
+          {visibleRankings.map((entry) => {
             const player = playerMap[entry.playerId];
             const isManaged = entry.playerId === managedPlayerId;
             const rowClassName = isManaged
@@ -1559,6 +1571,30 @@ export function CareerRankingsPage(props: CareerPageProps) {
               </div>
             );
           })}
+        </div>
+        <div className="calendar-pagination rankings-pagination" aria-label="Rankings pagination">
+          <button
+            className="command-button command-button-secondary"
+            type="button"
+            disabled={!hasPreviousRankingsPage}
+            onClick={() => setRequestedRankingsPageIndex(rankingsPageIndex - 1)}
+          >
+            Prev
+          </button>
+          <span className="rankings-page-range" aria-live="polite">
+            {visibleRangeStart}-{visibleRangeEnd} of {orderedRankings.length}
+          </span>
+          <span>
+            Page {rankingsPageIndex + 1} of {rankingsPageCount}
+          </span>
+          <button
+            className="command-button command-button-secondary"
+            type="button"
+            disabled={!hasNextRankingsPage}
+            onClick={() => setRequestedRankingsPageIndex(rankingsPageIndex + 1)}
+          >
+            Next
+          </button>
         </div>
       </section>
     </section>

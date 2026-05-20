@@ -594,6 +594,85 @@ describe("career rankings page", () => {
     expect(screen.getByText("No Career Loaded")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Create Career Save" })).toBeInTheDocument();
   });
+
+  it("opens the Full Circuit Table on the first eight ranked athletes with clear paging state", () => {
+    const career = createInitialCareerState(seededPlayers[0].player.id, 9915);
+    const { container } = renderRankingsPage({ career });
+    const table = screen.getByRole("table", { name: "Circuit rankings table" });
+    const dataRows = within(table).getAllByRole("row").slice(1);
+
+    expect(dataRows).toHaveLength(8);
+    expect(within(dataRows[0]!).getByText("#1")).toBeInTheDocument();
+    expect(within(dataRows[7]!).getByText("#8")).toBeInTheDocument();
+    expect(within(table).queryByText("#9")).not.toBeInTheDocument();
+    expect(screen.getByText(`1-8 of ${career.rankings.length}`)).toBeInTheDocument();
+
+    const pagination = screen.getByLabelText("Rankings pagination");
+    expect(within(pagination).getByRole("button", { name: "Prev" })).toBeDisabled();
+    expect(within(pagination).getByRole("button", { name: "Next" })).toBeEnabled();
+    expect(container.querySelectorAll(".rankings-row:not(.rankings-row-head)")).toHaveLength(8);
+  });
+
+  it("moves the Full Circuit Table forward and backward by eight-rank windows", () => {
+    const career = createInitialCareerState(seededPlayers[0].player.id, 9916);
+    renderRankingsPage({ career });
+
+    const pagination = screen.getByLabelText("Rankings pagination");
+    fireEvent.click(within(pagination).getByRole("button", { name: "Next" }));
+
+    const pageTwoTable = screen.getByRole("table", { name: "Circuit rankings table" });
+    const pageTwoRows = within(pageTwoTable).getAllByRole("row").slice(1);
+
+    expect(pageTwoRows).toHaveLength(8);
+    expect(within(pageTwoRows[0]!).getByText("#9")).toBeInTheDocument();
+    expect(within(pageTwoRows[0]!).getByRole("button", { name: "Arif Hadi" })).toBeInTheDocument();
+    expect(screen.getByText(`9-16 of ${career.rankings.length}`)).toBeInTheDocument();
+    expect(within(pagination).getByRole("button", { name: "Prev" })).toBeEnabled();
+
+    fireEvent.click(within(pagination).getByRole("button", { name: "Prev" }));
+
+    const pageOneRows = within(screen.getByRole("table", { name: "Circuit rankings table" })).getAllByRole("row").slice(1);
+    expect(within(pageOneRows[0]!).getByText("#1")).toBeInTheDocument();
+    expect(screen.getByText(`1-8 of ${career.rankings.length}`)).toBeInTheDocument();
+  });
+
+  it("keeps the final rankings page reachable with Next disabled at the end", () => {
+    const career = createInitialCareerState(seededPlayers[0].player.id, 9917);
+    renderRankingsPage({ career });
+
+    const pagination = screen.getByLabelText("Rankings pagination");
+    const nextButton = within(pagination).getByRole("button", { name: "Next" });
+
+    while (nextButton.hasAttribute("disabled") === false) {
+      fireEvent.click(nextButton);
+    }
+
+    const finalTable = screen.getByRole("table", { name: "Circuit rankings table" });
+    const finalRows = within(finalTable).getAllByRole("row").slice(1);
+
+    expect(finalRows).toHaveLength(7);
+    expect(within(finalRows[0]!).getByText("#41")).toBeInTheDocument();
+    expect(within(finalRows[6]!).getByText("#47")).toBeInTheDocument();
+    expect(screen.getByText(`41-47 of ${career.rankings.length}`)).toBeInTheDocument();
+    expect(within(pagination).getByRole("button", { name: "Next" })).toBeDisabled();
+    expect(within(pagination).getByRole("button", { name: "Prev" })).toBeEnabled();
+  });
+
+  it("only highlights the managed athlete when their ranked row is on the visible page", () => {
+    const managedPageTwoPlayer = seededPlayers[8]!.player;
+    const career = createInitialCareerState(managedPageTwoPlayer.id, 9918);
+    renderRankingsPage({ career });
+
+    const table = screen.getByRole("table", { name: "Circuit rankings table" });
+    expect(within(table).queryByText("Managed athlete")).not.toBeInTheDocument();
+
+    fireEvent.click(within(screen.getByLabelText("Rankings pagination")).getByRole("button", { name: "Next" }));
+
+    const managedRow = screen.getByRole("row", { name: /Rank 9 Arif Hadi managed athlete/i });
+    expect(managedRow).toHaveClass("rankings-row-managed");
+    expect(within(managedRow).getByText("Managed athlete")).toBeInTheDocument();
+    expect(within(managedRow).getByRole("button", { name: "Arif Hadi" })).toBeInTheDocument();
+  });
 });
 
 describe("career calendar event actions", () => {

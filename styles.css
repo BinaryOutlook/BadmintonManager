@@ -1468,6 +1468,19 @@ textarea:focus-visible {
   text-transform: uppercase;
 }
 
+.rankings-pagination {
+  flex-wrap: wrap;
+}
+
+.rankings-pagination .command-button {
+  min-width: 5.25rem;
+}
+
+.rankings-pagination span {
+  min-width: min(100%, 12rem);
+  text-align: center;
+}
+
 .calendar-secondary-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
