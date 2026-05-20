@@ -451,6 +451,14 @@ describe("career shell daily action", () => {
     expect(screen.queryByRole("heading", { name: "Schedule" })).not.toBeInTheDocument();
     expect(screen.queryByRole("tab", { name: "Calendar" })).not.toBeInTheDocument();
     expect(screen.queryByText("Calendar for June 2026")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Upcoming", "Past Events"]);
+    expect(screen.getByRole("tab", { name: "Upcoming" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: "Past Events" })).toHaveAttribute("aria-selected", "false");
+    expect(screen.getByRole("heading", { name: "Upcoming Event Schedule" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Event Brief" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Week Strip" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Milestones & Seeding" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Eligibility & Costs" })).not.toBeInTheDocument();
     expect(timelineCommand).toHaveAttribute("aria-current", "page");
 
     fireEvent.click(calendarCommand);
@@ -676,10 +684,53 @@ describe("career rankings page", () => {
 });
 
 describe("career calendar event actions", () => {
-  it("renders Timeline commitments with TBD, result markers, event actions, and profile links", () => {
+  it("defaults Timeline to Upcoming and switches Past Events into view", () => {
+    const baseCareer = createInitialCareerState(seededPlayers[0].player.id, 9917);
+    const metro = getCareerEvent(baseCareer.events, "metro-open-300")!;
+    const career = {
+      ...baseCareer,
+      eventHistory: [
+        {
+          eventId: metro.id,
+          eventName: metro.name,
+          tier: metro.tier,
+          startDate: metro.startDate,
+          endDate: addDays(metro.startDate, metro.durationDays - 1),
+          status: "missed_deadline" as const,
+          entered: false,
+          resultRound: null,
+          pointsAwarded: 0,
+          prizeMoney: 0,
+          entryCost: 0,
+          travelCost: 0,
+          netCash: 0,
+          completedAt: addDays(metro.startDate, metro.durationDays),
+          matchIds: [],
+          scorelines: [],
+          achievements: []
+        }
+      ]
+    };
+
+    renderTimelinePage({ career });
+
+    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Upcoming", "Past Events"]);
+    expect(screen.getByRole("tab", { name: "Upcoming" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: "Past Events" })).toHaveAttribute("aria-selected", "false");
+    expect(screen.getByRole("heading", { name: "Upcoming Event Schedule" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("Past event records")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Past Events" }));
+
+    expect(screen.getByRole("tab", { name: "Upcoming" })).toHaveAttribute("aria-selected", "false");
+    expect(screen.getByRole("tab", { name: "Past Events" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.queryByLabelText("Upcoming event schedule")).not.toBeInTheDocument();
+    expect(within(screen.getByLabelText("Past event records")).getByText(metro.name)).toBeInTheDocument();
+  });
+
+  it("renders Upcoming commitments with TBD, event actions, and profile links", () => {
     const baseCareer = createInitialCareerState(seededPlayers[0].player.id, 9916);
     const metro = getCareerEvent(baseCareer.events, "metro-open-300")!;
-    const harbor = getCareerEvent(baseCareer.events, "harbor-masters-500")!;
     const tournament = {
       ...createTournament(seededPlayers, baseCareer.program.managedPlayerId, 9916),
       id: metro.id,
@@ -690,7 +741,6 @@ describe("career calendar event actions", () => {
     const activeOpponentId =
       context.playerAId === baseCareer.program.managedPlayerId ? context.playerBId : context.playerAId;
     const activeOpponentName = seededPlayers.find((entry) => entry.player.id === activeOpponentId)!.player.name;
-    const pastOpponent = seededPlayers[4].player;
     const onOpenTournamentHome = vi.fn();
     const onOpenPlayerProfile = vi.fn();
     const career = {
@@ -698,21 +748,7 @@ describe("career calendar event actions", () => {
       date: metro.startDate,
       activeEventId: metro.id,
       enteredEventIds: [metro.id],
-      stage: "pre_match" as const,
-      matchHistory: [
-        {
-          id: `${harbor.id}:R16-1`,
-          eventId: harbor.id,
-          eventName: harbor.name,
-          date: harbor.startDate,
-          round: "R16" as const,
-          playerAId: baseCareer.program.managedPlayerId,
-          playerBId: pastOpponent.id,
-          winnerId: baseCareer.program.managedPlayerId,
-          scoreline: "21-14, 21-18",
-          source: "played" as const
-        }
-      ]
+      stage: "pre_match" as const
     };
 
     renderTimelinePage({ career, tournament, onOpenTournamentHome, onOpenPlayerProfile });
@@ -720,9 +756,10 @@ describe("career calendar event actions", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Timeline" })).toBeInTheDocument();
     expect(screen.queryByRole("tab", { name: "Calendar" })).not.toBeInTheDocument();
     expect(screen.queryByRole("grid", { name: /Calendar for/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Upcoming" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("heading", { name: "Confirmed Match Days" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Open tournament home for Metro Open: Round of 16" })).toBeInTheDocument();
     expect(screen.getAllByText("TBD").length).toBeGreaterThan(0);
-    expect(screen.getByRole("button", { name: "Open tournament home for Harbor Masters: Round of 16 (W)" })).toBeInTheDocument();
 
     const activeCard = screen.getByRole("button", { name: "Open tournament home for Metro Open: Round of 16" }).closest(".calendar-commitment-card") as HTMLElement;
     fireEvent.click(within(activeCard).getByRole("button", { name: "Open tournament home for Metro Open: Round of 16" }));
@@ -1043,6 +1080,7 @@ describe("career calendar event actions", () => {
       }))
     };
     const { container } = renderTimelinePage({ career });
+    fireEvent.click(screen.getByRole("tab", { name: "Past Events" }));
 
     expect(container.querySelectorAll(".calendar-event-table[aria-label='Past event records'] .calendar-event-row:not(.calendar-event-row-head)")).toHaveLength(5);
     expect(screen.getByText("Page 1 of 2")).toBeInTheDocument();
@@ -1067,6 +1105,7 @@ describe("career calendar event actions", () => {
     const onOpenTournamentHome = vi.fn();
 
     renderTimelinePage({ career, onOpenTournamentHome });
+    fireEvent.click(screen.getByRole("tab", { name: "Past Events" }));
 
     const pastEvents = screen.getByLabelText("Past event records");
     const row = within(pastEvents).getByText(event.name).closest(".calendar-event-row") as HTMLElement;
@@ -1108,6 +1147,7 @@ describe("career calendar event actions", () => {
     };
 
     renderTimelinePage({ career, onOpenTournamentHome });
+    fireEvent.click(screen.getByRole("tab", { name: "Past Events" }));
     fireEvent.click(
       within(screen.getByLabelText("Past event records")).getByRole("button", {
         name: `Open tournament home for ${event.name}`

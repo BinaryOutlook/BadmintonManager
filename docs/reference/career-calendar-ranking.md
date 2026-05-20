@@ -153,10 +153,11 @@ Timeline -> chronological event context
 Calendar -> one-month manager diary
 ```
 
-- `Timeline` preserves broader chronological event-log context, upcoming event operations, and archived event records.
+- `Timeline` is the event ledger. It exposes exactly the primary tabs `Upcoming` and `Past Events`, with `Upcoming`
+  first and selected by default.
+- `Upcoming` preserves the compact paged event schedule and upcoming manager-relevant match commitments.
+- `Past Events` is a selectable Timeline tab, not a lower passive section, and contains completed or archived event rows.
 - `Calendar` is a standalone month grid of confirmed manager commitments only.
-- `Upcoming` and `Past Events` remain list-style operational surfaces on the Timeline page until a separate event-desk
-  route exists.
 - `Calendar` must not render as a Timeline or Schedule tab. It renders exactly one visible month at a time with
   local Previous / Today / Next controls.
 
