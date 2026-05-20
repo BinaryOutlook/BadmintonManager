@@ -16,6 +16,7 @@ import {
   CareerScoutingNetworkPage,
   CareerStaffRoomPage,
   CareerTournamentHomePage,
+  CareerTimelinePage,
   CareerTrainingPage,
   CareerYouthAcademyPage
 } from "../components/CareerWorkbench";
@@ -32,7 +33,7 @@ import { useTournamentStore, type AppPhase, type TournamentStoreState } from "..
 import type { CareerStage, CareerState, TournamentAddress } from "../game/career/models";
 import type { PersistedSave } from "../game/store/save";
 import { getManagedMatchContext, type TournamentState } from "../game/tournament/tournament";
-import { isPhaseBoundPage, pageForPhase, type AppPage, type ScheduleSection } from "./pages";
+import { isPhaseBoundPage, pageForPhase, type AppPage } from "./pages";
 import { PlayerProfilePage } from "./pages/PlayerProfilePage";
 import { SquadPage } from "./pages/SquadPage";
 import { PlayerNavigationProvider } from "./playerNavigation";
@@ -274,11 +275,13 @@ export function commandIdForPage(page: AppPage): CommandId {
       return "squad";
     case "season":
       return "training";
-    case "games":
     case "tournamentHome":
       return "calendar";
+    case "games":
     case "calendar":
-      return page.section === "timeline" ? "timeline" : "calendar";
+      return "calendar";
+    case "timeline":
+      return "timeline";
     case "rankings":
       return "rankings";
     case "bracket":
@@ -439,10 +442,6 @@ export function App() {
     setActivePage({ id: "tournamentHome", ...address });
   }
 
-  function openScheduleSection(section: ScheduleSection) {
-    setActivePage({ id: "calendar", section });
-  }
-
   function requestReset() {
     setSettingsOpen(false);
     setPendingConfirm("resetSession");
@@ -571,13 +570,13 @@ export function App() {
   function handleAdvanceCareerDay() {
     advanceCareerDay();
     const next = useTournamentStore.getState();
-    setActivePage(next.career?.stage === "pre_match" ? { id: "bracket" } : { id: "calendar", section: "upcoming" });
+    setActivePage(next.career?.stage === "pre_match" ? { id: "bracket" } : { id: "timeline" });
   }
 
   function handleOpenScheduledCareerMatch(eventId?: string) {
     openScheduledCareerMatch(eventId);
     const next = useTournamentStore.getState();
-    setActivePage(next.career?.stage === "pre_match" ? { id: "bracket" } : { id: "calendar", section: "upcoming" });
+    setActivePage(next.career?.stage === "pre_match" ? { id: "bracket" } : { id: "timeline" });
   }
 
   function handleContinueCareerAfterPostMatch() {
@@ -643,10 +642,10 @@ export function App() {
         setActivePage(career && phase !== "match" ? { id: "home" } : pageForPhase(phase));
         break;
       case "timeline":
-        setActivePage(career ? { id: "calendar", section: "timeline" } : { id: "games" });
+        setActivePage({ id: "timeline" });
         break;
       case "calendar":
-        setActivePage(career ? { id: "calendar", section: "calendar" } : { id: "games" });
+        setActivePage({ id: "calendar" });
         break;
       case "inbox":
         break;
@@ -718,7 +717,7 @@ export function App() {
         group: "CORE",
         label: "Timeline",
         short: "TIM",
-        description: career ? "Schedule event log" : "Career required",
+        description: career ? "Chronological event log" : "Career required",
         onActivate: () => activateCommand("timeline")
       },
       {
@@ -962,7 +961,7 @@ export function App() {
       corruptSavePresent,
       onStartCareer: requestStartCareer,
       onOpenTraining: () => setActivePage({ id: "season" }),
-      onOpenCalendar: () => setActivePage({ id: "calendar", section: "upcoming" }),
+      onOpenCalendar: () => setActivePage({ id: "timeline" }),
       onOpenTournamentHome: openTournamentHome,
       onOpenHome: () => setActivePage({ id: "home" }),
       onOpenLiveMatch: openLiveMatchRoute,
@@ -1126,18 +1125,16 @@ export function App() {
       return <CareerCalendarPage {...careerPageProps} />;
     }
 
+    if (activePage.id === "timeline") {
+      return <CareerTimelinePage {...careerPageProps} />;
+    }
+
     if (activePage.id === "season") {
       return <CareerTrainingPage {...careerPageProps} />;
     }
 
     if (activePage.id === "calendar") {
-      return (
-        <CareerCalendarPage
-          {...careerPageProps}
-          activeSection={activePage.section ?? "upcoming"}
-          onActiveSectionChange={openScheduleSection}
-        />
-      );
+      return <CareerCalendarPage {...careerPageProps} initialMonthCursor={activePage.monthCursor} />;
     }
 
     if (activePage.id === "rankings") {

@@ -1,16 +1,15 @@
 import type { AppPhase } from "../game/store/store";
 import type { TournamentAddress } from "../game/career/models";
 
-export type ScheduleSection = "upcoming" | "past" | "timeline" | "calendar";
-
 export type AppPage =
   | { id: "setup" }
   | { id: "home" }
+  | { id: "timeline" }
   | { id: "squad" }
   | { id: "playerProfile"; playerId: string }
   | { id: "games" }
   | { id: "season" }
-  | { id: "calendar"; section?: ScheduleSection }
+  | { id: "calendar"; monthCursor?: string }
   | { id: "rankings" }
   | ({ id: "tournamentHome" } & TournamentAddress)
   | { id: "saveManager" }

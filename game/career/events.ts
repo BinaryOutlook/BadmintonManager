@@ -1,4 +1,13 @@
-import { addDays, daysBetween } from "./calendar";
+import {
+  addCalendarMonths,
+  addDays,
+  calendarMonthCursorForDate,
+  calendarMonthLabel,
+  dayOfMonth,
+  daysBetween,
+  mondayFirstWeekdayIndex,
+  type CalendarMonthCursor
+} from "./calendar";
 import { managedMatchScheduleForEvent, scheduledDateForRound } from "./matchSchedule";
 import { normalizeCareerTierLabel } from "./models";
 import { playerMap } from "../content/players";
@@ -742,6 +751,29 @@ export type CalendarCommitmentDateGroup = {
   commitments: CalendarCommitment[];
 };
 
+export type CalendarMonthWeek = {
+  days: Array<{
+    date: string;
+    dayNumber: number;
+    inVisibleMonth: boolean;
+    isCareerToday: boolean;
+    entries: ScheduleCalendarEntry[];
+  }>;
+};
+
+export type CalendarMonthViewModel = {
+  cursor: CalendarMonthCursor;
+  label: string;
+  weeks: CalendarMonthWeek[];
+  visibleRange: {
+    startDate: string;
+    endDateExclusive: string;
+  };
+  entries: ScheduleCalendarEntry[];
+};
+
+export type { CalendarMonthCursor };
+
 const calendarCommitmentRounds: RoundName[] = ["R16", "QF", "SF", "F"];
 
 const calendarRoundOrder = Object.fromEntries(
@@ -990,11 +1022,7 @@ function calendarDeadlineEntriesForCareer(career: CareerState): ScheduleCalendar
 }
 
 function scheduleCalendarEntryOrder(entry: ScheduleCalendarEntry) {
-  if (entry.kind === "deadline") {
-    return entry.deadlineType === "entry" ? 0 : 1;
-  }
-
-  return entry.state === "completed" ? 2 : 3;
+  return entry.kind === "match" ? 0 : 1;
 }
 
 function sortScheduleCalendarEntries(entries: ScheduleCalendarEntry[]) {
@@ -1003,6 +1031,27 @@ function sortScheduleCalendarEntries(entries: ScheduleCalendarEntry[]) {
       left.date.localeCompare(right.date) ||
       left.eventName.localeCompare(right.eventName) ||
       scheduleCalendarEntryOrder(left) - scheduleCalendarEntryOrder(right) ||
+      left.id.localeCompare(right.id)
+  );
+}
+
+function scheduleCalendarMonthEntryOrder(entry: ScheduleCalendarEntry, careerDate: string) {
+  if (entry.kind === "match" && !entry.result && entry.date <= careerDate) {
+    return 0;
+  }
+
+  if (entry.kind === "match") {
+    return 1;
+  }
+
+  return 2;
+}
+
+function sortScheduleCalendarMonthEntries(entries: ScheduleCalendarEntry[], careerDate: string) {
+  return [...entries].sort(
+    (left, right) =>
+      scheduleCalendarMonthEntryOrder(left, careerDate) - scheduleCalendarMonthEntryOrder(right, careerDate) ||
+      left.eventName.localeCompare(right.eventName) ||
       left.id.localeCompare(right.id)
   );
 }
@@ -1022,6 +1071,53 @@ export function scheduleCalendarEntriesForCareer(args: {
     ...calendarDeadlineEntriesForCareer(args.career),
     ...matchEntries
   ]);
+}
+
+export function scheduleCalendarMonthForCareer(args: {
+  career: CareerState;
+  tournament: TournamentState | null;
+  monthCursor: CalendarMonthCursor;
+}): CalendarMonthViewModel {
+  const cursor = calendarMonthCursorForDate(args.monthCursor);
+  const endDateExclusive = addCalendarMonths(cursor, 1);
+  const entries = scheduleCalendarEntriesForCareer(args).filter(
+    (entry) => entry.date >= cursor && entry.date < endDateExclusive
+  );
+  const entriesByDate = entries.reduce<Map<string, ScheduleCalendarEntry[]>>((groups, entry) => {
+    const group = groups.get(entry.date) ?? [];
+    group.push(entry);
+    groups.set(entry.date, group);
+    return groups;
+  }, new Map());
+  const leadingCells = mondayFirstWeekdayIndex(cursor);
+  const daysInVisibleMonth = daysBetween(cursor, endDateExclusive);
+  const cellCount = Math.max(35, Math.ceil((leadingCells + daysInVisibleMonth) / 7) * 7);
+  const gridStartDate = addDays(cursor, -leadingCells);
+  const days = Array.from({ length: cellCount }, (_, index) => {
+    const date = addDays(gridStartDate, index);
+    const inVisibleMonth = date >= cursor && date < endDateExclusive;
+
+    return {
+      date,
+      dayNumber: dayOfMonth(date),
+      inVisibleMonth,
+      isCareerToday: date === args.career.date,
+      entries: inVisibleMonth ? sortScheduleCalendarMonthEntries(entriesByDate.get(date) ?? [], args.career.date) : []
+    };
+  });
+
+  return {
+    cursor,
+    label: calendarMonthLabel(cursor),
+    weeks: Array.from({ length: cellCount / 7 }, (_, index) => ({
+      days: days.slice(index * 7, index * 7 + 7)
+    })),
+    visibleRange: {
+      startDate: cursor,
+      endDateExclusive
+    },
+    entries: sortScheduleCalendarMonthEntries(entries, args.career.date)
+  };
 }
 
 export function createCareerEventBracketSnapshot(tournament: TournamentState): CareerEventBracketSnapshot {

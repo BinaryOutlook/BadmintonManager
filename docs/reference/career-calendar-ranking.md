@@ -98,23 +98,31 @@ Career stage semantics:
 - `between_rounds`: a non-final managed win has been reviewed; the next round is scheduled for a future career date.
 - `event_complete`: the active event has closed.
 
-## Schedule, Timeline, And Calendar Split
+## Timeline And Calendar Route Split
 
-The top-level career planning surface is `Schedule`.
+The left command rail treats `Timeline` and `Calendar` as separate first-class pages, not tabs inside a shared
+`Schedule` container.
 
 ```text
-Schedule = Upcoming + Past Events + Timeline + Calendar
+Timeline -> chronological event context
+Calendar -> one-month manager diary
 ```
 
-- `Upcoming` and `Past Events` remain list-style operational surfaces.
-- `Timeline` preserves the broader chronological event-log view, including tournament progression context.
-- `Calendar` is a month grid of confirmed manager commitments only.
+- `Timeline` preserves broader chronological event-log context, upcoming event operations, and archived event records.
+- `Calendar` is a standalone month grid of confirmed manager commitments only.
+- `Upcoming` and `Past Events` remain list-style operational surfaces on the Timeline page until a separate event-desk
+  route exists.
+- `Calendar` must not render as a Timeline or Schedule tab. It renders exactly one visible month at a time with
+  local Previous / Today / Next controls.
 
 The confirmed calendar rule is:
 
 $$
-\text{Calendar entry} \iff \text{played match} \lor \text{confirmed scheduled commitment}
+\text{Calendar entry} \iff \text{played match} \lor \text{confirmed scheduled commitment} \lor \text{manager-relevant deadline}
 $$
+
+The default visible month is the month containing `career.date`. Month navigation only changes UI-local month cursor
+state; it must not mutate `career.date` or advance simulation state.
 
 For knockout rounds:
 

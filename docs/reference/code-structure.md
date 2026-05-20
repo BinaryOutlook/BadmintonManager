@@ -39,7 +39,7 @@ Current page state is local React state, not URL routing. If browser-history or 
 
 Important files:
 
-- `components/CareerWorkbench.tsx` renders the career command surfaces: Portal, Schedule, Training, Rankings, Program Hub, Rival Programs, Facilities, Media, Scouting, Recruitment, Youth, Staff, Promises, Match Planning, Pre-Match, Post-Match, and Tournament Home.
+- `components/CareerWorkbench.tsx` renders the career command surfaces: Portal, Timeline, standalone month Calendar, Training, Rankings, Program Hub, Rival Programs, Facilities, Media, Scouting, Recruitment, Youth, Staff, Promises, Match Planning, Pre-Match, Post-Match, and Tournament Home.
 - `components/SetupView.tsx` owns the launch screen, career-athlete selection modal, quick-tournament selection, resume summary, and recovery entry points.
 - `components/SaveManagerView.tsx` owns import preview, export, active-slot deletion, corrupt-backup deletion, and save metadata presentation.
 - `components/MatchView.tsx` renders the live Match Command Center and dispatches point, set, directive, talk, and advance actions.
