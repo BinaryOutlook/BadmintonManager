@@ -648,6 +648,10 @@ function sourceLabelForRecord(source: CareerMatchHistoryRecord["source"]) {
       return "Played managed match";
     case "quick_sim":
       return "Quick simulation";
+    case "universe_sim":
+      return "Universe simulation";
+    case "backfill_sim":
+      return "Backfill simulation";
     case "archive_import":
       return "Archive import";
   }
@@ -795,7 +799,10 @@ function completeTournamentFromMatchHistory(args: {
         sideBId: record.playerBId,
         winnerId: record.winnerId,
         scoreline: record.scoreline,
-        simulationFidelity: record.source === "quick_sim" ? "quick" : "detailed",
+        simulationFidelity:
+          record.source === "quick_sim" || record.source === "universe_sim" || record.source === "backfill_sim"
+            ? "quick"
+            : "detailed",
         managed: record.playerAId === args.managedPlayerId || record.playerBId === args.managedPlayerId,
         completed: true
       }))
@@ -3742,6 +3749,9 @@ export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddr
   const career = props.career;
   const event = getCareerEvent(career.events, props.eventId);
   const historyRecord = career.eventHistory.find((record) => record.eventId === props.eventId);
+  const universeRecord = career.universeEvents.find(
+    (record) => record.seasonId === career.seasonId && record.eventId === props.eventId
+  );
 
   if (!event || props.seasonId !== career.seasonId) {
     return (
@@ -3767,7 +3777,11 @@ export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddr
   const athlete = managedAthlete(career);
   const medicalGate = canCompeteWithInjury(athlete);
   const entered = career.enteredEventIds.includes(event.id);
-  const completed = career.completedEventIds.includes(event.id) || Boolean(historyRecord);
+  const completed =
+    career.completedEventIds.includes(event.id) ||
+    Boolean(historyRecord) ||
+    universeRecord?.status === "completed" ||
+    universeRecord?.status === "legacy_unavailable";
   const tierGate = eventEligibilityFor(career, event);
   const seedingSnapshot = buildEventSeedingSnapshot({ state: career, event });
   const entryCosts = effectiveEventEntryCosts(event, career.facilities);
@@ -4164,7 +4178,13 @@ export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddr
           <section className="command-panel command-panel-full">
             <div className="panel-header">
               <h2>Knockout Draw</h2>
-              <span>{career.date >= event.drawDate ? "draw pending engine state" : "projected"}</span>
+              <span>
+                {universeRecord?.entrants.length
+                  ? universeRecord.status.replace(/_/g, " ")
+                  : career.date >= event.drawDate
+                    ? "draw pending engine state"
+                    : "projected"}
+              </span>
             </div>
             <div className="career-event-brief calendar-brief-grid">
               <div>
@@ -4180,9 +4200,22 @@ export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddr
               <div>
                 <span>Draw State</span>
                 <strong>{entered ? "Entry registered" : "Not entered"}</strong>
-                <small>Playable bracket appears when the event reaches match day.</small>
+                <small>
+                  {universeRecord?.entrants.length
+                    ? `${universeRecord.entrants.length} deterministic entrant(s) published.`
+                    : "Playable bracket appears when the event reaches match day."}
+                </small>
               </div>
             </div>
+            {universeRecord?.entrants.length ? (
+              <div className="career-deadline-row" aria-label={`${event.name} deterministic universe field`}>
+                {universeRecord.entrants.map((playerId) => (
+                  <span key={playerId} className="deadline-chip">
+                    {playerDisplayName(playerId)}
+                  </span>
+                ))}
+              </div>
+            ) : null}
           </section>
         )}
 

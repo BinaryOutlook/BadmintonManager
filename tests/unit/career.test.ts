@@ -565,6 +565,16 @@ describe("career tournament state flow", () => {
     expect(afterLoss.tournament?.championId).not.toBe(managedPlayerId);
     expect(afterLoss.tournament?.rounds.at(-1)?.name).toBe("F");
     expect(afterLoss.career?.matchHistory).toHaveLength(15);
+    expect(afterLoss.career?.universeEvents).toContainEqual(
+      expect.objectContaining({
+        eventId: lossSetup.event.id,
+        source: "post_elimination",
+        status: "completed",
+        championId: afterLoss.tournament?.championId,
+        matchIds: expect.arrayContaining(afterLoss.career?.matchHistory.map((record) => record.id) ?? []),
+        managedPlayerResult: "R16"
+      })
+    );
     expect(afterLoss.career?.matchHistory.find((record) => record.id === `${lossSetup.event.id}:R16-1`)).toMatchObject({
       eventId: lossSetup.event.id,
       eventName: lossSetup.event.name,
@@ -639,6 +649,16 @@ describe("career tournament state flow", () => {
       }
     });
     expect(afterTitle.career?.matchHistory.some((record) => record.round === "F" && record.eventId === finalSetup.event.id)).toBe(true);
+    expect(afterTitle.career?.universeEvents).toContainEqual(
+      expect.objectContaining({
+        eventId: finalSetup.event.id,
+        source: "live_progression",
+        status: "completed",
+        championId: managedPlayerId,
+        runnerUpId: finalOpponentId,
+        managedPlayerResult: "champion"
+      })
+    );
     expect(afterTitle.career?.playerAchievements).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -709,7 +729,7 @@ describe("career tournament state flow", () => {
     expect(useTournamentStore.getState().career?.eventHistory.find((record) => record.eventId === event.id)?.status).toBe("champion");
   });
 
-  it("records missed past events with zero rewards when their end date passes", () => {
+  it("simulates missed past events through the universe when their end date passes", () => {
     const managedPlayerId = seededPlayers[0].player.id;
     const career = createInitialCareerState(managedPlayerId, 9305);
     const event = getCareerEvent(career.events, "metro-open-300")!;
@@ -726,14 +746,20 @@ describe("career tournament state flow", () => {
 
     useTournamentStore.getState().advanceCareerDay();
 
-    const record = useTournamentStore.getState().career?.eventHistory.find((entry) => entry.eventId === event.id);
+    const careerAfterAdvance = useTournamentStore.getState().career;
+    const record = careerAfterAdvance?.universeEvents.find((entry) => entry.eventId === event.id);
+
     expect(record).toMatchObject({
-      status: "missed_deadline",
-      entered: false,
-      pointsAwarded: 0,
-      prizeMoney: 0,
-      netCash: 0
+      status: "completed",
+      source: "unentered_sim",
+      managedPlayerResult: "not_entered",
+      championId: expect.any(String),
+      runnerUpId: expect.any(String)
     });
+    expect(record?.entrants).toHaveLength(event.drawSize);
+    expect(record?.matchIds).toHaveLength(15);
+    expect(careerAfterAdvance?.matchHistory.filter((entry) => entry.eventId === event.id)).toHaveLength(15);
+    expect(careerAfterAdvance?.eventHistory.find((entry) => entry.eventId === event.id)).toBeUndefined();
   });
 
   it("settles final placement rewards only once when a completed event is replayed after reload", () => {
@@ -1233,7 +1259,7 @@ describe("dynamic rival ecosystem", () => {
   it("seeds persistent rival programs with ranked rosters and pressure metadata", () => {
     const career = createInitialCareerState(seededPlayers[0].player.id, 8201);
 
-    expect(career.version).toBe(7);
+    expect(career.version).toBe(8);
     expect(career.rivals.programs).toHaveLength(4);
     expect(career.rivals.programs[0]?.ageCurve).toMatchObject({ peakAge: 26, declineRate: 0.09 });
     expect(career.rivals.programs[0]?.roster[0]?.currentRank).toBeGreaterThan(0);
@@ -1354,7 +1380,7 @@ describe("advanced tactics and assistant advice", () => {
     const career = createInitialCareerState(seededPlayers[0].player.id, 8301);
     const plan = activeAdvancedTacticPlan(career);
 
-    expect(career.version).toBe(7);
+    expect(career.version).toBe(8);
     expect(plan).toMatchObject({
       tempo: 52,
       rearCourtPressure: 58,

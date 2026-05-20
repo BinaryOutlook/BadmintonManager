@@ -87,7 +87,8 @@ At minimum, save:
 - selected player
 - selected tactic package for the next match if needed
 - completed career-event bracket snapshots when a career event closes
-- universe match records with source metadata: `played`, `quick_sim`, or safe legacy/import fallback
+- universe event records in `career.universeEvents`, including entrants, match ids, champion, runner-up, placements, source, and managed-player result
+- universe match records with source metadata: `played`, `quick_sim`, `universe_sim`, `backfill_sim`, or safe legacy/import fallback
 
 Legacy save compatibility:
 
@@ -96,6 +97,17 @@ Legacy save compatibility:
   to `Harborline Open` during load/import
 - older public tier labels are accepted and normalized to fictional `Circuit` labels
 - older match-history rows without source metadata are accepted as `archive_import`
+- old career histories without enough bracket truth hydrate as `legacy_unavailable` universe records instead of fabricated champions
+
+## Autonomous Career Tournament Rule
+
+Career tournaments are universe-first. A non-entered event can still publish a deterministic field and
+complete to a champion as calendar time passes. Entered active events preserve user-played managed
+match facts: a played managed result is immutable, and an overdue active managed match is not
+auto-played by background simulation.
+
+The domain clock lives in `game/career/universe.ts`; React tournament homes only render resolved
+state, match history, and universe records.
 
 ## Presentation Rule
 

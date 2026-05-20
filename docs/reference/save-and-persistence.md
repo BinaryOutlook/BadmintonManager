@@ -21,17 +21,17 @@ Settings and shell preferences use separate local-storage keys and are not part 
 
 ## Current Save Versions
 
-The current top-level persisted save version is `9`.
+The current top-level persisted save version is `10`.
 
-The current career schema version inside a version-9 save is `7`.
+The current career schema version inside a version-10 save is `8`.
 
-`game/store/save.ts` supports legacy top-level versions `2` through `8` and migrates them to the current `PersistedSave` shape before hydration or import confirmation.
+`game/store/save.ts` supports legacy top-level versions `2` through `9` and migrates them to the current `PersistedSave` shape before hydration or import confirmation.
 
 Current payload shape, simplified:
 
 ```ts
 PersistedSave = {
-  version: 9;
+  version: 10;
   selectedPlayerId: string;
   plannedTacticKey: TacticKey;
   seed: number;
@@ -63,9 +63,13 @@ Quarantine writes the raw invalid active save to `badminton-manager-save-corrupt
 
 Current responsibilities include:
 
-- migrating legacy tournament-only saves to top-level version `9`
-- upgrading career versions through ecosystem, rivals, tactics, facilities/media, event history, match history, achievements, and tactical-viewer defaults
+- migrating legacy tournament-only saves to top-level version `10`
+- upgrading career versions through ecosystem, rivals, tactics, facilities/media, event history, match history, player achievements, universe event records, and tactical-viewer defaults
+- defaulting missing `career.universeEvents` to `[]` before runtime hydration
 - hydrating career events from the current fictional catalog
+- hydrating old event-history rows into universe records when complete bracket evidence exists, or `legacy_unavailable` when it does not
+- running `simulateUniverseThroughDate()` through the saved career date during load/import so overdue non-managed events gain deterministic universe records without waiting for React routes to open
+- preserving played managed-match facts during load/import simulation; entered overdue events with only partial played evidence remain incomplete rather than receiving fabricated brackets
 - normalizing legacy public tier labels to fictional `Circuit` labels
 - normalizing legacy quick-tournament names to `Harborline Open`
 - defaulting legacy match-history rows without source metadata to `archive_import`

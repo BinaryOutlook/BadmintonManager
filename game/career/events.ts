@@ -19,6 +19,7 @@ import type {
   CareerEventStatus,
   CareerMatchRecordSource,
   CareerState,
+  CareerUniverseTournamentRecord,
   CareerTier,
   ProgramEconomy,
   RankingEntry
@@ -709,12 +710,84 @@ export function upcomingCalendarEvents(career: CareerState): CareerEventDefiniti
 }
 
 export function pastCalendarRecords(career: CareerState): CareerEventHistoryRecord[] {
-  return [...career.eventHistory].sort(
+  const historicalEventIds = new Set(career.eventHistory.map((record) => record.eventId));
+  const universeRecords = career.universeEvents
+    .filter((record) => record.status === "completed" && !historicalEventIds.has(record.eventId))
+    .flatMap((record): CareerEventHistoryRecord[] => {
+      const event = getCareerEvent(career.events, record.eventId);
+
+      if (!event) {
+        return [];
+      }
+
+      return [eventHistoryRecordFromUniverseRecord({ career, event, record })];
+    });
+
+  return [...career.eventHistory, ...universeRecords].sort(
     (left, right) =>
       right.endDate.localeCompare(left.endDate) ||
       right.completedAt.localeCompare(left.completedAt) ||
       left.eventName.localeCompare(right.eventName)
   );
+}
+
+function eventHistoryStatusForUniverseResult(
+  result: CareerUniverseTournamentRecord["managedPlayerResult"]
+): CareerEventHistoryStatus {
+  switch (result) {
+    case "champion":
+      return "champion";
+    case "F":
+      return "runner_up";
+    case "SF":
+      return "semi_final";
+    case "QF":
+      return "quarter_final";
+    case "R16":
+      return "round_of_16";
+    case "not_entered":
+    case null:
+      return "missed_deadline";
+  }
+}
+
+function eventHistoryRecordFromUniverseRecord(args: {
+  career: CareerState;
+  event: CareerEventDefinition;
+  record: CareerUniverseTournamentRecord;
+}): CareerEventHistoryRecord {
+  const managedPlacement = args.record.placements.find(
+    (placement) => placement.playerId === args.career.program.managedPlayerId
+  );
+  const entered = args.record.managedPlayerResult !== "not_entered";
+  const matchRecords = args.career.matchHistory.filter((match) => args.record.matchIds.includes(match.id));
+
+  return {
+    eventId: args.event.id,
+    eventName: args.event.name,
+    tier: args.event.tier,
+    startDate: args.event.startDate,
+    endDate: eventEndDate(args.event),
+    status: eventHistoryStatusForUniverseResult(args.record.managedPlayerResult),
+    entered,
+    resultRound: args.record.managedPlayerResult === "not_entered" ? null : args.record.managedPlayerResult,
+    pointsAwarded: managedPlacement?.pointsAwarded ?? 0,
+    prizeMoney:
+      args.record.managedPlayerResult && args.record.managedPlayerResult !== "not_entered"
+        ? args.event.prizeMoney[args.record.managedPlayerResult] ?? 0
+        : 0,
+    entryCost: 0,
+    travelCost: 0,
+    netCash:
+      args.record.managedPlayerResult && args.record.managedPlayerResult !== "not_entered"
+        ? args.event.prizeMoney[args.record.managedPlayerResult] ?? 0
+        : 0,
+    completedAt: args.record.completedAt ?? eventEndDate(args.event),
+    matchIds: args.record.matchIds,
+    scorelines: matchRecords.map((match) => match.scoreline),
+    achievements: args.record.championId === args.career.program.managedPlayerId ? ["First Title"] : [],
+    bracketSnapshot: null
+  };
 }
 
 export type CalendarCommitment = {
@@ -1265,6 +1338,7 @@ export function appendCareerMatchRecord(args: {
   state: CareerState;
   event: CareerEventDefinition;
   matchId: string;
+  recordId?: string;
   date?: string;
   round: "R16" | "QF" | "SF" | "F";
   playerAId: string;
@@ -1273,7 +1347,7 @@ export function appendCareerMatchRecord(args: {
   scoreline: string;
   source?: CareerMatchRecordSource;
 }): CareerState {
-  const recordId = `${args.event.id}:${args.matchId}`;
+  const recordId = args.recordId ?? `${args.event.id}:${args.matchId}`;
 
   if (args.state.matchHistory.some((record) => record.id === recordId)) {
     return args.state;
@@ -1285,6 +1359,7 @@ export function appendCareerMatchRecord(args: {
       ...args.state.matchHistory,
       {
         id: recordId,
+        seasonId: args.state.seasonId,
         eventId: args.event.id,
         eventName: args.event.name,
         date: args.date ?? args.state.date,

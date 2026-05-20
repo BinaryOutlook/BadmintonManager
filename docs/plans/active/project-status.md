@@ -89,6 +89,7 @@ What is now stable:
 - TIX-017B now surfaces the completed tournament universe on tournament homes and archives: champion/runner-up truth, managed-player result context, bracket or reconstructed match-record evidence, ranking-ledger notes, and honest legacy fallback states without changing tournament simulation or player-profile selectors
 - TIX-016 now renames the top-level career planning surface to `Schedule`, preserves the old chronological commitment list under `Timeline`, and adds a confirmed month-grid `Calendar` that hides future knockout rounds until the managed athlete qualifies
 - TIX-019 now makes Player Profile Career records universe-wide: W-L, win percentage, titles, runner-up finishes, finals, head-to-head leaders, and optional managed-player spotlights derive from recorded `career.matchHistory` and `career.playerAchievements` rather than managed-player-only slices or bracket snapshots
+- TIX-021 adds the autonomous universe simulation contract: `career.universeEvents`, save version `10`, deterministic non-entered event completion, idempotent match/ranking/achievement writes, load/day-advance simulation, and tournament homes/Past Events fed by universe records while preserving managed-match immutability
 - TIX-018 now mediates the sidebar schedule rail by removing the duplicated sidebar brand/player identity block, ordering commands around the requested Core/Program/Match/Operations/System flow, marking `Inbox Preview` as disabled preview-only, and routing `Timeline`/`Calendar` commands into the `Schedule` subtabs
 - TIX-022 now turns documentation into maintenance infrastructure with a true `docs/README.md` map, durable mechanics/code/save/workflow references, refreshed architecture overview, compact `AGENTS.md` documentation discipline, and ADR-003
 
@@ -188,6 +189,7 @@ What is now stable:
 - [x] implemented TIX-017B tournament-home/archive presentation for complete event outcomes, including non-managed champion/runner-up display, managed result side-by-side context, bracket/reconstructed evidence, ranking truth notes, and non-fabricating legacy fallbacks
 - [x] implemented TIX-016 Schedule hub separation with Upcoming, Past Events, Timeline, and confirmed month-grid Calendar tabs
 - [x] implemented TIX-019 universe-wide player career records with non-managed H2H support, finals counts, managed-player spotlight context, old-save empty states, and duplicate-safe selector coverage
+- [x] implemented TIX-021 autonomous universe simulation with completed skipped events, universe event persistence, ranking/achievement settlement, save migration safety, and route-facing archive consumption
 - [x] implemented TIX-018 sidebar schedule rail mediation with a pure navigation sidebar, disabled Inbox Preview, and Timeline/Calendar shortcuts into the Schedule split
 - [x] established the TIX-022 documentation system and maintainer harness with linked subsystem references, save/persistence invariants, source-structure guidance, maintainer workflow rules, and ADR-003
 
