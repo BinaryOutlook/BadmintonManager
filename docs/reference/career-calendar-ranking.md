@@ -289,16 +289,99 @@ history for old saves and can double-count matches already persisted in `career.
 
 ## Persistence
 
-Older current saves that predate event operations fields and `seasonPoints` remain valid.
+Older current saves that predate event operations fields, `seasonPoints`, universe records, or rolling ranking fields remain valid.
 
 Migration safety works in two layers:
 
 - Zod defaults let old ranking/event rows parse.
 - `migratePersistedSave` hydrates saved event rows from the fictional catalog so deadlines, locations, draw dates, and eligibility metadata are present after load/import.
-- version `8` career saves migrate through the current version with `eventHistory: []`.
-- version `9` career saves migrate to version `10` with `universeEvents: []` or honest legacy universe records when old `eventHistory` exists.
-- current version `10` saves run `simulateUniverseThroughDate` safely on load/import for the save date.
+- legacy top-level versions `3` through `8` migrate into the current top-level save version `11` and career schema version `9`; gaps that lack trustworthy event facts remain empty or honest legacy-unavailable records.
+- top-level version `9` and `10` career saves migrate to version `11` / career `9`, preserving `universeEvents` when present and adding rolling `rankingResults` plus `rankingSettings`.
+- current version `11` saves run `simulateUniverseThroughDate` safely on load/import for the saved career date so overdue universe records and rolling ranking snapshots are current.
+- legacy ranking aggregates become dated `archive_import` rows when event-history dates exist, or explicit `legacy_snapshot` bridge rows when only aggregate points are available.
 - legacy quick-tournament saves that contain the previous real event name are normalized to the fictional `Harborline Open` name during load/import.
 - legacy match history rows without a source hydrate with the honest `archive_import` fallback.
 
 The active local storage key remains `badminton-manager-save`.
+
+## Rolling Ranking Result Ledger
+
+TIX-023 replaces the former static starting-points ladder with a result-ledger ranking model.
+
+Current ranking truth is:
+
+$$
+P_i(t)=\sum \operatorname{Top10}\{r.points \mid r.playerId=i,\ t-364\le r.date\le t\}
+$$
+
+unless `career.rankingSettings.maxCountedResults` is tuned away from `10`.
+
+`CareerState` now stores:
+
+- `rankingResults`: dated ranking facts from bootstrap simulation, played events, quick simulation, universe simulation, backfill, legacy snapshots, or archive imports
+- `rankingSettings.windowDays`: `364`, a fixed 52-week gameplay window
+- `rankingSettings.maxCountedResults`: `10`
+- `rankingSettings.bootstrapWeeks`: `52`
+- `rankings`: a cached snapshot rebuilt from `rankingResults`
+
+The cached ranking row includes rolling points, counted/eligible result counts, season race points, best result points, next expiry date, movement placeholder, and counted result ids.
+
+Season race points are deliberately separate:
+
+$$
+\text{seasonPoints}_i(t)=\sum\{r.points \mid r.playerId=i,\ r.seasonId=\text{current season},\ r.artificial=false\}
+$$
+
+That keeps finale/race storytelling distinct from the rolling world ranking.
+
+## Bootstrap Prior-Year Ranking History
+
+New career saves generate deterministic `bootstrap_sim` rows before the user-controlled season starts. These rows are artificial ranking facts, not match-history facts:
+
+```text
+new save -> 52-week fictional prior circuit -> rolling ranking snapshot
+```
+
+Bootstrap rows:
+
+- are deterministic from the career seed and selected save context
+- use fictional tiers and the local fictional player pool
+- correlate with player strength while allowing upsets
+- expire through the same 364-day window as normal rows
+- must not be written into `career.matchHistory`
+
+After enough post-save time passes, original bootstrap rows fall out of the ranking window and rankings are driven by played, quick-simulated, universe-simulated, backfill, or imported rows.
+
+## Event Field Selection, Non-Entry, And Alternates
+
+Universe event fields are no longer built from only a narrow top-rank candidate window.
+
+The field pipeline is:
+
+```text
+ranked eligible players
+  -> invited list
+  -> non-managed non-entry/dropout resolution
+  -> weighted alternates from the broad eligible pool
+  -> final field
+  -> rank-based seeding
+  -> bracket placement
+```
+
+For a draw size \(D\), non-managed non-entry has a guaranteed floor:
+
+$$
+\min(5,\lceil0.15D\rceil)
+$$
+
+Additional tier-sensitive non-entry pressure may produce more skips. Tests assert the floor, not exact random extra skips.
+
+Alternates are selected deterministically with rank weight, appearance debt, inactivity, and tier-fit modifiers. The managed athlete is not randomly dropped from an event the user entered.
+
+Tournament homes may show compact field-change summaries such as:
+
+```text
+3 ranked invitees skipped; alternates entered before final rank-based seeding.
+```
+
+The UI should avoid implementation jargon while still explaining why lower-ranked players can appear in a draw.

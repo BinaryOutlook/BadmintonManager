@@ -15,7 +15,7 @@ import type {
   RivalTrainingBias
 } from "./models";
 import { clamp } from "./models";
-import { recalculateRanks } from "./rankings";
+import { appendRankingResultsAndRebuild, createRankingResult, rebuildCareerRankingSnapshot, recalculateRanks } from "./rankings";
 
 type RoundKey = "R16" | "QF" | "SF" | "F" | "champion";
 
@@ -489,6 +489,7 @@ export function advanceRivalCircuit(state: CareerState): CareerState {
   }
 
   let rankings = state.rankings;
+  const rankingResultAdditions: CareerState["rankingResults"] = [];
   let logIndex = state.rivals.circuitLog.length + 1;
   let programs = state.rivals.programs.map((program) => progressProgram(syncRivalRosterFromRankings(program, rankings), state.date, logIndex++));
   const trainingEvents = programs.map((program) => program.progressionLog[0]).filter(Boolean) as RivalProgressionEvent[];
@@ -506,6 +507,22 @@ export function advanceRivalCircuit(state: CareerState): CareerState {
       const settled = settleEvent(nextProgram, event, state.date, logIndex++);
       if (settled.program !== nextProgram) {
         circuitEvents.push(settled.program.progressionLog[0]!);
+        rankingResultAdditions.push(
+          ...settled.rankingAwards.map((award) =>
+            createRankingResult({
+              seasonId: state.seasonId,
+              playerId: award.playerId,
+              eventId: event.id,
+              eventName: event.name,
+              tier: event.tier,
+              date: state.date,
+              resultRound: award.round,
+              points: award.points,
+              source: "quick_sim",
+              artificial: false
+            })
+          )
+        );
         rankings = updateRankings({
           rankings,
           event,
@@ -522,10 +539,19 @@ export function advanceRivalCircuit(state: CareerState): CareerState {
 
   const fieldPressure = calculateRivalFieldPressure(programs, state.events);
   const peakPressure = [...fieldPressure].sort((left, right) => right.pressureScore - left.pressureScore)[0];
+  const rankedState = appendRankingResultsAndRebuild({
+    career: {
+      ...state,
+      rankings
+    },
+    results: rankingResultAdditions,
+    asOfDate: state.date
+  });
 
-  return {
+  return rebuildCareerRankingSnapshot({
     ...state,
-    rankings,
+    rankings: rankedState.rankings,
+    rankingResults: rankedState.rankingResults,
     rivals: {
       programs,
       fieldPressure,
@@ -538,5 +564,5 @@ export function advanceRivalCircuit(state: CareerState): CareerState {
         : "Rival circuit trained; no event field pressure yet",
       ...state.notes
     ].slice(0, 6)
-  };
+  }, state.date);
 }

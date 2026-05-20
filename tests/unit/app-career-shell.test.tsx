@@ -11,7 +11,7 @@ import {
   tournamentMatchArchiveIds,
   tournamentMatchArchiveScorelines
 } from "../../game/career/events";
-import { awardRankingPoints } from "../../game/career/rankings";
+import { appendRankingResultsAndRebuild, createRankingResult } from "../../game/career/rankings";
 import { createInitialCareerState } from "../../game/career/state";
 import { simulateUniverseThroughDate } from "../../game/career/universe";
 import { playerMap, seededPlayers } from "../../game/content/players";
@@ -559,9 +559,14 @@ describe("career shell daily action", () => {
 
   it("opens a career Rankings page from the command rail with addressable managed-player rows", () => {
     const baseCareer = createInitialCareerState(seededPlayers[0].player.id, 9914);
+    const managedPlayerId = baseCareer.program.managedPlayerId;
     const career = {
       ...baseCareer,
-      rankings: [...baseCareer.rankings].reverse()
+      rankings: baseCareer.rankings.map((entry) =>
+        entry.playerId === managedPlayerId
+          ? { ...entry, rank: 1 }
+          : { ...entry, rank: entry.rank + 1 }
+      )
     };
     resetStoreForCareer(career);
 
@@ -579,18 +584,19 @@ describe("career shell daily action", () => {
     const table = screen.getByRole("table", { name: "Circuit rankings table" });
     const rows = within(table).getAllByRole("row");
     const firstDataRow = rows[1]!;
-    const managedRanking = baseCareer.rankings.find((entry) => entry.playerId === baseCareer.program.managedPlayerId)!;
+    const managedRanking = career.rankings.find((entry) => entry.playerId === managedPlayerId)!;
+    const managedName = playerMap[managedPlayerId].name;
 
     expect(within(firstDataRow).getByText("#1")).toBeInTheDocument();
-    expect(within(firstDataRow).getByRole("button", { name: "Adrian Koh" })).toBeInTheDocument();
+    expect(within(firstDataRow).getByRole("button", { name: managedName })).toBeInTheDocument();
     expect(within(firstDataRow).getByText("Managed athlete")).toBeInTheDocument();
-    expect(within(firstDataRow).getByText("SGP")).toBeInTheDocument();
+    expect(within(firstDataRow).getByText(playerMap[managedPlayerId].nationality)).toBeInTheDocument();
     expect(within(firstDataRow).getByText(`${managedRanking.points.toLocaleString()} pts`)).toBeInTheDocument();
     expect(within(firstDataRow).getByText(`${managedRanking.seasonPoints.toLocaleString()} pts`)).toBeInTheDocument();
 
-    fireEvent.click(within(firstDataRow).getByRole("button", { name: "Adrian Koh" }));
+    fireEvent.click(within(firstDataRow).getByRole("button", { name: managedName }));
 
-    expect(screen.getByRole("heading", { name: "Adrian Koh" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: managedName })).toBeInTheDocument();
   });
 });
 
@@ -630,10 +636,12 @@ describe("career rankings page", () => {
 
     const pageTwoTable = screen.getByRole("table", { name: "Circuit rankings table" });
     const pageTwoRows = within(pageTwoTable).getAllByRole("row").slice(1);
+    const pageTwoLeader = [...career.rankings].sort((left, right) => left.rank - right.rank || left.playerId.localeCompare(right.playerId))[8]!;
+    const pageTwoLeaderName = playerMap[pageTwoLeader.playerId].name;
 
     expect(pageTwoRows).toHaveLength(8);
     expect(within(pageTwoRows[0]!).getByText("#9")).toBeInTheDocument();
-    expect(within(pageTwoRows[0]!).getByRole("button", { name: "Arif Hadi" })).toBeInTheDocument();
+    expect(within(pageTwoRows[0]!).getByRole("button", { name: pageTwoLeaderName })).toBeInTheDocument();
     expect(screen.getByText(`9-16 of ${career.rankings.length}`)).toBeInTheDocument();
     expect(within(pagination).getByRole("button", { name: "Prev" })).toBeEnabled();
 
@@ -668,7 +676,17 @@ describe("career rankings page", () => {
 
   it("only highlights the managed athlete when their ranked row is on the visible page", () => {
     const managedPageTwoPlayer = seededPlayers[8]!.player;
-    const career = createInitialCareerState(managedPageTwoPlayer.id, 9918);
+    const baseCareer = createInitialCareerState(managedPageTwoPlayer.id, 9918);
+    const career = {
+      ...baseCareer,
+      rankings: baseCareer.rankings.map((entry) =>
+        entry.playerId === managedPageTwoPlayer.id
+          ? { ...entry, rank: 9 }
+          : entry.rank >= 9
+            ? { ...entry, rank: entry.rank + 1 }
+            : entry
+      )
+    };
     renderRankingsPage({ career });
 
     const table = screen.getByRole("table", { name: "Circuit rankings table" });
@@ -676,10 +694,12 @@ describe("career rankings page", () => {
 
     fireEvent.click(within(screen.getByLabelText("Rankings pagination")).getByRole("button", { name: "Next" }));
 
-    const managedRow = screen.getByRole("row", { name: /Rank 9 Arif Hadi managed athlete/i });
+    const managedRow = screen.getByRole("row", {
+      name: new RegExp(`Rank 9 ${managedPageTwoPlayer.name} managed athlete`, "i")
+    });
     expect(managedRow).toHaveClass("rankings-row-managed");
     expect(within(managedRow).getByText("Managed athlete")).toBeInTheDocument();
-    expect(within(managedRow).getByRole("button", { name: "Arif Hadi" })).toBeInTheDocument();
+    expect(within(managedRow).getByRole("button", { name: managedPageTwoPlayer.name })).toBeInTheDocument();
   });
 });
 
@@ -993,29 +1013,38 @@ describe("career calendar event actions", () => {
       tournament: completedTournament,
       date: eventEndDate(event)
     });
-    const rankingsWithChampion = awardRankingPoints({
-      rankings: withMatchRecords.rankings,
-      playerId: finalMatch.winnerId,
-      eventId: event.id,
-      round: "champion",
-      points: event.rankingPoints.champion,
-      date: eventEndDate(event),
-      seasonId: withMatchRecords.seasonId,
-      tier: event.tier
-    });
-    const rankingsWithRunnerUp = awardRankingPoints({
-      rankings: rankingsWithChampion,
-      playerId: runnerUpId,
-      eventId: event.id,
-      round: "F",
-      points: event.rankingPoints.F,
-      date: eventEndDate(event),
-      seasonId: withMatchRecords.seasonId,
-      tier: event.tier
+    const withRankingResults = appendRankingResultsAndRebuild({
+      career: withMatchRecords,
+      results: [
+        createRankingResult({
+          seasonId: withMatchRecords.seasonId,
+          playerId: finalMatch.winnerId,
+          eventId: event.id,
+          eventName: event.name,
+          tier: event.tier,
+          date: eventEndDate(event),
+          resultRound: "champion",
+          points: event.rankingPoints.champion,
+          source: "archive_import",
+          artificial: false
+        }),
+        createRankingResult({
+          seasonId: withMatchRecords.seasonId,
+          playerId: runnerUpId,
+          eventId: event.id,
+          eventName: event.name,
+          tier: event.tier,
+          date: eventEndDate(event),
+          resultRound: "F",
+          points: event.rankingPoints.F,
+          source: "archive_import",
+          artificial: false
+        })
+      ],
+      asOfDate: eventEndDate(event)
     });
     const career = {
-      ...withMatchRecords,
-      rankings: rankingsWithRunnerUp,
+      ...withRankingResults,
       eventHistory: [
         {
           eventId: event.id,

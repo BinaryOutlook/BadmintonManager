@@ -142,7 +142,7 @@ function summarizeRuntime(props: SaveManagerViewProps): SaveSummary {
   }
 
   return summarizeSave({
-    version: 10,
+    version: 11,
     selectedPlayerId: props.selectedPlayerId,
     plannedTacticKey: props.plannedTacticKey,
     seed: props.seed,

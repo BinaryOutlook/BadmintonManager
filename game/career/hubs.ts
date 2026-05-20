@@ -9,18 +9,18 @@ import {
   createCareerEventBracketSnapshot,
   getCareerEvent,
   roundKeyForPlacement,
+  tournamentPlacements,
   tournamentMatchArchiveIds,
-  tournamentMatchArchiveScorelines,
-  tournamentPlacements
+  tournamentMatchArchiveScorelines
 } from "./events";
 import { applyMatchLoad } from "./health";
 import { psychologyReadinessModifier } from "./ecosystem";
-import type { CareerState, PostMatchReport, PreMatchBrief } from "./models";
-import { awardRankingPoints } from "./rankings";
+import type { CareerEventDefinition, CareerState, PostMatchReport, PreMatchBrief, RankingResultRound } from "./models";
 import { managedAthlete, syncManagedAthleteFromRankings } from "./state";
 import { recordPrizeMoney } from "./economy";
 import { activeAdvancedTacticPlan, calculateTacticEffectProfile, tacticPlanToMatchTactic } from "./tactics";
 import { projectTacticalViewerFromResult } from "./tacticalViewer";
+import { appendRankingResultsAndRebuild, createRankingResult } from "./rankings";
 
 export function buildPreMatchBrief(args: {
   state: CareerState;
@@ -65,6 +65,48 @@ function clampReadiness(value: number) {
   return Math.max(0, Math.min(100, value));
 }
 
+function rankingRoundForSettlement(round: string): RankingResultRound {
+  if (round === "champion" || round === "F" || round === "SF" || round === "QF" || round === "R16") {
+    return round;
+  }
+
+  return "R16";
+}
+
+function playedRankingResultsForSettlement(args: {
+  state: CareerState;
+  event: CareerEventDefinition;
+  managedPlayerId: string;
+  managedPlacementKey: string;
+  tournament?: TournamentState | null;
+}) {
+  const completedTournamentPlacements =
+    args.tournament?.id === args.event.id && args.tournament.championId
+      ? [...tournamentPlacements(args.tournament).entries()]
+      : [];
+  const placementRows =
+    completedTournamentPlacements.length > 0
+      ? completedTournamentPlacements
+      : [[args.managedPlayerId, args.managedPlacementKey] as const];
+
+  return placementRows.map(([playerId, placementRound]) => {
+    const resultRound = rankingRoundForSettlement(placementRound);
+
+    return createRankingResult({
+      seasonId: args.state.seasonId,
+      playerId,
+      eventId: args.event.id,
+      eventName: args.event.name,
+      tier: args.event.tier,
+      date: args.state.date,
+      resultRound,
+      points: args.event.rankingPoints[resultRound] ?? args.event.rankingPoints.R16,
+      source: "played",
+      artificial: false
+    });
+  });
+}
+
 function evidenceFromResult(result: MatchResult, managedSide: "A" | "B") {
   const stats = result.stats;
   const winners = managedSide === "A" ? stats.winnersA : stats.winnersB;
@@ -78,32 +120,6 @@ function evidenceFromResult(result: MatchResult, managedSide: "A" | "B") {
     opponentErrors > errors ? "Pressure created more opponent errors than it leaked" : "Error control needs the next training block",
     result.summaryEvents?.[0]?.title ?? "Match evidence captured from the detailed engine"
   ];
-}
-
-function awardCompletedTournamentRankingPoints(args: {
-  state: CareerState;
-  tournament: TournamentState;
-}) {
-  const event = args.state.activeEventId ? getCareerEvent(args.state.events, args.state.activeEventId) : undefined;
-
-  if (!event || !args.tournament.championId) {
-    return args.state.rankings;
-  }
-
-  return [...tournamentPlacements(args.tournament)].reduce(
-    (rankings, [playerId, placementKey]) =>
-      awardRankingPoints({
-        rankings,
-        playerId,
-        eventId: event.id,
-        round: placementKey,
-        points: event.rankingPoints[placementKey] ?? event.rankingPoints.R16,
-        date: args.state.date,
-        seasonId: args.state.seasonId,
-        tier: event.tier
-      }),
-    args.state.rankings
-  );
 }
 
 export function settleCareerMatch(args: {
@@ -132,24 +148,7 @@ export function settleCareerMatch(args: {
   const staminaDrain =
     args.managedSide === "A" ? args.result.stats.staminaDrainA : args.result.stats.staminaDrainB;
   const athleteAfterMatch = applyMatchLoad(managedAthlete(args.state), staminaDrain, args.state.date);
-  const rankings =
-    shouldSettleEvent && args.tournament?.championId
-      ? awardCompletedTournamentRankingPoints({
-          state: args.state,
-          tournament: args.tournament
-        })
-      : shouldSettleEvent
-        ? awardRankingPoints({
-            rankings: args.state.rankings,
-            playerId: args.state.program.managedPlayerId,
-            eventId: event.id,
-            round: placementKey,
-            points: pointsDelta,
-            date: args.state.date,
-            seasonId: args.state.seasonId,
-            tier: event.tier
-          })
-        : args.state.rankings;
+  const rankings = args.state.rankings;
   const economy = shouldSettleEvent
     ? recordPrizeMoney({
         economy: args.state.economy,
@@ -268,7 +267,20 @@ export function settleCareerMatch(args: {
         date: args.state.date
       })
     : withEventHistory;
-  const next = syncManagedAthleteFromRankings(withAchievements);
+  const withRankingResults = shouldSettleEvent
+    ? appendRankingResultsAndRebuild({
+        career: withAchievements,
+        results: playedRankingResultsForSettlement({
+          state: args.state,
+          event,
+          managedPlayerId,
+          managedPlacementKey: placementKey,
+          tournament: args.tournament
+        }),
+        asOfDate: args.state.date
+      })
+    : withAchievements;
+  const next = syncManagedAthleteFromRankings(withRankingResults);
 
   return next;
 }

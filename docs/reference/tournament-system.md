@@ -146,3 +146,29 @@ The first tournament system should not include:
 - academy rosters
 - sponsorship systems
 - travel and facility management
+
+## Career Event Field Snapshots And Final Seeding
+
+Career tournament fields now use `EventFieldSnapshot` when the universe publishes or completes an event.
+
+The snapshot records:
+
+- invited player ids
+- non-entry rows and reasons
+- alternate entries and replaced player ids
+- final player ids
+- final seed rows with rolling rank and points
+
+Seeding belongs after non-entry and alternate substitution:
+
+$$
+\text{seed order}=\operatorname{sort}(\text{final field},\ \text{rolling rank ascending})
+$$
+
+An alternate never inherits the seed of the withdrawn invitee. The bracket still uses the existing 16-player placement order for playable events:
+
+```text
+1 v 16, 8 v 9, 5 v 12, 4 v 13, 6 v 11, 3 v 14, 7 v 10, 2 v 15
+```
+
+The 32-player field-selection contract is tested for non-entry and duplicate safety, but full 32-player bracket rendering remains deferred until the tournament engine gains true `R32` support.

@@ -2,8 +2,8 @@ import { seededPlayers } from "../content/players";
 import { careerEventCatalog } from "./events";
 import { createInitialEconomy } from "./economy";
 import { createInitialEcosystem } from "./ecosystem";
-import { createHealthyInjuryState, type AthleteCareerState, type CareerState } from "./models";
-import { createInitialRankings, rankingFor } from "./rankings";
+import { createHealthyInjuryState, defaultRankingSettings, type AthleteCareerState, type CareerState } from "./models";
+import { buildRankingSnapshot, createBootstrapRankingResults, rankingFor, registerRankingPlayerPool } from "./rankings";
 import { refreshAthleteReadiness } from "./health";
 import { createInitialRivalCircuit } from "./rivals";
 import { createInitialMatchPlanning, refreshAssistantAdvice } from "./tactics";
@@ -53,14 +53,30 @@ export function syncManagedAthleteFromRankings(state: CareerState): CareerState 
 }
 
 export function createInitialCareerState(selectedPlayerId: string, seed: number): CareerState {
-  const rankings = createInitialRankings(seededPlayers, selectedPlayerId);
+  registerRankingPlayerPool(seededPlayers);
+  const rankingSettings = defaultRankingSettings;
+  const date = "2026-06-01";
+  const seasonId = "2026";
+  const rankingResults = createBootstrapRankingResults({
+    players: seededPlayers,
+    careerStartDate: date,
+    seed,
+    settings: rankingSettings,
+    eventTemplates: careerEventCatalog
+  });
+  const rankings = buildRankingSnapshot({
+    players: seededPlayers,
+    results: rankingResults,
+    asOfDate: date,
+    settings: rankingSettings
+  });
   const ranking = rankingFor(rankings, selectedPlayerId) ?? rankings[0];
 
   const career: CareerState = {
-    version: 8,
+    version: 9,
     seed,
-    date: "2026-06-01",
-    seasonId: "2026",
+    date,
+    seasonId,
     stage: "planning",
     program: {
       id: "program-command",
@@ -76,17 +92,19 @@ export function createInitialCareerState(selectedPlayerId: string, seed: number)
     matchHistory: [],
     playerAchievements: [],
     activeEventId: null,
+    rankingResults,
     rankings,
+    rankingSettings,
     economy: createInitialEconomy(),
     selectedTrainingPlanId: null,
     lastPreMatchBrief: null,
     lastMatchReport: null,
     ecosystem: createInitialEcosystem(selectedPlayerId),
-    rivals: createInitialRivalCircuit("2026-06-01", rankings),
-    matchPlanning: createInitialMatchPlanning("2026-06-01"),
-    facilities: createInitialFacilities("2026-06-01"),
-    media: createInitialMediaState("2026-06-01"),
-    notes: ["Career save initialized"]
+    rivals: createInitialRivalCircuit(date, rankings),
+    matchPlanning: createInitialMatchPlanning(date),
+    facilities: createInitialFacilities(date),
+    media: createInitialMediaState(date),
+    notes: ["Career save initialized with a deterministic prior-year ranking ledger"]
   };
 
   return refreshAssistantAdvice(career);

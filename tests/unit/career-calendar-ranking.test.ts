@@ -20,9 +20,22 @@ import {
   upcomingCalendarEvents
 } from "../../game/career/events";
 import { scheduledDateForRound } from "../../game/career/matchSchedule";
-import { awardRankingPoints, rankingsByCurrentRank } from "../../game/career/rankings";
+import {
+  appendRankingResultsAndRebuild,
+  buildRankingSnapshot,
+  createBootstrapRankingResults,
+  createRankingResult,
+  isWithinRankingWindow,
+  rankingResultsForPlayer,
+  rankingsByCurrentRank
+} from "../../game/career/rankings";
 import { createInitialCareerState, managedAthlete } from "../../game/career/state";
-import { deterministicUniverseEntrants, simulateUniverseThroughDate } from "../../game/career/universe";
+import {
+  createEventFieldSnapshot,
+  deterministicUniverseEntrants,
+  simulateUniverseThroughDate
+} from "../../game/career/universe";
+import { defaultRankingSettings, type CareerEventDefinition, type RankingResult } from "../../game/career/models";
 import type { MatchResult, Side } from "../../game/core/models";
 import { migratePersistedSave, persistedSavePayloadSchema, persistedSaveSchema } from "../../game/store/save";
 import { advanceTournament, createTournament, getManagedMatchContext } from "../../game/tournament/tournament";
@@ -66,7 +79,143 @@ function straightGamesResult(winner: Side): MatchResult {
   };
 }
 
+function testRankingResult(args: {
+  playerId: string;
+  eventId: string;
+  date: string;
+  points: number;
+  resultRound?: RankingResult["resultRound"];
+  source?: RankingResult["source"];
+  artificial?: boolean;
+}): RankingResult {
+  return createRankingResult({
+    seasonId: args.date.slice(0, 4),
+    playerId: args.playerId,
+    eventId: args.eventId,
+    eventName: args.eventId,
+    tier: "Circuit 300",
+    date: args.date,
+    resultRound: args.resultRound ?? "R16",
+    points: args.points,
+    source: args.source ?? "universe_sim",
+    artificial: args.artificial ?? false
+  });
+}
+
+function testStrength(playerId: string) {
+  const player = seededPlayers.find((entry) => entry.player.id === playerId)!.player;
+  const { technical, physical, mental } = player.ratings;
+
+  return (
+    technical.smash +
+    technical.netPlay +
+    technical.defenseRetrieval +
+    physical.stamina +
+    physical.footworkSpeed +
+    mental.composure +
+    mental.focus
+  ) / 7;
+}
+
 describe("fictional career calendar and ranking model", () => {
+  it("builds rolling snapshots from dated results inside the 364-day window", () => {
+    const playerId = seededPlayers[0].player.id;
+    const results = [
+      testRankingResult({ playerId, eventId: "inside-edge", date: "2025-06-02", points: 300 }),
+      testRankingResult({ playerId, eventId: "outside-window", date: "2025-06-01", points: 900 })
+    ];
+
+    expect(isWithinRankingWindow({ resultDate: "2025-06-02", asOfDate: "2026-06-01", windowDays: 364 })).toBe(true);
+    expect(isWithinRankingWindow({ resultDate: "2025-06-01", asOfDate: "2026-06-01", windowDays: 364 })).toBe(false);
+
+    const snapshot = buildRankingSnapshot({
+      players: seededPlayers.slice(0, 2),
+      results,
+      asOfDate: "2026-06-01",
+      settings: defaultRankingSettings
+    });
+    const row = snapshot.find((entry) => entry.playerId === playerId)!;
+
+    expect(row.points).toBe(300);
+    expect(row.eligibleResults).toBe(1);
+    expect(row.countedResults).toBe(1);
+    expect(row.nextExpiryDate).toBe("2026-06-02");
+    expect(row.countedResultIds).toEqual([results[0]!.id]);
+  });
+
+  it("counts all eligible results up to ten and only the best ten after that", () => {
+    const playerId = seededPlayers[0].player.id;
+    const tenResults = Array.from({ length: 10 }, (_, index) =>
+      testRankingResult({
+        playerId,
+        eventId: `ten-${index}`,
+        date: addDays("2026-01-01", index),
+        points: 100 + index
+      })
+    );
+    const elevenResults = [
+      testRankingResult({ playerId, eventId: "low", date: "2026-01-20", points: 5 }),
+      ...tenResults
+    ];
+
+    expect(rankingResultsForPlayer({
+      results: tenResults,
+      playerId,
+      asOfDate: "2026-06-01",
+      windowDays: 364,
+      maxCountedResults: 10
+    }).counted).toHaveLength(10);
+
+    const snapshot = buildRankingSnapshot({
+      players: seededPlayers.slice(0, 2),
+      results: elevenResults,
+      asOfDate: "2026-06-01",
+      settings: defaultRankingSettings
+    });
+    const row = snapshot.find((entry) => entry.playerId === playerId)!;
+
+    expect(row.eligibleResults).toBe(11);
+    expect(row.countedResults).toBe(10);
+    expect(row.points).toBe(tenResults.reduce((total, result) => total + result.points, 0));
+    expect(row.countedResultIds).not.toContain(elevenResults[0]!.id);
+  });
+
+  it("creates deterministic bootstrap ranking rows that expire without entering match history", () => {
+    const first = createInitialCareerState(seededPlayers[0].player.id, 6800);
+    const second = createInitialCareerState(seededPlayers[0].player.id, 6800);
+    const bootstrap = createBootstrapRankingResults({
+      players: seededPlayers,
+      careerStartDate: first.date,
+      seed: 6800,
+      settings: first.rankingSettings,
+      eventTemplates: careerEventCatalog
+    });
+    const expiredSnapshot = buildRankingSnapshot({
+      players: seededPlayers,
+      results: first.rankingResults,
+      asOfDate: addDays(first.date, 370),
+      previousRankings: first.rankings,
+      settings: first.rankingSettings
+    });
+
+    expect(first.rankingResults).toEqual(second.rankingResults);
+    expect(first.rankingResults).toEqual(bootstrap);
+    expect(first.rankingResults.length).toBeGreaterThanOrEqual(26 * 16);
+    expect(first.rankingResults.every((result) => result.source === "bootstrap_sim" && result.artificial)).toBe(true);
+    expect(first.matchHistory).toEqual([]);
+    expect(expiredSnapshot.every((entry) => entry.points === 0 && entry.countedResults === 0)).toBe(true);
+  });
+
+  it("starts new saves with skill-correlated but imperfect bootstrap ranks", () => {
+    const career = createInitialCareerState(seededPlayers[0].player.id, 6801);
+    const ordered = rankingsByCurrentRank(career.rankings);
+    const topEightAverage = ordered.slice(0, 8).reduce((total, entry) => total + testStrength(entry.playerId), 0) / 8;
+    const bottomEightAverage = ordered.slice(-8).reduce((total, entry) => total + testStrength(entry.playerId), 0) / 8;
+
+    expect(topEightAverage).toBeGreaterThan(bottomEightAverage);
+    expect(ordered.map((entry) => entry.playerId)).not.toEqual(seededPlayers.map((entry) => entry.player.id));
+  });
+
   it("publishes a deterministic draw for skipped events without creating match records early", () => {
     const career = createInitialCareerState(seededPlayers[0].player.id, 6820);
     const event = getCareerEvent(career.events, "metro-open-300")!;
@@ -97,6 +246,61 @@ describe("fictional career calendar and ranking model", () => {
     expect(record?.entrants).toEqual(deterministicUniverseEntrants({ career, event }));
     expect(first.career.matchHistory).toEqual([]);
     expect(first.career.universeEvents).toEqual(second.career.universeEvents);
+  });
+
+  it("builds event fields through non-entry, alternates, and final rank-based seeding", () => {
+    const career = createInitialCareerState(seededPlayers[0].player.id, 6822);
+    const event = getCareerEvent(career.events, "metro-open-300")!;
+    const snapshot = createEventFieldSnapshot({ career, event });
+    const replayed = createEventFieldSnapshot({ career, event });
+    const finalRanks = snapshot.seeds.map((seed) => seed.rank);
+
+    expect(snapshot).toEqual(replayed);
+    expect(snapshot.invitedPlayerIds).toHaveLength(16);
+    expect(snapshot.nonEntries.length).toBeGreaterThanOrEqual(3);
+    expect(snapshot.alternateEntries).toHaveLength(snapshot.nonEntries.length);
+    expect(snapshot.finalPlayerIds).toHaveLength(16);
+    expect(new Set(snapshot.finalPlayerIds).size).toBe(16);
+    expect(snapshot.nonEntries.every((entry) => entry.playerId !== career.program.managedPlayerId)).toBe(true);
+    expect(snapshot.alternateEntries.some((entry) => {
+      const rank = career.rankings.find((ranking) => ranking.playerId === entry.playerId)?.rank ?? 0;
+
+      return rank > event.drawSize;
+    })).toBe(true);
+    expect(finalRanks).toEqual([...finalRanks].sort((left, right) => left - right));
+    for (const alternate of snapshot.alternateEntries) {
+      expect(snapshot.finalPlayerIds).toContain(alternate.playerId);
+      expect(snapshot.finalPlayerIds).not.toContain(alternate.replacedPlayerId);
+    }
+  });
+
+  it("guarantees five non-managed non-entries for 32-player selection tests", () => {
+    const career = createInitialCareerState(seededPlayers[0].player.id, 6824);
+    const event = {
+      ...getCareerEvent(career.events, "coastline-classic-300")!,
+      id: "test-32-field",
+      drawSize: 32,
+      seedCount: 16
+    } satisfies CareerEventDefinition;
+    const snapshot = createEventFieldSnapshot({ career, event });
+
+    expect(snapshot.invitedPlayerIds).toHaveLength(32);
+    expect(snapshot.nonEntries.length).toBeGreaterThanOrEqual(5);
+    expect(snapshot.alternateEntries).toHaveLength(snapshot.nonEntries.length);
+    expect(snapshot.finalPlayerIds).toHaveLength(32);
+    expect(new Set(snapshot.finalPlayerIds).size).toBe(32);
+  });
+
+  it("keeps an entered managed athlete in the field while resolving non-managed dropouts", () => {
+    const career = {
+      ...createInitialCareerState(seededPlayers[0].player.id, 6825),
+      enteredEventIds: ["metro-open-300"]
+    };
+    const event = getCareerEvent(career.events, "metro-open-300")!;
+    const snapshot = createEventFieldSnapshot({ career, event, includeManagedEntry: true });
+
+    expect(snapshot.finalPlayerIds).toContain(career.program.managedPlayerId);
+    expect(snapshot.nonEntries.map((entry) => entry.playerId)).not.toContain(career.program.managedPlayerId);
   });
 
   it("completes an overdue non-entered universe event with records, rankings, achievements, and idempotency", () => {
@@ -172,6 +376,7 @@ describe("fictional career calendar and ranking model", () => {
     expect(replayed.career.matchHistory.filter((entry) => entry.eventId === event.id)).toHaveLength(15);
     expect(replayed.career.playerAchievements.filter((entry) => entry.eventId === event.id)).toHaveLength(2);
     expect(replayed.career.rankings).toEqual(first.career.rankings);
+    expect(replayed.career.rankingResults.filter((entry) => entry.eventId === event.id)).toHaveLength(event.drawSize);
     expect(replayed.career.universeEvents).toEqual(first.career.universeEvents);
   });
 
@@ -592,42 +797,96 @@ describe("fictional career calendar and ranking model", () => {
     expect(eventEligibilityFor(entered, event).allowed).toBe(true);
   });
 
-  it("updates total circuit points, season race points, and ranking history deterministically", () => {
+  it("gives lower-third players measurable post-save appearances across fixed-season simulations", () => {
+    const seeds = [7101, 7102, 7103, 7104, 7105, 7106, 7107, 7108, 7109, 7110];
+    const bottomThirdIds = new Set(
+      rankingsByCurrentRank(createInitialCareerState(seededPlayers[0].player.id, seeds[0]!).rankings)
+        .slice(Math.floor(seededPlayers.length * 2 / 3))
+        .map((entry) => entry.playerId)
+    );
+    const appeared = new Set<string>();
+    const bottomAppeared = new Set<string>();
+
+    for (const seed of seeds) {
+      const career = createInitialCareerState(seededPlayers[0].player.id, seed);
+      const result = simulateUniverseThroughDate({
+        career,
+        activeTournament: null,
+        targetDate: addDays(eventEndDate(career.events.at(-1)!), 1)
+      });
+      const postSavePlayerIds = new Set(
+        result.career.rankingResults
+          .filter((entry) => !entry.artificial)
+          .map((entry) => entry.playerId)
+      );
+
+      for (const record of result.career.universeEvents.filter((entry) => entry.status === "completed")) {
+        expect(record.entrants).toHaveLength(getCareerEvent(result.career.events, record.eventId)?.drawSize ?? 16);
+        expect(new Set(record.entrants).size).toBe(record.entrants.length);
+      }
+
+      for (const playerId of postSavePlayerIds) {
+        appeared.add(playerId);
+        if (bottomThirdIds.has(playerId)) {
+          bottomAppeared.add(playerId);
+        }
+      }
+    }
+
+    expect(appeared.size / seededPlayers.length).toBeGreaterThanOrEqual(0.85);
+    expect(bottomAppeared.size / bottomThirdIds.size).toBeGreaterThanOrEqual(0.6);
+  });
+
+  it("appends a played ranking result and rebuilds rolling ranking history deterministically", () => {
     const career = createInitialCareerState(seededPlayers[0].player.id, 6804);
     const event = getCareerEvent(career.events, "harbor-masters-500")!;
-    const before = career.rankings.find((entry) => entry.playerId === career.program.managedPlayerId)!;
-    const updated = awardRankingPoints({
-      rankings: career.rankings,
+    const beforeCareer = appendRankingResultsAndRebuild({
+      career,
+      results: [],
+      asOfDate: event.startDate
+    });
+    const before = beforeCareer.rankings.find((entry) => entry.playerId === career.program.managedPlayerId)!;
+    const rankingResult = createRankingResult({
+      seasonId: career.seasonId,
       playerId: career.program.managedPlayerId,
       eventId: event.id,
-      round: "SF",
-      points: event.rankingPoints.SF,
+      eventName: event.name,
+      tier: event.tier,
       date: event.startDate,
-      seasonId: career.seasonId,
-      tier: event.tier
+      resultRound: "SF",
+      points: event.rankingPoints.SF,
+      source: "played",
+      artificial: false
     });
-    const after = updated.find((entry) => entry.playerId === career.program.managedPlayerId)!;
+    const updated = appendRankingResultsAndRebuild({
+      career: beforeCareer,
+      results: [rankingResult],
+      asOfDate: event.startDate
+    });
+    const after = updated.rankings.find((entry) => entry.playerId === career.program.managedPlayerId)!;
 
+    expect(updated.rankingResults).toContainEqual(rankingResult);
     expect(after.points).toBe(before.points + event.rankingPoints.SF);
     expect(after.seasonPoints).toBe(before.seasonPoints + event.rankingPoints.SF);
-    expect(after.eventHistory.at(-1)).toEqual({
-      eventId: event.id,
-      round: "SF",
-      points: event.rankingPoints.SF,
-      date: event.startDate,
-      seasonId: career.seasonId,
-      tier: event.tier
-    });
-    expect(awardRankingPoints({
-      rankings: career.rankings,
-      playerId: career.program.managedPlayerId,
-      eventId: event.id,
-      round: "SF",
-      points: event.rankingPoints.SF,
-      date: event.startDate,
-      seasonId: career.seasonId,
-      tier: event.tier
-    })).toEqual(updated);
+    expect(after.eventHistory).toEqual(
+      expect.arrayContaining([
+        {
+          eventId: event.id,
+          round: "SF",
+          points: event.rankingPoints.SF,
+          date: event.startDate,
+          seasonId: career.seasonId,
+          tier: event.tier
+        }
+      ])
+    );
+    expect(
+      appendRankingResultsAndRebuild({
+        career: updated,
+        results: [rankingResult],
+        asOfDate: event.startDate
+      })
+    ).toEqual(updated);
   });
 
   it("sorts persisted ranking entries by current rank without recalculating from points", () => {
@@ -663,13 +922,18 @@ describe("fictional career calendar and ranking model", () => {
     expect(snapshot.source).toBe("fictional circuit ranking at seeding snapshot");
     expect(snapshot.seeds).toHaveLength(event.seedCount);
     expect(snapshot.seeds.map((entry) => entry.rank)).toEqual([...snapshot.seeds.map((entry) => entry.rank)].sort((a, b) => a - b));
-    expect(snapshot.managedSeed?.playerId).toBe(career.program.managedPlayerId);
+    if (snapshot.managedSeed) {
+      expect(snapshot.managedSeed.playerId).toBe(career.program.managedPlayerId);
+    } else {
+      expect(snapshot.seeds.every((entry) => entry.playerId !== career.program.managedPlayerId)).toBe(true);
+    }
   });
 
   it("hydrates older current saves that predate event operations fields and season race points", () => {
     const career = createInitialCareerState(seededPlayers[0].player.id, 6806);
     const oldCareer = {
       ...career,
+      version: 8 as const,
       events: career.events.map(({
         weekNumber: _weekNumber,
         location: _location,
@@ -720,7 +984,7 @@ describe("fictional career calendar and ranking model", () => {
     const career = createInitialCareerState(seededPlayers[0].player.id, 6807);
     const event = getCareerEvent(career.events, "metro-open-300")!;
     const save = {
-      version: 10,
+      version: 11,
       selectedPlayerId: seededPlayers[0].player.id,
       plannedTacticKey: "balancedControl",
       seed: 6807,

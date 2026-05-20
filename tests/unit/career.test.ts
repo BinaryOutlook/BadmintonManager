@@ -36,6 +36,7 @@ import { rankingFor } from "../../game/career/rankings";
 import { advanceRivalCircuit } from "../../game/career/rivals";
 import { createInitialCareerState, managedAthlete } from "../../game/career/state";
 import { projectTacticalViewerFromResult, projectTacticalViewerFromSession } from "../../game/career/tacticalViewer";
+import { simulateUniverseThroughDate } from "../../game/career/universe";
 import {
   activeAdvancedTacticPlan,
   applyAssistantAdvice,
@@ -599,6 +600,28 @@ describe("career tournament state flow", () => {
     const nonManagedChampionRanking = afterLoss.career?.rankings.find(
       (entry) => entry.playerId === afterLoss.tournament?.championId
     );
+    const lossRankingResults =
+      afterLoss.career?.rankingResults.filter((result) => result.eventId === lossSetup.event.id) ?? [];
+    expect(lossRankingResults).toHaveLength(16);
+    expect(lossRankingResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          playerId: managedPlayerId,
+          eventId: lossSetup.event.id,
+          resultRound: "R16",
+          source: "played",
+          artificial: false
+        }),
+        expect.objectContaining({
+          playerId: afterLoss.tournament?.championId,
+          eventId: lossSetup.event.id,
+          resultRound: "champion",
+          points: lossSetup.event.rankingPoints.champion,
+          source: "played",
+          artificial: false
+        })
+      ])
+    );
     expect(nonManagedChampionRanking?.eventHistory).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -608,6 +631,14 @@ describe("career tournament state flow", () => {
         })
       ])
     );
+    const replayedLossSettlement = simulateUniverseThroughDate({
+      career: afterLoss.career!,
+      activeTournament: afterLoss.tournament,
+      targetDate: afterLoss.career!.date
+    });
+    expect(
+      replayedLossSettlement.career.rankingResults.filter((result) => result.eventId === lossSetup.event.id)
+    ).toHaveLength(lossRankingResults.length);
 
     useTournamentStore.getState().continueCareerAfterPostMatch();
 
@@ -675,6 +706,35 @@ describe("career tournament state flow", () => {
         })
       ])
     );
+    const titleRankingResults =
+      afterTitle.career?.rankingResults.filter((result) => result.eventId === finalSetup.event.id) ?? [];
+    expect(titleRankingResults).toHaveLength(16);
+    expect(titleRankingResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          playerId: managedPlayerId,
+          eventId: finalSetup.event.id,
+          resultRound: "champion",
+          source: "played",
+          artificial: false
+        }),
+        expect.objectContaining({
+          playerId: finalOpponentId,
+          eventId: finalSetup.event.id,
+          resultRound: "F",
+          source: "played",
+          artificial: false
+        })
+      ])
+    );
+    const replayedTitleSettlement = simulateUniverseThroughDate({
+      career: afterTitle.career!,
+      activeTournament: afterTitle.tournament,
+      targetDate: afterTitle.career!.date
+    });
+    expect(
+      replayedTitleSettlement.career.rankingResults.filter((result) => result.eventId === finalSetup.event.id)
+    ).toHaveLength(titleRankingResults.length);
 
     useTournamentStore.getState().continueCareerAfterPostMatch();
 
@@ -1069,6 +1129,19 @@ describe("career core slice", () => {
     const super1000 = getCareerEvent(career.events, "continental-premier-1000")!;
     const finals = getCareerEvent(career.events, "season-finals")!;
     const harbor = getCareerEvent(career.events, "harbor-masters-500")!;
+    const eliteQualified = {
+      ...career,
+      rankings: career.rankings.map((entry) =>
+        entry.playerId === career.program.managedPlayerId
+          ? { ...entry, rank: 4, points: 1_800 }
+          : entry
+      ),
+      athletes: career.athletes.map((athlete) =>
+        athlete.playerId === career.program.managedPlayerId
+          ? { ...athlete, currentRank: 4, rankingPoints: 1_800, readiness: 80 }
+          : athlete
+      )
+    };
     const lowQualified = {
       ...career,
       rankings: career.rankings.map((entry) =>
@@ -1083,7 +1156,7 @@ describe("career core slice", () => {
       )
     };
     expect(eventEligibilityFor(career, harbor).allowed).toBe(true);
-    expect(eventEligibilityFor(career, super1000).allowed).toBe(true);
+    expect(eventEligibilityFor(eliteQualified, super1000).allowed).toBe(true);
     expect(eventEligibilityFor(lowQualified, super1000).allowed).toBe(false);
     expect(eventEligibilityFor(career, finals).allowed).toBe(true);
     expect(finals.weekNumber).toBe(52);
@@ -1259,7 +1332,7 @@ describe("dynamic rival ecosystem", () => {
   it("seeds persistent rival programs with ranked rosters and pressure metadata", () => {
     const career = createInitialCareerState(seededPlayers[0].player.id, 8201);
 
-    expect(career.version).toBe(8);
+    expect(career.version).toBe(9);
     expect(career.rivals.programs).toHaveLength(4);
     expect(career.rivals.programs[0]?.ageCurve).toMatchObject({ peakAge: 26, declineRate: 0.09 });
     expect(career.rivals.programs[0]?.roster[0]?.currentRank).toBeGreaterThan(0);
@@ -1380,7 +1453,7 @@ describe("advanced tactics and assistant advice", () => {
     const career = createInitialCareerState(seededPlayers[0].player.id, 8301);
     const plan = activeAdvancedTacticPlan(career);
 
-    expect(career.version).toBe(8);
+    expect(career.version).toBe(9);
     expect(plan).toMatchObject({
       tempo: 52,
       rearCourtPressure: 58,
