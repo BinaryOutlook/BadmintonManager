@@ -691,11 +691,23 @@ describe("career calendar event actions", () => {
     expect(screen.getByRole("heading", { name: "Calendar" })).toBeInTheDocument();
     expect(screen.queryByRole("tab", { name: "Timeline" })).not.toBeInTheDocument();
     expect(screen.queryByRole("tab", { name: "Upcoming" })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Previous month" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Show current career month" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Next month" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("Calendar status")).not.toBeInTheDocument();
+    for (const diagnosticLabel of ["Career today", "Visible month", "Visible range", "Diary entries", "Scope"]) {
+      expect(screen.queryByText(diagnosticLabel)).not.toBeInTheDocument();
+    }
+
+    const monthControls = screen.getByLabelText("Calendar month controls");
+    expect(within(monthControls).getByRole("button", { name: "Previous month" })).toHaveTextContent("<<");
+    expect(within(monthControls).getByRole("button", { name: "Today" })).toHaveTextContent("Today");
+    expect(within(monthControls).getByRole("button", { name: "Next month" })).toHaveTextContent(">>");
+    expect(within(monthControls).queryByText("Back")).not.toBeInTheDocument();
+    expect(within(monthControls).queryByText("Forward")).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: "June 2026" })).toBeInTheDocument();
+    expect(screen.getAllByText("June 2026")).toHaveLength(1);
     expect(container.querySelectorAll(".schedule-calendar-month")).toHaveLength(1);
+    const monthHeader = container.querySelector(".schedule-calendar-month-header") as HTMLElement;
+    expect(monthHeader).toContainElement(monthControls);
+    expect(monthHeader.nextElementSibling).toHaveClass("schedule-calendar-weekdays");
     expect(screen.getByRole("grid", { name: "Calendar for June 2026" })).toBeInTheDocument();
     expect(container.querySelector(".schedule-calendar-weekdays")?.querySelectorAll("span")).toHaveLength(7);
     expect(screen.getByRole("button", { name: "Open match detail for Metro Open: Round of 16" })).toBeInTheDocument();
@@ -708,24 +720,26 @@ describe("career calendar event actions", () => {
 
   it("moves the visible Calendar month locally and resets Today to the career date month", () => {
     const { career } = careerEnteredOnMetroStart();
+    const careerDate = career.date;
 
     renderCalendarPage({ career });
 
     expect(screen.getByRole("grid", { name: "Calendar for June 2026" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Calendar status")).toHaveTextContent(career.date);
+    expect(career.date).toBe(careerDate);
 
     fireEvent.click(screen.getByRole("button", { name: "Next month" }));
     expect(screen.getByRole("grid", { name: "Calendar for July 2026" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Calendar status")).toHaveTextContent(career.date);
+    expect(career.date).toBe(careerDate);
+    expect(screen.getAllByText("July 2026")).toHaveLength(1);
 
     fireEvent.click(screen.getByRole("button", { name: "Previous month" }));
     fireEvent.click(screen.getByRole("button", { name: "Previous month" }));
     expect(screen.getByRole("grid", { name: "Calendar for May 2026" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Calendar status")).toHaveTextContent(career.date);
+    expect(career.date).toBe(careerDate);
 
-    fireEvent.click(screen.getByRole("button", { name: "Show current career month" }));
+    fireEvent.click(screen.getByRole("button", { name: "Today" }));
     expect(screen.getByRole("grid", { name: "Calendar for June 2026" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Calendar status")).toHaveTextContent(career.date);
+    expect(career.date).toBe(careerDate);
   });
 
   it("keeps an entered due event playable from the calendar row", () => {

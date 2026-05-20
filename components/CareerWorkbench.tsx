@@ -463,16 +463,17 @@ function scheduleCalendarBadgeClass(entry: ScheduleCalendarEntry) {
 function ScheduleCalendarGrid(props: {
   career: CareerState;
   month: CalendarMonthViewModel;
+  monthControls?: ReactNode;
   onOpenScheduledCareerMatch: (eventId?: string) => void;
   onOpenTournamentHome: (address: TournamentAddress) => void;
 }) {
   return (
     <div className="schedule-calendar-months" aria-label="Confirmed schedule calendar month">
       <section className="schedule-calendar-month" aria-label={`Calendar for ${props.month.label}`}>
-        <div className="schedule-calendar-month-header">
-          <h3>{props.month.label}</h3>
-          <span>{props.month.entries.length} item(s)</span>
-        </div>
+        <header className="schedule-calendar-month-header">
+          <h2>{props.month.label}</h2>
+          {props.monthControls}
+        </header>
         <div className="schedule-calendar-weekdays" aria-hidden="true">
           {scheduleCalendarWeekdays.map((weekday) => (
             <span key={weekday}>{weekday}</span>
@@ -3655,8 +3656,6 @@ export function CareerCalendarPage(props: CareerCalendarPageProps) {
     tournament: props.tournament,
     monthCursor
   });
-  const visibleStart = month.visibleRange.startDate;
-  const visibleEnd = addDays(month.visibleRange.endDateExclusive, -1);
 
   return (
     <section className="screen-shell career-page calendar-month-page" data-page-contract="calendar-month">
@@ -3668,71 +3667,39 @@ export function CareerCalendarPage(props: CareerCalendarPageProps) {
             A one-month manager diary for played matches, confirmed scheduled commitments, and manager-relevant deadlines.
           </p>
         </div>
-        <div className="calendar-month-controls" aria-label="Calendar month controls">
-          <button
-            className="command-button command-button-secondary"
-            type="button"
-            aria-label="Previous month"
-            onClick={() => setMonthCursor(addCalendarMonths(month.cursor, -1))}
-          >
-            Back
-          </button>
-          <button
-            className="command-button command-button-secondary"
-            type="button"
-            aria-label="Show current career month"
-            onClick={() => setMonthCursor(careerMonthCursor)}
-          >
-            Today
-          </button>
-          <button
-            className="command-button command-button-secondary"
-            type="button"
-            aria-label="Next month"
-            onClick={() => setMonthCursor(addCalendarMonths(month.cursor, 1))}
-          >
-            Forward
-          </button>
-        </div>
       </div>
 
-      <section className="management-status-strip calendar-status-strip" aria-label="Calendar status">
-        <div>
-          <span>Career today</span>
-          <strong>{career.date}</strong>
-        </div>
-        <div>
-          <span>Visible month</span>
-          <strong>{month.label}</strong>
-        </div>
-        <div>
-          <span>Visible range</span>
-          <strong>{visibleStart} - {visibleEnd}</strong>
-        </div>
-        <div>
-          <span>Diary entries</span>
-          <strong>{month.entries.length}</strong>
-        </div>
-        <div>
-          <span>Scope</span>
-          <strong>Confirmed only</strong>
-        </div>
-      </section>
-
       <section className="command-panel command-panel-full calendar-month-grid-panel">
-        <div className="panel-header calendar-month-title-row">
-          <div>
-            <h2>{month.label}</h2>
-            <p className="panel-summary">
-              Possible knockout rounds stay off this calendar until the managed athlete qualifies; month navigation does not
-              advance the career date.
-            </p>
-          </div>
-          <span>{month.entries.length} confirmed item(s)</span>
-        </div>
         <ScheduleCalendarGrid
           career={career}
           month={month}
+          monthControls={
+            <div className="calendar-month-controls" aria-label="Calendar month controls">
+              <button
+                className="command-button command-button-secondary"
+                type="button"
+                aria-label="Previous month"
+                onClick={() => setMonthCursor(addCalendarMonths(month.cursor, -1))}
+              >
+                &lt;&lt;
+              </button>
+              <button
+                className="command-button command-button-secondary"
+                type="button"
+                onClick={() => setMonthCursor(careerMonthCursor)}
+              >
+                Today
+              </button>
+              <button
+                className="command-button command-button-secondary"
+                type="button"
+                aria-label="Next month"
+                onClick={() => setMonthCursor(addCalendarMonths(month.cursor, 1))}
+              >
+                &gt;&gt;
+              </button>
+            </div>
+          }
           onOpenScheduledCareerMatch={props.onOpenScheduledCareerMatch}
           onOpenTournamentHome={props.onOpenTournamentHome}
         />

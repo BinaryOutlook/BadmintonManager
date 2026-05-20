@@ -1136,21 +1136,8 @@ textarea:focus-visible {
   flex-wrap: wrap;
   gap: 0.45rem;
   justify-content: flex-end;
+  margin-left: auto;
   min-width: 0;
-}
-
-.calendar-month-title-row {
-  align-items: start;
-}
-
-.calendar-month-title-row > div {
-  display: grid;
-  gap: 0.3rem;
-  min-width: 0;
-}
-
-.calendar-month-title-row .panel-summary {
-  margin: 0;
 }
 
 .schedule-calendar-months {
@@ -1169,24 +1156,16 @@ textarea:focus-visible {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   min-width: 0;
 }
 
-.schedule-calendar-month-header h3 {
+.schedule-calendar-month-header h2 {
   margin: 0;
   color: var(--text);
-  font-size: 1rem;
+  font-size: 1.08rem;
   letter-spacing: 0.02em;
-}
-
-.schedule-calendar-month-header span {
-  color: var(--muted);
-  font-size: 0.68rem;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
 .schedule-calendar-weekdays,
@@ -6201,6 +6180,7 @@ textarea:focus-visible {
 
   .calendar-month-controls {
     justify-content: stretch;
+    margin-left: 0;
     width: 100%;
   }
 
