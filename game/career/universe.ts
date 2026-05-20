@@ -505,6 +505,36 @@ function createCompletedRecord(args: {
   } satisfies CareerUniverseTournamentRecord;
 }
 
+function inProgressRecordFromMatchHistory(args: {
+  career: CareerState;
+  event: CareerEventDefinition;
+  records: CareerMatchRecord[];
+}): CareerUniverseTournamentRecord {
+  const entrants = uniquePlayerIds(args.records.flatMap((record) => [record.playerAId, record.playerBId]));
+  const placements = placementFromMatchRecords(args.event, args.records);
+
+  return {
+    seasonId: args.career.seasonId,
+    eventId: args.event.id,
+    source: "live_progression",
+    status: "in_progress",
+    drawDate: args.event.drawDate,
+    startDate: args.event.startDate,
+    completedAt: null,
+    entrants,
+    matchIds: args.records.map((record) => record.id),
+    championId: null,
+    runnerUpId: null,
+    placements,
+    managedPlayerResult: managedPlayerResult({
+      career: args.career,
+      event: args.event,
+      placements,
+      entrants
+    })
+  };
+}
+
 function settleUniverseRankingPoints(args: {
   career: CareerState;
   event: CareerEventDefinition;
@@ -623,6 +653,29 @@ function completeUniverseEvent(args: {
   return syncManagedAthleteFromRankings(markCompletedEvent(upsertUniverseRecord(withAchievements, record), args.event.id));
 }
 
+function completeUniverseEventFromArchiveRecord(args: {
+  career: CareerState;
+  event: CareerEventDefinition;
+  record: CareerUniverseTournamentRecord;
+}) {
+  const completedAt = args.record.completedAt ?? eventEndDate(args.event);
+  const withRankings = settleUniverseRankingPoints({
+    career: args.career,
+    event: args.event,
+    placements: args.record.placements,
+    completedAt
+  });
+  const withAchievements = appendUniverseAchievements({
+    career: withRankings,
+    event: args.event,
+    championId: args.record.championId,
+    runnerUpId: args.record.runnerUpId,
+    completedAt
+  });
+
+  return syncManagedAthleteFromRankings(markCompletedEvent(upsertUniverseRecord(withAchievements, args.record), args.event.id));
+}
+
 function existingUniverseRecord(career: CareerState, event: CareerEventDefinition) {
   return career.universeEvents.find(
     (record) => record.seasonId === career.seasonId && record.eventId === event.id
@@ -685,15 +738,45 @@ export function simulateUniverseThroughDate(args: {
 
     if (args.targetDate > eventEndDate(event)) {
       const enteredWithoutLiveTournament = career.enteredEventIds.includes(event.id);
-      const hasPlayedManagedRecord = career.matchHistory.some(
+      const eventMatchRecords = career.matchHistory.filter((record) => record.eventId === event.id);
+      const hasManagedMatchRecord = eventMatchRecords.some(
         (record) =>
-          record.eventId === event.id &&
           (record.playerAId === career.program.managedPlayerId || record.playerBId === career.program.managedPlayerId)
       );
+
+      if (enteredWithoutLiveTournament && hasManagedMatchRecord) {
+        const archiveRecord = archiveRecordFromMatchHistory({
+          career,
+          event,
+          records: eventMatchRecords,
+          completedAt: args.targetDate
+        });
+
+        if (archiveRecord) {
+          career = completeUniverseEventFromArchiveRecord({
+            career,
+            event,
+            record: archiveRecord
+          });
+        } else {
+          career = upsertUniverseRecord(
+            career,
+            inProgressRecordFromMatchHistory({
+              career,
+              event,
+              records: eventMatchRecords
+            })
+          );
+        }
+
+        eventsSimulated.push(event.id);
+        continue;
+      }
+
       const entrants = deterministicUniverseEntrants({
         career,
         event,
-        includeManagedEntry: enteredWithoutLiveTournament && hasPlayedManagedRecord
+        includeManagedEntry: false
       });
       const bracket = simulateCompletedUniverseBracket({
         career,

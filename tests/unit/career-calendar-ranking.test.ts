@@ -175,6 +175,73 @@ describe("fictional career calendar and ranking model", () => {
     expect(replayed.career.universeEvents).toEqual(first.career.universeEvents);
   });
 
+  it("does not backfill-complete an entered overdue event from played-match-only evidence", () => {
+    const baseCareer = createInitialCareerState(seededPlayers[0].player.id, 6823);
+    const event = getCareerEvent(baseCareer.events, "metro-open-300")!;
+    const tournament = {
+      ...createTournament(seededPlayers, baseCareer.program.managedPlayerId, 6823),
+      id: event.id,
+      name: event.name,
+      tier: event.tier,
+      prizePoolUsd: event.prizeMoney.champion * 2
+    };
+    const managedContext = getManagedMatchContext(tournament)!;
+    const opponentId =
+      managedContext.playerAId === baseCareer.program.managedPlayerId
+        ? managedContext.playerBId
+        : managedContext.playerAId;
+    const playedRecord = {
+      id: `${baseCareer.seasonId}:${event.id}:played-managed-r16`,
+      seasonId: baseCareer.seasonId,
+      eventId: event.id,
+      eventName: event.name,
+      date: event.startDate,
+      round: "R16" as const,
+      playerAId: managedContext.playerAId,
+      playerBId: managedContext.playerBId,
+      winnerId: opponentId,
+      scoreline: "18-21, 19-21",
+      source: "played" as const
+    };
+    const overdueEnteredCareer = {
+      ...baseCareer,
+      date: addDays(eventEndDate(event), 2),
+      activeEventId: event.id,
+      enteredEventIds: [event.id],
+      stage: "post_match" as const,
+      matchHistory: [playedRecord]
+    };
+
+    const result = simulateUniverseThroughDate({
+      career: overdueEnteredCareer,
+      activeTournament: null,
+      targetDate: overdueEnteredCareer.date
+    });
+    const replayed = simulateUniverseThroughDate({
+      career: result.career,
+      activeTournament: null,
+      targetDate: overdueEnteredCareer.date
+    });
+    const record = result.career.universeEvents.find((entry) => entry.eventId === event.id);
+
+    expect(record).toMatchObject({
+      eventId: event.id,
+      source: "live_progression",
+      status: "in_progress",
+      completedAt: null,
+      championId: null,
+      runnerUpId: null,
+      matchIds: [playedRecord.id],
+      managedPlayerResult: "R16"
+    });
+    expect(record?.entrants).toEqual(expect.arrayContaining([baseCareer.program.managedPlayerId, opponentId]));
+    expect(result.career.completedEventIds).not.toContain(event.id);
+    expect(result.career.matchHistory).toEqual([playedRecord]);
+    expect(result.career.matchHistory.some((entry) => entry.source === "backfill_sim")).toBe(false);
+    expect(replayed.career.matchHistory).toEqual(result.career.matchHistory);
+    expect(replayed.career.universeEvents).toEqual(result.career.universeEvents);
+  });
+
   it("does not auto-complete an overdue active event that is waiting for managed play", () => {
     const career = createInitialCareerState(seededPlayers[0].player.id, 6822);
     const event = getCareerEvent(career.events, "metro-open-300")!;

@@ -36,9 +36,11 @@ Persistence is browser-local and portable:
 
 - active local save key: `badminton-manager-save`
 - corrupt active-save quarantine key: `badminton-manager-save-corrupt`
-- current top-level save version: `9`
-- current career schema version: `7`
-- import path: parse -> validate -> migrate -> preview -> confirm
+- current top-level save version: `10`
+- current career schema version: `8`
+- import path: parse -> validate -> migrate -> universe simulation through saved date -> preview -> confirm
+
+Version `10` / career `8` saves include `career.universeEvents`, the tournament-world archive that backs completed event homes, rankings, match records, and player achievements even when the managed athlete skipped an event. `game/store/save.ts` owns load/import migration and runs `simulateUniverseThroughDate()` through the saved career date; React routes must render the resolved world state rather than trigger universe simulation.
 
 See `docs/reference/save-and-persistence.md` for the persistence contract.
 
@@ -150,9 +152,9 @@ Responsibilities:
 - date advancement, daily actions, scheduled match-day guards, and round spacing
 - training, recovery, injury/readiness, economy, facilities, media, scouting, recruitment, youth, staff, promises, rivals, and tactical planning
 - pre-match brief creation and post-match settlement
-- rankings, event histories, match histories, player achievements, and tactical viewer evidence
+- rankings, event histories, universe event records, match histories, player achievements, and tactical viewer evidence
 
-Career date advancement must respect scheduled managed matches. Direct day advancement must not skip a due or overdue match.
+Career date advancement must respect scheduled managed matches. Direct day advancement must not skip a due or overdue match. Universe progression belongs in `game/career/` services: day advancement, managed match review, and save load/import may run `simulateUniverseThroughDate()`, but React components must not simulate or fabricate tournament outcomes.
 
 See `docs/reference/career-calendar-ranking.md` and `docs/reference/game-mechanics.md`.
 
