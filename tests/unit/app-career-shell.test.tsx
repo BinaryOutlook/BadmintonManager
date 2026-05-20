@@ -973,10 +973,10 @@ describe("career calendar event actions", () => {
     }).career;
     const onOpenTournamentHome = vi.fn();
 
-    renderCalendarPage({ career, onOpenTournamentHome });
-    fireEvent.click(screen.getByRole("tab", { name: "Past Events" }));
+    renderTimelinePage({ career, onOpenTournamentHome });
 
-    const row = screen.getByText(event.name).closest(".calendar-event-row") as HTMLElement;
+    const pastEvents = screen.getByLabelText("Past event records");
+    const row = within(pastEvents).getByText(event.name).closest(".calendar-event-row") as HTMLElement;
     expect(row).toBeTruthy();
     expect(within(row).getByText(/Not entered/)).toBeInTheDocument();
     expect(within(row).getByText(/completed/)).toBeInTheDocument();
