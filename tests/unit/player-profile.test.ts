@@ -5,6 +5,7 @@ import { eventEndDate, getCareerEvent } from "../../game/career/events";
 import { createInitialCareerState } from "../../game/career/state";
 import { simulateUniverseThroughDate } from "../../game/career/universe";
 import { createPlayerProfileViewModel } from "../../game/selectors/player";
+import { createTournament } from "../../game/tournament/tournament";
 
 describe("player profile view model", () => {
   it("generates a profile for every local player", () => {
@@ -23,7 +24,7 @@ describe("player profile view model", () => {
     }
   });
 
-  it("keeps the managed player selectable context honest before a run starts", () => {
+  it("keeps the selected setup athlete in managed profile mode before a run starts", () => {
     const managed = seededPlayers[0].player;
     const profile = createPlayerProfileViewModel({
       playerId: managed.id,
@@ -31,9 +32,135 @@ describe("player profile view model", () => {
       tournament: null
     });
 
-    expect(profile?.context.label).toBe("Selectable athlete");
+    expect(profile?.context.label).toBe("Managed athlete");
+    expect(profile?.context.mode).toBe("managed");
+    expect(profile?.context.fifthTabLabel).toBe("Development");
+    expect(profile?.overview.kind).toBe("managed");
+    expect(profile?.overview.managerVerdict?.action).toBeTruthy();
     expect(profile?.performance.entries).toHaveLength(0);
     expect(profile?.performance.emptyState).toContain("No match evidence yet");
+  });
+
+  it("derives selectable scouting mode for setup candidates and keeps Select Athlete context separate", () => {
+    const managed = seededPlayers[0].player;
+    const candidate = seededPlayers[1].player;
+    const profile = createPlayerProfileViewModel({
+      playerId: candidate.id,
+      selectedPlayerId: managed.id,
+      tournament: null,
+      canSelect: true
+    });
+
+    expect(profile?.context.label).toBe("Selectable athlete");
+    expect(profile?.context.mode).toBe("selectable");
+    expect(profile?.context.fifthTabLabel).toBe("Scouting");
+    expect(profile?.overview.kind).toBe("scouting");
+    expect(profile?.overview.scoutingVerdict?.action).toBe("Shortlist and compare");
+    expect(profile?.scouting.affordanceLabel).toBe("Select Athlete");
+  });
+
+  it("promotes a single best tactic and keeps alternatives ranked with tradeoffs", () => {
+    const player = seededPlayers[0].player;
+    const profile = createPlayerProfileViewModel({
+      playerId: player.id,
+      selectedPlayerId: player.id,
+      tournament: null
+    });
+
+    expect(profile?.tacticFits[0]).toMatchObject({ isRecommended: true, rank: 1 });
+    expect(profile?.overview.tacticalPlan.recommended.key).toBe(profile?.tacticFits[0].key);
+    expect(profile?.overview.tacticalPlan.alternatives).toHaveLength(3);
+    expect(profile?.overview.tacticalPlan.alternatives.every((fit) => !fit.isRecommended)).toBe(true);
+    expect(profile?.tacticFits[0].drivers.length).toBeGreaterThan(0);
+    expect(profile?.tacticFits[0].risk).toBeTruthy();
+  });
+
+  it("adds contextual attribute interpretation beyond raw bars", () => {
+    const managed = seededPlayers[0].player;
+    const career = createInitialCareerState(managed.id, 7001);
+    const profile = createPlayerProfileViewModel({
+      playerId: managed.id,
+      selectedPlayerId: managed.id,
+      tournament: null,
+      career
+    });
+
+    const smash = profile?.attributeGroups
+      .find((group) => group.title === "Technical")
+      ?.rows.find((row) => row.label === "Smash");
+
+    expect(smash?.benchmark).toMatch(/Strong|Elite|World Class|Average|Weak/);
+    expect(smash?.context).toContain("Field rank #");
+    expect(smash?.context).toContain("this career");
+    expect(smash?.context).toContain("Rear-Court Power");
+  });
+
+  it("summarizes managed performance telemetry when current-run evidence exists", () => {
+    const managed = seededPlayers[0].player;
+    const tournament = createTournament(seededPlayers, managed.id, 9001);
+    const managedMatch = tournament.rounds[0]!.matches.find((match) => match.managed)!;
+    const opponentId = managedMatch.sideAId === managed.id ? managedMatch.sideBId : managedMatch.sideAId;
+    const opponentName = seededPlayers.find((entry) => entry.player.id === opponentId)!.player.name;
+    const tournamentWithEvidence = {
+      ...tournament,
+      rounds: [
+        {
+          ...tournament.rounds[0]!,
+          matches: tournament.rounds[0]!.matches.map((match) =>
+            match.id === managedMatch.id
+              ? {
+                  ...match,
+                  completed: true,
+                  winnerId: managed.id,
+                  scoreline: "21-10, 21-12",
+                  simulationFidelity: "detailed" as const,
+                  summaryEvents: [
+                    {
+                      kind: "attack_pressure" as const,
+                      title: "Attack pressure landed",
+                      detail: "The managed player converted early smash pressure."
+                    }
+                  ]
+                }
+              : match
+          )
+        }
+      ],
+      managedResults: [
+        {
+          round: managedMatch.round,
+          opponentId,
+          opponentName,
+          scoreline: "21-10, 21-12",
+          won: true,
+          stats: {
+            winners: 24,
+            unforcedErrors: 8,
+            totalSmashes: 19,
+            peakSmashSpeed: 391,
+            longestRally: 24,
+            totalPoints: 64,
+            staminaDrain: 9
+          }
+        }
+      ]
+    };
+
+    const profile = createPlayerProfileViewModel({
+      playerId: managed.id,
+      selectedPlayerId: managed.id,
+      tournament: tournamentWithEvidence
+    });
+
+    expect(profile?.performance.formLabel).toBe("Positive");
+    expect(profile?.performance.lastMatchEvidence).toContainEqual(
+      expect.objectContaining({ label: "Winners / errors", value: "24/8" })
+    );
+    expect(profile?.performance.shotProfile.length).toBeGreaterThan(0);
+    expect(profile?.performance.tacticalResults).toContainEqual(
+      expect.objectContaining({ label: "Attack pressure landed" })
+    );
+    expect(profile?.performance.telemetryState.value).toBe("Tracked");
   });
 
   it("gives Three-Lung Dynamo a rally-control identity", () => {
@@ -141,6 +268,11 @@ describe("player profile view model", () => {
       losses: 0,
       winPercentageLabel: "100%"
     });
+    expect(profile?.career.rivalries[0]).toMatchObject({
+      opponentId: mostPlayedOpponent.id,
+      rivalryLabel: "Even Rivalry"
+    });
+    expect(profile?.career.timeline.map((entry) => entry.eventName)).toContain("Metro Open");
   });
 
   it("calculates records from universe matches where neither player is managed", () => {

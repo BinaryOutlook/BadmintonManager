@@ -10,7 +10,9 @@ import {
   tournamentMatchArchiveScorelines
 } from "../game/career/events";
 import { appendRankingResultsAndRebuild, createRankingResult } from "../game/career/rankings";
+import type { CareerState } from "../game/career/models";
 import type { MatchResult, Side } from "../game/core/models";
+import type { PersistedSave } from "../game/store/save";
 import { advanceTournament, createTournament, getManagedMatchContext } from "../game/tournament/tournament";
 
 const expectedPrimaryCommandLabels = [
@@ -360,6 +362,116 @@ function createCompletedNonManagedArchiveSave() {
   };
 }
 
+function createTix030ProfileVisualSave() {
+  const managedPlayerId = seededPlayers[0].player.id;
+  const seed = 67030;
+  const career = createInitialCareerState(managedPlayerId, seed);
+  const event = getCareerEvent(career.events, "metro-open-300")!;
+  const tournament = {
+    ...createTournament(seededPlayers, managedPlayerId, seed),
+    id: event.id,
+    name: event.name,
+    tier: event.tier,
+    prizePoolUsd: event.prizeMoney.champion * 2
+  };
+  const context = getManagedMatchContext(tournament);
+
+  if (!context) {
+    throw new Error("Expected managed profile visual QA match.");
+  }
+
+  const managedSide = context.playerAId === managedPlayerId ? "A" : "B";
+  const opponentId = context.playerAId === managedPlayerId ? context.playerBId : context.playerAId;
+  const advancedTournament = advanceTournament({
+    tournament,
+    seededEntries: seededPlayers,
+    managedMatchId: context.matchId,
+    managedResult: forcedStraightGamesResult(managedSide)
+  });
+  const matchHistory: CareerState["matchHistory"] = [
+    {
+      id: `${event.id}:${context.roundName}-profile-win`,
+      seasonId: career.seasonId,
+      eventId: event.id,
+      eventName: event.name,
+      date: event.startDate,
+      round: context.roundName,
+      playerAId: context.playerAId,
+      playerBId: context.playerBId,
+      winnerId: managedPlayerId,
+      scoreline: "21-14, 21-16",
+      source: "played"
+    },
+    {
+      id: "harbor-masters-500:F-profile-loss",
+      seasonId: career.seasonId,
+      eventId: "harbor-masters-500",
+      eventName: "Harbor Masters",
+      date: "2026-06-17",
+      round: "F",
+      playerAId: opponentId,
+      playerBId: managedPlayerId,
+      winnerId: opponentId,
+      scoreline: "18-21, 19-21",
+      source: "played"
+    }
+  ];
+  const playerAchievements: CareerState["playerAchievements"] = [
+    {
+      playerId: managedPlayerId,
+      eventId: event.id,
+      eventName: event.name,
+      date: "2026-06-07",
+      result: "champion"
+    },
+    {
+      playerId: managedPlayerId,
+      eventId: "harbor-masters-500",
+      eventName: "Harbor Masters",
+      date: "2026-06-17",
+      result: "runner_up"
+    }
+  ];
+  const save: PersistedSave = {
+    version: 11,
+    selectedPlayerId: managedPlayerId,
+    plannedTacticKey: "balancedControl",
+    seed,
+    tournament: advancedTournament,
+    liveMatch: null,
+    career: {
+      ...career,
+      date: event.startDate,
+      stage: "between_rounds",
+      activeEventId: event.id,
+      enteredEventIds: [event.id],
+      completedEventIds: [],
+      matchHistory,
+      playerAchievements,
+      lastMatchReport: {
+        eventId: event.id,
+        matchId: context.matchId,
+        opponentId,
+        result: "win",
+        scoreline: "21-14, 21-16",
+        round: context.roundName,
+        pointsDelta: 0,
+        cashDelta: 0,
+        fatigueDelta: 8,
+        evidence: ["Visual QA save preserves a managed result with telemetry evidence."],
+        recommendations: ["Use the Performance tab to audit winners, errors, stamina, and pace."],
+        tacticalViewer: null
+      }
+    }
+  };
+
+  return {
+    save,
+    managedName: playerMap[managedPlayerId].name,
+    opponentName: playerMap[opponentId].name
+  };
+}
+
 async function captureFocusedScreenshot(page: { screenshot: (options: { path: string; fullPage: boolean }) => Promise<Buffer> }, name: string) {
   const screenshotDir = process.env.FOCUSED_SCREENSHOT_DIR;
 
@@ -372,6 +484,14 @@ async function captureFocusedScreenshot(page: { screenshot: (options: { path: st
     path: `${screenshotDir}/${name}.png`,
     fullPage: true
   });
+}
+
+async function loadPersistedSave(page: Page, save: PersistedSave) {
+  await page.evaluate((payload) => {
+    window.localStorage.setItem("badminton-manager-save", JSON.stringify(payload));
+    window.sessionStorage.clear();
+    window.location.reload();
+  }, save);
 }
 
 async function expectCalendarViewportBounded(page: Page) {
@@ -511,6 +631,30 @@ async function expectLaunchViewportBounded(page: Page) {
       if (element.scrollWidth > element.clientWidth + 1) {
         const label = element.className || element.tagName;
         throw new Error(`Unexpected launch element overflow for ${label}: ${element.scrollWidth} > ${element.clientWidth}`);
+      }
+    }
+  });
+}
+
+async function expectProfileViewportBounded(page: Page) {
+  await page.evaluate(() => {
+    const pageWidth = document.documentElement.scrollWidth;
+    const viewportWidth = window.innerWidth;
+
+    if (pageWidth > viewportWidth + 1) {
+      throw new Error(`Unexpected player profile document overflow: ${pageWidth} > ${viewportWidth}`);
+    }
+
+    const checkedElements = Array.from(
+      document.querySelectorAll<HTMLElement>(
+        ".player-profile-hero, .profile-tab-list, .player-profile-toolbar, .profile-verdict-panel, .profile-tactic-layout, .profile-decision-grid, .profile-attributes-grid, .profile-performance-grid, .profile-future-grid, .profile-radar"
+      )
+    );
+
+    for (const element of checkedElements) {
+      if (element.scrollWidth > element.clientWidth + 1) {
+        const label = element.className || element.tagName;
+        throw new Error(`Unexpected player profile element overflow for ${label}: ${element.scrollWidth} > ${element.clientWidth}`);
       }
     }
   });
@@ -726,7 +870,9 @@ test("can start a tournament run and play through a managed match", async ({ pag
   await selectionDialog.getByRole("button", { name: "Grand-Slam Southpaw", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Grand-Slam Southpaw" })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Attributes" })).toBeVisible();
-  await expect(page.getByText("Endurance").first()).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Scouting" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Scouting Verdict" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Threat / Fit Summary" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Resize sidebar" })).toHaveCount(0);
   await page.getByRole("button", { name: "Back" }).click();
 
@@ -1098,7 +1244,8 @@ test("continues a deterministic career event from post-match into the next round
     .getByRole("button", { name: betweenRounds.nextOpponentName })
     .click();
   await expect(page.getByRole("heading", { name: betweenRounds.nextOpponentName })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Coach Report" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Scouting Verdict" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "How To Beat Them" })).toBeVisible();
   await page.getByRole("button", { name: "Back" }).click();
   await expect(page.getByRole("heading", { name: "Opponent Briefing" })).toBeVisible();
   await page.evaluate((payload) => {
@@ -1398,6 +1545,103 @@ test("routes the Live Match command through career and quick match paths", async
   await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
   await quickCommandRail.getByRole("button", { name: /Live Match/ }).click();
   await expect(page.getByRole("heading", { name: "Next Opponent" })).toBeVisible();
+});
+
+test("player profile renders decision-first managed and scouting dossiers", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+
+  const selectableName = "Grand-Slam Southpaw";
+  await page.getByRole("button", { name: "Quick Tournament", exact: true }).click();
+  const selectionDialog = page.getByRole("dialog", { name: "Pick Your Playstyle" });
+  await expect(selectionDialog).toBeVisible();
+  await selectionDialog.getByRole("button", { name: selectableName, exact: true }).click();
+  await expect(page.getByRole("heading", { name: selectableName })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Scouting" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Scouting Verdict" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Select Athlete" }).first()).toBeVisible();
+  await expectProfileViewportBounded(page);
+  await captureFocusedScreenshot(page, "player-profile-selectable-overview-desktop");
+  await page.getByRole("button", { name: "Back" }).click();
+  await page.evaluate(() => {
+    window.localStorage.clear();
+    window.sessionStorage.clear();
+    window.location.reload();
+  });
+  await expect(page.getByRole("heading", { name: "Badminton Manager" })).toBeVisible();
+
+  await startQuickTournamentFromModal(page);
+  await expect(page.getByRole("heading", { name: "Next Opponent" })).toBeVisible();
+
+  const managedName = seededPlayers[0].player.name;
+  await page.locator(".matchup-competitor-managed .profile-name-button").first().click();
+  await expect(page.getByRole("heading", { name: managedName })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Development" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Manager Verdict" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Readiness Strip" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Tactical Plan" })).toBeVisible();
+  await expectProfileViewportBounded(page);
+  await captureFocusedScreenshot(page, "player-profile-managed-overview-desktop");
+
+  await page.getByRole("tab", { name: "Attributes" }).click();
+  await expect(page.getByRole("heading", { name: "Technical" })).toBeVisible();
+  await expect(page.getByText(/Field rank #/).first()).toBeVisible();
+  await expectProfileViewportBounded(page);
+  await captureFocusedScreenshot(page, "player-profile-attributes-desktop");
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expectProfileViewportBounded(page);
+  await captureFocusedScreenshot(page, "player-profile-attributes-mobile");
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.getByRole("tab", { name: "Performance" }).click();
+  await expect(page.getByRole("heading", { name: "Telemetry State" })).toBeVisible();
+  await captureFocusedScreenshot(page, "player-profile-performance-empty-desktop");
+
+  await page.getByRole("button", { name: "Back" }).click();
+  await expect(page.getByRole("heading", { name: "Next Opponent" })).toBeVisible();
+  const opponentButton = page.locator(".matchup-competitor-opponent .profile-name-button").first();
+  const opponentName = (await opponentButton.textContent())?.trim();
+
+  if (!opponentName) {
+    throw new Error("Expected opponent profile button text.");
+  }
+
+  await opponentButton.click();
+  await expect(page.getByRole("heading", { name: opponentName })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Scouting" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Scouting Verdict" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "How To Beat Them" })).toBeVisible();
+  await expectProfileViewportBounded(page);
+  await captureFocusedScreenshot(page, "player-profile-opponent-overview-desktop");
+
+  await page.getByRole("tab", { name: "Career" }).click();
+  await expect(page.getByRole("heading", { name: "Career Record" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Rivalries And Head-To-Head" })).toBeVisible();
+  await captureFocusedScreenshot(page, "player-profile-career-desktop");
+
+  const visualProfile = createTix030ProfileVisualSave();
+  await loadPersistedSave(page, visualProfile.save);
+  await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
+
+  const visualCommandRail = page.getByRole("navigation", { name: "Primary commands" });
+  await visualCommandRail.getByRole("button", { name: /Squad/ }).click();
+  await expect(page.getByRole("heading", { name: "Athlete Directory" })).toBeVisible();
+  await page.getByRole("main").getByRole("button", { name: visualProfile.managedName, exact: true }).click();
+  await expect(page.getByRole("heading", { name: visualProfile.managedName })).toBeVisible();
+
+  await page.getByRole("tab", { name: "Performance" }).click();
+  await expect(page.getByRole("heading", { name: "Last Match Evidence" })).toBeVisible();
+  await expect(page.getByText("Peak smash", { exact: true }).first()).toBeVisible();
+  await expectProfileViewportBounded(page);
+  await captureFocusedScreenshot(page, "player-profile-performance-telemetry-desktop");
+
+  await page.getByRole("tab", { name: "Career" }).click();
+  await expect(page.getByRole("heading", { name: "Rivalries And Head-To-Head" })).toBeVisible();
+  await expect(page.getByText("Even Rivalry", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: visualProfile.opponentName, exact: true }).first()).toBeVisible();
+  await expectProfileViewportBounded(page);
+  await captureFocusedScreenshot(page, "player-profile-career-h2h-desktop");
 });
 
 test("surfaces dense page contracts and Save Manager metadata", async ({ page }) => {

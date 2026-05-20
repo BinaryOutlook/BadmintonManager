@@ -626,3 +626,29 @@ Avoid:
 ## 17. Change Log
 
 - 2026-05-09: Added the player-profile and shell/settings amendment for `v0.2.4`.
+
+## 8. TIX-030 Decision-First Optimization
+
+Updated: 2026-05-21
+
+The profile now treats the athlete page as a relationship-aware management dossier rather than a flat stat archive.
+
+The stable tab contract is now:
+
+```text
+Overview -> Attributes -> Performance -> Career -> Development / Scouting
+```
+
+`Overview` remains one tab, but its content changes by relationship:
+
+- managed profiles lead with a `Manager Verdict`, readiness strip, recommended tactical plan, training recommendation, risk flags, and recent evidence;
+- unmanaged profiles lead with a `Scouting Verdict`, threat or selection-fit summary, how-they-win / how-to-beat guidance, known strengths, unknowns, and a next scouting action.
+
+The fifth tab is contextual:
+
+- `Development` for the active managed athlete;
+- `Scouting` for selectable, opponent, entrant, champion, and available-roster profiles.
+
+Attribute rows now add interpretation beside raw values using benchmark labels, field rank/percentile, career-development notes for managed athletes, and confidence notes for unmanaged athletes. Performance panels prefer compact evidence and honest unlock states over empty archive space. Career now keeps persisted-record truth while adding timeline, notable result, age-curve, and rivalry/head-to-head interpretation.
+
+The implementation preserves the existing rule that profile data is derived in selectors/read models and React only renders decisions, evidence, and navigation intent.

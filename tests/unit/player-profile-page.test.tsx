@@ -1,12 +1,135 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import type { ComponentProps } from "react";
 import { PlayerNavigationProvider } from "../../app/playerNavigation";
 import { TournamentNavigationProvider } from "../../app/tournamentNavigation";
 import { PlayerProfilePage } from "../../app/pages/PlayerProfilePage";
 import { createInitialCareerState } from "../../game/career/state";
 import { seededPlayers } from "../../game/content/players";
 
+function renderProfile(props: Partial<ComponentProps<typeof PlayerProfilePage>> = {}) {
+  const managed = seededPlayers[0].player;
+
+  return render(
+    <PlayerNavigationProvider onOpenPlayerProfile={vi.fn()}>
+      <TournamentNavigationProvider onOpenTournamentHome={vi.fn()}>
+        <PlayerProfilePage
+          playerId={managed.id}
+          selectedPlayerId={managed.id}
+          phase="setup"
+          careerPresent={false}
+          career={null}
+          tournament={null}
+          liveMatchSession={null}
+          onBack={vi.fn()}
+          onSelectPlayer={vi.fn()}
+          {...props}
+        />
+      </TournamentNavigationProvider>
+    </PlayerNavigationProvider>
+  );
+}
+
 describe("player profile career tab", () => {
+  it("renders five tabs with Development for managed profiles and a manager verdict overview", () => {
+    const managed = seededPlayers[0].player;
+    const career = createInitialCareerState(managed.id, 7419);
+
+    renderProfile({
+      playerId: managed.id,
+      selectedPlayerId: managed.id,
+      careerPresent: true,
+      career
+    });
+
+    expect(screen.getAllByRole("tab")).toHaveLength(5);
+    expect(screen.getByRole("tab", { name: "Development" })).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "Scouting" })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Manager Verdict" })).toBeInTheDocument();
+    expect(screen.getByText(/Best tactic:/)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Readiness Strip" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Tactical Plan" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Training Recommendation" })).toBeInTheDocument();
+  });
+
+  it("renders Scouting for selectable profiles, keeps Select Athlete available, and explains the choice", () => {
+    const managed = seededPlayers[0].player;
+    const candidate = seededPlayers[1].player;
+    const onSelectPlayer = vi.fn();
+
+    renderProfile({
+      playerId: candidate.id,
+      selectedPlayerId: managed.id,
+      careerPresent: false,
+      phase: "setup",
+      onSelectPlayer
+    });
+
+    expect(screen.getAllByRole("tab")).toHaveLength(5);
+    expect(screen.getByRole("tab", { name: "Scouting" })).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "Development" })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Scouting Verdict" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Threat / Fit Summary" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "How They Win" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "How To Beat Them" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Select Athlete" })[0]!);
+    expect(onSelectPlayer).toHaveBeenCalledWith(candidate.id);
+  });
+
+  it("renders contextual Development and Scouting tab bodies", () => {
+    const managed = seededPlayers[0].player;
+    const candidate = seededPlayers[1].player;
+
+    const { unmount } = renderProfile({
+      playerId: managed.id,
+      selectedPlayerId: managed.id,
+      careerPresent: true,
+      career: createInitialCareerState(managed.id, 7429)
+    });
+
+    fireEvent.click(screen.getByRole("tab", { name: "Development" }));
+    expect(screen.getByRole("heading", { name: "Development Plan" })).toBeInTheDocument();
+    expect(screen.getByText(/Expected Gain:/)).toBeInTheDocument();
+    unmount();
+
+    renderProfile({
+      playerId: candidate.id,
+      selectedPlayerId: managed.id,
+      careerPresent: false,
+      phase: "setup"
+    });
+
+    fireEvent.click(screen.getByRole("tab", { name: "Scouting" }));
+    expect(screen.getByRole("heading", { name: "Scouting Confidence" })).toBeInTheDocument();
+    expect(screen.getByText(/Next Scout Focus:/)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Uncertain Areas" })).toBeInTheDocument();
+  });
+
+  it("supports keyboard navigation across the tablist", () => {
+    renderProfile();
+
+    const overview = screen.getByRole("tab", { name: "Overview" });
+    fireEvent.keyDown(overview, { key: "ArrowRight" });
+
+    expect(screen.getByRole("tab", { name: "Attributes" })).toHaveAttribute("aria-selected", "true");
+
+    fireEvent.keyDown(screen.getByRole("tab", { name: "Attributes" }), { key: "End" });
+    expect(screen.getByRole("tab", { name: "Development" })).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("uses compact performance empty states instead of blank panels", () => {
+    renderProfile();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Performance" }));
+
+    expect(screen.getByRole("heading", { name: "Recent Form" })).toBeInTheDocument();
+    expect(screen.getByText("No recent form yet.")).toBeInTheDocument();
+    expect(screen.getByText("Last match evidence locked.")).toBeInTheDocument();
+    expect(screen.getByText("Shot profile unavailable.")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Telemetry State" })).toBeInTheDocument();
+  });
+
   it("renders persisted career history and links head-to-head opponents by player id", () => {
     const managed = seededPlayers[0].player;
     const opponent = seededPlayers[1].player;
@@ -83,10 +206,10 @@ describe("player profile career tab", () => {
     expect(screen.getByText("Win %: 50%")).toBeInTheDocument();
     expect(screen.getByText("Finals: 2")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Titles" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Open tournament home for Metro Open" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Open tournament home for Metro Open" })[0]!);
     expect(onOpenTournamentHome).toHaveBeenCalledWith({ seasonId: career.seasonId, eventId: "metro-open-300" });
     expect(screen.getByRole("heading", { name: "Runner-Up Finishes" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Open tournament home for Harbor Masters" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Open tournament home for Harbor Masters" })[0]!);
     expect(onOpenTournamentHome).toHaveBeenCalledWith({ seasonId: career.seasonId, eventId: "harbor-masters-500" });
 
     const table = screen.getByRole("table", { name: "Head-to-head records" });

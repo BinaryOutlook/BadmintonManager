@@ -1302,7 +1302,10 @@ export function App() {
             onOpenSettings={() => setSettingsOpen(true)}
           />
 
-          <div className="workspace-shell" style={workspaceStyle}>
+          <div
+            className={activePage.id === "playerProfile" ? "workspace-shell workspace-shell-profile" : "workspace-shell"}
+            style={workspaceStyle}
+          >
             <CommandSidebar
               activeCommandId={activeCommandId}
               commands={shellCommands}
