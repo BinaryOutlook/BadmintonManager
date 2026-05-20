@@ -13,6 +13,7 @@ import {
 } from "../../game/career/events";
 import { awardRankingPoints } from "../../game/career/rankings";
 import { createInitialCareerState } from "../../game/career/state";
+import { simulateUniverseThroughDate } from "../../game/career/universe";
 import { playerMap, seededPlayers } from "../../game/content/players";
 import type { MatchResult, Side } from "../../game/core/models";
 import { useTournamentStore } from "../../game/store/store";
@@ -957,6 +958,31 @@ describe("career calendar event actions", () => {
 
     expect(screen.getByText("Page 2 of 2")).toBeInTheDocument();
     expect(container.querySelectorAll(".calendar-event-table[aria-label='Past event records'] .calendar-event-row:not(.calendar-event-row-head)")).toHaveLength(1);
+  });
+
+  it("lists completed skipped universe events in Past Events", () => {
+    const baseCareer = createInitialCareerState(seededPlayers[0].player.id, 9921);
+    const event = getCareerEvent(baseCareer.events, "metro-open-300")!;
+    const career = simulateUniverseThroughDate({
+      career: {
+        ...baseCareer,
+        date: addDays(eventEndDate(event), 1)
+      },
+      activeTournament: null,
+      targetDate: addDays(eventEndDate(event), 1)
+    }).career;
+    const onOpenTournamentHome = vi.fn();
+
+    renderCalendarPage({ career, onOpenTournamentHome });
+    fireEvent.click(screen.getByRole("tab", { name: "Past Events" }));
+
+    const row = screen.getByText(event.name).closest(".calendar-event-row") as HTMLElement;
+    expect(row).toBeTruthy();
+    expect(within(row).getByText(/Not entered/)).toBeInTheDocument();
+    expect(within(row).getByText(/completed/)).toBeInTheDocument();
+    fireEvent.click(within(row).getByRole("button", { name: `Open tournament home for ${event.name}` }));
+
+    expect(onOpenTournamentHome).toHaveBeenCalledWith({ seasonId: career.seasonId, eventId: event.id });
   });
 
   it("opens past events and renders an old-save archive fallback without a bracket snapshot", () => {

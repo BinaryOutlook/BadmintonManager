@@ -175,6 +175,42 @@ describe("fictional career calendar and ranking model", () => {
     expect(replayed.career.universeEvents).toEqual(first.career.universeEvents);
   });
 
+  it("does not auto-complete an overdue active event that is waiting for managed play", () => {
+    const career = createInitialCareerState(seededPlayers[0].player.id, 6822);
+    const event = getCareerEvent(career.events, "metro-open-300")!;
+    const tournament = {
+      ...createTournament(seededPlayers, career.program.managedPlayerId, 6822),
+      id: event.id,
+      name: event.name,
+      tier: event.tier,
+      prizePoolUsd: event.prizeMoney.champion * 2
+    };
+    const result = simulateUniverseThroughDate({
+      career: {
+        ...career,
+        date: addDays(eventEndDate(event), 2),
+        activeEventId: event.id,
+        enteredEventIds: [event.id],
+        stage: "pre_match"
+      },
+      activeTournament: tournament,
+      targetDate: addDays(eventEndDate(event), 2)
+    });
+    const record = result.career.universeEvents.find((entry) => entry.eventId === event.id);
+
+    expect(getManagedMatchContext(tournament)).toBeTruthy();
+    expect(record).toMatchObject({
+      eventId: event.id,
+      status: "in_progress",
+      source: "live_progression",
+      championId: null,
+      runnerUpId: null,
+      managedPlayerResult: null
+    });
+    expect(result.career.completedEventIds).not.toContain(event.id);
+    expect(result.career.matchHistory.filter((entry) => entry.eventId === event.id)).toEqual([]);
+  });
+
   it("defines ordered fictional event operations metadata for every catalog event", () => {
     const career = createInitialCareerState(seededPlayers[0].player.id, 6801);
 

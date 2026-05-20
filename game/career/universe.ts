@@ -110,10 +110,11 @@ function shuffled<T>(items: T[], rng: SeededRng) {
 export function deterministicUniverseEntrants(args: {
   career: CareerState;
   event: CareerEventDefinition;
+  includeManagedEntry?: boolean;
 }) {
   const rng = new SeededRng(universeSeed({ ...args, salt: "entrants" }));
   const managedPlayerId = args.career.program.managedPlayerId;
-  const enteredManagedPlayer = args.career.enteredEventIds.includes(args.event.id);
+  const enteredManagedPlayer = args.includeManagedEntry ?? args.career.enteredEventIds.includes(args.event.id);
   const candidateIds = rankedCandidateIds(args.career).filter(
     (playerId) => enteredManagedPlayer || playerId !== managedPlayerId
   );
@@ -416,10 +417,11 @@ function managedPlayerResult(args: {
   career: CareerState;
   event: CareerEventDefinition;
   placements: CareerUniverseTournamentPlacement[];
+  entrants?: string[];
 }): UniverseManagedPlayerResult {
   const managedPlayerId = args.career.program.managedPlayerId;
 
-  if (!args.career.enteredEventIds.includes(args.event.id)) {
+  if (!args.career.enteredEventIds.includes(args.event.id) || args.entrants?.includes(managedPlayerId) === false) {
     return "not_entered";
   }
 
@@ -469,7 +471,7 @@ function createDrawRecord(args: {
     championId: null,
     runnerUpId: null,
     placements: [],
-    managedPlayerResult: args.career.enteredEventIds.includes(args.event.id) ? null : "not_entered" as const
+    managedPlayerResult: args.entrants.includes(args.career.program.managedPlayerId) ? null : "not_entered" as const
   } satisfies CareerUniverseTournamentRecord;
 }
 
@@ -497,7 +499,8 @@ function createCompletedRecord(args: {
     managedPlayerResult: managedPlayerResult({
       career: args.career,
       event: args.event,
-      placements: args.bracket.placements
+      placements: args.bracket.placements,
+      entrants: args.bracket.entrants
     })
   } satisfies CareerUniverseTournamentRecord;
 }
@@ -664,8 +667,34 @@ export function simulateUniverseThroughDate(args: {
       continue;
     }
 
+    if (activeTournament) {
+      const entrants = uniquePlayerIds(activeTournament.rounds[0]?.matches.flatMap((match) => [match.sideAId, match.sideBId]) ?? []);
+      const drawRecord = createDrawRecord({
+        career,
+        event,
+        entrants,
+        source: "live_progression"
+      });
+      career = upsertUniverseRecord(career, {
+        ...drawRecord,
+        status: args.targetDate >= event.startDate ? "in_progress" : "drawn"
+      });
+      eventsSimulated.push(event.id);
+      continue;
+    }
+
     if (args.targetDate > eventEndDate(event)) {
-      const entrants = deterministicUniverseEntrants({ career, event });
+      const enteredWithoutLiveTournament = career.enteredEventIds.includes(event.id);
+      const hasPlayedManagedRecord = career.matchHistory.some(
+        (record) =>
+          record.eventId === event.id &&
+          (record.playerAId === career.program.managedPlayerId || record.playerBId === career.program.managedPlayerId)
+      );
+      const entrants = deterministicUniverseEntrants({
+        career,
+        event,
+        includeManagedEntry: enteredWithoutLiveTournament && hasPlayedManagedRecord
+      });
       const bracket = simulateCompletedUniverseBracket({
         career,
         event,
@@ -683,9 +712,7 @@ export function simulateUniverseThroughDate(args: {
       continue;
     }
 
-    const entrants = activeTournament
-      ? uniquePlayerIds(activeTournament.rounds[0]?.matches.flatMap((match) => [match.sideAId, match.sideBId]) ?? [])
-      : deterministicUniverseEntrants({ career, event });
+    const entrants = deterministicUniverseEntrants({ career, event });
     const drawRecord = createDrawRecord({
       career,
       event,

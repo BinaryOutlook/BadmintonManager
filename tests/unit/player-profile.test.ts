@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { seededPlayers } from "../../game/content/players";
+import { addDays } from "../../game/career/calendar";
+import { eventEndDate, getCareerEvent } from "../../game/career/events";
 import { createInitialCareerState } from "../../game/career/state";
+import { simulateUniverseThroughDate } from "../../game/career/universe";
 import { createPlayerProfileViewModel } from "../../game/selectors/player";
 
 describe("player profile view model", () => {
@@ -206,6 +209,40 @@ describe("player profile view model", () => {
         winPercentageLabel: "50%"
       })
     ]);
+  });
+
+  it("shows a non-managed champion title from a skipped simulated universe event", () => {
+    const managed = seededPlayers[0].player;
+    const career = createInitialCareerState(managed.id, 8128);
+    const event = getCareerEvent(career.events, "metro-open-300")!;
+    const simulated = simulateUniverseThroughDate({
+      career,
+      activeTournament: null,
+      targetDate: addDays(eventEndDate(event), 1)
+    }).career;
+    const universeRecord = simulated.universeEvents.find((record) => record.eventId === event.id);
+
+    if (!universeRecord?.championId) {
+      throw new Error("Expected skipped universe event champion.");
+    }
+
+    const profile = createPlayerProfileViewModel({
+      playerId: universeRecord.championId,
+      selectedPlayerId: managed.id,
+      tournament: null,
+      career: simulated
+    });
+
+    expect(universeRecord.managedPlayerResult).toBe("not_entered");
+    expect(profile?.career.recordCards).toContainEqual({ label: "Titles", value: "1" });
+    expect(profile?.career.titles).toEqual([
+      expect.objectContaining({
+        eventId: event.id,
+        eventName: event.name,
+        result: "champion"
+      })
+    ]);
+    expect(profile?.career.hasRecordedHistory).toBe(true);
   });
 
   it("shows managed-player spotlight only when a non-managed profile has recorded matches against them", () => {
