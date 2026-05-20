@@ -652,6 +652,51 @@ describe("career rankings page", () => {
     expect(screen.getByText(`1-8 of ${career.rankings.length}`)).toBeInTheDocument();
   });
 
+  it("labels the newest dated ranking result as latest after a rolling-ledger rebuild", () => {
+    const baseCareer = createInitialCareerState(seededPlayers[0].player.id, 9924);
+    const targetEntry = [...baseCareer.rankings].sort((left, right) => left.rank - right.rank)[0]!;
+    const targetPlayer = playerMap[targetEntry.playerId];
+    const olderEvent = getCareerEvent(baseCareer.events, "metro-open-300")!;
+    const newerEvent = getCareerEvent(baseCareer.events, "harbor-masters-500")!;
+    const career = appendRankingResultsAndRebuild({
+      career: baseCareer,
+      results: [
+        createRankingResult({
+          seasonId: baseCareer.seasonId,
+          playerId: targetEntry.playerId,
+          eventId: olderEvent.id,
+          eventName: olderEvent.name,
+          tier: olderEvent.tier,
+          date: olderEvent.startDate,
+          resultRound: "QF",
+          points: olderEvent.rankingPoints.QF,
+          source: "played",
+          artificial: false
+        }),
+        createRankingResult({
+          seasonId: baseCareer.seasonId,
+          playerId: targetEntry.playerId,
+          eventId: newerEvent.id,
+          eventName: newerEvent.name,
+          tier: newerEvent.tier,
+          date: newerEvent.startDate,
+          resultRound: "champion",
+          points: newerEvent.rankingPoints.champion,
+          source: "played",
+          artificial: false
+        })
+      ],
+      asOfDate: newerEvent.startDate
+    });
+
+    renderRankingsPage({ career });
+
+    const targetRow = screen.getByRole("row", { name: new RegExp(`Rank \\d+ ${targetPlayer.name}`, "i") });
+
+    expect(within(targetRow).getByText(new RegExp(`Latest champion \\+${newerEvent.rankingPoints.champion.toLocaleString()} pts`))).toBeInTheDocument();
+    expect(within(targetRow).queryByText(new RegExp(`Latest QF \\+${olderEvent.rankingPoints.QF.toLocaleString()} pts`))).not.toBeInTheDocument();
+  });
+
   it("keeps the final rankings page reachable with Next disabled at the end", () => {
     const career = createInitialCareerState(seededPlayers[0].player.id, 9917);
     renderRankingsPage({ career });
