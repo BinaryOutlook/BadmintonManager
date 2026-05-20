@@ -15,6 +15,7 @@ import {
   pastCalendarRecords,
   recordPastCareerEvents,
   scheduleCalendarEntriesForCareer,
+  scheduleCalendarMonthForCareer,
   timelineCommitmentsForCareer,
   upcomingCalendarEvents
 } from "../../game/career/events";
@@ -309,6 +310,45 @@ describe("fictional career calendar and ranking model", () => {
       opponentLabel: seededPlayers.find((entry) => entry.player.id === nextOpponentId)!.player.name,
       result: null
     });
+  });
+
+  it("builds a single visible calendar month view without speculative future rounds", () => {
+    const baseCareer = createInitialCareerState(seededPlayers[0].player.id, 6814);
+    const event = getCareerEvent(baseCareer.events, "metro-open-300")!;
+    const tournament = {
+      ...createTournament(seededPlayers, baseCareer.program.managedPlayerId, 6814),
+      id: event.id,
+      name: event.name,
+      tier: event.tier
+    };
+    const career = {
+      ...baseCareer,
+      date: event.startDate,
+      activeEventId: event.id,
+      enteredEventIds: [event.id],
+      stage: "pre_match" as const
+    };
+
+    const month = scheduleCalendarMonthForCareer({
+      career,
+      tournament,
+      monthCursor: "2026-06-18"
+    });
+
+    expect(month.cursor).toBe("2026-06-01");
+    expect(month.label).toBe("June 2026");
+    expect(month.visibleRange).toEqual({
+      startDate: "2026-06-01",
+      endDateExclusive: "2026-07-01"
+    });
+    expect(month.weeks).toHaveLength(5);
+    expect(month.weeks.every((week) => week.days.length === 7)).toBe(true);
+    expect(month.entries.every((entry) => entry.date >= "2026-06-01" && entry.date < "2026-07-01")).toBe(true);
+    expect(month.entries.some((entry) => entry.kind === "match" && entry.eventId === event.id && entry.round === "R16")).toBe(true);
+    expect(month.entries.some((entry) => entry.kind === "match" && entry.eventId === event.id && entry.round === "QF")).toBe(false);
+    expect(month.weeks.flatMap((week) => week.days).filter((day) => day.isCareerToday).map((day) => day.date)).toEqual([
+      event.startDate
+    ]);
   });
 
   it("returns deterministic missed-deadline states before charging entry costs", () => {

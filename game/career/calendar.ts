@@ -10,10 +10,14 @@ function parseDate(date: string) {
   return new Date(Date.UTC(year, month - 1, day));
 }
 
+function formatDate(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
 export function addDays(date: string, days: number) {
   const parsed = parseDate(date);
   parsed.setUTCDate(parsed.getUTCDate() + days);
-  return parsed.toISOString().slice(0, 10);
+  return formatDate(parsed);
 }
 
 export function daysBetween(left: string, right: string) {
@@ -22,6 +26,40 @@ export function daysBetween(left: string, right: string) {
 
 export function buildWeek(date: string) {
   return Array.from({ length: 7 }).map((_, index) => addDays(date, index));
+}
+
+export type CalendarMonthCursor = string;
+
+export function calendarMonthCursorForDate(date: string): CalendarMonthCursor {
+  const parsed = parseDate(date);
+
+  return formatDate(new Date(Date.UTC(parsed.getUTCFullYear(), parsed.getUTCMonth(), 1)));
+}
+
+export function addCalendarMonths(cursor: CalendarMonthCursor, months: number): CalendarMonthCursor {
+  const parsed = parseDate(cursor);
+
+  return formatDate(new Date(Date.UTC(parsed.getUTCFullYear(), parsed.getUTCMonth() + months, 1)));
+}
+
+export function calendarMonthLabel(cursor: CalendarMonthCursor) {
+  const parsed = parseDate(cursor);
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    timeZone: "UTC",
+    year: "numeric"
+  }).format(parsed);
+}
+
+export function dayOfMonth(date: string) {
+  return parseDate(date).getUTCDate();
+}
+
+export function mondayFirstWeekdayIndex(date: string) {
+  const day = parseDate(date).getUTCDay();
+
+  return day === 0 ? 6 : day - 1;
 }
 
 export function advanceCareerCalendar(
