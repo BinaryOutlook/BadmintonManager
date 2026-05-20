@@ -937,7 +937,8 @@ test("can complete and reload the career core slice with tactical viewer proof",
   await page.getByRole("button", { name: "Career Home" }).click();
   await page.getByRole("main").getByRole("button", { name: "Timeline" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Timeline" })).toBeVisible();
-  await expect(page.getByText(/prize \$15,000/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Upcoming Event Schedule" })).toBeVisible();
+  await expect(page.getByLabel("Upcoming event schedule").getByText(/\$15,000/)).toBeVisible();
   await page.getByRole("button", { name: "Enter Event" }).first().click();
   await expect(page.getByRole("button", { name: "Open Event" }).first()).toBeVisible();
 
@@ -1104,6 +1105,7 @@ test("surfaces completed tournament archive outcomes from complete match records
   await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
   await page.getByRole("navigation", { name: "Primary commands" }).getByRole("button", { name: /Timeline/ }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Timeline" })).toBeVisible();
+  await page.getByRole("tab", { name: "Past Events" }).click();
   await page.getByLabel("Past event records").getByRole("button", { name: `Open tournament home for ${archive.eventName}` }).click();
 
   await expect(page.getByRole("heading", { name: archive.eventName })).toBeVisible();
@@ -1155,7 +1157,8 @@ test("surfaces corrupt save recovery and blocks unaffordable event entry", async
 
   await page.getByRole("main").getByRole("button", { name: "Timeline" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Timeline" })).toBeVisible();
-  await expect(page.getByText(/prize \$15,000/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Upcoming Event Schedule" })).toBeVisible();
+  await expect(page.getByLabel("Upcoming event schedule").getByText(/\$15,000/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Open Event" }).first()).toBeVisible();
   await page.getByRole("button", { name: "Open Event" }).first().click();
   await expect(page.getByRole("heading", { name: "Metro Open" })).toBeVisible();
@@ -1410,16 +1413,17 @@ test("integrates fictional calendar ranking stakes into career home and Timeline
   await page.getByRole("main").getByRole("button", { name: "Timeline" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Timeline" })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Calendar" })).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: "Event Brief" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Upcoming" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tab", { name: "Past Events" })).toHaveAttribute("aria-selected", "false");
   await expect(page.getByRole("heading", { name: "Upcoming Event Schedule" })).toBeVisible();
-  await expect(page.getByText(/Entry deadline 2026-06-01, draw milestone 2026-06-02/)).toBeVisible();
-  await expect(page.getByText(/Champion prize \$15,000/)).toBeVisible();
-  await expect(page.getByText(/Seed Snapshot/).first()).toBeVisible();
-  await expect(page.getByLabel("Metro Open active milestones")).toContainText("Ranking cutoff: 2026-05-29");
-  await expect(page.getByLabel("Metro Open active milestones")).toContainText("Draw published: 2026-06-02");
-  await expect(page.getByText(/presentation, not full draw-engine replacement/)).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Simplification Boundary" })).toBeVisible();
-  await expect(page.getByText(/playable match bridge remains the existing deterministic 16-player knockout/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Confirmed Match Days" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Event Brief" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Week Strip" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Milestones & Seeding" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Eligibility & Costs" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Past Events" })).toHaveCount(0);
+  await page.getByRole("tab", { name: "Past Events" }).click();
+  await expect(page.getByRole("tab", { name: "Past Events" })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("heading", { name: "Past Events" })).toBeVisible();
   await expect(page.getByText(/No past-event records have been written yet/)).toBeVisible();
   await commandRail.getByRole("button", { name: /Calendar/ }).click();
@@ -1547,15 +1551,18 @@ test("keeps the Timeline and Calendar layouts bounded across target viewports", 
     await page.getByRole("main").getByRole("button", { name: "Timeline" }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Timeline" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Upcoming Event Schedule" })).toBeVisible();
-    await expect(page.getByRole("tab", { name: "Past Events" })).toHaveCount(0);
+    await expect(page.getByRole("tab", { name: "Upcoming" })).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("tab", { name: "Past Events" })).toHaveAttribute("aria-selected", "false");
     await expectCalendarViewportBounded(page);
     await captureFocusedScreenshot(page, `${viewport.name}-upcoming`);
 
+    await page.getByRole("tab", { name: "Past Events" }).click();
     await expect(page.getByRole("heading", { name: "Past Events" })).toBeVisible();
     await expectCalendarViewportBounded(page);
     await captureFocusedScreenshot(page, `${viewport.name}-past-events`);
 
-    await expect(page.getByRole("heading", { name: "Managed Match Timeline" })).toBeVisible();
+    await page.getByRole("tab", { name: "Upcoming" }).click();
+    await expect(page.getByRole("heading", { name: "Confirmed Match Days" })).toBeVisible();
     await expectCalendarViewportBounded(page);
 
     await page.getByRole("navigation", { name: "Primary commands" }).getByRole("button", { name: /Calendar/ }).click();
