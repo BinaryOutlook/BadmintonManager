@@ -23,7 +23,7 @@ Use progressive disclosure. Read only what the task needs.
 5. `docs/product/versions/v0.2.4/v0.2.4.md` - completed UI/career/save bridge packet
 6. `docs/product/versions/v0.2.3/v0.2.3.md` - match-algorithm baseline packet
 7. `docs/architecture/overview.md` - architecture boundaries and commands
-8. `docs/reference/` - subsystem contracts for match engine, player model, tactics, tournament flow, and career calendar/ranking
+8. `docs/reference/` - subsystem contracts for mechanics, code structure, match engine, career flow, saves, tournaments, player model, and tactics
 
 ## Architecture Rules
 
@@ -49,13 +49,16 @@ $$
 | `npm run test` | Vitest tests |
 | `npm run test:e2e` | Playwright browser tests |
 
-## Documentation Update Rules
+## Documentation Discipline
 
+Use `docs/README.md` as the documentation map. When a system changes materially, update the smallest durable doc that lets the next maintainer understand it without the chat transcript.
+
+- Gameplay, simulation, tournament, ranking, or career-rule change: update the matching `docs/reference/` file.
+- Architecture boundary, route/page structure, or module-ownership change: update `docs/architecture/overview.md`.
+- Save schema, migration, import/export, or local-persistence behavior change: update `docs/reference/save-and-persistence.md`.
 - Product behavior or scope change: update `docs/product/PRD.md` or the active version packet.
-- Architecture boundary change: update `docs/architecture/overview.md`; add an ADR in `docs/decisions/` when the decision is expensive to reverse.
-- Subsystem rule change: update the matching file in `docs/reference/`.
-- Project state change: update `docs/plans/active/project-status.md`.
-- New release target: create `docs/product/versions/vX.Y/` or `docs/product/versions/vX.Y.Z/`.
+- Setup, command, public data contract, or verification change: update `README.md`, this file, or `docs/README.md`.
+- Expensive-to-reverse decision: add or supersede an ADR in `docs/decisions/`.
 
 Do not let `AGENTS.md` become a large manual. Its job is fast routing.
 

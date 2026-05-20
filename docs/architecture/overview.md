@@ -2,23 +2,23 @@
 
 ## High Concept
 
-**Badminton Manager** is a local-first browser simulation game built around a deterministic singles match engine and a lightweight management shell.
+**Badminton Manager** is a local-first browser management simulation. The player acts as coach and program manager; deterministic TypeScript game modules resolve match, tournament, career, ranking, and save outcomes.
 
-The player does not directly control rallies.
+The core runtime boundary is:
 
-The system simulates them from:
+$$
+\text{React UI}
+\rightarrow \text{player intent}
+\rightarrow \text{Zustand actions}
+\rightarrow \text{game modules}
+\rightarrow \text{state, events, records, saves, presentation}
+$$
 
-- player ratings
-- tactics
-- stamina
-- pressure
-- seeded randomness
+React renders decisions and evidence. Game modules decide outcomes.
 
-The technical goal is to make the simulation trustworthy, inspectable, and easy to extend before the UI becomes elaborate.
+## Current Technical Direction
 
-## Chosen Technical Direction
-
-This project adopts **Option A**, the local-first SPA path.
+The project uses the local-first SPA path accepted in `docs/decisions/ADR-001-tech-stack.md`.
 
 Selected stack:
 
@@ -30,301 +30,257 @@ Selected stack:
 - `Vitest`
 - `Playwright`
 
-Persistence approach:
+There is no required backend, auth, account system, database, or cloud save for the MVP.
 
-- small settings in browser storage
-- tournament and run saves in browser storage first
-- a single active local save slot at `badminton-manager-save`
-- corrupt active saves quarantined at `badminton-manager-save-corrupt`
-- no required backend for the MVP
+Persistence is browser-local and portable:
 
-## Why This Stack
+- active local save key: `badminton-manager-save`
+- corrupt active-save quarantine key: `badminton-manager-save-corrupt`
+- current top-level save version: `9`
+- current career schema version: `7`
+- import path: parse -> validate -> migrate -> preview -> confirm
 
-This stack is chosen because the current product risk is simulation complexity, not infrastructure complexity.
-
-We want:
-
-- low setup friction
-- fast local iteration
-- a clear separation between UI and engine
-- easy testing of pure game logic
-
-We do not want the project to stall on:
-
-- server deployment
-- auth
-- API design
-- database operations
-
-## Design Stance
-
-The correct first architecture is not the most scalable possible architecture.
-
-The correct first architecture is the one that makes it easiest to:
-
-- prove the match engine works
-- tune the simulation
-- inspect deterministic outputs
-- preserve maintainability
-
-The browser app should remain the shell around a pure simulation boundary.
+See `docs/reference/save-and-persistence.md` for the persistence contract.
 
 ## Project Shape
 
 ```text
 AGENTS.md
+README.md
 docs/
   README.md
   architecture/
   decisions/
-  plans/
-    active/
   product/
-    versions/
+  plans/
   reference/
+  active_tix/
+  arc_tix/
 app/
+  App.tsx
+  pages.ts
+  playerNavigation.tsx
+  tournamentNavigation.tsx
+  pages/
 components/
 game/
   career/
+  commentary/
   content/
   core/
+  selectors/
   store/
-  commentary/
   tournament/
-lib/
 tests/
   unit/
-  integration/
+  calibration/
 e2e/
 ```
 
-### Directory intent
+For a practical file-by-file source map, see `docs/reference/code-structure.md`.
 
-- `app/`: route-level screens and top-level composition
-- `components/`: reusable UI surfaces
-- `game/core/`: pure simulation logic with no React imports
-- `game/career/`: typed career state, calendar, event tiers, training, health, economy, rankings, and hub view-model formulas
-- `game/content/`: player seeds, tactic presets, commentary templates
-- `game/store/`: Zustand state and UI-facing actions
-- `game/commentary/`: transforming engine events into readable match text
-- `game/tournament/`: bracket setup and advancement helpers
-- `lib/`: small shared utilities such as RNG helpers or schema helpers
-- `tests/unit/`: pure logic tests
-- `tests/integration/`: state and feature-path tests
-- `e2e/`: browser tests
+## Runtime Layers
 
-## Runtime Boundaries
+### 1. App And Page Shell
 
-The project should maintain four clean layers.
+Owned primarily by `app/App.tsx` and `app/pages.ts`.
 
-### 1. Simulation core
+Responsibilities:
 
-The simulation core owns:
+- internal SPA page registry through typed `AppPage` state
+- launch shell versus command shell selection
+- top status bar, primary command sidebar, page canvas, and overlay host
+- navigation to player profiles and tournament homes through provider helpers
+- route-like page rendering without a URL router
+- wiring UI callbacks to Zustand store actions
 
-- player rating interpretation
-- rally and point resolution
-- set and match progression
-- fatigue and pressure modifiers
-- seeded RNG consumption
+The app shell may decide which page to show. It should not decide gameplay outcomes.
 
-This layer must be:
+### 2. Presentation Components
 
-- deterministic
-- pure or near-pure
-- testable without React
+Owned by `components/`.
 
-### 2. Game application state
+Responsibilities:
 
-The application state owns:
+- setup, Save Manager, command shell pages, live match page, bracket tree, profile links, tournament links, overlays, and career workbenches
+- rendering derived state into readable management surfaces
+- dispatching player intent through callbacks
+- preserving accessibility and focus behavior for overlays
 
-- the selected player
-- the career save, calendar, training/recovery choices, budget ledger, and ranking points
-- tournament progress
-- chosen tactics
-- current match presentation state
-- save and load orchestration
+Large page-level components such as `components/CareerWorkbench.tsx` may organize workflows, but they should delegate rules to `game/` modules.
 
-This layer may use Zustand.
+### 3. Store And Persistence Orchestration
 
-### 3. Presentation layer
+Owned by `game/store/store.ts` and `game/store/save.ts`.
 
-The UI owns:
+Responsibilities:
 
-- bracket screens
-- player cards
-- commentary feed
-- match score presentation
-- tactic selection controls
+- Zustand runtime state
+- app phase, selected player, tournament, live match, career, save-recovery flags
+- state-changing actions for career, tournament, match, save, and UI-facing commands
+- active save writes and runtime hydration
+- Zod schemas, supported legacy save versions, migration, and import validation
 
-This layer must never decide who wins a rally.
+The store is the bridge between UI intent and game modules. It should remain thin enough that subsystem formulas stay in `game/core/`, `game/career/`, or `game/tournament/`.
 
-### 4. Persistence layer
+### 4. Match Engine
 
-The persistence layer owns:
+Owned by `game/core/`.
 
-- serializing app state
-- validating hydrated saves
-- versioning save payloads
+Responsibilities:
 
-The persistence layer must not contain gameplay formulas.
+- deterministic player/tactic/rating models
+- detailed live match sessions and point-by-point rally resolution
+- quick background match simulation
+- fidelity dispatch through `simulateMatchByFidelity()`
+- live directives, team talks, set progression, scoring laws, stats, and summary events
+- seeded RNG behavior
 
-## Match Simulation Model
+The current match structure is best-of-three games to `21`, win by `2`, with a `30` point cap. See `docs/reference/match-engine.md` and `docs/reference/match-simulation-fidelity.md`.
 
-The match engine should use a **risk and reward event model**, not a physics engine.
+### 5. Career System
 
-Core shape:
+Owned by `game/career/`.
 
-```ts
-interface MatchSimulationInput {
-  seed: number;
-  playerA: Player;
-  playerB: Player;
-  tacticsA: MatchTactic;
-  tacticsB: MatchTactic;
-}
+Responsibilities:
+
+- career schemas and migration-friendly state versions
+- locked managed athlete
+- fictional event catalog, eligibility, deadlines, seeding snapshots, and statuses
+- date advancement, daily actions, scheduled match-day guards, and round spacing
+- training, recovery, injury/readiness, economy, facilities, media, scouting, recruitment, youth, staff, promises, rivals, and tactical planning
+- pre-match brief creation and post-match settlement
+- rankings, event histories, match histories, player achievements, and tactical viewer evidence
+
+Career date advancement must respect scheduled managed matches. Direct day advancement must not skip a due or overdue match.
+
+See `docs/reference/career-calendar-ranking.md` and `docs/reference/game-mechanics.md`.
+
+### 6. Tournament System
+
+Owned by `game/tournament/`.
+
+Responsibilities:
+
+- deterministic 16-player field selection from the fictional player pool
+- bracket construction and current managed match context
+- quick simulation for non-managed matches
+- advancement after managed matches
+- post-elimination completion of the remaining bracket
+- champion and managed-run summaries
+- legacy quick-tournament name normalization
+
+Tournament logic must preserve completed facts and only fill missing non-managed matches. See `docs/reference/tournament-system.md`.
+
+### 7. Content And Commentary
+
+Owned by `game/content/` and `game/commentary/`.
+
+Responsibilities:
+
+- typed fictional players and tactic/directive content
+- readable commentary derived from engine point and set facts
+
+Content is local and fictional. Commentary explains engine truth; it does not own outcome truth.
+
+### 8. Selectors And Read Models
+
+Owned by `game/selectors/`.
+
+Responsibilities:
+
+- derived player profile view models
+- career record cards, titles, finals, head-to-head summaries, and managed-player spotlights
+- deduplication and honest old-save empty/fallback states
+
+Selectors should read persisted universe facts such as `career.matchHistory` and `career.playerAchievements` instead of fabricating records from legacy bracket snapshots.
+
+## Critical Data Flow
+
+```text
+player intent in React
+  -> App callback
+  -> Zustand action
+  -> game/core, game/career, or game/tournament function
+  -> updated store state
+  -> persist versioned save
+  -> selector/read model
+  -> React presentation
 ```
 
-Engine output should contain:
+This flow keeps game truth outside presentation and makes deterministic testing possible.
 
-- final score
-- set-by-set results
-- event log
-- derived stats
-- explanation-friendly point history
-
-The event log should be machine-readable first and rendered into commentary later.
-
-## Resolution Order
-
-The planned simulation pipeline is:
-
-1. initialize match state from players, tactics, and seed
-2. initialize the current set
-3. initialize the current rally from server and score context
-4. choose shot intent for the active player
-5. calculate shot execution and target difficulty
-6. resolve in, out, or net outcomes
-7. if live, resolve judgment and retrieval for the defender
-8. continue until the rally ends
-9. update score, stamina, pressure, and serving state
-10. repeat until set and match completion
-
-This order should be documented and preserved in tests.
-
-## Data Modeling Direction
-
-The initial data model should stay small and explicit.
-
-Planned core entities:
-
-- `Player`
-- `PlayerRatings`
-- `MatchTactic`
-- `TeamTalk`
-- `Tournament`
-- `MatchResult`
-- `MatchEvent`
-- `SaveState`
-
-Content should begin as typed local data files, not a database schema.
-
-## Persistence Strategy
-
-The MVP is local-first.
-
-Initial persistence rules:
-
-- use browser storage for settings and the current tournament run
-- validate saves with Zod before hydration
-- include an explicit save version
-- keep saves portable JSON-shaped data
-- import saves with parse -> Zod schema validation -> migration -> preview/confirm before replacing the active slot
-- reject malformed or schema-invalid imports without mutating the active save or corrupt backup key
-
-The project should not adopt a backend or production database unless a later version clearly requires one.
-
-## Testing Strategy
-
-This project should treat the simulation as the primary testing target.
-
-### Unit tests
+## Test Strategy
 
 Use `Vitest` for:
 
-- RNG determinism
-- derived stat calculations
-- rally resolution rules
-- set and match scoring
-- fatigue and pressure modifiers
-- bracket progression
+- match engine determinism, scoring laws, quick/detailed behavior, directives, talks, and set progression
+- tournament draw and advancement
+- career calendar, due-match guards, event entry, rankings, histories, records, and program systems
+- save schemas, migration, import-preview safety, corrupt-save quarantine, and legacy normalization
+- selectors and React component surfaces
 
-### Integration tests
+Use calibration tests for larger seeded sweeps:
 
-Use `Vitest` for:
-
-- store plus simulation interactions
-- persistence round-trips
-- tactic selection to match result flows
-
-### End-to-end tests
+- `npm run calibrate:match`
+- `npm run calibrate:stats`
 
 Use `Playwright` for:
 
-- loading the app
-- creating or loading a tournament run
-- starting a match
-- progressing through a completed match and bracket state
+- launch, setup, career start, quick tournament, active-save resume, and recovery states
+- command shell and scheduled match routing
+- Save Manager browser behavior
+- live Match Command Center layout and flow
+- post-match continuation and reload proof
+- focused responsive layout guardrails
 
 ## Commands
 
-Use these commands for local development and verification:
+Use these from the repository root:
 
-- `npm install`
-- `npm run dev`
-- `npm run build`
-- `npm run typecheck`
-- `npm run test`
-- `npm run test:e2e`
+```sh
+npm install
+npm run dev
+npm run build
+npm run typecheck
+npm run test
+npm run test:e2e
+```
+
+Issue-specific documentation checks may add `rg` searches; see `docs/reference/maintainer-workflow.md`.
 
 ## Boundaries
 
 Always do:
 
 - keep simulation logic outside React components
-- keep engine output deterministic for a given seed
-- write tests for simulation changes
-- update docs when system boundaries change
+- preserve deterministic outputs for identical seeds, players, tactics, choices, and fidelity mode
+- keep local persistence versioned, validated, and import-safe
+- write or update tests for behavior changes
+- update the smallest durable doc when boundaries, rules, schemas, routes, commands, or public contracts change
 
 Ask first:
 
-- adding a backend
+- adding a backend, auth, account system, database, or cloud save requirement
 - changing the persistence model materially
-- swapping the state library
-- expanding the MVP beyond singles and one tournament loop
+- replacing React, Zustand, Vite, or the current local-first SPA direction
+- adding direct racket controls
+- introducing real athlete likenesses or licensed event content
 
 Never do:
 
 - put gameplay formulas in UI components
-- make the first version depend on remote services
+- make the MVP depend on remote services
 - hide important simulation rules in untyped ad hoc objects
-- treat commentary strings as the source of truth for match outcomes
+- treat commentary strings or historical ticket text as source of truth for outcomes
 
-## Near-Term Implementation Order
+## Reference Map
 
-1. scaffold the Vite React TypeScript app
-2. define player and tactic schemas
-3. implement seeded RNG helpers
-4. implement rally, set, and match simulation
-5. seed 16 players and bracket logic
-6. present commentary and score in the browser
-7. add save and resume support
-
-## Technical Success Criteria
-
-The foundation is technically healthy when:
-
-- the app runs locally with minimal setup
-- the engine is testable outside React
-- match results are reproducible from a seed
-- the UI reads engine output rather than generating game truth
-- save payloads are versioned and validated
+- Game/system model: `docs/reference/game-mechanics.md`
+- Source tree: `docs/reference/code-structure.md`
+- Save contract: `docs/reference/save-and-persistence.md`
+- Maintainer process: `docs/reference/maintainer-workflow.md`
+- Match engine: `docs/reference/match-engine.md`
+- Career calendar/ranking: `docs/reference/career-calendar-ranking.md`
+- Tournament system: `docs/reference/tournament-system.md`
+- Decisions: `docs/decisions/`
