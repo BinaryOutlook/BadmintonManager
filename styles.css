@@ -93,7 +93,7 @@ textarea:focus-visible {
   top: 0;
   z-index: 20;
   display: grid;
-  grid-template-columns: minmax(28rem, 1fr) auto auto auto;
+  grid-template-columns: minmax(22rem, 1fr) auto;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
@@ -193,6 +193,14 @@ textarea:focus-visible {
   min-width: 0;
 }
 
+.topbar-command-zone {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.95rem;
+  min-width: 0;
+}
+
 .topbar-daily-cluster {
   display: flex;
   align-items: center;
@@ -205,12 +213,12 @@ textarea:focus-visible {
   align-items: center;
   justify-content: center;
   min-height: 2.3rem;
-  border: 1px solid rgba(57, 255, 20, 0.3);
+  border: 1px solid rgba(57, 255, 20, 0.18);
   border-radius: 0.28rem;
   padding: 0.48rem 0.7rem;
-  background: rgba(57, 255, 20, 0.1);
+  background: rgba(12, 14, 17, 0.68);
   color: var(--lime-soft);
-  font-size: 0.86rem;
+  font-size: 0.82rem;
   font-weight: 900;
   letter-spacing: 0.08em;
   line-height: 1;
@@ -259,6 +267,15 @@ textarea:focus-visible {
   display: flex;
   align-items: center;
   gap: 0.55rem;
+  min-width: 0;
+}
+
+.topbar .icon-command-button {
+  white-space: nowrap;
+}
+
+.topbar-save-button {
+  color: var(--muted-soft);
 }
 
 .topbar .command-button {
@@ -5989,6 +6006,23 @@ textarea:focus-visible {
   }
 }
 
+@media (max-width: 980px) {
+  .topbar {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .topbar-command-zone {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .command-search {
+    max-width: none;
+  }
+}
+
 @media (max-width: 780px) {
   .topbar,
   .main-canvas {
@@ -6059,9 +6093,23 @@ textarea:focus-visible {
     order: 3;
   }
 
+  .topbar-command-zone {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    gap: 0.62rem;
+  }
+
+  .topbar-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(8rem, 1fr));
+    width: 100%;
+  }
+
   .topbar-daily-cluster {
     display: grid;
-    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    grid-template-columns: minmax(8rem, 0.9fr) minmax(8rem, 1.1fr);
     width: 100%;
   }
 
@@ -6077,10 +6125,6 @@ textarea:focus-visible {
   .topbar-save-status span {
     width: 100%;
     max-width: none;
-  }
-
-  .topbar-actions {
-    width: 100%;
   }
 
   .topbar-actions .icon-command-button {

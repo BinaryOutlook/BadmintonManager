@@ -1240,6 +1240,11 @@ export function App() {
     : corruptSavePresent
       ? "Recovery available"
       : "No active save";
+  const saveButtonLabel = career
+    ? "Career Save"
+    : activeSavePresent
+      ? "Quick Save"
+      : "Save Manager";
   const continueLabel = careerDailyAction
     ? careerDailyAction.label
     : activeSavePresent
@@ -1290,8 +1295,10 @@ export function App() {
             continueLabel={continueLabel}
             continueTone={continueTone}
             dateLabel={shellDate}
+            saveButtonLabel={saveButtonLabel}
             saveStatus={saveStatus}
             onContinue={handleShellContinue}
+            onOpenSaveManager={openSaveManager}
             onOpenSettings={() => setSettingsOpen(true)}
           />
 
@@ -1347,8 +1354,10 @@ function TopStatusBar(props: {
   continueLabel: string;
   continueTone: CareerDailyActionTone;
   dateLabel: string;
+  saveButtonLabel: string;
   saveStatus: string;
   onContinue: () => void;
+  onOpenSaveManager: () => void;
   onOpenSettings: () => void;
 }) {
   const continueClass = [
@@ -1375,23 +1384,29 @@ function TopStatusBar(props: {
         </label>
       </div>
 
-      <div className="topbar-daily-cluster" aria-label="Career clock control">
-        <span className="topbar-date" aria-label={`Career date ${props.dateLabel}`}>
-          {props.dateLabel}
-        </span>
-        <button className={continueClass} data-tone={props.continueTone} type="button" onClick={props.onContinue}>
-          {props.continueLabel}
-        </button>
-      </div>
+      <div className="topbar-command-zone" aria-label="Topbar career controls">
+        <div className="topbar-actions" aria-label="Career utility controls">
+          <button
+            className="icon-command-button topbar-save-button"
+            type="button"
+            title={`Open Save Manager - ${props.saveStatus}`}
+            onClick={props.onOpenSaveManager}
+          >
+            {props.saveButtonLabel}
+          </button>
+          <button className="icon-command-button" type="button" onClick={props.onOpenSettings}>
+            Settings
+          </button>
+        </div>
 
-      <div className="topbar-status topbar-save-status" aria-label="Save status">
-        <span>{props.saveStatus}</span>
-      </div>
-
-      <div className="topbar-actions">
-        <button className="icon-command-button" type="button" onClick={props.onOpenSettings}>
-          Settings
-        </button>
+        <div className="topbar-daily-cluster" aria-label="Career clock control">
+          <span className="topbar-date" aria-label={`Career date ${props.dateLabel}`}>
+            {props.dateLabel}
+          </span>
+          <button className={continueClass} data-tone={props.continueTone} type="button" onClick={props.onContinue}>
+            {props.continueLabel}
+          </button>
+        </div>
       </div>
     </header>
   );
