@@ -1,6 +1,29 @@
-1. This is a human review report for TIX-016, everything is good, just that we still have the calendar inside the timeline, despite it also being a separate clickable item on the left sidebar of the game. Please remove it from the timeline section so that it is just a standalone clickable place in the left sidebar directly.
+1. This is a human review report for TIX-020, everything is good, except that we need PAST EVENT been a separate tab within the Timeline that's selectable, simialrly we should remove the Event Brief block, so it should be Timeline(Left Side Bar), with in it, Upcoming(Upcoming event schedule) in the first and default position, on the right it can be selected and will go to te tab of past event. can remove Week Strip, Milestones & Seeding, Eligibility & Costs blocks currently in timeline.
+1. This is a human review report for TIX-020, everything is good,  except that we currently got 3x month year, remove the first  two occurance on the page, as well as the complete block of 
 
-   Adding onto that, having the whole calendar printed out is slightly clunky. Instead, just display one calendar as a month. In the top right corner, include forward, today, and backward functionality to ensure ease of navigation no matter which direction the user aims to travel.
-2. This is a human review report for TIX-017, similarly, I can see a lot of fun stuff being done, but I feel like the whole backend simulation has not been done enough. We currently have no available data for a lot of competitions.
+"Career today
 
-   The competition should be simulated for each game regardless of whether the player manages to advance into that particular round or if they are eliminated early on. It should be a total-degree simulation of a universe that is fully self-sustainable. In this system, our managed athlete is just one part of the whole universe, and that universe will continue to run whether our player advances or not.
+2026-07-31
+
+Visible month
+
+July 2026
+
+Visible range
+
+2026-07-01 - 2026-07-31
+
+Diary entries
+
+3
+
+Scope
+
+Confirmed only "\
+Similarly, the Back Today Forward, should be << Today >> button, and should be directly on top of the calender isntead of in the header above 
+
+3.  The RANKINGS page, the  Full Circuit Table should display only the first 8, and then with a next page options, just like how Upcoming Event Schedule in the TIMELINE have its own PREV/NEXT system, please refence\
+
+
+
+
