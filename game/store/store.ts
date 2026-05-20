@@ -49,6 +49,7 @@ import {
 import type { LiveDirective, LiveMatchSession, MatchTactic, Side, TeamTalk } from "../core/models";
 import type { AdvancedTacticPlan, CareerState, FacilityType, PlayerPromise } from "../career/models";
 import { createInitialCareerState } from "../career/state";
+import { simulateUniverseThroughDate } from "../career/universe";
 import { applyTrainingPlan, getTrainingPlan } from "../career/training";
 import { advanceRivalCircuit } from "../career/rivals";
 import {
@@ -413,6 +414,18 @@ function prependCareerNote(career: CareerState, note: string) {
   };
 }
 
+function simulateCareerUniverseForStore(args: {
+  career: CareerState;
+  tournament: TournamentState | null;
+  targetDate?: string;
+}) {
+  return simulateUniverseThroughDate({
+    career: args.career,
+    activeTournament: args.tournament,
+    targetDate: args.targetDate ?? args.career.date
+  }).career;
+}
+
 const initialState = loadPersisted();
 
 export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
@@ -632,6 +645,11 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
         return next;
       }
 
+      const advancedCareer = advanceCareerCalendar(state.career, { tournament: state.tournament });
+      const universeCareer = simulateCareerUniverseForStore({
+        career: advancedCareer,
+        tournament: state.tournament
+      });
       const career = refreshAssistantAdvice(
         recordPastCareerEvents(
           resolveMediaObjectives(
@@ -641,7 +659,7 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
                   advanceRivalCircuit(
                     resolvePromises(
                       expireScoutReports(
-                        resolveDueScoutReports(advanceCareerCalendar(state.career, { tournament: state.tournament }))
+                        resolveDueScoutReports(universeCareer)
                       )
                     )
                   )
@@ -1212,7 +1230,12 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
             })
           : state.career;
       const careerWithPsychology = career
-        ? refreshAssistantAdvice(resolveMediaObjectives(resolvePromises(applyMatchPsychology(career, managedResult.winner === state.liveMatch.managedSide))))
+        ? refreshAssistantAdvice(
+            simulateCareerUniverseForStore({
+              career: resolveMediaObjectives(resolvePromises(applyMatchPsychology(career, managedResult.winner === state.liveMatch.managedSide))),
+              tournament
+            })
+          )
         : career;
 
       const next = {

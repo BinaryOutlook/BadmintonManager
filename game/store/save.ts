@@ -25,7 +25,7 @@ import { upgradeCareerStateV3 } from "../career/tactics";
 import { refreshAssistantAdvice } from "../career/tactics";
 import { upgradeCareerStateV4 } from "../career/facilitiesMedia";
 import { normalizeTournamentName } from "../tournament/metadata";
-import { hydrateLegacyUniverseEventRecords } from "../career/universe";
+import { hydrateLegacyUniverseEventRecords, simulateUniverseThroughDate } from "../career/universe";
 
 const matchSummaryEventSchema = z.object({
   kind: z.enum([
@@ -301,40 +301,58 @@ function refreshMigratedCareer(career: MigratableCurrentCareer | null) {
     : null;
 }
 
+function simulateMigratedSaveUniverse(save: PersistedSave): PersistedSave {
+  if (!save.career) {
+    return save;
+  }
+
+  const simulated = simulateUniverseThroughDate({
+    career: save.career,
+    activeTournament: save.tournament,
+    targetDate: save.career.date
+  });
+
+  return {
+    ...save,
+    career: simulated.career,
+    tournament: simulated.activeTournament
+  };
+}
+
 export function migratePersistedSave(payload: PersistedSavePayload): PersistedSave {
   if (payload.version === 9) {
-    return {
+    return simulateMigratedSaveUniverse({
       ...payload,
       version: 10,
       career: payload.career ? refreshMigratedCareer({ ...payload.career, version: 8 }) : null
-    };
+    });
   }
 
   if (payload.version === 8) {
-    return {
+    return simulateMigratedSaveUniverse({
       ...payload,
       version: 10,
       career: payload.career ? refreshMigratedCareer({ ...payload.career, version: 8, eventHistory: [] }) : null
-    };
+    });
   }
 
   if (payload.version === 7) {
-    return {
+    return simulateMigratedSaveUniverse({
       ...payload,
       version: 10,
       career: payload.career ? refreshMigratedCareer({ ...payload.career, version: 8, eventHistory: [] }) : null
-    };
+    });
   }
 
   if (payload.version === 10) {
-    return {
+    return simulateMigratedSaveUniverse({
       ...payload,
       career: refreshMigratedCareer(payload.career)
-    };
+    });
   }
 
   if (payload.version === 3) {
-    return {
+    return simulateMigratedSaveUniverse({
       ...payload,
       version: 10,
       career: payload.career
@@ -344,11 +362,11 @@ export function migratePersistedSave(payload: PersistedSavePayload): PersistedSa
             eventHistory: []
           })
         : null
-    };
+    });
   }
 
   if (payload.version === 4) {
-    return {
+    return simulateMigratedSaveUniverse({
       ...payload,
       version: 10,
       career: payload.career
@@ -358,11 +376,11 @@ export function migratePersistedSave(payload: PersistedSavePayload): PersistedSa
             eventHistory: []
           })
         : null
-    };
+    });
   }
 
   if (payload.version === 5) {
-    return {
+    return simulateMigratedSaveUniverse({
       ...payload,
       version: 10,
       career: payload.career
@@ -372,24 +390,24 @@ export function migratePersistedSave(payload: PersistedSavePayload): PersistedSa
             eventHistory: []
           })
         : null
-    };
+    });
   }
 
   if (payload.version === 6) {
-    return {
+    return simulateMigratedSaveUniverse({
       ...payload,
       version: 10,
       career: payload.career
         ? refreshMigratedCareer({ ...upgradeCareerStateV4(payload.career), version: 8, eventHistory: [] })
         : null
-    };
+    });
   }
 
-  return {
+  return simulateMigratedSaveUniverse({
     ...payload,
     version: 10,
     career: null
-  };
+  });
 }
 
 export function validateImportedSaveText(raw: string): SaveImportValidationResult {
