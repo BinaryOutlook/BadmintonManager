@@ -2,7 +2,12 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { TournamentNavigationProvider } from "../../app/tournamentNavigation";
 import { CareerPostMatchHubPage, CareerPreMatchHubPage } from "../../components/CareerWorkbench";
-import { KnockoutTree } from "../../components/KnockoutTree";
+import {
+  KnockoutTree,
+  compactBracketDisplayName,
+  compactBracketNamesForDraw,
+  parseScorelineGames
+} from "../../components/KnockoutTree";
 import { playerMap, seededPlayers } from "../../game/content/players";
 import { getCareerEvent } from "../../game/career/events";
 import type { CareerState } from "../../game/career/models";
@@ -163,12 +168,35 @@ function buildCareerPageProps(
 }
 
 describe("KnockoutTree", () => {
-  it("renders placeholders, managed path, clickable player names, and background summaries", () => {
+  it("formats compact bracket names and expands only collisions", () => {
+    expect(compactBracketDisplayName("Grand-Slam Southpaw")).toBe("G. Southpaw");
+    expect(compactBracketDisplayName("Pablo Reyes")).toBe("P. Reyes");
+    expect(compactBracketDisplayName("Eight-Crown Monarch")).toBe("E. Monarch");
+    expect(compactBracketDisplayName("Louis Mercier")).toBe("L. Mercier");
+
+    expect(
+      compactBracketNamesForDraw([
+        { id: "pablo", name: "Pablo Reyes" },
+        { id: "pedro", name: "Pedro Reyes" },
+        { id: "louis", name: "Louis Mercier" }
+      ])
+    ).toEqual({
+      pablo: "Pab. Reyes",
+      pedro: "Ped. Reyes",
+      louis: "L. Mercier"
+    });
+  });
+
+  it("renders compact score cells, selected-match detail, and abbreviated profile links", () => {
     const managedPlayerId = seededPlayers[0].player.id;
     const tournament = createTournament(seededPlayers, managedPlayerId, 7802);
     const managedMatch = tournament.rounds[0]!.matches.find((match) => match.managed)!;
     const backgroundMatch = tournament.rounds[0]!.matches.find((match) => !match.managed && match.summaryEvents?.[0])!;
     const onOpenPlayerProfile = vi.fn();
+    const compactNames = compactBracketNamesForDraw(
+      [...new Set(tournament.rounds.flatMap((round) => round.matches.flatMap((match) => [match.sideAId, match.sideBId])))]
+        .map((playerId) => playerMap[playerId])
+    );
 
     render(
       <KnockoutTree
@@ -180,16 +208,30 @@ describe("KnockoutTree", () => {
 
     expect(screen.getByRole("heading", { name: "Knockout Tree" })).toBeInTheDocument();
     expect(screen.getByLabelText("Knockout tree")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Round of 32" })).not.toBeInTheDocument();
     expect(screen.getByText("Winner R16-1")).toBeInTheDocument();
     expect(screen.getByText("Winner QF-1")).toBeInTheDocument();
     expect(screen.getByText("Winner SF-1")).toBeInTheDocument();
-    expect(screen.getAllByText("Awaiting previous winners").length).toBeGreaterThan(0);
-    expect(screen.queryByRole("button", { name: "Winner R16-1" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "TBD" })).not.toBeInTheDocument();
-    expect(screen.getByText("Managed match pending").closest(".bracket-card")).toHaveClass("bracket-card-managed");
-    expect(screen.getByText(backgroundMatch.summaryEvents![0]!.title)).toBeInTheDocument();
+    expect(screen.queryByText("Awaiting previous winners")).not.toBeInTheDocument();
+    expect(screen.queryByText(backgroundMatch.summaryEvents![0]!.title)).not.toBeInTheDocument();
+    expect(screen.getByText("up next").closest(".bracket-card")).toHaveClass("bracket-card-managed");
 
-    fireEvent.click(screen.getByRole("button", { name: playerMap[managedMatch.sideAId]!.name }));
+    const games = parseScorelineGames(backgroundMatch.scoreline);
+    const backgroundButton = screen.getByRole("button", {
+      name: `Inspect Round of 16 match ${Number(backgroundMatch.id.split("-").at(-1))}: ${playerMap[backgroundMatch.sideAId]!.name} vs ${playerMap[backgroundMatch.sideBId]!.name}`
+    });
+
+    expect(within(backgroundButton).getAllByText(games[0]!.sideA).length).toBeGreaterThan(0);
+    expect(within(backgroundButton).getAllByText(games[0]!.sideB).length).toBeGreaterThan(0);
+    expect(within(backgroundButton).queryByText(backgroundMatch.scoreline!)).not.toBeInTheDocument();
+
+    fireEvent.click(backgroundButton);
+
+    const detail = screen.getByLabelText("Selected match details");
+    expect(within(detail).getByText(backgroundMatch.scoreline!)).toBeInTheDocument();
+    expect(within(detail).getByText(backgroundMatch.summaryEvents![0]!.title)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: compactNames[managedMatch.sideAId] }));
 
     expect(onOpenPlayerProfile).toHaveBeenCalledWith(managedMatch.sideAId);
   });
@@ -201,7 +243,7 @@ describe("KnockoutTree", () => {
       managedPlayerId
     );
 
-    render(
+    const { container } = render(
       <KnockoutTree
         tournament={championTournament}
         selectedPlayerId={managedPlayerId}
@@ -209,9 +251,40 @@ describe("KnockoutTree", () => {
       />
     );
 
-    expect(screen.getByText("Champion decided - 21-14, 21-16").closest(".bracket-card")).toHaveClass(
-      "bracket-card-champion"
+    expect(container.querySelector(".bracket-card-champion")).toBeInTheDocument();
+  });
+
+  it("renders a five-round Round of 32 bracket shape when a draw includes R32 data", () => {
+    const managedPlayerId = seededPlayers[0].player.id;
+    const playerIds = seededPlayers.slice(0, 32).map((entry) => entry.player.id);
+    const roundOf32Matches = Array.from({ length: 16 }, (_, index) => ({
+      id: `R32-${index + 1}`,
+      round: "R32",
+      sideAId: playerIds[index * 2]!,
+      sideBId: playerIds[index * 2 + 1]!,
+      winnerId: index === 0 ? playerIds[0] : undefined,
+      scoreline: index === 0 ? "21-12, 21-13" : undefined,
+      managed: index === 0,
+      completed: index === 0
+    }));
+    const tournament32 = {
+      ...createTournament(seededPlayers, managedPlayerId, 7812),
+      rounds: [{ name: "R32", matches: roundOf32Matches }]
+    } as unknown as TournamentState;
+
+    render(
+      <KnockoutTree
+        tournament={tournament32}
+        selectedPlayerId={managedPlayerId}
+        onOpenPlayerProfile={() => undefined}
+      />
     );
+
+    expect(screen.getByRole("heading", { name: "Round of 32" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Round of 16" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Final" })).toBeInTheDocument();
+    expect(screen.getByText("Winner R32-2")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /Inspect Round of 32 match/ })).toHaveLength(16);
   });
 });
 
@@ -229,7 +302,12 @@ describe("career bracket placement", () => {
     expect(screen.getByRole("heading", { name: "Current Event Bracket" })).toBeInTheDocument();
     expect(screen.getByLabelText("Knockout tree")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: playerMap[managedPlayerId]!.name }));
+    const compactNames = compactBracketNamesForDraw(
+      [...new Set(tournament.rounds.flatMap((round) => round.matches.flatMap((match) => [match.sideAId, match.sideBId])))]
+        .map((playerId) => playerMap[playerId])
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: compactNames[managedPlayerId] }));
 
     expect(onOpenPlayerProfile).toHaveBeenCalledWith(managedPlayerId);
   });
@@ -267,6 +345,14 @@ describe("career bracket placement", () => {
 
     expect(screen.getByRole("heading", { name: "Current Event Bracket" })).toBeInTheDocument();
     expect(screen.getByLabelText("Knockout tree")).toBeInTheDocument();
-    expect(within(screen.getByLabelText("Knockout tree")).getByText("21-14, 21-16")).toBeInTheDocument();
+    expect(within(screen.getByLabelText("Knockout tree")).queryByText("21-14, 21-16")).not.toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: `Inspect Round of 16 match ${Number(context.matchId.split("-").at(-1))}: ${playerMap[context.playerAId]!.name} vs ${playerMap[context.playerBId]!.name}`
+      })
+    );
+
+    expect(within(screen.getByLabelText("Selected match details")).getByText("21-14, 21-16")).toBeInTheDocument();
   });
 });

@@ -3908,8 +3908,61 @@ export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddr
       </section>
 
       <div className="career-dashboard-grid">
+        {displayTournament ? (
+          <KnockoutTree
+            tournament={displayTournament}
+            selectedPlayerId={career.program.managedPlayerId}
+            title={historyRecord ? "Archived Knockout Draw" : "Current Knockout Draw"}
+            subtitle={historyRecord ? archiveStatus.detail : "Live event path and background results"}
+            onOpenPlayerProfile={props.onOpenPlayerProfile}
+          />
+        ) : (
+          <section className="command-panel command-panel-full tournament-draw-placeholder">
+            <div className="panel-header">
+              <h2>Knockout Draw</h2>
+              <span>
+                {universeRecord?.entrants.length
+                  ? universeRecord.status.replace(/_/g, " ")
+                  : career.date >= event.drawDate
+                    ? "draw pending engine state"
+                    : "projected"}
+              </span>
+            </div>
+            <div className="career-event-brief calendar-brief-grid">
+              <div>
+                <span>Draw Size</span>
+                <strong>{event.drawSize}</strong>
+                <small>{event.seedCount} seeds; draw publishes {event.drawDate}</small>
+              </div>
+              <div>
+                <span>Managed Seed</span>
+                <strong>{seedingSnapshot.managedSeed ? `Seed ${seedingSnapshot.managedSeed.seed}` : "Outside seeds"}</strong>
+                <small>{seedingSnapshot.status} from fictional circuit ranking</small>
+              </div>
+              <div>
+                <span>Draw State</span>
+                <strong>{entered ? "Entry registered" : "Not entered"}</strong>
+                <small>
+                  {universeRecord?.entrants.length
+                    ? `${universeRecord.entrants.length} deterministic entrant(s) published.`
+                    : "Playable bracket appears when the event reaches match day."}
+                </small>
+              </div>
+            </div>
+            {universeRecord?.entrants.length ? (
+              <div className="career-deadline-row" aria-label={`${event.name} deterministic universe field`}>
+                {universeRecord.entrants.map((playerId) => (
+                  <span key={playerId} className="deadline-chip">
+                    {playerDisplayName(playerId)}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+          </section>
+        )}
+
         {completed || eventOutcome ? (
-          <section className="command-panel command-panel-full" aria-label={`${event.name} complete event outcome`}>
+          <section className="command-panel command-panel-full tournament-outcome-panel" aria-label={`${event.name} complete event outcome`}>
             <div className="panel-header">
               <h2>Full Event Outcome</h2>
               <span>{eventOutcome?.sourceLabel ?? archiveStatus.title}</span>
@@ -3981,7 +4034,7 @@ export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddr
         ) : null}
 
         {historyRecord ? (
-          <section className="command-panel command-panel-full">
+          <section className="command-panel command-panel-full tournament-archive-panel">
             <div className="panel-header">
               <h2>Result Archive</h2>
               <span>{historyRecord.status.replace(/_/g, " ")}</span>
@@ -4011,158 +4064,113 @@ export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddr
           </section>
         ) : null}
 
-        {completed || matchEvidenceRows.length > 0 ? (
-          <section className="command-panel command-panel-full">
-            <div className="panel-header">
-              <h2>Match Results And Scoreline Evidence</h2>
-              <span>{matchEvidenceRows.length > 0 ? `${matchEvidenceRows.length} result(s)` : "legacy fallback"}</span>
-            </div>
-            {matchEvidenceRows.length > 0 ? (
-              <div className="management-table tournament-evidence-table" aria-label={`${event.name} match result evidence`}>
-                {matchEvidenceRows.map((row) => (
-                  <div className="management-table-row" key={row.id}>
-                    <span>{calendarRoundLabel(row.round)}</span>
-                    <strong>
-                      <ProfileNameButton
-                        playerId={row.winnerId}
-                        fallback={playerDisplayName(row.winnerId)}
-                        onOpenPlayerProfile={props.onOpenPlayerProfile}
-                      />{" "}
-                      def.{" "}
-                      <ProfileNameButton
-                        playerId={row.loserId}
-                        fallback={playerDisplayName(row.loserId)}
-                        onOpenPlayerProfile={props.onOpenPlayerProfile}
-                      />
-                    </strong>
-                    <small>{row.scoreline} / {row.sourceLabel}</small>
+        <details className="command-panel command-panel-full tournament-notes-panel">
+          <summary>
+            <span>Event Notes</span>
+            <small>Scoreline evidence, decision gates, and field changes</small>
+          </summary>
+          <div className="tournament-notes-grid">
+            {completed || matchEvidenceRows.length > 0 ? (
+              <section className="tournament-note-block">
+                <div className="panel-header">
+                  <h3>Scoreline Evidence</h3>
+                  <span>{matchEvidenceRows.length > 0 ? `${matchEvidenceRows.length} result(s)` : "legacy fallback"}</span>
+                </div>
+                {matchEvidenceRows.length > 0 ? (
+                  <div className="management-table tournament-evidence-table" aria-label={`${event.name} match result evidence`}>
+                    {matchEvidenceRows.map((row) => (
+                      <div className="management-table-row" key={row.id}>
+                        <span>{calendarRoundLabel(row.round)}</span>
+                        <strong>
+                          <ProfileNameButton
+                            playerId={row.winnerId}
+                            fallback={playerDisplayName(row.winnerId)}
+                            onOpenPlayerProfile={props.onOpenPlayerProfile}
+                          />{" "}
+                          def.{" "}
+                          <ProfileNameButton
+                            playerId={row.loserId}
+                            fallback={playerDisplayName(row.loserId)}
+                            onOpenPlayerProfile={props.onOpenPlayerProfile}
+                          />
+                        </strong>
+                        <small>{row.scoreline} / {row.sourceLabel}</small>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            ) : (
-              <p className="panel-summary">
-                {historyRecord?.scorelines.length
-                  ? `Legacy summary scorelines: ${historyRecord.scorelines.join(" | ")}. The save does not contain enough bracket evidence to identify a champion or runner-up.`
-                  : "This legacy archive has no match scorelines, so the page keeps champion and runner-up unknown."}
-              </p>
-            )}
-          </section>
-        ) : null}
-
-        <section className="command-panel command-panel-full">
-          <div className="panel-header">
-            <h2>Decision Summary</h2>
-            <span>{tierGate.allowed && medicalGate.allowed && affordable ? "ready" : "check gates"}</span>
-          </div>
-          <div className="career-event-brief calendar-brief-grid">
-            <div>
-              <span>Entry Deadline</span>
-              <strong>{event.entryDeadline}</strong>
-              <small>{daysUntilLabel(career.date, event.entryDeadline)}</small>
-            </div>
-            <div>
-              <span>Eligibility</span>
-              <strong>{tierGate.allowed ? "Gate clear" : "Blocked"}</strong>
-              <small>Rank {tierGate.rank}, readiness {tierGate.readiness}</small>
-            </div>
-            <div>
-              <span>Readiness</span>
-              <strong>{athlete.readiness}</strong>
-              <small>{medicalGate.allowed ? "Medical gate clear" : medicalGate.reason}</small>
-            </div>
-            <div>
-              <span>Champion Upside</span>
-              <strong>{money(event.prizeMoney.champion)} / {points(event.rankingPoints.champion)}</strong>
-              <small>Net possible gain {signedMoney(event.prizeMoney.champion - totalCost)}</small>
-            </div>
-          </div>
-        </section>
-
-        {fieldSnapshot ? (
-          <section className="command-panel command-panel-full">
-            <div className="panel-header">
-              <h2>Field Changes</h2>
-              <span>final seeds after alternates</span>
-            </div>
-            <div className="career-event-brief calendar-brief-grid">
-              <div>
-                <span>Invited</span>
-                <strong>{fieldSnapshot.invitedPlayerIds.length}</strong>
-                <small>Initial rank invitations before non-entry resolution.</small>
-              </div>
-              <div>
-                <span>Skipped</span>
-                <strong>{fieldSnapshot.nonEntries.length}</strong>
-                <small>{fieldSnapshot.nonEntries.slice(0, 3).map((entry) => entry.reason.replace(/_/g, " ")).join(", ") || "No skipped invitees."}</small>
-              </div>
-              <div>
-                <span>Alternates</span>
-                <strong>{fieldSnapshot.alternateEntries.length}</strong>
-                <small>{fieldSnapshot.alternateEntries.slice(0, 3).map((entry) => playerDisplayName(entry.playerId)).join(", ") || "No alternates needed."}</small>
-              </div>
-              <div>
-                <span>Final seeding</span>
-                <strong>{fieldSnapshot.finalPlayerIds.length}</strong>
-                <small>{fieldSummary}</small>
-              </div>
-            </div>
-          </section>
-        ) : null}
-
-        {displayTournament ? (
-          <KnockoutTree
-            tournament={displayTournament}
-            selectedPlayerId={career.program.managedPlayerId}
-            title={historyRecord ? "Archived Knockout Draw" : "Current Knockout Draw"}
-            subtitle={historyRecord ? archiveStatus.detail : "Live event path and background results"}
-            onOpenPlayerProfile={props.onOpenPlayerProfile}
-          />
-        ) : (
-          <section className="command-panel command-panel-full">
-            <div className="panel-header">
-              <h2>Knockout Draw</h2>
-              <span>
-                {universeRecord?.entrants.length
-                  ? universeRecord.status.replace(/_/g, " ")
-                  : career.date >= event.drawDate
-                    ? "draw pending engine state"
-                    : "projected"}
-              </span>
-            </div>
-            <div className="career-event-brief calendar-brief-grid">
-              <div>
-                <span>Draw Size</span>
-                <strong>{event.drawSize}</strong>
-                <small>{event.seedCount} seeds; draw publishes {event.drawDate}</small>
-              </div>
-              <div>
-                <span>Managed Seed</span>
-                <strong>{seedingSnapshot.managedSeed ? `Seed ${seedingSnapshot.managedSeed.seed}` : "Outside seeds"}</strong>
-                <small>{seedingSnapshot.status} from fictional circuit ranking</small>
-              </div>
-              <div>
-                <span>Draw State</span>
-                <strong>{entered ? "Entry registered" : "Not entered"}</strong>
-                <small>
-                  {universeRecord?.entrants.length
-                    ? `${universeRecord.entrants.length} deterministic entrant(s) published.`
-                    : "Playable bracket appears when the event reaches match day."}
-                </small>
-              </div>
-            </div>
-            {universeRecord?.entrants.length ? (
-              <div className="career-deadline-row" aria-label={`${event.name} deterministic universe field`}>
-                {universeRecord.entrants.map((playerId) => (
-                  <span key={playerId} className="deadline-chip">
-                    {playerDisplayName(playerId)}
-                  </span>
-                ))}
-              </div>
+                ) : (
+                  <p className="panel-summary">
+                    {historyRecord?.scorelines.length
+                      ? `Legacy summary scorelines: ${historyRecord.scorelines.join(" | ")}. The save does not contain enough bracket evidence to identify a champion or runner-up.`
+                      : "This legacy archive has no match scorelines, so the page keeps champion and runner-up unknown."}
+                  </p>
+                )}
+              </section>
             ) : null}
-          </section>
-        )}
 
-        <section className="command-panel">
+            <section className="tournament-note-block">
+              <div className="panel-header">
+                <h3>Decision Gates</h3>
+                <span>{tierGate.allowed && medicalGate.allowed && affordable ? "ready" : "check gates"}</span>
+              </div>
+              <div className="career-event-brief calendar-brief-grid">
+                <div>
+                  <span>Entry Deadline</span>
+                  <strong>{event.entryDeadline}</strong>
+                  <small>{daysUntilLabel(career.date, event.entryDeadline)}</small>
+                </div>
+                <div>
+                  <span>Eligibility</span>
+                  <strong>{tierGate.allowed ? "Gate clear" : "Blocked"}</strong>
+                  <small>Rank {tierGate.rank}, readiness {tierGate.readiness}</small>
+                </div>
+                <div>
+                  <span>Readiness</span>
+                  <strong>{athlete.readiness}</strong>
+                  <small>{medicalGate.allowed ? "Medical gate clear" : medicalGate.reason}</small>
+                </div>
+                <div>
+                  <span>Champion Upside</span>
+                  <strong>{money(event.prizeMoney.champion)} / {points(event.rankingPoints.champion)}</strong>
+                  <small>Net possible gain {signedMoney(event.prizeMoney.champion - totalCost)}</small>
+                </div>
+              </div>
+            </section>
+
+            {fieldSnapshot ? (
+              <section className="tournament-note-block">
+                <div className="panel-header">
+                  <h3>Field Delta</h3>
+                  <span>final seeds after alternates</span>
+                </div>
+                <div className="career-event-brief calendar-brief-grid">
+                  <div>
+                    <span>Invited</span>
+                    <strong>{fieldSnapshot.invitedPlayerIds.length}</strong>
+                    <small>Initial rank invitations before non-entry resolution.</small>
+                  </div>
+                  <div>
+                    <span>Skipped</span>
+                    <strong>{fieldSnapshot.nonEntries.length}</strong>
+                    <small>{fieldSnapshot.nonEntries.slice(0, 3).map((entry) => entry.reason.replace(/_/g, " ")).join(", ") || "No skipped invitees."}</small>
+                  </div>
+                  <div>
+                    <span>Alternates</span>
+                    <strong>{fieldSnapshot.alternateEntries.length}</strong>
+                    <small>{fieldSnapshot.alternateEntries.slice(0, 3).map((entry) => playerDisplayName(entry.playerId)).join(", ") || "No alternates needed."}</small>
+                  </div>
+                  <div>
+                    <span>Final seeding</span>
+                    <strong>{fieldSnapshot.finalPlayerIds.length}</strong>
+                    <small>{fieldSummary}</small>
+                  </div>
+                </div>
+              </section>
+            ) : null}
+          </div>
+        </details>
+
+        <section className="command-panel tournament-secondary-panel tournament-timeline-panel">
           <div className="panel-header">
             <h2>Timeline</h2>
             <span>{event.drawDate} draw</span>
@@ -4182,7 +4190,7 @@ export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddr
           </div>
         </section>
 
-        <section className="command-panel">
+        <section className="command-panel tournament-secondary-panel tournament-eligibility-panel">
           <div className="panel-header">
             <h2>Eligibility</h2>
             <span>{tierGate.allowed ? "clear" : "blocked"}</span>
@@ -4198,7 +4206,7 @@ export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddr
           </div>
         </section>
 
-        <section className="command-panel">
+        <section className="command-panel tournament-secondary-panel tournament-rewards-panel">
           <div className="panel-header">
             <h2>Rewards And Stakes</h2>
             <span>{event.tier}</span>
@@ -4227,7 +4235,7 @@ export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddr
           </div>
         </section>
 
-        <section className="command-panel">
+        <section className="command-panel tournament-secondary-panel tournament-field-panel">
           <div className="panel-header">
             <h2>Field And Scouting</h2>
             <span>{seedingSnapshot.status}</span>

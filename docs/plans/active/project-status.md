@@ -193,6 +193,7 @@ What is now stable:
 - [x] implemented TIX-021 autonomous universe simulation with completed skipped events, universe event persistence, ranking/achievement settlement, save migration safety, and route-facing archive consumption
 - [x] implemented TIX-018 sidebar schedule rail mediation with a pure navigation sidebar, disabled Inbox Preview, and Timeline/Calendar shortcuts into the Schedule split
 - [x] established the TIX-022 documentation system and maintainer harness with linked subsystem references, save/persistence invariants, source-structure guidance, maintainer workflow rules, and ADR-003
+- [x] implemented TIX-027 Tournament Page Optimization with draw-first Tournament Home ordering, collapsed event notes, compact two-row bracket score cells, deterministic abbreviation/collision handling, selected-match detail, and 32-ready bracket layout coverage
 
 ## In Progress
 
