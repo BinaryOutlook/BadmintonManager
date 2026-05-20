@@ -1074,6 +1074,18 @@ test("continues a deterministic career event from post-match into the next round
   await expect(page.getByRole("button", { name: "Continue To Next Round" })).toBeVisible();
   await captureFocusedScreenshot(page, "post-match-next-round-cta");
 
+  await page.getByRole("button", { name: "Open tournament home for Metro Open" }).click();
+  await expect(page.getByRole("heading", { name: "Current Knockout Draw" })).toBeVisible();
+  await expect(page.getByLabel("Knockout tree")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Match Results And Scoreline Evidence" })).toHaveCount(0);
+  await captureFocusedScreenshot(page, "tix-027-active-16-desktop");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByRole("heading", { name: "Current Knockout Draw" })).toBeVisible();
+  await captureFocusedScreenshot(page, "tix-027-active-16-mobile");
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.getByRole("main").getByRole("button", { name: "Review Match" }).click();
+  await expect(page.getByRole("heading", { name: "Match Evidence Review" })).toBeVisible();
+
   await page.getByRole("button", { name: "Continue To Next Round" }).click();
   await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Advance Day" })).toBeVisible();
@@ -1184,7 +1196,9 @@ test("surfaces completed tournament archive outcomes from complete match records
   await expect(outcome).toContainText("Reconstructed bracket");
   await expect(outcome).toContainText(`Ranking ledger +${archive.championPoints.toLocaleString()} pts (champion).`);
   await expect(page.getByRole("heading", { name: "Archived Knockout Draw" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Match Results And Scoreline Evidence" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Match Results And Scoreline Evidence" })).toHaveCount(0);
+  await page.getByText("Event Notes").click();
+  await expect(page.getByRole("heading", { name: "Scoreline Evidence" })).toBeVisible();
   await expect(page.getByLabel(`${archive.eventName} match result evidence`)).toContainText("Quick simulation");
   await expect(page.getByText("Not archived")).toHaveCount(0);
 });
@@ -1504,8 +1518,14 @@ test("integrates fictional calendar ranking stakes into career home and Timeline
   await expect(page.getByRole("button", { name: "Open Event" }).first()).toBeVisible();
   await page.getByRole("button", { name: "Open Event" }).first().click();
   await expect(page.getByRole("heading", { name: "Metro Open" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Decision Summary" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Decision Summary" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Knockout Draw" })).toBeVisible();
+  await expect(page.getByText("Event Notes")).toBeVisible();
+  await captureFocusedScreenshot(page, "tix-027-tournament-home-desktop-projected");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByRole("heading", { name: "Knockout Draw" })).toBeVisible();
+  await captureFocusedScreenshot(page, "tix-027-tournament-home-mobile-projected");
+  await page.setViewportSize({ width: 1440, height: 900 });
   await expect(page.getByLabel("Metro Open tournament timeline")).toContainText("Ranking cutoff: 2026-05-29");
   await expect(page.getByRole("heading", { name: "Rewards And Stakes" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Field And Scouting" })).toBeVisible();

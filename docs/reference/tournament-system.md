@@ -111,7 +111,7 @@ state, match history, and universe records.
 
 ## Presentation Rule
 
-The bracket view should prioritize clarity over visual flair.
+The bracket view should prioritize the draw as the tournament work surface, not as a large narrative evidence stack.
 
 The player should be able to read:
 
@@ -119,16 +119,39 @@ The player should be able to read:
 - upcoming opponent
 - path to the title
 - completed results
+- full match context for the selected node
 
-For the 16-player knockout, the command-center bracket should render the full binary path even
-before later rounds have concrete competitors:
+Tournament Home should put the compact event identity and draw before secondary notes. Scoreline evidence,
+decision gates, and field-change diagnostics may remain available through a collapsed notes surface, but they
+should not sit above the bracket by default.
+
+Bracket cells use compact two-row score rows:
+
+```text
+A. Koh       21 21  *
+M. Sato      12 13
+```
+
+The compact name formatter abbreviates first names deterministically and expands only local collisions in the
+same draw, for example `Pab. Reyes` and `Ped. Reyes`. Full names stay available through profile navigation,
+button title text, and the selected-match detail panel. Completed scorelines are split into tabular set-score
+columns; summaries and source labels belong in selected-match detail rather than every node.
+
+For the current 16-player knockout, the command-center bracket renders the full binary path even before later
+rounds have concrete competitors:
 
 ```text
 R16: 8 matches -> QF: 4 matches -> SF: 2 matches -> F: 1 match
 ```
 
-Future matches can appear as placeholders such as `Winner R16-1` until the tournament model
-creates the real round.
+The bracket component is layout-ready for a future five-round draw when the tournament model supplies `R32` data:
+
+```text
+R32: 16 matches -> R16: 8 matches -> QF: 4 matches -> SF: 2 matches -> F: 1 match
+```
+
+Current tournament engine and save schemas remain 16-player by default. Future matches can appear as placeholders
+such as `Winner R16-1` or `Winner R32-1` until the tournament model creates the real round.
 
 The first version does not require:
 

@@ -1025,15 +1025,18 @@ describe("career calendar event actions", () => {
     expect(within(firstRow).queryByText(/Seed snapshot:/i)).not.toBeInTheDocument();
   });
 
-  it("renders a future tournament home with decision, draw, timeline, eligibility, rewards, and field sections", () => {
+  it("renders a future tournament home with the draw prioritized and event notes collapsed", () => {
     const career = createInitialCareerState(seededPlayers[0].player.id, 9914);
     const event = getCareerEvent(career.events, "harbor-masters-500")!;
 
     renderTournamentHomePage({ career, eventId: event.id });
 
     expect(screen.getByRole("heading", { name: event.name })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Decision Summary" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Knockout Draw" })).toBeInTheDocument();
+    expect(screen.getByText("Event Notes")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Match Results And Scoreline Evidence" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Decision Summary" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Field Changes" })).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Timeline" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Eligibility" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Rewards And Stakes" })).toBeInTheDocument();
@@ -1145,7 +1148,9 @@ describe("career calendar event actions", () => {
     expect(within(outcome).getByText("Reconstructed bracket")).toBeInTheDocument();
     expect(within(outcome).getByText(`Ranking ledger +${event.rankingPoints.champion.toLocaleString()} pts (champion).`)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Archived Knockout Draw" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Match Results And Scoreline Evidence" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Match Results And Scoreline Evidence" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText("Event Notes"));
+    expect(screen.getByRole("heading", { name: "Scoreline Evidence" })).toBeInTheDocument();
     expect(screen.getByLabelText(`${event.name} match result evidence`)).toHaveTextContent("Quick simulation");
     expect(screen.queryByText("Not archived")).not.toBeInTheDocument();
   });

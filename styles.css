@@ -4231,37 +4231,42 @@ textarea:focus-visible {
   overflow-x: auto;
 }
 
-.bracket-tree {
-  overflow-x: auto;
-  padding: 0.25rem 0.25rem 1rem;
+.knockout-tree-panel {
+  padding: 1rem;
 }
 
-.bracket-round-labels,
-.bracket-match-grid {
-  min-width: 68rem;
+.bracket-work-surface {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(17rem, 0.28fr);
+  gap: 0.85rem;
+  align-items: start;
+}
+
+.bracket-tree {
+  min-width: 0;
+  overflow-x: auto;
+  padding: 0.15rem 0.1rem 0.55rem;
 }
 
 .bracket-round-labels {
   display: grid;
-  grid-template-columns: repeat(4, minmax(14rem, 1fr));
-  column-gap: 2rem;
-  margin-bottom: 0.8rem;
+  column-gap: 1rem;
+  margin-bottom: 0.42rem;
 }
 
 .bracket-round-labels h3 {
-  margin: 0 0 0.8rem;
-  font-size: 1rem;
-  letter-spacing: 0.08em;
+  margin: 0;
+  font-size: 0.68rem;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
   color: var(--muted-soft);
+  white-space: nowrap;
 }
 
 .bracket-match-grid {
-  --bracket-row: 3.8rem;
+  --bracket-row: 1.72rem;
   display: grid;
-  grid-template-columns: repeat(4, minmax(14rem, 1fr));
-  grid-template-rows: repeat(16, var(--bracket-row));
-  column-gap: 2rem;
+  column-gap: 1rem;
   align-items: center;
   position: relative;
 }
@@ -4272,49 +4277,37 @@ textarea:focus-visible {
   align-self: center;
 }
 
-.bracket-node-col-1 {
-  --connector-height: calc(var(--bracket-row) * 2);
-}
-
-.bracket-node-col-2 {
-  --connector-height: calc(var(--bracket-row) * 4);
-}
-
-.bracket-node-col-3 {
-  --connector-height: calc(var(--bracket-row) * 8);
-}
-
 .bracket-node:not(.bracket-node-opening)::before,
 .bracket-node:not(.bracket-node-final)::after {
   content: "";
   position: absolute;
   top: 50%;
-  width: 1rem;
+  width: 0.52rem;
   height: 1px;
-  background: rgba(64, 73, 83, 0.9);
+  background: rgba(64, 73, 83, 0.82);
 }
 
 .bracket-node:not(.bracket-node-opening)::before {
-  left: -1rem;
+  left: -0.52rem;
 }
 
 .bracket-node:not(.bracket-node-final)::after {
-  right: -1rem;
+  right: -0.52rem;
 }
 
 .bracket-node:not(.bracket-node-opening) .bracket-card-tree::before {
   content: "";
   position: absolute;
-  left: -1rem;
+  left: -0.52rem;
   top: 50%;
   width: 1px;
   height: var(--connector-height);
-  background: rgba(64, 73, 83, 0.9);
+  background: rgba(64, 73, 83, 0.82);
   transform: translateY(-50%);
 }
 
 .bracket-card {
-  padding: 0.85rem;
+  padding: 0.45rem 0.5rem;
   border: 1px solid var(--border);
   border-radius: 0.35rem;
   background: rgba(17, 19, 22, 0.96);
@@ -4322,11 +4315,23 @@ textarea:focus-visible {
 
 .bracket-card-tree {
   position: relative;
-  display: grid;
-  align-content: center;
-  height: 7.4rem;
-  min-height: 0;
   z-index: 1;
+  display: flex;
+  min-height: 3.25rem;
+  height: 3.25rem;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.14rem;
+  cursor: pointer;
+  transition: border-color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
+}
+
+.bracket-card-tree:hover,
+.bracket-card-tree:focus-visible,
+.bracket-card-selected {
+  border-color: rgba(57, 255, 20, 0.42);
+  outline: 0;
+  box-shadow: 0 0 0 1px rgba(57, 255, 20, 0.12) inset;
 }
 
 .bracket-card-managed {
@@ -4342,6 +4347,13 @@ textarea:focus-visible {
   border-style: dashed;
   color: var(--muted-soft);
   background: rgba(17, 19, 22, 0.58);
+  cursor: default;
+}
+
+.bracket-card-placeholder:hover,
+.bracket-card-placeholder:focus-visible {
+  border-color: var(--border);
+  box-shadow: none;
 }
 
 .bracket-card-champion {
@@ -4349,22 +4361,202 @@ textarea:focus-visible {
   box-shadow: 0 0 0 1px rgba(57, 255, 20, 0.12) inset;
 }
 
-.bracket-row + .bracket-row {
-  margin-top: 0.55rem;
+.bracket-score-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) repeat(3, 1.28rem) minmax(2.25rem, auto);
+  gap: 0.18rem;
+  align-items: center;
+  min-height: 1.16rem;
+  font-size: 0.72rem;
+  line-height: 1;
 }
 
-.bracket-card small {
+.bracket-score-row-winner {
+  color: var(--text);
+}
+
+.bracket-score-row-live .bracket-status-cell,
+.bracket-score-row-winner .bracket-status-cell {
+  color: var(--lime);
+}
+
+.bracket-profile-button,
+.bracket-player-placeholder {
   display: block;
-  margin-top: 0.75rem;
-}
-
-.bracket-context-line {
-  margin-top: 0.35rem;
-  color: var(--muted-soft);
+  min-width: 0;
+  width: 100%;
+  max-width: none;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: inherit;
+  line-height: 1.05;
 }
+
+.bracket-player-placeholder {
+  color: var(--muted-soft);
+  font-weight: 700;
+}
+
+.bracket-score-cell,
+.bracket-status-cell {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.bracket-score-cell {
+  text-align: right;
+  color: var(--muted);
+}
+
+.bracket-score-row-winner .bracket-score-cell {
+  color: var(--text);
+  font-weight: 800;
+}
+
+.bracket-status-cell {
+  min-width: 0;
+  overflow: hidden;
+  text-align: right;
+  text-overflow: ellipsis;
+  font-size: 0.56rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted-soft);
+}
+
+.bracket-detail-panel {
+  display: grid;
+  gap: 0.7rem;
+  min-width: 0;
+  padding: 0.85rem;
+  border: 1px solid rgba(48, 54, 61, 0.86);
+  border-radius: 0.38rem;
+  background: rgba(17, 19, 22, 0.72);
+}
+
+.bracket-detail-header h3 {
+  margin: 0;
+  font-size: 0.98rem;
+}
+
+.bracket-detail-versus,
+.bracket-detail-grid,
+.bracket-detail-events {
+  display: grid;
+  gap: 0.52rem;
+}
+
+.bracket-detail-player,
+.bracket-detail-grid > div,
+.bracket-detail-events > div {
+  display: grid;
+  gap: 0.18rem;
+  min-width: 0;
+  padding: 0.58rem;
+  border: 1px solid rgba(48, 54, 61, 0.72);
+  border-radius: 0.3rem;
+  background: rgba(26, 29, 33, 0.74);
+}
+
+.bracket-detail-player span,
+.bracket-detail-grid span {
+  color: var(--muted-soft);
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.bracket-detail-player small,
+.bracket-detail-events small {
+  color: var(--muted-soft);
+  line-height: 1.35;
+}
+
+.bracket-detail-player-winner {
+  border-color: rgba(57, 255, 20, 0.28);
+  background: rgba(26, 37, 24, 0.38);
+}
+
+.bracket-detail-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.tournament-draw-placeholder,
+.tournament-outcome-panel,
+.tournament-archive-panel,
+.tournament-notes-panel {
+  scroll-margin-top: 1rem;
+}
+
+.tournament-notes-panel {
+  padding: 0;
+  overflow: hidden;
+}
+
+.tournament-notes-panel summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.tournament-notes-panel summary::-webkit-details-marker {
+  display: none;
+}
+
+.tournament-notes-panel summary span {
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.tournament-notes-panel summary small {
+  color: var(--muted-soft);
+}
+
+.tournament-notes-panel summary::after {
+  content: "+";
+  display: grid;
+  width: 1.45rem;
+  height: 1.45rem;
+  place-items: center;
+  border: 1px solid rgba(57, 255, 20, 0.24);
+  border-radius: 999px;
+  color: var(--lime);
+  font-weight: 900;
+}
+
+.tournament-notes-panel[open] summary::after {
+  content: "−";
+}
+
+.tournament-notes-grid {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0 1rem 1rem;
+}
+
+.tournament-note-block {
+  display: grid;
+  gap: 0.7rem;
+  min-width: 0;
+  padding: 0.8rem;
+  border: 1px solid rgba(48, 54, 61, 0.74);
+  border-radius: 0.36rem;
+  background: rgba(17, 19, 22, 0.58);
+}
+
+.tournament-note-block h3 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
 
 .match-command-layout {
   display: grid;
@@ -5792,6 +5984,14 @@ textarea:focus-visible {
     grid-template-columns: repeat(2, minmax(12rem, 1fr));
   }
 
+  .bracket-work-surface {
+    grid-template-columns: 1fr;
+  }
+
+  .bracket-detail-panel {
+    order: 2;
+  }
+
 }
 
 @media (max-width: 980px) {
@@ -6225,6 +6425,42 @@ textarea:focus-visible {
   .athlete-lock-layout,
   .athlete-lock-list {
     grid-template-columns: 1fr;
+  }
+
+  .knockout-tree-panel {
+    padding: 0.72rem;
+  }
+
+  .bracket-work-surface {
+    grid-template-columns: 1fr;
+  }
+
+  .bracket-round-labels,
+  .bracket-match-grid {
+    min-width: 44rem;
+  }
+
+  .bracket-match-grid {
+    --bracket-row: 1.92rem;
+  }
+
+  .bracket-card-tree {
+    min-height: 3.65rem;
+    height: 3.65rem;
+  }
+
+  .bracket-score-row {
+    grid-template-columns: minmax(0, 1fr) repeat(3, 1.22rem) minmax(2.2rem, auto);
+    font-size: 0.7rem;
+  }
+
+  .bracket-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tournament-notes-panel summary {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .launch-save-strip,
