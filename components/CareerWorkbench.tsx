@@ -539,7 +539,11 @@ function pressureForEvent(career: CareerState, eventId: string) {
 }
 
 function rankingStatus(entry: CareerState["rankings"][number]) {
-  const latest = entry.eventHistory.at(-1);
+  const latest = [...entry.eventHistory].sort((left, right) =>
+    (right.date ?? "").localeCompare(left.date ?? "") ||
+    left.eventId.localeCompare(right.eventId) ||
+    left.round.localeCompare(right.round)
+  )[0];
 
   if (!latest) {
     return entry.countedResults > 0
