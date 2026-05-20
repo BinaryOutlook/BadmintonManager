@@ -535,18 +535,32 @@ async function expectTopbarHierarchyAndBounded(page: Page) {
     const brand = topbar.querySelector<HTMLElement>(".brand-mark");
     const athlete = topbar.querySelector<HTMLElement>(".topbar-athlete-chip");
     const search = topbar.querySelector<HTMLElement>(".command-search");
+    const commandZone = topbar.querySelector<HTMLElement>(".topbar-command-zone");
     const dailyCluster = topbar.querySelector<HTMLElement>(".topbar-daily-cluster");
+    const utilityCluster = topbar.querySelector<HTMLElement>(".topbar-actions");
     const date = topbar.querySelector<HTMLElement>(".topbar-date");
     const dailyAction = topbar.querySelector<HTMLElement>(".topbar-continue");
-    const saveStatus = topbar.querySelector<HTMLElement>(".topbar-save-status span");
-    const settings = topbar.querySelector<HTMLButtonElement>(".topbar-actions button");
+    const saveControl = topbar.querySelector<HTMLButtonElement>(".topbar-save-button");
+    const settings = utilityCluster?.querySelector<HTMLButtonElement>("button:not(.topbar-save-button)") ?? null;
 
-    if (!brand || !athlete || !search || !dailyCluster || !date || !dailyAction || !saveStatus || !settings) {
-      throw new Error("Expected complete topbar identity, clock, save, and settings controls.");
+    if (!brand || !athlete || !search || !commandZone || !dailyCluster || !utilityCluster || !date || !dailyAction || !saveControl || !settings) {
+      throw new Error("Expected complete topbar identity, utility controls, clock, save, and settings controls.");
     }
 
     if (brand.nextElementSibling !== athlete || athlete.nextElementSibling !== search) {
       throw new Error("Expected managed athlete directly between BM and command search.");
+    }
+
+    if (saveControl.textContent?.trim() !== "Career Save") {
+      throw new Error("Expected Career Save to remain the topbar save-management utility.");
+    }
+
+    if (saveControl.nextElementSibling !== settings) {
+      throw new Error("Expected Career Save directly left of Settings.");
+    }
+
+    if (!(settings.compareDocumentPosition(date) & Node.DOCUMENT_POSITION_FOLLOWING)) {
+      throw new Error("Expected Settings to sit left of the career date.");
     }
 
     if (date.nextElementSibling !== dailyAction) {
@@ -563,14 +577,11 @@ async function expectTopbarHierarchyAndBounded(page: Page) {
       throw new Error("Expected Settings to remain reachable from the topbar.");
     }
 
-    const dateFontSize = Number.parseFloat(window.getComputedStyle(date).fontSize);
-    const actionFontSize = Number.parseFloat(window.getComputedStyle(dailyAction).fontSize);
-    const saveFontSize = Number.parseFloat(window.getComputedStyle(saveStatus).fontSize);
+    const actionFontWeight = Number.parseFloat(window.getComputedStyle(dailyAction).fontWeight);
+    const saveFontWeight = Number.parseFloat(window.getComputedStyle(saveControl).fontWeight);
 
-    if (dateFontSize <= saveFontSize || actionFontSize <= saveFontSize) {
-      throw new Error(
-        `Expected date/action font size to exceed save status: date ${dateFontSize}, action ${actionFontSize}, save ${saveFontSize}`
-      );
+    if (saveFontWeight > actionFontWeight) {
+      throw new Error(`Expected Career Save not to read stronger than Advance Day: save ${saveFontWeight}, action ${actionFontWeight}`);
     }
 
     const pageWidth = document.documentElement.scrollWidth;
@@ -583,14 +594,52 @@ async function expectTopbarHierarchyAndBounded(page: Page) {
     const checkedElements = [
       topbar,
       topbar.querySelector<HTMLElement>(".topbar-brand-block"),
-      dailyCluster,
-      topbar.querySelector<HTMLElement>(".topbar-actions")
+      commandZone,
+      utilityCluster,
+      dailyCluster
     ];
 
     for (const element of checkedElements) {
       if (element && element.scrollWidth > element.clientWidth + 1) {
         const label = element.className || element.tagName;
         throw new Error(`Unexpected topbar element overflow for ${label}: ${element.scrollWidth} > ${element.clientWidth}`);
+      }
+    }
+
+    const controls = [saveControl, settings, date, dailyAction];
+
+    for (let index = 0; index < controls.length; index += 1) {
+      for (let nextIndex = index + 1; nextIndex < controls.length; nextIndex += 1) {
+        const first = controls[index]!.getBoundingClientRect();
+        const second = controls[nextIndex]!.getBoundingClientRect();
+        const overlapsHorizontally = first.left < second.right - 1 && first.right > second.left + 1;
+        const overlapsVertically = first.top < second.bottom - 1 && first.bottom > second.top + 1;
+
+        if (overlapsHorizontally && overlapsVertically) {
+          throw new Error(`Unexpected topbar control overlap between positions ${index} and ${nextIndex}.`);
+        }
+      }
+    }
+
+    if (viewportWidth >= 1024) {
+      const saveRect = saveControl.getBoundingClientRect();
+      const settingsRect = settings.getBoundingClientRect();
+      const dateRect = date.getBoundingClientRect();
+      const actionRect = dailyAction.getBoundingClientRect();
+      const utilityGap = settingsRect.left - saveRect.right;
+      const groupGap = dateRect.left - settingsRect.right;
+      const rightmostEdge = Math.max(saveRect.right, settingsRect.right, dateRect.right, actionRect.right);
+
+      if (!(saveRect.left < settingsRect.left && settingsRect.left < dateRect.left && dateRect.left < actionRect.left)) {
+        throw new Error("Expected desktop topbar visual order to be Career Save, Settings, Date, Advance Day.");
+      }
+
+      if (actionRect.right < rightmostEdge - 1) {
+        throw new Error("Expected Advance Day to be the rightmost desktop topbar control.");
+      }
+
+      if (groupGap <= utilityGap + 2) {
+        throw new Error(`Expected a stronger utility-to-clock gap than utility button gap: ${groupGap}px vs ${utilityGap}px.`);
       }
     }
   });

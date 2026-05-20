@@ -470,7 +470,7 @@ describe("career shell daily action", () => {
     expect(calendarCommand).toHaveAttribute("aria-current", "page");
   });
 
-  it("renders the career topbar as identity, clock control, save, and settings", () => {
+  it("renders the career topbar as identity, utility controls, and the right-edge career clock", () => {
     const career = createInitialCareerState(seededPlayers[0].player.id, 9904);
     resetStoreForCareer(career);
 
@@ -478,8 +478,10 @@ describe("career shell daily action", () => {
 
     const banner = screen.getByRole("banner");
     const managedAthlete = within(banner).getByLabelText("Managed athlete");
+    const utilityControls = within(banner).getByLabelText("Career utility controls");
     const dailyCluster = within(banner).getByLabelText("Career clock control");
-    const saveStatus = within(banner).getByLabelText("Save status");
+    const careerSave = within(utilityControls).getByRole("button", { name: "Career Save" });
+    const settings = within(utilityControls).getByRole("button", { name: "Settings" });
     const brandMark = banner.querySelector(".brand-mark");
     const commandSearch = banner.querySelector(".command-search");
     const date = banner.querySelector(".topbar-date");
@@ -491,10 +493,29 @@ describe("career shell daily action", () => {
     expect(managedAthlete).toHaveTextContent(seededPlayers[0].player.name);
     expect(managedAthlete.previousElementSibling).toBe(brandMark);
     expect(managedAthlete.nextElementSibling).toBe(commandSearch);
+    expect(careerSave.nextElementSibling).toBe(settings);
     expect(date?.nextElementSibling).toBe(dailyAction);
-    expect(saveStatus).toHaveTextContent("Career save");
+    expect(careerSave.compareDocumentPosition(settings) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(settings.compareDocumentPosition(date!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(date!.compareDocumentPosition(dailyAction) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(within(banner).queryByRole("button", { name: "Intel" })).not.toBeInTheDocument();
-    expect(within(banner).getByRole("button", { name: "Settings" })).toBeInTheDocument();
+  });
+
+  it("keeps topbar save management and settings overlay access working", () => {
+    const career = createInitialCareerState(seededPlayers[0].player.id, 9905);
+    resetStoreForCareer(career);
+
+    render(<App />);
+
+    const banner = screen.getByRole("banner");
+    fireEvent.click(within(banner).getByRole("button", { name: "Career Save" }));
+
+    expect(screen.getByRole("heading", { level: 1, name: "Local Save Control" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Save Manager: Active slot online/ })).toHaveAttribute("aria-current", "page");
+
+    fireEvent.click(within(banner).getByRole("button", { name: "Settings" }));
+
+    expect(screen.getByRole("dialog", { name: "Console Preferences" })).toBeInTheDocument();
   });
 
   it("routes the Live Match command into a due career opponent briefing", () => {
