@@ -1265,6 +1265,7 @@ export function appendCareerMatchRecord(args: {
   state: CareerState;
   event: CareerEventDefinition;
   matchId: string;
+  recordId?: string;
   date?: string;
   round: "R16" | "QF" | "SF" | "F";
   playerAId: string;
@@ -1273,7 +1274,7 @@ export function appendCareerMatchRecord(args: {
   scoreline: string;
   source?: CareerMatchRecordSource;
 }): CareerState {
-  const recordId = `${args.event.id}:${args.matchId}`;
+  const recordId = args.recordId ?? `${args.event.id}:${args.matchId}`;
 
   if (args.state.matchHistory.some((record) => record.id === recordId)) {
     return args.state;
@@ -1285,6 +1286,7 @@ export function appendCareerMatchRecord(args: {
       ...args.state.matchHistory,
       {
         id: recordId,
+        seasonId: args.state.seasonId,
         eventId: args.event.id,
         eventName: args.event.name,
         date: args.date ?? args.state.date,

@@ -648,6 +648,10 @@ function sourceLabelForRecord(source: CareerMatchHistoryRecord["source"]) {
       return "Played managed match";
     case "quick_sim":
       return "Quick simulation";
+    case "universe_sim":
+      return "Universe simulation";
+    case "backfill_sim":
+      return "Backfill simulation";
     case "archive_import":
       return "Archive import";
   }
@@ -795,7 +799,10 @@ function completeTournamentFromMatchHistory(args: {
         sideBId: record.playerBId,
         winnerId: record.winnerId,
         scoreline: record.scoreline,
-        simulationFidelity: record.source === "quick_sim" ? "quick" : "detailed",
+        simulationFidelity:
+          record.source === "quick_sim" || record.source === "universe_sim" || record.source === "backfill_sim"
+            ? "quick"
+            : "detailed",
         managed: record.playerAId === args.managedPlayerId || record.playerBId === args.managedPlayerId,
         completed: true
       }))
