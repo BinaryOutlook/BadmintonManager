@@ -516,6 +516,30 @@ async function expectLaunchViewportBounded(page: Page) {
   });
 }
 
+async function expectProfileViewportBounded(page: Page) {
+  await page.evaluate(() => {
+    const pageWidth = document.documentElement.scrollWidth;
+    const viewportWidth = window.innerWidth;
+
+    if (pageWidth > viewportWidth + 1) {
+      throw new Error(`Unexpected player profile document overflow: ${pageWidth} > ${viewportWidth}`);
+    }
+
+    const checkedElements = Array.from(
+      document.querySelectorAll<HTMLElement>(
+        ".player-profile-hero, .profile-tab-list, .player-profile-toolbar, .profile-verdict-panel, .profile-tactic-layout, .profile-decision-grid, .profile-attributes-grid, .profile-performance-grid, .profile-future-grid, .profile-radar"
+      )
+    );
+
+    for (const element of checkedElements) {
+      if (element.scrollWidth > element.clientWidth + 1) {
+        const label = element.className || element.tagName;
+        throw new Error(`Unexpected player profile element overflow for ${label}: ${element.scrollWidth} > ${element.clientWidth}`);
+      }
+    }
+  });
+}
+
 async function expectPrimaryCommandLabels(commandRail: Locator) {
   const labels = await commandRail.getByRole("button").evaluateAll((buttons) =>
     buttons.map((button) => button.querySelector("span")?.textContent ?? "")
@@ -726,7 +750,9 @@ test("can start a tournament run and play through a managed match", async ({ pag
   await selectionDialog.getByRole("button", { name: "Grand-Slam Southpaw", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Grand-Slam Southpaw" })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Attributes" })).toBeVisible();
-  await expect(page.getByText("Endurance").first()).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Scouting" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Scouting Verdict" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Threat / Fit Summary" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Resize sidebar" })).toHaveCount(0);
   await page.getByRole("button", { name: "Back" }).click();
 
@@ -1086,7 +1112,8 @@ test("continues a deterministic career event from post-match into the next round
     .getByRole("button", { name: betweenRounds.nextOpponentName })
     .click();
   await expect(page.getByRole("heading", { name: betweenRounds.nextOpponentName })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Coach Report" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Scouting Verdict" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "How To Beat Them" })).toBeVisible();
   await page.getByRole("button", { name: "Back" }).click();
   await expect(page.getByRole("heading", { name: "Opponent Briefing" })).toBeVisible();
   await page.evaluate((payload) => {
@@ -1384,6 +1411,61 @@ test("routes the Live Match command through career and quick match paths", async
   await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
   await quickCommandRail.getByRole("button", { name: /Live Match/ }).click();
   await expect(page.getByRole("heading", { name: "Next Opponent" })).toBeVisible();
+});
+
+test("player profile renders decision-first managed and scouting dossiers", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+
+  await startQuickTournamentFromModal(page);
+  await expect(page.getByRole("heading", { name: "Next Opponent" })).toBeVisible();
+
+  const managedName = seededPlayers[0].player.name;
+  await page.locator(".matchup-competitor-managed .profile-name-button").first().click();
+  await expect(page.getByRole("heading", { name: managedName })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Development" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Manager Verdict" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Readiness Strip" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Tactical Plan" })).toBeVisible();
+  await expectProfileViewportBounded(page);
+  await captureFocusedScreenshot(page, "player-profile-managed-overview-desktop");
+
+  await page.getByRole("tab", { name: "Attributes" }).click();
+  await expect(page.getByRole("heading", { name: "Technical" })).toBeVisible();
+  await expect(page.getByText(/Field rank #/).first()).toBeVisible();
+  await expectProfileViewportBounded(page);
+  await captureFocusedScreenshot(page, "player-profile-attributes-desktop");
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expectProfileViewportBounded(page);
+  await captureFocusedScreenshot(page, "player-profile-attributes-mobile");
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.getByRole("tab", { name: "Performance" }).click();
+  await expect(page.getByRole("heading", { name: "Telemetry State" })).toBeVisible();
+  await captureFocusedScreenshot(page, "player-profile-performance-empty-desktop");
+
+  await page.getByRole("button", { name: "Back" }).click();
+  await expect(page.getByRole("heading", { name: "Next Opponent" })).toBeVisible();
+  const opponentButton = page.locator(".matchup-competitor-opponent .profile-name-button").first();
+  const opponentName = (await opponentButton.textContent())?.trim();
+
+  if (!opponentName) {
+    throw new Error("Expected opponent profile button text.");
+  }
+
+  await opponentButton.click();
+  await expect(page.getByRole("heading", { name: opponentName })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Scouting" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Scouting Verdict" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "How To Beat Them" })).toBeVisible();
+  await expectProfileViewportBounded(page);
+  await captureFocusedScreenshot(page, "player-profile-opponent-overview-desktop");
+
+  await page.getByRole("tab", { name: "Career" }).click();
+  await expect(page.getByRole("heading", { name: "Career Record" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Rivalries And Head-To-Head" })).toBeVisible();
+  await captureFocusedScreenshot(page, "player-profile-career-desktop");
 });
 
 test("surfaces dense page contracts and Save Manager metadata", async ({ page }) => {
