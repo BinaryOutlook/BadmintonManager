@@ -367,7 +367,7 @@ async function expectCalendarViewportBounded(page: Page) {
 
     const checkedElements = Array.from(
       document.querySelectorAll<HTMLElement>(
-        ".calendar-subnav, .calendar-status-strip, .calendar-event-row, .calendar-secondary-grid, .career-week-strip, .schedule-calendar-month, .schedule-calendar-grid"
+        ".calendar-subnav, .calendar-status-strip, .calendar-month-controls, .calendar-event-row, .calendar-secondary-grid, .career-week-strip, .schedule-calendar-month, .schedule-calendar-grid"
       )
     );
 
@@ -378,6 +378,23 @@ async function expectCalendarViewportBounded(page: Page) {
       }
     }
   });
+}
+
+async function expectCompactCalendarMonthContract(page: Page) {
+  const calendarMonth = page.locator(".schedule-calendar-month").first();
+  const monthLabels = calendarMonth.locator(".schedule-calendar-month-header h2");
+  const controls = calendarMonth.getByLabel("Calendar month controls");
+
+  await expect(monthLabels).toHaveCount(1);
+  await expect(monthLabels.first()).toContainText(/[A-Z][a-z]+ 2026/);
+  await expect(page.getByLabel("Calendar status")).toHaveCount(0);
+  for (const diagnosticLabel of ["Career today", "Visible month", "Visible range", "Diary entries", "Scope"]) {
+    await expect(page.getByText(diagnosticLabel, { exact: true })).toHaveCount(0);
+  }
+  await expect(controls).toBeVisible();
+  await expect(controls.getByRole("button", { name: "Previous month" })).toHaveText("<<");
+  await expect(controls.getByRole("button", { name: "Today" })).toHaveText("Today");
+  await expect(controls.getByRole("button", { name: "Next month" })).toHaveText(">>");
 }
 
 async function expectRankingsViewportBounded(page: Page) {
@@ -1342,8 +1359,8 @@ test("surfaces dense page contracts and Save Manager metadata", async ({ page })
 
   await commandRail.getByRole("button", { name: /Calendar/ }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Calendar" })).toBeVisible();
-  await expect(page.getByLabel("Calendar status")).toContainText("Visible month");
   await expect(page.locator(".schedule-calendar-month")).toHaveCount(1);
+  await expectCompactCalendarMonthContract(page);
 
   await commandRail.getByRole("button", { name: /Tactics/ }).click();
   await expect(page.getByRole("heading", { name: "Advanced Tactics Creator" })).toBeVisible();
@@ -1529,6 +1546,7 @@ test("keeps the Timeline and Calendar layouts bounded across target viewports", 
     await expect(page.getByRole("heading", { level: 1, name: "Calendar" })).toBeVisible();
     await expect(page.locator(".schedule-calendar-grid").first()).toBeVisible();
     await expect(page.locator(".schedule-calendar-month")).toHaveCount(1);
+    await expectCompactCalendarMonthContract(page);
     await expectCalendarViewportBounded(page);
     await captureFocusedScreenshot(page, `${viewport.name}-calendar-grid`);
   }
