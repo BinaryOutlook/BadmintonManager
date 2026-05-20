@@ -40,7 +40,7 @@ import { effectiveEventEntryCosts, facilityModifiers } from "../game/career/faci
 import { managedAthlete } from "../game/career/state";
 import { activeAdvancedTacticPlan, buildPreMatchPlanningBridge, calculateTacticEffectProfile, tacticPlanToMatchTactic } from "../game/career/tactics";
 import { trainingPlans } from "../game/career/training";
-import { STORAGE_KEY, type SaveRecoveryNotice } from "../game/store/store";
+import type { SaveRecoveryNotice } from "../game/store/store";
 import {
   isManagedPlayerStillInEvent,
   type RoundName,
@@ -989,72 +989,705 @@ function CareerEmpty(props: Pick<CareerPageProps, "onStartCareer" | "saveRecover
   );
 }
 
+type HomeDecisionButtonKind =
+  | "enter_event"
+  | "open_calendar"
+  | "open_training"
+  | "open_program"
+  | "open_rivals"
+  | "open_match_planning"
+  | "open_post_match"
+  | "open_scheduled_match"
+  | "open_tournament_home";
+
+type HomeDecisionButton = {
+  label: string;
+  kind: HomeDecisionButtonKind;
+  tone: "primary" | "secondary" | "required";
+  eventId?: string;
+  disabled?: boolean;
+  reason?: string;
+};
+
+type HomeDecisionConsequence = {
+  label: "Action" | "Reward" | "Cost" | "Risk" | "Deadline";
+  value: string;
+  detail: string;
+};
+
+type HomeDecisionModel = {
+  title: string;
+  eventId: string | null;
+  eyebrow: string;
+  context: string;
+  consequences: HomeDecisionConsequence[];
+  recommendation: string;
+  buttons: HomeDecisionButton[];
+};
+
+type HomeTaskRow = {
+  label: string;
+  value: string;
+  action: string;
+  urgent: boolean;
+};
+
+type HomeCalendarDay = {
+  date: string;
+  label: "Today" | "Entry closes" | "Travel" | "Match" | "Recovery" | "Training" | "Risk" | "Open";
+  detail: string;
+  eventId: string | null;
+  active: boolean;
+};
+
+function selectedTrainingPlan(career: CareerState) {
+  return career.selectedTrainingPlanId
+    ? trainingPlans.find((plan) => plan.id === career.selectedTrainingPlanId) ?? null
+    : null;
+}
+
+function managedPsychology(career: CareerState) {
+  return career.ecosystem.psychology.find((entry) => entry.athleteId === career.program.managedPlayerId) ?? null;
+}
+
+function eventRoundPoints(event: CareerEventDefinition | undefined, round: RoundName | "champion") {
+  return event?.rankingPoints[round] ?? 0;
+}
+
+function eventRoundPrize(event: CareerEventDefinition | undefined, round: RoundName | "champion") {
+  return event?.prizeMoney[round] ?? 0;
+}
+
+function projectedConditionAfterTravel(readiness: number, travelFatigue: number) {
+  return Math.max(0, Math.round(readiness - travelFatigue));
+}
+
+function homeDecisionRecommendation(args: {
+  career: CareerState;
+  event: CareerEventDefinition;
+  allowed: boolean;
+  affordable: boolean;
+  medicalAllowed: boolean;
+  readiness: number;
+}) {
+  const daysUntilEntry = daysBetween(args.career.date, args.event.entryDeadline);
+
+  if (!args.medicalAllowed) {
+    return "Do not force the entry: medical availability is the blocker, so recovery protects the season better than chasing points.";
+  }
+
+  if (!args.affordable) {
+    return "Delay the entry or find cashflow first; the event cost would overdraw the local program budget.";
+  }
+
+  if (!args.allowed) {
+    return "The event gate is not clean yet. Use the Calendar details to verify rank, readiness, and race requirements before committing.";
+  }
+
+  if (args.readiness < 72) {
+    return "The points are attractive, but the athlete is not fresh enough for a clean entry. Prioritize recovery before locking travel.";
+  }
+
+  if (daysUntilEntry <= 1) {
+    return "Enter now if this points chase matters; the entry window closes immediately and the cost is affordable.";
+  }
+
+  return "Entry is viable. Commit if the ranking upside matters, or spend one day on load management before the deadline.";
+}
+
+function buildHomeDecisionModel(args: {
+  career: CareerState;
+  tournament: TournamentState | null;
+  athlete: ReturnType<typeof managedAthlete>;
+  event: CareerEventDefinition | undefined;
+}): HomeDecisionModel {
+  const { career, tournament, athlete, event } = args;
+  const report = career.lastMatchReport;
+  const brief = career.lastPreMatchBrief;
+  const schedule = event
+    ? managedMatchScheduleForEvent({
+        career,
+        tournament,
+        eventId: event.id
+      })
+    : null;
+
+  if (career.stage === "post_match" && report) {
+    return {
+      title: event ? `Review ${event.name} ${report.round}` : "Review latest match",
+      eventId: event?.id ?? report.eventId,
+      eyebrow: "Post-match review waiting",
+      context: `${report.scoreline} ${report.result}; settle evidence before the next career day changes the schedule.`,
+      consequences: [
+        {
+          label: "Action",
+          value: "Review Match",
+          detail: "Post-match report is the blocking desk."
+        },
+        {
+          label: "Reward",
+          value: `+${points(report.pointsDelta)} / ${signedMoney(report.cashDelta)}`,
+          detail: "Exact settlement values from the saved match report."
+        },
+        {
+          label: "Cost",
+          value: `+${Math.round(report.fatigueDelta)} fatigue`,
+          detail: "Exact match-load consequence already recorded."
+        },
+        {
+          label: "Risk",
+          value: `${athlete.readiness}% ready`,
+          detail: `${Math.round(athlete.fatigue)} fatigue, ${Math.round(athlete.injuryRisk * 100)}% injury risk after the match.`
+        },
+        {
+          label: "Deadline",
+          value: "Before advance",
+          detail: `Review before leaving ${career.date}.`
+        }
+      ],
+      recommendation: report.recommendations[0] ?? "Settle the report, then choose the next training or travel block.",
+      buttons: [
+        { label: "Review Match", kind: "open_post_match", tone: "required" },
+        { label: "Match Planning", kind: "open_match_planning", tone: "secondary" },
+        { label: "Training Desk", kind: "open_training", tone: "secondary" },
+        { label: "Program Hub", kind: "open_program", tone: "secondary" },
+        { label: "Circuit Room", kind: "open_rivals", tone: "secondary" }
+      ]
+    };
+  }
+
+  if (career.stage === "pre_match" && event) {
+    const round = schedule?.round ?? "R16";
+    const roundPoints = eventRoundPoints(event, round);
+    const roundPrize = eventRoundPrize(event, round);
+
+    return {
+      title: `${event.name} ${calendarRoundLabel(round)}`,
+      eventId: event.id,
+      eyebrow: "Match briefing ready",
+      context: brief?.opponentBrief ?? "Opponent briefing is ready; lock the badminton plan before entering the match command center.",
+      consequences: [
+        {
+          label: "Action",
+          value: "Open Pre-Match",
+          detail: "Scout, tactic, and readiness checks are due now."
+        },
+        {
+          label: "Reward",
+          value: `+${points(roundPoints)} / +${money(roundPrize)}`,
+          detail: `Current round stake; title ceiling remains +${points(event.rankingPoints.champion)}.`
+        },
+        {
+          label: "Cost",
+          value: "Projected match load",
+          detail: "Fatigue and injury risk will be resolved by the match engine after play."
+        },
+        {
+          label: "Risk",
+          value: `${athlete.readiness}% ready`,
+          detail: brief?.riskNote ?? `${Math.round(athlete.fatigue)} fatigue, ${Math.round(athlete.injuryRisk * 100)}% injury risk.`
+        },
+        {
+          label: "Deadline",
+          value: schedule?.scheduledDate ?? career.date,
+          detail: schedule?.overdue ? "Match day is overdue." : "Scheduled managed match day."
+        }
+      ],
+      recommendation:
+        brief?.recommendation ??
+        (athlete.readiness >= 76 ? "Proceed with the prepared tactic." : "Protect rallies and avoid overload until readiness recovers."),
+      buttons: [
+        { label: "Open Pre-Match", kind: "open_scheduled_match", tone: "required", eventId: event.id },
+        { label: "Match Planning", kind: "open_match_planning", tone: "secondary" },
+        { label: "Training Desk", kind: "open_training", tone: "secondary" },
+        { label: "Program Hub", kind: "open_program", tone: "secondary" },
+        { label: "Circuit Room", kind: "open_rivals", tone: "secondary" }
+      ]
+    };
+  }
+
+  if (event) {
+    const status = eventStatusFor(career, event);
+    const gate = eventEligibilityFor(career, event);
+    const medicalGate = canCompeteWithInjury(athlete);
+    const entryCosts = effectiveEventEntryCosts(event, career.facilities);
+    const totalCost = eventEntryCost(entryCosts);
+    const affordable = canAffordEventEntry({
+      economy: career.economy,
+      travelCost: entryCosts.travelCost,
+      entryFee: entryCosts.entryFee
+    });
+    const entered = career.enteredEventIds.includes(event.id);
+    const projectedCondition = projectedConditionAfterTravel(athlete.readiness, entryCosts.travelFatigue);
+
+    if (entered) {
+      const nextMatchDate = schedule?.scheduledDate ?? event.startDate;
+
+      return {
+        title: event.name,
+        eventId: event.id,
+        eyebrow: status === "in_progress" ? "Event active" : "Entry committed",
+        context: `${event.location.city}, ${event.location.country}. Prepare the travel, draw, and match plan around ${nextMatchDate}.`,
+        consequences: [
+          {
+            label: "Action",
+            value: schedule?.playable ? "Open Match Day" : "Prepare Event",
+            detail: schedule?.playable ? "A managed match is playable now." : "Entry is locked; planning pressure moves to travel and tactics."
+          },
+          {
+            label: "Reward",
+            value: `+${points(event.rankingPoints.champion)} title ceiling`,
+            detail: `Opening-round stake is +${points(event.rankingPoints.R16)} and +${money(event.prizeMoney.R16)}.`
+          },
+          {
+            label: "Cost",
+            value: "Entry committed",
+            detail: "Cash cost has already been posted to the local ledger at entry time."
+          },
+          {
+            label: "Risk",
+            value: `${athlete.readiness}% ready`,
+            detail: `${Math.round(athlete.fatigue)} fatigue; match-day load is still unresolved.`
+          },
+          {
+            label: "Deadline",
+            value: nextMatchDate,
+            detail: schedule?.round ? `${calendarRoundLabel(schedule.round)} schedule.` : "Main draw start."
+          }
+        ],
+        recommendation:
+          athlete.fatigue >= 60
+            ? "Reduce load before the match day; the athlete is carrying enough fatigue to blunt explosiveness."
+            : "Use the remaining days for opponent scouting and a contained training block.",
+        buttons: [
+          {
+            label: schedule?.playable ? "Open Match Day" : "Open Event",
+            kind: schedule?.playable ? "open_scheduled_match" : "open_tournament_home",
+            tone: schedule?.playable ? "required" : "primary",
+            eventId: event.id
+          },
+          { label: "Timeline", kind: "open_calendar", tone: "secondary" },
+          { label: "Match Planning", kind: "open_match_planning", tone: "secondary" },
+          { label: "Training Desk", kind: "open_training", tone: "secondary" },
+          { label: "Program Hub", kind: "open_program", tone: "secondary" },
+          { label: "Circuit Room", kind: "open_rivals", tone: "secondary" }
+        ]
+      };
+    }
+
+    const entryBlocked = !gate.allowed || !affordable || !medicalGate.allowed || status === "missed_deadline";
+    const actionValue = entryBlocked ? "Resolve Entry Block" : "Enter Event";
+
+    return {
+      title: event.name,
+      eventId: event.id,
+      eyebrow: `${event.tier} / week ${event.weekNumber}`,
+      context: `${event.location.city}, ${event.location.country}. ${event.stakesLabel}.`,
+      consequences: [
+        {
+          label: "Action",
+          value: actionValue,
+          detail: entryBlocked ? "Entry needs a gate, cash, deadline, or medical fix." : "Direct event entry is available from this panel."
+        },
+        {
+          label: "Reward",
+          value: `+${points(event.rankingPoints.champion)} / +${money(event.prizeMoney.champion)}`,
+          detail: `Projected title upside; R16 floor is +${points(event.rankingPoints.R16)}.`
+        },
+        {
+          label: "Cost",
+          value: signedMoney(-totalCost),
+          detail:
+            entryCosts.savedTravelCost > 0
+              ? `Exact entry + travel cost; facilities save ${money(entryCosts.savedTravelCost)}.`
+              : "Exact entry + travel cost from the event and facility state."
+        },
+        {
+          label: "Risk",
+          value: `${athlete.readiness}% ready`,
+          detail: `Projected condition ${projectedCondition}% after ${entryCosts.travelFatigue} travel fatigue; injury risk ${Math.round(athlete.injuryRisk * 100)}%.`
+        },
+        {
+          label: "Deadline",
+          value: event.entryDeadline,
+          detail: `Entry closes ${daysUntilLabel(career.date, event.entryDeadline)}.`
+        }
+      ],
+      recommendation: homeDecisionRecommendation({
+        career,
+        event,
+        allowed: gate.allowed && status !== "missed_deadline",
+        affordable,
+        medicalAllowed: medicalGate.allowed,
+        readiness: athlete.readiness
+      }),
+      buttons: [
+        {
+          label: entryBlocked ? "Open Event Details" : "Enter Event",
+          kind: entryBlocked ? "open_tournament_home" : "enter_event",
+          tone: entryBlocked ? "secondary" : "primary",
+          eventId: event.id,
+          disabled: false
+        },
+        { label: "Timeline", kind: "open_calendar", tone: "secondary" },
+        { label: athlete.fatigue >= 60 ? "Recovery Desk" : "Training Desk", kind: "open_training", tone: "secondary" },
+        { label: "Match Planning", kind: "open_match_planning", tone: "secondary" },
+        { label: "Program Hub", kind: "open_program", tone: "secondary" },
+        { label: "Circuit Room", kind: "open_rivals", tone: "secondary" }
+      ]
+    };
+  }
+
+  return {
+    title: "Season planning",
+    eventId: null,
+    eyebrow: "No event window",
+    context: "No future event is available in the current catalog. Use the day to tune the athlete and program systems.",
+    consequences: [
+      {
+        label: "Action",
+        value: "Plan Season",
+        detail: "Calendar and training are the useful desks until a new event opens."
+      },
+      {
+        label: "Reward",
+        value: "Development upside",
+        detail: "Training, scouting, and facilities are the available progression levers."
+      },
+      {
+        label: "Cost",
+        value: "Manager choice",
+        detail: "Cash impact depends on the desk you open next."
+      },
+      {
+        label: "Risk",
+        value: `${athlete.readiness}% ready`,
+        detail: `${Math.round(athlete.fatigue)} fatigue, ${Math.round(athlete.injuryRisk * 100)}% injury risk.`
+      },
+      {
+        label: "Deadline",
+        value: "Open",
+        detail: "No entry window is currently closing."
+      }
+    ],
+    recommendation: "Choose a training or scouting block, then advance when the topbar says the day is safe.",
+    buttons: [
+      { label: "Timeline", kind: "open_calendar", tone: "primary" },
+      { label: "Training Desk", kind: "open_training", tone: "secondary" },
+      { label: "Program Hub", kind: "open_program", tone: "secondary" },
+      { label: "Circuit Room", kind: "open_rivals", tone: "secondary" },
+      { label: "Match Planning", kind: "open_match_planning", tone: "secondary" }
+    ]
+  };
+}
+
+function homeTaskRowsFor(args: {
+  career: CareerState;
+  athlete: ReturnType<typeof managedAthlete>;
+  event: CareerEventDefinition | undefined;
+  activeSavePresent: boolean;
+  corruptSavePresent: boolean;
+  saveRecovery: SaveRecoveryNotice | null;
+}): HomeTaskRow[] {
+  const rows: HomeTaskRow[] = [];
+
+  if (args.career.stage === "post_match") {
+    rows.push({
+      label: "Review desk",
+      value: "Post-match report waiting",
+      action: "Review Match",
+      urgent: true
+    });
+  } else if (args.career.stage === "pre_match") {
+    rows.push({
+      label: "Match day",
+      value: "Opponent briefing ready",
+      action: "Open Pre-Match",
+      urgent: true
+    });
+  } else if (args.event && !args.career.enteredEventIds.includes(args.event.id)) {
+    const gate = eventEligibilityFor(args.career, args.event);
+
+    if (gate.daysUntilEntryDeadline <= 3 && gate.daysUntilEntryDeadline >= 0) {
+      rows.push({
+        label: "Entry deadline",
+        value: `Window closes ${daysUntilLabel(args.career.date, args.event.entryDeadline)}`,
+        action: gate.allowed ? "Decide entry" : "Check gate",
+        urgent: gate.daysUntilEntryDeadline <= 1
+      });
+    }
+  }
+
+  if (args.athlete.injury.status !== "healthy" || args.athlete.fatigue >= 60 || args.athlete.injuryRisk >= 0.24) {
+    rows.push({
+      label: "Condition",
+      value: `${args.athlete.recoveryStatus.replace(/_/g, " ")} / ${Math.round(args.athlete.fatigue)} fatigue`,
+      action: "Protect load",
+      urgent: args.athlete.recoveryStatus === "red_zone" || args.athlete.recoveryStatus === "injured"
+    });
+  }
+
+  if (!args.activeSavePresent || args.corruptSavePresent || args.saveRecovery) {
+    rows.push({
+      label: "Save issue",
+      value: args.corruptSavePresent || args.saveRecovery ? "Quarantine or recovery state needs review" : "No active browser slot detected",
+      action: "Review Save Manager",
+      urgent: true
+    });
+  }
+
+  if (rows.length === 0) {
+    return [
+      {
+        label: "No urgent blockers",
+        value: "Calendar, athlete, and local save state are stable",
+        action: "Use topbar when ready",
+        urgent: false
+      }
+    ];
+  }
+
+  return rows.slice(0, 4);
+}
+
+function homeCalendarDaysFor(args: {
+  career: CareerState;
+  tournament: TournamentState | null;
+  athlete: ReturnType<typeof managedAthlete>;
+}): HomeCalendarDay[] {
+  const week = buildWeek(args.career.date);
+  const plan = selectedTrainingPlan(args.career);
+  const commitmentsByDate = groupCalendarCommitmentsByDate(
+    timelineCommitmentsForCareer({
+      career: args.career,
+      tournament: args.tournament
+    })
+  );
+
+  return week.map((date) => {
+    const commitments = commitmentsByDate.find((group) => group.date === date)?.commitments ?? [];
+    const firstCommitment = commitments.find((commitment) => !commitment.result) ?? commitments[0] ?? null;
+    const entryDeadline = args.career.events.find((event) => {
+      if (args.career.completedEventIds.includes(event.id) || args.career.enteredEventIds.includes(event.id)) {
+        return false;
+      }
+
+      return event.entryDeadline === date && args.career.date <= event.entryDeadline;
+    });
+    const travelEvent = args.career.events.find(
+      (event) =>
+        args.career.enteredEventIds.includes(event.id) &&
+        !args.career.completedEventIds.includes(event.id) &&
+        addDays(event.startDate, -1) === date
+    );
+    const riskDay = args.athlete.recoveryStatus === "red_zone" || args.athlete.recoveryStatus === "injured";
+    const trainingLabel =
+      plan?.intensity === "recovery" || riskDay
+        ? "Recovery"
+        : plan
+          ? "Training"
+          : "Open";
+    const trainingDetail =
+      plan?.intensity === "recovery"
+        ? plan.label
+        : plan
+          ? `${plan.label} block`
+          : riskDay
+            ? "Protect athlete load"
+            : "No fixed obligation";
+
+    if (date === args.career.date) {
+      const detail =
+        firstCommitment
+          ? `${calendarRoundLabel(firstCommitment.round)} vs ${firstCommitment.opponentLabel}`
+          : entryDeadline
+            ? `${entryDeadline.name} entry deadline`
+            : travelEvent
+              ? `${travelEvent.name} travel`
+              : trainingDetail;
+
+      return {
+        date,
+        label: "Today",
+        detail,
+        eventId: firstCommitment?.eventId ?? entryDeadline?.id ?? travelEvent?.id ?? null,
+        active: true
+      };
+    }
+
+    if (firstCommitment) {
+      return {
+        date,
+        label: "Match",
+        detail: `${calendarRoundLabel(firstCommitment.round)}${firstCommitment.opponentLabel ? ` vs ${firstCommitment.opponentLabel}` : ""}`,
+        eventId: firstCommitment.eventId,
+        active: false
+      };
+    }
+
+    if (entryDeadline) {
+      return {
+        date,
+        label: "Entry closes",
+        detail: entryDeadline.name,
+        eventId: entryDeadline.id,
+        active: false
+      };
+    }
+
+    if (travelEvent) {
+      return {
+        date,
+        label: "Travel",
+        detail: travelEvent.name,
+        eventId: travelEvent.id,
+        active: false
+      };
+    }
+
+    return {
+      date,
+      label: trainingLabel,
+      detail: trainingDetail,
+      eventId: null,
+      active: false
+    };
+  });
+}
+
+function financeDeltaForLastThirtyDays(career: CareerState) {
+  return career.economy.ledger
+    .filter((entry) => {
+      const age = daysBetween(entry.date, career.date);
+      return age >= 0 && age <= 30;
+    })
+    .reduce((total, entry) => total + entry.amount, 0);
+}
+
+function homeEvidenceRows(career: CareerState, athlete: ReturnType<typeof managedAthlete>) {
+  if (!career.lastMatchReport) {
+    return [
+      {
+        label: "Prep",
+        value: "No managed match tape yet.",
+        detail:
+          athlete.readiness < 72
+            ? "Readiness is the immediate evidence: keep the next block light."
+            : "Scout the first opponent or use a controlled training block."
+      }
+    ];
+  }
+
+  const evidence = career.lastMatchReport.evidence.slice(0, 2).map((entry, index) => ({
+    label: `${index + 1}`,
+    value: entry,
+    detail: career.lastMatchReport?.scoreline ?? "Pending"
+  }));
+  const recommendation = career.lastMatchReport.recommendations[0];
+
+  return recommendation
+    ? [
+        ...evidence,
+        {
+          label: "Prep",
+          value: recommendation,
+          detail: career.lastMatchReport.round
+        }
+      ].slice(0, 3)
+    : evidence;
+}
+
+function decisionButtonClass(button: HomeDecisionButton) {
+  if (button.tone === "required") {
+    return "command-button command-button-required";
+  }
+
+  if (button.tone === "primary") {
+    return "command-button command-button-primary";
+  }
+
+  return "command-button command-button-secondary";
+}
+
 export function CareerHomePage(props: CareerPageProps) {
   if (!props.career) {
     return <CareerEmpty onStartCareer={props.onStartCareer} saveRecovery={props.saveRecovery} />;
   }
 
-  const athlete = managedAthlete(props.career);
-  const player = playerMap[props.career.program.managedPlayerId];
-  const event = activeEvent(props.career);
-  const ranking = props.career.rankings.find((entry) => entry.playerId === props.career?.program.managedPlayerId);
-  const eventGate = event ? eventEligibilityFor(props.career, event) : null;
-  const eventStatus = event ? eventStatusFor(props.career, event) : null;
-  const seedingSnapshot = event ? buildEventSeedingSnapshot({ state: props.career, event }) : null;
-  const recentLedger = props.career.economy.ledger.slice(-4).reverse();
-  const week = buildWeek(props.career.date);
-  const evidenceRows = (props.career.lastMatchReport?.evidence ?? ["No managed match evidence yet."]).slice(0, 3);
-  const taskRows = [
-    {
-      label: props.career.stage === "post_match" ? "Review desk" : props.career.stage === "pre_match" ? "Match day" : "Program desk",
-      value:
-        props.career.stage === "post_match"
-          ? "Post-match report waiting"
-          : props.career.stage === "pre_match"
-            ? "Opponent briefing ready"
-            : event
-              ? (
-                  <>
-                    <CareerTournamentLink career={props.career} eventId={event.id}>
-                      {event.name}
-                    </CareerTournamentLink>{" "}
-                    planning
-                  </>
-                )
-              : "Season planning",
-      action:
-        props.career.stage === "post_match"
-          ? "Review"
-          : props.career.stage === "pre_match"
-            ? "Open briefing"
-            : "Open timeline"
-    },
-    {
-      label: "Training",
-      value: `${(props.career.selectedTrainingPlanId ?? "No training").replace(/-/g, " ")} block selected`,
-      action: athlete.fatigue >= 65 ? "Reduce load" : "Monitor load"
-    },
-    {
-      label: "Save state",
-      value: props.activeSavePresent ? "Active browser slot online" : "No active slot detected",
-      action: props.corruptSavePresent ? "Review quarantine" : "Export when ready"
-    }
-  ];
-  const liveRouteLabel =
-    props.career.stage === "pre_match"
-      ? "Open Pre-Match"
-      : props.career.stage === "post_match"
-        ? "Review Match"
-        : "Match Plan";
-  const stageLabel = props.career.stage.replace(/_/g, " ");
-  const nextEventName = event?.name ?? "Season planning";
-  const eventIntro = event
-    ? `${event.location.city}, ${event.location.country} | Starts ${event.startDate} (${daysUntilLabel(props.career.date, event.startDate)}) | ${event.stakesLabel}.`
-    : "No remaining event in the Phase 1 catalog.";
+  const career = props.career;
+  const athlete = managedAthlete(career);
+  const player = playerMap[career.program.managedPlayerId];
+  const event = activeEvent(career);
+  const ranking = career.rankings.find((entry) => entry.playerId === career.program.managedPlayerId);
+  const decision = buildHomeDecisionModel({
+    career,
+    tournament: props.tournament,
+    athlete,
+    event
+  });
+  const taskRows = homeTaskRowsFor({
+    career,
+    athlete,
+    event,
+    activeSavePresent: props.activeSavePresent,
+    corruptSavePresent: props.corruptSavePresent,
+    saveRecovery: props.saveRecovery
+  });
+  const urgentTaskCount = taskRows.filter((task) => task.urgent).length;
+  const calendarDays = homeCalendarDaysFor({
+    career,
+    tournament: props.tournament,
+    athlete
+  });
+  const evidenceRows = homeEvidenceRows(career, athlete);
+  const psychology = managedPsychology(career);
+  const plan = selectedTrainingPlan(career);
+  const entryCosts = event ? effectiveEventEntryCosts(event, career.facilities) : null;
+  const nextEventCost = event && entryCosts && !career.enteredEventIds.includes(event.id)
+    ? eventEntryCost(entryCosts)
+    : 0;
+  const thirtyDayCashDelta = financeDeltaForLastThirtyDays(career);
+  const stageLabel = career.stage.replace(/_/g, " ");
   const medicalSummary =
     athlete.injury.status === "healthy"
       ? "Available for training and event entry."
       : `${athlete.injury.daysRemaining} day(s) remaining; return ${athlete.injury.returnDate ?? "pending"}. ${athlete.injury.notes[0]}`;
+  const handleDecisionButton = (button: HomeDecisionButton) => {
+    switch (button.kind) {
+      case "enter_event":
+        if (button.eventId) {
+          props.onEnterEvent(button.eventId);
+        }
+        return;
+      case "open_calendar":
+        props.onOpenCalendar();
+        return;
+      case "open_training":
+        props.onOpenTraining();
+        return;
+      case "open_program":
+        props.onOpenProgram();
+        return;
+      case "open_rivals":
+        props.onOpenRivals();
+        return;
+      case "open_match_planning":
+        props.onOpenMatchPlanning();
+        return;
+      case "open_post_match":
+        props.onOpenPostMatch();
+        return;
+      case "open_scheduled_match":
+        props.onOpenScheduledCareerMatch(button.eventId);
+        return;
+      case "open_tournament_home":
+        if (button.eventId) {
+          openTournamentHome(props, career, button.eventId);
+        }
+        return;
+    }
+  };
+
   return (
     <section className="screen-shell career-page" aria-label="Portal Home" data-page-contract="portal-home">
       <div className="screen-header career-portal-header">
@@ -1062,323 +1695,312 @@ export function CareerHomePage(props: CareerPageProps) {
           <p className="screen-kicker">Portal Home</p>
           <h1 className="screen-title">Career Command Center</h1>
           <p className="screen-copy career-portal-summary">
-            {props.career.date} |{" "}
+            {career.date} |{" "}
             <ProfileNameButton
               playerId={player.id}
               fallback={player.name}
               onOpenPlayerProfile={props.onOpenPlayerProfile}
             />{" "}
-            | Rank {athlete.currentRank} | {points(athlete.rankingPoints)} | Race{" "}
-            {points(ranking?.seasonPoints ?? 0)} | Next:{" "}
-            {event ? (
-              <CareerTournamentLink career={props.career} eventId={event.id}>
-                {event.name}
-              </CareerTournamentLink>
-            ) : (
-              nextEventName
-            )}
+            | Decision-first career day | {stageLabel}
           </p>
         </div>
         <div className="screen-meta screen-meta-actions career-portal-meta">
-          <span>Cash {money(props.career.economy.cash)}</span>
-          <span>Readiness {athlete.readiness}%</span>
-          <span>{stageLabel}</span>
+          <span>Cash {money(career.economy.cash)}</span>
+          <span>Rank #{athlete.currentRank}</span>
+          <span>{points(ranking?.seasonPoints ?? 0)} race</span>
         </div>
       </div>
 
-      <section className="career-status-strip career-status-strip-compact" aria-label="Career route status">
-        <div>
-          <span>Route</span>
-          <strong>Career Home</strong>
-        </div>
-        <div>
-          <span>Next</span>
-          <strong>
-            {event ? (
-              <CareerTournamentLink career={props.career} eventId={event.id}>
-                {event.name}
-              </CareerTournamentLink>
-            ) : (
-              nextEventName
-            )}
-          </strong>
-        </div>
-        <div>
-          <span>Deadline</span>
-          <strong>{event ? `${event.entryDeadline} (${daysUntilLabel(props.career.date, event.entryDeadline)})` : "No open event"}</strong>
-        </div>
-        <div>
-          <span>Action</span>
-          <strong>{eventStatus ? statusLabel(eventStatus) : liveRouteLabel}</strong>
-        </div>
-        <div>
-          <span>Save</span>
-          <strong>{props.activeSavePresent ? `Active ${STORAGE_KEY}` : "No active slot"}</strong>
-        </div>
-      </section>
-
-      <div className="career-dashboard-grid career-dashboard-grid-compact">
-        <section className="command-panel career-dashboard-card career-dashboard-card-decision career-priority-panel">
-          <div className="panel-header">
-            <h2>Next Decision</h2>
-            <span>{event ? `${event.tier} / week ${event.weekNumber}` : "No event"}</span>
+      <div className="career-dashboard-grid career-dashboard-grid-compact career-home-zones">
+        <section className="career-home-zone career-home-zone-now" aria-label="Now zone">
+          <div className="career-zone-heading">
+            <span>Now</span>
+            <strong>today&apos;s decision, condition, and blockers</strong>
           </div>
-          <div className="career-decision-block career-decision-block-compact">
-            <strong>
-              {event ? (
-                <CareerTournamentLink career={props.career} eventId={event.id}>
-                  {event.name}
-                </CareerTournamentLink>
-              ) : (
-                "Season planning"
-              )}
-            </strong>
-            <p>{eventIntro}</p>
-            {event && eventGate && (
-              <div className="career-quick-stakes career-quick-stakes-compact" aria-label="Next event stakes summary">
-                <div>
-                  <span>Eligibility</span>
-                  <strong>{eventGate.allowed ? "Entry clear" : "Gate blocked"}</strong>
-                  <small>
-                    Rank {eventGate.rank}, readiness {eventGate.readiness}, season race {points(eventGate.seasonPoints)}.
-                  </small>
-                </div>
-                <div>
-                  <span>Cutoff</span>
-                  <strong>{event.rankingCutoffDate}</strong>
-                  <small>Seed snapshot {seedingSnapshot?.status ?? "projected"} on {event.seedingDate}.</small>
-                </div>
-                <div>
-                  <span>Prize / Cost</span>
-                  <strong>{money(event.prizeMoney.champion)} / {money(eventEntryCost(event))}</strong>
-                  <small>Champion points {points(event.rankingPoints.champion)}.</small>
-                </div>
+          <div className="career-zone-layout career-now-layout">
+            <section
+              className="command-panel career-dashboard-card career-dashboard-card-decision career-priority-panel"
+              aria-label="Next Decision"
+            >
+              <div className="panel-header">
+                <h2 id="career-next-decision-heading">Next Decision</h2>
+                <span>{decision.eyebrow}</span>
               </div>
-            )}
-            <div className="career-action-row">
-              <button className="command-button command-button-primary" type="button" onClick={props.onOpenCalendar}>
-                Timeline
-              </button>
-              <button className="command-button command-button-secondary" type="button" onClick={props.onOpenTraining}>
-                Training Desk
-              </button>
-              <button className="command-button command-button-secondary" type="button" onClick={props.onOpenProgram}>
-                Program Hub
-              </button>
-              <button className="command-button command-button-secondary" type="button" onClick={props.onOpenRivals}>
-                Circuit Room
-              </button>
-              <button className="command-button command-button-secondary" type="button" onClick={props.onOpenMatchPlanning}>
-                Match Planning
-              </button>
-            </div>
-          </div>
-        </section>
-
-        <section className="command-panel career-dashboard-card career-dashboard-card-tasks">
-          <div className="panel-header">
-            <h2>Tasks / Inbox</h2>
-            <span>{taskRows.length} live items</span>
-          </div>
-          <div className="management-table management-table-compact career-task-table" aria-label="Portal tasks inbox">
-            <div className="management-table-row management-table-row-head" aria-hidden="true">
-              <span>Type</span>
-              <strong>Item</strong>
-              <small>Action</small>
-            </div>
-            {taskRows.map((task) => (
-              <div key={task.label} className="management-table-row">
-                <span>{task.label}</span>
-                <strong>{task.value}</strong>
-                <small>{task.action}</small>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="command-panel career-dashboard-card career-dashboard-card-readiness">
-          <div className="panel-header">
-            <h2>Readiness</h2>
-            <span>{athlete.recoveryStatus}</span>
-          </div>
-          <div className="career-meter-list career-meter-list-compact">
-            <CareerMeter label="Readiness" value={athlete.readiness} />
-            <CareerMeter label="Fatigue" value={Math.round(athlete.fatigue)} danger />
-            <CareerMeter label="Injury Risk" value={Math.round(athlete.injuryRisk * 100)} danger />
-          </div>
-          <div className="program-log-row career-readiness-medical-row career-button-spaced">
-            <span>Medical</span>
-            <strong>{athlete.injury.label}</strong>
-            <small>{medicalSummary}</small>
-          </div>
-        </section>
-
-        <section className="command-panel career-dashboard-card career-dashboard-card-calendar">
-          <div className="panel-header">
-            <h2>Calendar Snapshot</h2>
-            <span>{props.career.date}</span>
-          </div>
-          <div className="career-week-strip career-week-strip-compact" aria-label="Portal calendar snapshot">
-            {week.map((day) => {
-              const calendarEvent = props.career?.events.find((entry) => entry.startDate === day);
-              const dayLabel = day === props.career?.date ? "Today" : "Train";
-
-              return (
-                <div key={day} className={day === props.career?.date ? "career-day career-day-active" : "career-day"}>
-                  <span>{day.slice(5)}</span>
-                  <strong>
-                    {calendarEvent ? (
-                      <CareerTournamentLink
-                        career={props.career!}
-                        eventId={calendarEvent.id}
-                        className="tournament-link-button tournament-link-compact"
-                      >
-                        {calendarEvent.name}
-                      </CareerTournamentLink>
-                    ) : (
-                      dayLabel
-                    )}
-                  </strong>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-
-        <section className="command-panel career-dashboard-card career-dashboard-card-evidence">
-          <div className="panel-header">
-            <h2>Recent Match Evidence</h2>
-            <span>{props.career.lastMatchReport ? `${props.career.lastMatchReport.round} evidence` : "No report"}</span>
-          </div>
-          <div className="management-table management-table-compact career-evidence-table" aria-label="Recent match evidence">
-            <div className="management-table-row management-table-row-head" aria-hidden="true">
-              <span>#</span>
-              <strong>Evidence</strong>
-              <small>Score</small>
-            </div>
-            {evidenceRows.map((entry, index) => (
-              <div key={`${entry}-${index}`} className="management-table-row">
-                <span>{index + 1}</span>
+              <div className="career-decision-block career-decision-block-compact career-decision-block-primary">
                 <strong>
-                  <SmartCareerText text={entry} onOpenPlayerProfile={props.onOpenPlayerProfile} />
+                  {decision.eventId ? (
+                    <CareerTournamentLink career={career} eventId={decision.eventId}>
+                      {decision.title}
+                    </CareerTournamentLink>
+                  ) : (
+                    decision.title
+                  )}
                 </strong>
-                <small>{props.career?.lastMatchReport?.scoreline ?? "Pending"}</small>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="command-panel career-dashboard-card career-dashboard-card-ledger">
-          <div className="panel-header">
-            <h2>Ledger</h2>
-            <span>Reconciled cashflow</span>
-          </div>
-          <div className="career-ledger career-ledger-compact">
-            {recentLedger.length > 0 ? (
-              recentLedger.map((entry) => (
-                <div key={entry.id} className="career-ledger-row">
-                  <span>{entry.label}</span>
-                  <strong className={entry.amount >= 0 ? "career-ledger-amount-positive" : "career-ledger-amount-negative"}>
-                    {signedMoney(entry.amount)}
-                  </strong>
+                <p>{decision.context}</p>
+                <div className="career-consequence-grid" aria-label="Next decision consequence summary">
+                  {decision.consequences.map((consequence) => (
+                    <div key={consequence.label}>
+                      <span>{consequence.label}</span>
+                      <strong>{consequence.value}</strong>
+                      <small>{consequence.detail}</small>
+                    </div>
+                  ))}
                 </div>
-              ))
-            ) : (
-              <div className="career-ledger-row career-ledger-row-empty">
-                <span>No ledger entries yet</span>
-                <strong>$0</strong>
+                <div className="career-decision-recommendation">
+                  <span>Recommendation</span>
+                  <strong>{decision.recommendation}</strong>
+                </div>
+                <div className="career-action-row" aria-label="Next decision actions">
+                  {decision.buttons.map((button) => (
+                    <button
+                      key={`${button.kind}-${button.label}-${button.eventId ?? "none"}`}
+                      className={decisionButtonClass(button)}
+                      type="button"
+                      disabled={button.disabled}
+                      title={button.reason}
+                      onClick={() => handleDecisionButton(button)}
+                    >
+                      {button.label}
+                    </button>
+                  ))}
+                </div>
               </div>
-            )}
+            </section>
+
+            <section className="command-panel career-dashboard-card career-dashboard-card-readiness">
+              <div className="panel-header">
+                <h2>Player Condition</h2>
+                <span>{athlete.recoveryStatus.replace(/_/g, " ")}</span>
+              </div>
+              <div className="career-meter-list career-meter-list-compact">
+                <CareerMeter label="Readiness" value={athlete.readiness} />
+                <CareerMeter label="Fatigue" value={Math.round(athlete.fatigue)} danger />
+                <CareerMeter label="Injury Risk" value={Math.round(athlete.injuryRisk * 100)} danger />
+              </div>
+              <div className="career-condition-mini-grid" aria-label="Badminton condition signals">
+                <div>
+                  <span>Form</span>
+                  <strong>{psychology?.form ?? "—"}</strong>
+                </div>
+                <div>
+                  <span>Explosive</span>
+                  <strong>{Math.max(0, Math.round(player.ratings.physical.explosivenessJump - athlete.fatigue * 0.18))}</strong>
+                </div>
+                <div>
+                  <span>Net / Smash</span>
+                  <strong>{player.ratings.technical.netPlay}/{player.ratings.technical.smash}</strong>
+                </div>
+              </div>
+              <div className="program-log-row career-readiness-medical-row career-button-spaced">
+                <span>Medical</span>
+                <strong>{athlete.injury.label}</strong>
+                <small>{medicalSummary}</small>
+              </div>
+            </section>
+
+            <section className="command-panel career-dashboard-card career-dashboard-card-tasks">
+              <div className="panel-header">
+                <h2>Urgent Tasks</h2>
+                <span>{urgentTaskCount} urgent</span>
+              </div>
+              <div className="management-table management-table-compact career-task-table" aria-label="Portal tasks inbox">
+                <div className="management-table-row management-table-row-head" aria-hidden="true">
+                  <span>Type</span>
+                  <strong>Item</strong>
+                  <small>Action</small>
+                </div>
+                {taskRows.map((task) => (
+                  <div key={task.label} className={task.urgent ? "management-table-row management-table-row-urgent" : "management-table-row"}>
+                    <span>{task.label}</span>
+                    <strong>{task.value}</strong>
+                    <small>{task.action}</small>
+                  </div>
+                ))}
+              </div>
+            </section>
           </div>
         </section>
 
-        <section className="command-panel career-dashboard-card career-dashboard-card-ranking">
-          <div className="panel-header">
-            <h2>Ranking Pressure</h2>
-            <span>simplified circuit list</span>
+        <section className="career-home-zone career-home-zone-soon" aria-label="Soon zone">
+          <div className="career-zone-heading">
+            <span>Soon</span>
+            <strong>schedule pressure and preparation context</strong>
           </div>
-          <div className="career-stat-grid career-stat-grid-compact">
-            <div>
-              <span>Rank</span>
-              <strong>{athlete.currentRank}</strong>
-            </div>
-            <div>
-              <span>Total</span>
-              <strong>{points(athlete.rankingPoints)}</strong>
-            </div>
-            <div>
-              <span>Race</span>
-              <strong>{points(ranking?.seasonPoints ?? 0)}</strong>
-            </div>
-            <div>
-              <span>Events</span>
-              <strong>{props.career.completedEventIds.length}</strong>
-            </div>
+          <div className="career-zone-layout career-soon-layout">
+            <section className="command-panel career-dashboard-card career-dashboard-card-calendar">
+              <div className="panel-header">
+                <h2>Calendar Snapshot</h2>
+                <span>{career.date}</span>
+              </div>
+              <div className="career-week-strip career-week-strip-compact" aria-label="Portal calendar snapshot">
+                {calendarDays.map((day) => (
+                  <div key={day.date} className={day.active ? "career-day career-day-active" : "career-day"}>
+                    <span>{day.date.slice(5)}</span>
+                    <strong>
+                      {day.eventId ? (
+                        <CareerTournamentLink
+                          career={career}
+                          eventId={day.eventId}
+                          className="tournament-link-button tournament-link-compact"
+                        >
+                          {day.label}
+                        </CareerTournamentLink>
+                      ) : (
+                        day.label
+                      )}
+                    </strong>
+                    <small>{day.detail}</small>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section className="command-panel career-dashboard-card career-dashboard-card-ranking">
+              <div className="panel-header">
+                <h2>Ranking Pressure</h2>
+                <span>compact circuit consequence</span>
+              </div>
+              <div className="career-stat-grid career-stat-grid-compact">
+                <div>
+                  <span>Rank</span>
+                  <strong>{athlete.currentRank}</strong>
+                </div>
+                <div>
+                  <span>Total</span>
+                  <strong>{points(athlete.rankingPoints)}</strong>
+                </div>
+                <div>
+                  <span>Race</span>
+                  <strong>{points(ranking?.seasonPoints ?? 0)}</strong>
+                </div>
+                <div>
+                  <span>Events</span>
+                  <strong>{career.completedEventIds.length}</strong>
+                </div>
+              </div>
+              {event && (
+                <p className="panel-summary career-ranking-note">
+                  Next upside: +{points(event.rankingPoints.champion)} title ceiling; Finals gate remains top 8 or four completed events.
+                </p>
+              )}
+            </section>
+
+            <section className="command-panel career-dashboard-card career-dashboard-card-evidence">
+              <div className="panel-header">
+                <h2>Recent Match Evidence</h2>
+                <span>{career.lastMatchReport ? `${career.lastMatchReport.round} prep signal` : "Preparation prompt"}</span>
+              </div>
+              <div className="management-table management-table-compact career-evidence-table" aria-label="Recent match evidence">
+                <div className="management-table-row management-table-row-head" aria-hidden="true">
+                  <span>#</span>
+                  <strong>Evidence</strong>
+                  <small>Use</small>
+                </div>
+                {evidenceRows.map((entry) => (
+                  <div key={`${entry.label}-${entry.value}`} className="management-table-row">
+                    <span>{entry.label}</span>
+                    <strong>
+                      <SmartCareerText text={entry.value} onOpenPlayerProfile={props.onOpenPlayerProfile} />
+                    </strong>
+                    <small>{entry.detail}</small>
+                  </div>
+                ))}
+              </div>
+            </section>
           </div>
-          {event && (
-            <p className="panel-summary career-ranking-note">
-              Finals gate: top 8 or four completed events; fictional simplified circuit list.
-            </p>
-          )}
         </section>
 
-        <section className="command-panel career-dashboard-card career-dashboard-card-ecosystem">
-          <div className="panel-header">
-            <h2>Program Ecosystem</h2>
-            <span>Subsystems</span>
+        <section className="career-home-zone career-home-zone-later" aria-label="Later zone">
+          <div className="career-zone-heading">
+            <span>Later</span>
+            <strong>admin context kept reachable, not dominant</strong>
           </div>
-          <div className="career-ecosystem-strip career-ecosystem-strip-compact">
-            <button className="career-system-tile" type="button" onClick={props.onOpenScouting}>
-              <span>Reports</span>
-              <strong>{props.career.ecosystem.scouting.reports.length}</strong>
-              <small>{props.career.ecosystem.scouting.assignments.length} assignments</small>
-            </button>
-            <button className="career-system-tile" type="button" onClick={props.onOpenRecruitment}>
-              <span>Roster</span>
-              <strong>
-                {props.career.ecosystem.recruitment.roster.length}/{props.career.ecosystem.recruitment.rosterLimit}
-              </strong>
-              <small>{props.career.ecosystem.recruitment.candidates.length} candidates</small>
-            </button>
-            <button className="career-system-tile" type="button" onClick={props.onOpenYouth}>
-              <span>Youth</span>
-              <strong>{props.career.ecosystem.academy.prospects.length}</strong>
-              <small>{props.career.ecosystem.lowerEventEntries.filter((entry) => entry.subjectType === "youth_prospect").length} lower entries</small>
-            </button>
-            <button className="career-system-tile" type="button" onClick={props.onOpenStaff}>
-              <span>Staff</span>
-              <strong>{props.career.ecosystem.staff.hired.length}/5</strong>
-              <small>{money(staffModifiers(props.career.ecosystem).salary)} committed</small>
-            </button>
-            <button className="career-system-tile" type="button" onClick={props.onOpenPromises}>
-              <span>Promises</span>
-              <strong>{props.career.ecosystem.promises.filter((promise) => promise.status === "active").length}</strong>
-              <small>{props.career.ecosystem.promises.filter((promise) => promise.status !== "active").length} resolved</small>
-            </button>
-            <button className="career-system-tile" type="button" onClick={props.onOpenRivals}>
-              <span>Rivals</span>
-              <strong>{Math.round(Math.max(...props.career.rivals.programs.map((program) => program.pressureScore)))}</strong>
-              <small>{props.career.rivals.fieldPressure.length} fields</small>
-            </button>
-            <button className="career-system-tile" type="button" onClick={props.onOpenMatchPlanning}>
-              <span>Tactics</span>
-              <strong>{activeAdvancedTacticPlan(props.career).name}</strong>
-              <small>{props.career.matchPlanning.advice.filter((entry) => entry.overrideState === "pending").length} notes</small>
-            </button>
-            <button className="career-system-tile" type="button" onClick={props.onOpenFacilities}>
-              <span>Facilities</span>
-              <strong>{props.career.facilities.reduce((total, facility) => total + facility.level, 0)}</strong>
-              <small>{money(props.career.facilities.reduce((total, facility) => total + facility.maintenanceCost, 0))} upkeep</small>
-            </button>
-            <button className="career-system-tile" type="button" onClick={props.onOpenMedia}>
-              <span>Media</span>
-              <strong>{props.career.media.reputation}</strong>
-              <small>
-                {props.career.media.sponsors.filter((objective) => objective.status === "active").length +
-                  props.career.media.federationObjectives.filter((objective) => objective.status === "active").length}{" "}
-                active
-              </small>
-            </button>
+          <div className="career-zone-layout career-later-layout">
+            <section className="command-panel career-dashboard-card career-dashboard-card-finance">
+              <div className="panel-header">
+                <h2>Finance Summary</h2>
+                <span>compact cashflow</span>
+              </div>
+              <div className="career-finance-summary" aria-label="Career finance summary">
+                <div>
+                  <span>Cash</span>
+                  <strong>{money(career.economy.cash)}</strong>
+                  <small>Available local budget</small>
+                </div>
+                <div>
+                  <span>Δ30d</span>
+                  <strong className={thirtyDayCashDelta >= 0 ? "career-ledger-amount-positive" : "career-ledger-amount-negative"}>
+                    {signedMoney(thirtyDayCashDelta)}
+                  </strong>
+                  <small>Recent ledger movement</small>
+                </div>
+                <div>
+                  <span>Next Cost</span>
+                  <strong>{nextEventCost > 0 ? money(nextEventCost) : "Committed"}</strong>
+                  <small>{event ? (entryCosts ? `Travel fatigue ${entryCosts.travelFatigue}` : "Event cost unavailable") : "No event cost"}</small>
+                </div>
+              </div>
+            </section>
+
+            <section className="command-panel career-dashboard-card career-dashboard-card-ecosystem">
+              <div className="panel-header">
+                <h2>Program Ecosystem</h2>
+                <span>Subsystem chips</span>
+              </div>
+              <div className="career-ecosystem-strip career-ecosystem-strip-compact">
+                <button className="career-system-tile" type="button" onClick={props.onOpenScouting}>
+                  <span>Reports</span>
+                  <strong>{career.ecosystem.scouting.reports.length}</strong>
+                  <small>{career.ecosystem.scouting.assignments.length} assignments</small>
+                </button>
+                <button className="career-system-tile" type="button" onClick={props.onOpenRecruitment}>
+                  <span>Roster</span>
+                  <strong>
+                    {career.ecosystem.recruitment.roster.length}/{career.ecosystem.recruitment.rosterLimit}
+                  </strong>
+                  <small>{career.ecosystem.recruitment.candidates.length} candidates</small>
+                </button>
+                <button className="career-system-tile" type="button" onClick={props.onOpenYouth}>
+                  <span>Youth</span>
+                  <strong>{career.ecosystem.academy.prospects.length}</strong>
+                  <small>{career.ecosystem.lowerEventEntries.filter((entry) => entry.subjectType === "youth_prospect").length} lower entries</small>
+                </button>
+                <button className="career-system-tile" type="button" onClick={props.onOpenStaff}>
+                  <span>Staff</span>
+                  <strong>{career.ecosystem.staff.hired.length}/5</strong>
+                  <small>{money(staffModifiers(career.ecosystem).salary)} committed</small>
+                </button>
+                <button className="career-system-tile" type="button" onClick={props.onOpenPromises}>
+                  <span>Promises</span>
+                  <strong>{career.ecosystem.promises.filter((promise) => promise.status === "active").length}</strong>
+                  <small>{career.ecosystem.promises.filter((promise) => promise.status !== "active").length} resolved</small>
+                </button>
+                <button className="career-system-tile" type="button" onClick={props.onOpenRivals}>
+                  <span>Rivals</span>
+                  <strong>{Math.round(Math.max(...career.rivals.programs.map((program) => program.pressureScore)))}</strong>
+                  <small>{career.rivals.fieldPressure.length} fields</small>
+                </button>
+                <button className="career-system-tile" type="button" onClick={props.onOpenMatchPlanning}>
+                  <span>Tactics</span>
+                  <strong>{activeAdvancedTacticPlan(career).name}</strong>
+                  <small>{career.matchPlanning.advice.filter((entry) => entry.overrideState === "pending").length} notes</small>
+                </button>
+                <button className="career-system-tile" type="button" onClick={props.onOpenFacilities}>
+                  <span>Facilities</span>
+                  <strong>{career.facilities.reduce((total, facility) => total + facility.level, 0)}</strong>
+                  <small>{money(career.facilities.reduce((total, facility) => total + facility.maintenanceCost, 0))} upkeep</small>
+                </button>
+                <button className="career-system-tile" type="button" onClick={props.onOpenMedia}>
+                  <span>Media</span>
+                  <strong>{career.media.reputation}</strong>
+                  <small>
+                    {career.media.sponsors.filter((objective) => objective.status === "active").length +
+                      career.media.federationObjectives.filter((objective) => objective.status === "active").length}{" "}
+                    active
+                  </small>
+                </button>
+              </div>
+            </section>
           </div>
         </section>
       </div>

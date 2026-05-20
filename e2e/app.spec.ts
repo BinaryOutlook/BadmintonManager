@@ -464,7 +464,7 @@ async function expectPortalViewportBounded(page: Page, expectOnePage: boolean) {
 
     const checkedElements = Array.from(
       document.querySelectorAll<HTMLElement>(
-        ".career-status-strip-compact, .career-dashboard-grid-compact, .career-week-strip-compact, .career-ecosystem-strip-compact, .management-table-compact, .career-ledger-compact"
+        ".career-home-zone, .career-zone-layout, .career-dashboard-grid-compact, .career-consequence-grid, .career-week-strip-compact, .career-ecosystem-strip-compact, .management-table-compact, .career-finance-summary"
       )
     );
 
@@ -480,7 +480,7 @@ async function expectPortalViewportBounded(page: Page, expectOnePage: boolean) {
 
     const compactTextElements = Array.from(
       document.querySelectorAll<HTMLElement>(
-        ".career-week-strip-compact .career-day strong, .career-ecosystem-strip-compact .career-system-tile strong, .career-ecosystem-strip-compact .career-system-tile small, .career-status-strip-compact strong"
+        ".career-consequence-grid strong, .career-week-strip-compact .career-day strong, .career-ecosystem-strip-compact .career-system-tile strong, .career-ecosystem-strip-compact .career-system-tile small, .career-finance-summary strong"
       )
     );
 
@@ -993,7 +993,7 @@ test("can complete and reload the career core slice with tactical viewer proof",
 
   await startNewCareer(page);
   await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
-  await expect(page.getByRole("main")).toContainText(/Rank \d+/);
+  await expect(page.getByRole("main")).toContainText(/Rank #?\d+/);
 
   await page.getByRole("button", { name: "Training Desk" }).click();
   await expect(page.getByRole("heading", { name: "Load Management" })).toBeVisible();
@@ -1406,10 +1406,13 @@ test("surfaces dense page contracts and Save Manager metadata", async ({ page })
 
   await startNewCareer(page);
   await expect(page.getByLabel("Portal Home")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Tasks / Inbox" })).toBeVisible();
-  await expect(page.getByLabel("Portal tasks inbox")).toContainText("Save state");
+  await expect(page.getByRole("heading", { name: "Urgent Tasks" })).toBeVisible();
+  await expect(page.getByLabel("Portal tasks inbox")).not.toContainText("Save state");
+  await expect(page.getByLabel("Portal tasks inbox")).toContainText("Entry deadline");
+  await expect(page.getByRole("heading", { name: "Player Condition" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Calendar Snapshot" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Recent Match Evidence" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Finance Summary" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Program Ecosystem" })).toBeVisible();
   await expect(page.getByRole("main").getByRole("button", { name: "Continue" })).toHaveCount(0);
 
@@ -1485,10 +1488,11 @@ test("integrates fictional calendar ranking stakes into career home and Timeline
 
   await startNewCareer(page);
   await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
-  await expect(page.getByLabel("Next event stakes summary")).toContainText("Entry clear");
-  await expect(page.getByLabel("Next event stakes summary")).toContainText("Cutoff");
-  await expect(page.getByLabel("Next event stakes summary")).toContainText("Champion points 700 pts");
-  await expect(page.getByText(/fictional simplified circuit list/)).toBeVisible();
+  await expect(page.getByLabel("Next decision consequence summary")).toContainText("Enter Event");
+  await expect(page.getByLabel("Next decision consequence summary")).toContainText("+700 pts");
+  await expect(page.getByLabel("Next decision consequence summary")).toContainText("$15,000");
+  await expect(page.getByLabel("Next decision consequence summary")).toContainText("-$3,550");
+  await expect(page.getByText(/Finals gate remains top 8/)).toBeVisible();
   const commandRail = page.getByRole("navigation", { name: "Primary commands" });
 
   await page.getByRole("main").getByRole("button", { name: "Timeline" }).click();
@@ -1560,9 +1564,11 @@ test("keeps the compact Career Portal bounded across target viewports", async ({
 
     await startNewCareer(page);
     await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Tasks / Inbox" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Urgent Tasks" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Player Condition" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Calendar Snapshot" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Recent Match Evidence" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Finance Summary" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Program Ecosystem" })).toBeVisible();
     await expect(page.getByRole("banner").getByRole("button", { name: "Advance Day" })).toBeVisible();
     await expect(page.getByRole("banner").getByRole("button", { name: "Intel" })).toHaveCount(0);

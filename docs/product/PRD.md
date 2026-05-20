@@ -87,7 +87,7 @@ For the first serious version, the product should:
 - stay readable enough for future maintainers and future AI sessions to re-enter quickly
 - make a quick tournament run and a saved career program discoverable from clean first launch
 - keep save ownership visible through local export/import/delete/reset and corrupt-save recovery
-- make the active career home behave as a dense operations portal with tasks, next fixture, calendar context, readiness/ranking pressure, recent match evidence, save state, and one obvious Continue action
+- make the active career home behave as a decision center for the current career day: next action, consequences, athlete condition, near-term calendar pressure, urgent tasks, compact ranking/evidence, and quieter finance/ecosystem context
 - keep local save management inspectable through slot metadata, mode, managed athlete, save version, import preview, safe actions, and a separated danger zone
 - treat the `v0.3` career loop as stable but deliberately bounded, expanding flexibility and realism in measured future releases
 

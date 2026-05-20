@@ -7954,7 +7954,282 @@ textarea:focus-visible {
   -webkit-line-clamp: 2;
 }
 
+/* TIX-029 Career Home decision-center hierarchy */
+.career-dashboard-grid-compact.career-home-zones {
+  display: grid;
+  grid-template-columns: minmax(0, 1.42fr) minmax(18.5rem, 0.72fr) minmax(15.5rem, 0.56fr);
+  grid-template-areas: "now soon later";
+  gap: 0.58rem;
+  align-items: start;
+}
+
+.career-home-zone,
+.career-zone-layout {
+  display: grid;
+  min-width: 0;
+}
+
+.career-home-zone {
+  gap: 0.34rem;
+}
+
+.career-zone-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.7rem;
+  min-width: 0;
+  padding: 0 0.08rem;
+}
+
+.career-zone-heading span {
+  color: var(--lime);
+  font-size: 0.58rem;
+  font-weight: 950;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.career-zone-heading strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted-soft);
+  font-size: 0.62rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.career-zone-layout {
+  gap: 0.56rem;
+  align-items: stretch;
+}
+
+.career-now-layout {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.career-soon-layout {
+  grid-template-columns: 1fr;
+}
+
+.career-later-layout {
+  grid-template-columns: 1fr;
+}
+
+.career-home-zones .career-dashboard-card {
+  grid-area: auto;
+  padding: 0.66rem;
+}
+
+.career-home-zone-now {
+  grid-area: now;
+}
+
+.career-home-zone-soon {
+  grid-area: soon;
+}
+
+.career-home-zone-later {
+  grid-area: later;
+}
+
+.career-home-zone-now .career-dashboard-card-decision {
+  grid-column: 1 / -1;
+}
+
+.career-home-zones .career-dashboard-card-decision {
+  border-color: rgba(57, 255, 20, 0.34);
+  box-shadow: inset 0 0 0 1px rgba(57, 255, 20, 0.07);
+}
+
+.career-decision-block-primary {
+  gap: 0.58rem;
+}
+
+.career-decision-block-primary > strong {
+  font-size: clamp(1.24rem, 1.55vw, 1.62rem);
+}
+
+.career-decision-block-primary > p {
+  color: var(--muted-soft);
+  font-size: 0.88rem;
+}
+
+.career-consequence-grid,
+.career-condition-mini-grid,
+.career-finance-summary {
+  display: grid;
+  gap: 0.38rem;
+  min-width: 0;
+}
+
+.career-consequence-grid {
+  grid-template-columns: repeat(5, minmax(5.4rem, 1fr));
+}
+
+.career-condition-mini-grid,
+.career-finance-summary {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.career-consequence-grid div,
+.career-condition-mini-grid div,
+.career-finance-summary div,
+.career-decision-recommendation {
+  min-width: 0;
+  border: 1px solid rgba(48, 54, 61, 0.82);
+  border-radius: 0.34rem;
+  padding: 0.42rem;
+  background: rgba(12, 14, 17, 0.52);
+}
+
+.career-consequence-grid span,
+.career-condition-mini-grid span,
+.career-finance-summary span,
+.career-decision-recommendation span {
+  display: block;
+  color: var(--muted-soft);
+  font-size: 0.56rem;
+  font-weight: 900;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.career-consequence-grid strong,
+.career-condition-mini-grid strong,
+.career-finance-summary strong,
+.career-decision-recommendation strong {
+  display: block;
+  min-width: 0;
+  margin-top: 0.16rem;
+  color: var(--text);
+  font-size: 0.78rem;
+  line-height: 1.14;
+  overflow-wrap: anywhere;
+}
+
+.career-consequence-grid small,
+.career-finance-summary small {
+  display: block;
+  margin-top: 0.22rem;
+  color: var(--muted);
+  font-size: 0.62rem;
+  line-height: 1.22;
+}
+
+.career-decision-recommendation {
+  border-color: rgba(57, 255, 20, 0.2);
+  background: rgba(57, 255, 20, 0.04);
+}
+
+.career-decision-recommendation strong {
+  color: var(--lime-soft);
+  font-size: 0.78rem;
+  line-height: 1.26;
+}
+
+.career-home-zones .career-dashboard-card-decision .career-action-row {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.career-home-zones .career-dashboard-card-decision .career-action-row .command-button:first-child {
+  grid-column: span 2;
+}
+
+.career-home-zones .management-table-row-urgent {
+  box-shadow: inset 0.22rem 0 0 rgba(242, 193, 78, 0.78);
+}
+
+.career-dashboard-card-calendar .career-week-strip-compact .career-day small {
+  display: -webkit-box;
+  overflow: hidden;
+  margin-top: 0.12rem;
+  color: var(--muted);
+  font-size: 0.56rem;
+  line-height: 1.12;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.career-dashboard-card-finance {
+  grid-area: auto;
+}
+
+@media (max-height: 800px) and (min-width: 1101px) {
+  .career-dashboard-grid-compact.career-home-zones {
+    gap: 0.44rem;
+  }
+
+  .career-home-zone {
+    gap: 0.22rem;
+  }
+
+  .career-zone-layout {
+    gap: 0.42rem;
+  }
+
+  .career-home-zones .career-dashboard-card {
+    padding: 0.5rem;
+  }
+
+  .career-decision-block-primary,
+  .career-consequence-grid,
+  .career-condition-mini-grid,
+  .career-finance-summary {
+    gap: 0.3rem;
+  }
+
+  .career-decision-block-primary > p,
+  .career-consequence-grid small,
+  .career-condition-mini-grid,
+  .career-finance-summary small {
+    display: none;
+  }
+
+  .career-decision-block-primary > strong {
+    font-size: 1.08rem;
+  }
+
+  .career-home-zones .career-dashboard-card-decision .career-action-row {
+    gap: 0.28rem;
+  }
+
+  .career-consequence-grid div,
+  .career-condition-mini-grid div,
+  .career-finance-summary div,
+  .career-decision-recommendation {
+    padding: 0.32rem;
+  }
+}
+
 @media (max-width: 1180px) and (min-width: 781px) {
+  .career-dashboard-grid-compact.career-home-zones {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "now"
+      "soon"
+      "later";
+  }
+
+  .career-now-layout,
+  .career-soon-layout,
+  .career-later-layout {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .career-now-layout .career-dashboard-card-decision,
+  .career-soon-layout .career-dashboard-card-calendar,
+  .career-later-layout .career-dashboard-card-ecosystem {
+    grid-column: 1 / -1;
+  }
+
+  .career-consequence-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
   .career-dashboard-grid-compact {
     grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
     grid-template-areas:
@@ -8344,6 +8619,44 @@ textarea:focus-visible {
 
   .career-ecosystem-strip-compact {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .career-dashboard-grid-compact.career-home-zones,
+  .career-now-layout,
+  .career-soon-layout,
+  .career-later-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .career-dashboard-grid-compact.career-home-zones {
+    grid-template-areas:
+      "now"
+      "soon"
+      "later";
+  }
+
+  .career-zone-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.18rem;
+  }
+
+  .career-zone-heading strong {
+    white-space: normal;
+  }
+
+  .career-home-zones .career-dashboard-card-decision .career-action-row {
+    grid-template-columns: 1fr;
+  }
+
+  .career-home-zones .career-dashboard-card-decision .career-action-row .command-button:first-child {
+    grid-column: auto;
+  }
+
+  .career-consequence-grid,
+  .career-condition-mini-grid,
+  .career-finance-summary {
+    grid-template-columns: 1fr;
   }
 
   .command-shell-launch .main-canvas {

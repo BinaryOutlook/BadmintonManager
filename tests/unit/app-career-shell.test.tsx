@@ -2,7 +2,13 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { App, commandIdForPage } from "../../app/App";
 import { TournamentNavigationProvider } from "../../app/tournamentNavigation";
-import { CareerCalendarPage, CareerRankingsPage, CareerTimelinePage, CareerTournamentHomePage } from "../../components/CareerWorkbench";
+import {
+  CareerCalendarPage,
+  CareerHomePage,
+  CareerRankingsPage,
+  CareerTimelinePage,
+  CareerTournamentHomePage
+} from "../../components/CareerWorkbench";
 import { addDays } from "../../game/career/calendar";
 import {
   appendCompletedTournamentMatchRecords,
@@ -191,6 +197,65 @@ function renderTimelinePage(overrides: Partial<Parameters<typeof CareerTimelineP
   return render(
     <TournamentNavigationProvider onOpenTournamentHome={onOpenTournamentHome}>
       <CareerTimelinePage
+        career={career}
+        tournament={null}
+        saveRecovery={null}
+        activeSavePresent={true}
+        corruptSavePresent={false}
+        onStartCareer={vi.fn()}
+        onOpenTraining={vi.fn()}
+        onOpenCalendar={vi.fn()}
+        onOpenHome={vi.fn()}
+        onOpenLiveMatch={vi.fn()}
+        onOpenPostMatch={vi.fn()}
+        onOpenProgram={vi.fn()}
+        onOpenRivals={vi.fn()}
+        onOpenMatchPlanning={vi.fn()}
+        onOpenSaveManager={vi.fn()}
+        onRequestNewSession={vi.fn()}
+        onOpenFacilities={vi.fn()}
+        onOpenMedia={vi.fn()}
+        onOpenScouting={vi.fn()}
+        onOpenRecruitment={vi.fn()}
+        onOpenYouth={vi.fn()}
+        onOpenStaff={vi.fn()}
+        onOpenPromises={vi.fn()}
+        onOpenPlayerProfile={vi.fn()}
+        onApplyTraining={vi.fn()}
+        onEnterEvent={vi.fn()}
+        onOpenScheduledCareerMatch={vi.fn()}
+        onStartManagedMatch={vi.fn()}
+        onContinueAfterPostMatch={vi.fn()}
+        onCommissionScoutReport={vi.fn()}
+        onMakeRecruitmentOffer={vi.fn()}
+        onTrainRosterAthlete={vi.fn()}
+        onEnterRosterAthleteLowerEvent={vi.fn()}
+        onDevelopYouthProspect={vi.fn()}
+        onEnterYouthLowerEvent={vi.fn()}
+        onHireStaffMember={vi.fn()}
+        onSetManagedAthletePromise={vi.fn()}
+        onWithdrawPromise={vi.fn()}
+        onAdvanceRivalCircuit={vi.fn()}
+        onUpgradeFacility={vi.fn()}
+        onResolveMediaObjectives={vi.fn()}
+        onUpdateAdvancedTacticPlan={vi.fn()}
+        onRefreshAssistantAdvice={vi.fn()}
+        onApplyAssistantAdvice={vi.fn()}
+        onOverrideAssistantAdvice={vi.fn()}
+        {...overrides}
+        onOpenTournamentHome={onOpenTournamentHome}
+      />
+    </TournamentNavigationProvider>
+  );
+}
+
+function renderHomePage(overrides: Partial<Parameters<typeof CareerHomePage>[0]> = {}) {
+  const career = createInitialCareerState(seededPlayers[0].player.id, 9919);
+  const onOpenTournamentHome = overrides.onOpenTournamentHome ?? vi.fn();
+
+  return render(
+    <TournamentNavigationProvider onOpenTournamentHome={onOpenTournamentHome}>
+      <CareerHomePage
         career={career}
         tournament={null}
         saveRecovery={null}
@@ -434,6 +499,89 @@ describe("career shell daily action", () => {
     expect(commandIdForPage({ id: "timeline" })).toBe("timeline");
     expect(commandIdForPage({ id: "calendar" })).toBe("calendar");
     expect(within(commandRail).getByRole("button", { name: /Inbox Preview preview-only/ })).toBeDisabled();
+  });
+
+  it("orders the Portal Home as a decision center and demotes healthy save and ledger noise", () => {
+    renderHomePage();
+
+    const portal = screen.getByLabelText("Portal Home");
+    const panelHeadings = within(portal)
+      .getAllByRole("heading", { level: 2 })
+      .map((heading) => heading.textContent);
+
+    expect(panelHeadings).toEqual([
+      "Next Decision",
+      "Player Condition",
+      "Urgent Tasks",
+      "Calendar Snapshot",
+      "Ranking Pressure",
+      "Recent Match Evidence",
+      "Finance Summary",
+      "Program Ecosystem"
+    ]);
+    expect(within(portal).queryByText("Save state")).not.toBeInTheDocument();
+    expect(within(portal).queryByRole("heading", { name: "Ledger" })).not.toBeInTheDocument();
+    expect(within(portal).getByRole("heading", { name: "Finance Summary" })).toBeInTheDocument();
+  });
+
+  it("renders consequence-first next-decision fields with a direct event-entry action", () => {
+    const onEnterEvent = vi.fn();
+
+    renderHomePage({ onEnterEvent });
+
+    const decision = screen.getByLabelText("Next Decision");
+    expect(decision).toHaveTextContent("Action");
+    expect(decision).toHaveTextContent("Enter Event");
+    expect(decision).toHaveTextContent("Reward");
+    expect(decision).toHaveTextContent("+700 pts");
+    expect(decision).toHaveTextContent("$15,000");
+    expect(decision).toHaveTextContent("Cost");
+    expect(decision).toHaveTextContent("-$3,550");
+    expect(decision).toHaveTextContent("Risk");
+    expect(decision).toHaveTextContent(/Projected condition/i);
+    expect(decision).toHaveTextContent("Deadline");
+    expect(decision).toHaveTextContent("2026-06-01");
+    expect(decision).toHaveTextContent("Recommendation");
+
+    fireEvent.click(within(decision).getByRole("button", { name: "Enter Event" }));
+
+    expect(onEnterEvent).toHaveBeenCalledWith("metro-open-300");
+  });
+
+  it("labels the Portal calendar by decision pressure instead of defaulting every open day to training", () => {
+    const baseCareer = createInitialCareerState(seededPlayers[0].player.id, 9920);
+    const openCalendar = renderHomePage({ career: baseCareer });
+    const openSnapshot = screen.getByLabelText("Portal calendar snapshot");
+
+    expect(openSnapshot).toHaveTextContent("Today");
+    expect(openSnapshot).toHaveTextContent("Entry closes");
+    expect(openSnapshot).toHaveTextContent("Open");
+
+    openCalendar.unmount();
+
+    const metro = getCareerEvent(baseCareer.events, "metro-open-300")!;
+    const enteredCareer = {
+      ...baseCareer,
+      activeEventId: metro.id,
+      enteredEventIds: [metro.id],
+      selectedTrainingPlanId: "physio-recovery",
+      stage: "event_entered" as const
+    };
+
+    renderHomePage({ career: enteredCareer });
+
+    const enteredSnapshot = screen.getByLabelText("Portal calendar snapshot");
+    expect(enteredSnapshot).toHaveTextContent("Travel");
+    expect(enteredSnapshot).toHaveTextContent("Match");
+    expect(enteredSnapshot).toHaveTextContent("Recovery");
+  });
+
+  it("surfaces save state in the Portal inbox only when the local slot needs attention", () => {
+    renderHomePage({ activeSavePresent: false, corruptSavePresent: true });
+
+    const inbox = screen.getByLabelText("Portal tasks inbox");
+    expect(inbox).toHaveTextContent("Save issue");
+    expect(inbox).toHaveTextContent("Review Save Manager");
   });
 
   it("routes Timeline and Calendar sidebar shortcuts into standalone pages", () => {
