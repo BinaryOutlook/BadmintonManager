@@ -70,6 +70,28 @@ function moduleTactic(modules: TacticModule[]): MatchTactic {
   };
 }
 
+function roundTripLiveSession(input: MatchInput) {
+  const session = simulateNextPoint(createMatchSession(input));
+  const save = persistedSaveSchema.parse(JSON.parse(JSON.stringify({
+    version: CURRENT_SAVE_VERSION,
+    selectedPlayerId: input.playerA.id,
+    plannedTacticKey: "balancedControl",
+    seed: input.seed,
+    tournament: null,
+    liveMatch: {
+      matchId: "intent-round-trip",
+      roundName: "R16",
+      managedSide: "A",
+      opponentName: input.playerB.name,
+      opponentTacticLabel: input.tacticB.label,
+      session
+    },
+    career: null
+  })));
+
+  return { session, save };
+}
+
 describe("advanced tactic runtime profile", () => {
   it("keeps legacy tactics on an exact neutral runtime overlay", () => {
     const profile = deriveTacticRuntimeProfile({
@@ -218,25 +240,26 @@ describe("advanced tactic runtime profile", () => {
       riskTolerance: 78,
       modules: ["target_backhand", "body_smash"]
     }), 9302);
-    const session = simulateNextPoint(createMatchSession(input));
-    const save = persistedSaveSchema.parse(JSON.parse(JSON.stringify({
-      version: CURRENT_SAVE_VERSION,
-      selectedPlayerId: input.playerA.id,
-      plannedTacticKey: "balancedControl",
-      seed: input.seed,
-      tournament: null,
-      liveMatch: {
-        matchId: "intent-round-trip",
-        roundName: "R16",
-        managedSide: "A",
-        opponentName: input.playerB.name,
-        opponentTacticLabel: input.tacticB.label,
-        session
-      },
-      career: null
-    })));
+    const { session, save } = roundTripLiveSession(input);
 
     expect(save.liveMatch?.session.input.tacticA.advancedIntent).toEqual(input.tacticA.advancedIntent);
+    expect(JSON.parse(JSON.stringify(simulateNextPoint(save.liveMatch!.session)))).toEqual(
+      JSON.parse(JSON.stringify(simulateNextPoint(session)))
+    );
+  });
+
+  it("round-trips legacy version-11 live tactics through the neutral compatibility path", () => {
+    const legacyTactic: MatchTactic = {
+      label: "Legacy Balance",
+      tempo: "balanced",
+      pressurePattern: "front_court_control",
+      riskProfile: "standard"
+    };
+    const input = matchInput(legacyTactic, 9304);
+    const { session, save } = roundTripLiveSession(input);
+
+    expect(save.liveMatch?.session.input.tacticA.advancedIntent).toBeUndefined();
+    expect(deriveTacticRuntimeProfile(save.liveMatch!.session.input.tacticA).advanced).toBe(false);
     expect(JSON.parse(JSON.stringify(simulateNextPoint(save.liveMatch!.session)))).toEqual(
       JSON.parse(JSON.stringify(simulateNextPoint(session)))
     );
