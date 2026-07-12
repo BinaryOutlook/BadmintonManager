@@ -16,6 +16,7 @@ import type {
   CareerEventDefinition,
   CareerEventHistoryRecord,
   CareerEventHistoryStatus,
+  CareerSeasonEventDefinition,
   CareerEventStatus,
   CareerMatchRecordSource,
   CareerState,
@@ -484,6 +485,25 @@ export const careerEventCatalog: CareerEventDefinition[] = [
   }
 ];
 
+function dateInSeason(templateDate: string, seasonId: string) {
+  return `${seasonId}${templateDate.slice(4)}`;
+}
+
+export function generateCareerSeasonEvents(seasonId: string): CareerSeasonEventDefinition[] {
+  return careerEventCatalog.map((template) => ({
+    ...template,
+    id: seasonId === "2026" ? template.id : `${seasonId}:${template.id}`,
+    seasonId,
+    templateId: template.id,
+    startDate: dateInSeason(template.startDate, seasonId),
+    entryDeadline: dateInSeason(template.entryDeadline, seasonId),
+    rankingCutoffDate: dateInSeason(template.rankingCutoffDate, seasonId),
+    seedingDate: dateInSeason(template.seedingDate, seasonId),
+    withdrawalDeadline: dateInSeason(template.withdrawalDeadline, seasonId),
+    drawDate: dateInSeason(template.drawDate, seasonId)
+  }));
+}
+
 export const tierOrder: Record<CareerTier, number> = {
   National: 1,
   Invitational: 2,
@@ -494,43 +514,33 @@ export const tierOrder: Record<CareerTier, number> = {
   Finals: 7
 };
 
-export function getCareerEvent(events: CareerEventDefinition[], eventId: string) {
+export function getCareerEvent<TEvent extends CareerEventDefinition>(events: TEvent[], eventId: string): TEvent | undefined {
   return events.find((event) => event.id === eventId);
 }
 
 export function hydrateCareerEventDefinition(event: CareerEventDefinition): CareerEventDefinition {
-  const catalogEvent = careerEventCatalog.find((candidate) => candidate.id === event.id);
+  const templateId = "templateId" in event && typeof event.templateId === "string"
+    ? event.templateId
+    : event.id;
+  const catalogEvent = careerEventCatalog.find((candidate) => candidate.id === templateId);
 
   return catalogEvent
     ? {
         ...catalogEvent,
-        tier: catalogEvent.tier,
-        weekNumber: catalogEvent.weekNumber,
-        startDate: catalogEvent.startDate,
-        durationDays: catalogEvent.durationDays,
-        location: catalogEvent.location,
-        entryDeadline: catalogEvent.entryDeadline,
-        rankingCutoffDate: catalogEvent.rankingCutoffDate,
-        seedingDate: catalogEvent.seedingDate,
-        withdrawalDeadline: catalogEvent.withdrawalDeadline,
-        drawDate: catalogEvent.drawDate,
-        drawSize: catalogEvent.drawSize,
-        seedCount: catalogEvent.seedCount,
-        status: catalogEvent.status,
-        eligibility: catalogEvent.eligibility,
-        stakesLabel: catalogEvent.stakesLabel,
-        travelCost: catalogEvent.travelCost,
-        entryFee: catalogEvent.entryFee,
-        trainingCostModifier: catalogEvent.trainingCostModifier,
-        prizeMoney: catalogEvent.prizeMoney,
-        rankingPoints: catalogEvent.rankingPoints,
-        prestige: catalogEvent.prestige
+        ...event,
+        tier: normalizeCareerTierLabel(event.tier) as CareerTier
       }
     : { ...event, tier: normalizeCareerTierLabel(event.tier) as CareerTier };
 }
 
 export function hydrateCareerEvents(events: CareerEventDefinition[]): CareerEventDefinition[] {
   const hydratedById = new Map(events.map((event) => [event.id, hydrateCareerEventDefinition(event)]));
+  const seasonQualified = events.some((event) => "seasonId" in event && "templateId" in event);
+
+  if (seasonQualified) {
+    return [...hydratedById.values()].sort((left, right) => left.startDate.localeCompare(right.startDate));
+  }
+
   const catalogMerged = careerEventCatalog.map((event) => hydratedById.get(event.id) ?? event);
   const customEvents = [...hydratedById.values()].filter(
     (event) => !careerEventCatalog.some((catalogEvent) => catalogEvent.id === event.id)
@@ -1288,7 +1298,11 @@ export function appendPlayedCareerEventHistory(args: {
   scorelines?: string[];
   bracketSnapshot?: CareerEventBracketSnapshot;
 }): CareerState {
-  if (args.state.eventHistory.some((record) => record.eventId === args.event.id)) {
+  if (
+    args.state.eventHistory.some(
+      (record) => record.seasonId === args.state.seasonId && record.eventId === args.event.id
+    )
+  ) {
     return args.state;
   }
 
@@ -1304,6 +1318,7 @@ export function appendPlayedCareerEventHistory(args: {
     category: "entry"
   });
   const record: CareerEventHistoryRecord = {
+    seasonId: args.state.seasonId,
     eventId: args.event.id,
     eventName: args.event.name,
     tier: args.event.tier,
@@ -1470,6 +1485,7 @@ export function appendCareerResultAchievements(args: {
   const runnerUpId = finalMatch.sideAId === finalMatch.winnerId ? finalMatch.sideBId : finalMatch.sideAId;
   const candidates = [
     {
+      seasonId: args.state.seasonId,
       playerId: finalMatch.winnerId,
       eventId: args.event.id,
       eventName: args.event.name,
@@ -1477,6 +1493,7 @@ export function appendCareerResultAchievements(args: {
       result: "champion" as const
     },
     {
+      seasonId: args.state.seasonId,
       playerId: runnerUpId,
       eventId: args.event.id,
       eventName: args.event.name,
@@ -1489,6 +1506,7 @@ export function appendCareerResultAchievements(args: {
       !args.state.playerAchievements.some(
         (record) =>
           record.playerId === candidate.playerId &&
+          record.seasonId === candidate.seasonId &&
           record.eventId === candidate.eventId &&
           record.result === candidate.result
       )
@@ -1507,7 +1525,11 @@ export function appendCareerResultAchievements(args: {
 export function recordPastCareerEvents(state: CareerState): CareerState {
   const records = state.events
     .filter((event) => {
-      if (state.eventHistory.some((record) => record.eventId === event.id)) {
+      if (
+        state.eventHistory.some(
+          (record) => record.seasonId === state.seasonId && record.eventId === event.id
+        )
+      ) {
         return false;
       }
 
@@ -1521,6 +1543,7 @@ export function recordPastCareerEvents(state: CareerState): CareerState {
       const entered = state.enteredEventIds.includes(event.id);
 
       return {
+        seasonId: state.seasonId,
         eventId: event.id,
         eventName: event.name,
         tier: event.tier,

@@ -1343,7 +1343,7 @@ describe("dynamic rival ecosystem", () => {
   it("seeds persistent rival programs with ranked rosters and pressure metadata", () => {
     const career = createInitialCareerState(seededPlayers[0].player.id, 8201);
 
-    expect(career.version).toBe(10);
+    expect(career.version).toBe(11);
     expect(career.rivals.programs).toHaveLength(4);
     expect(career.rivals.programs[0]?.ageCurve).toMatchObject({ peakAge: 26, declineRate: 0.09 });
     expect(career.rivals.programs[0]?.roster[0]?.currentRank).toBeGreaterThan(0);
@@ -1464,7 +1464,7 @@ describe("advanced tactics and assistant advice", () => {
     const career = createInitialCareerState(seededPlayers[0].player.id, 8301);
     const plan = activeAdvancedTacticPlan(career);
 
-    expect(career.version).toBe(10);
+    expect(career.version).toBe(11);
     expect(plan).toMatchObject({
       tempo: 52,
       rearCourtPressure: 58,

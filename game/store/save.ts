@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const CURRENT_SAVE_VERSION = 12 as const;
+export const CURRENT_SAVE_VERSION = 13 as const;
 import {
   liveDirectiveSchema,
   matchTacticSchema,
@@ -22,9 +22,11 @@ import {
   careerStateV7Schema,
   careerStateV8Schema,
   careerStateV9Schema,
+  careerStateV10Schema,
   defaultRankingSettings,
   normalizeCareerTierLabel,
   type CareerState,
+  type CareerStateV10,
   type RankingEntry,
   type RankingResult
 } from "../career/models";
@@ -263,6 +265,11 @@ export const phase7RankingLedgerPersistedSaveSchema = legacyPersistedSaveSchema.
   career: careerStateV9Schema.nullable()
 });
 
+export const phase8PreparationPersistedSaveSchema = legacyPersistedSaveSchema.extend({
+  version: z.literal(12),
+  career: careerStateV10Schema.nullable()
+});
+
 export const persistedSaveSchema = legacyPersistedSaveSchema.extend({
   version: z.literal(CURRENT_SAVE_VERSION),
   career: careerStateSchema.nullable()
@@ -270,6 +277,7 @@ export const persistedSaveSchema = legacyPersistedSaveSchema.extend({
 
 export const persistedSavePayloadSchema = z.union([
   persistedSaveSchema,
+  phase8PreparationPersistedSaveSchema,
   phase7RankingLedgerPersistedSaveSchema,
   phase6UniverseRecordsPersistedSaveSchema,
   phase5UniversePersistedSaveSchema,
@@ -298,7 +306,7 @@ export type SaveImportValidationResult =
     };
 
 type MigratableCurrentCareer = Omit<
-  CareerState,
+  CareerStateV10,
   | "version"
   | "matchHistory"
   | "playerAchievements"
@@ -316,9 +324,11 @@ type MigratableCurrentCareer = Omit<
   rankingSettings?: CareerState["rankingSettings"];
   preparationSchedule?: CareerState["preparationSchedule"];
   developmentHistory?: CareerState["developmentHistory"];
+  seasonStartedAt?: string;
+  seasonReviews?: CareerState["seasonReviews"];
 };
 
-function legacyRankingResultsFromSnapshot(career: Pick<CareerState, "date" | "seasonId" | "events"> & {
+function legacyRankingResultsFromSnapshot(career: Pick<CareerStateV10, "date" | "seasonId" | "events"> & {
   rankings: RankingEntry[];
 }): RankingResult[] {
   const results: RankingResult[] = [];
@@ -368,12 +378,57 @@ function legacyRankingResultsFromSnapshot(career: Pick<CareerState, "date" | "se
   return results;
 }
 
+function seasonIdForArchiveDate(date: string | undefined, fallback: string) {
+  return date?.slice(0, 4) || fallback;
+}
+
+function seasonStartedAtForMigration(career: MigratableCurrentCareer) {
+  if (career.seasonStartedAt) {
+    return career.seasonStartedAt;
+  }
+
+  return career.economy.ledger
+    .map((entry) => entry.date)
+    .filter((date) => date.startsWith(`${career.seasonId}-`))
+    .sort((left, right) => left.localeCompare(right))[0] ?? career.date;
+}
+
+function templateIdForMigratedEvent(event: CareerStateV10["events"][number]) {
+  if ("templateId" in event && typeof event.templateId === "string") {
+    return event.templateId;
+  }
+
+  const separator = event.id.indexOf(":");
+  return separator === -1 ? event.id : event.id.slice(separator + 1);
+}
+
 function withCareerHistoryDefaults(career: MigratableCurrentCareer): CareerState {
+  const events = hydrateCareerEvents(career.events).map((event) => ({
+    ...event,
+    seasonId:
+      "seasonId" in event && typeof event.seasonId === "string"
+        ? event.seasonId
+        : career.seasonId,
+    templateId: templateIdForMigratedEvent(event)
+  }));
   const baseCareer: CareerState = {
     ...career,
-    version: 10,
-    matchHistory: career.matchHistory ?? [],
-    playerAchievements: career.playerAchievements ?? [],
+    version: 11,
+    seasonStartedAt: seasonStartedAtForMigration(career),
+    seasonReviews: career.seasonReviews ?? [],
+    events,
+    eventHistory: (career.eventHistory ?? []).map((record) => ({
+      ...record,
+      seasonId: record.seasonId ?? seasonIdForArchiveDate(record.startDate, career.seasonId)
+    })),
+    matchHistory: (career.matchHistory ?? []).map((record) => ({
+      ...record,
+      seasonId: record.seasonId ?? seasonIdForArchiveDate(record.date, career.seasonId)
+    })),
+    playerAchievements: (career.playerAchievements ?? []).map((record) => ({
+      ...record,
+      seasonId: record.seasonId ?? seasonIdForArchiveDate(record.date, career.seasonId)
+    })),
     universeEvents: career.universeEvents ?? [],
     preparationSchedule: career.preparationSchedule ?? [],
     developmentHistory:
@@ -401,10 +456,7 @@ function refreshMigratedCareer(career: MigratableCurrentCareer | null) {
   return career
     ? hydrateLegacyUniverseEventRecords(
         refreshAssistantAdvice(
-          withCareerHistoryDefaults({
-            ...career,
-            events: hydrateCareerEvents(career.events)
-          })
+          withCareerHistoryDefaults(career)
         )
       )
     : null;
@@ -433,6 +485,14 @@ export function migratePersistedSave(payload: PersistedSavePayload): PersistedSa
     return simulateMigratedSaveUniverse({
       ...payload,
       career: refreshMigratedCareer(payload.career)
+    });
+  }
+
+  if (payload.version === 12) {
+    return simulateMigratedSaveUniverse({
+      ...payload,
+      version: CURRENT_SAVE_VERSION,
+      career: payload.career ? refreshMigratedCareer({ ...payload.career, version: 10 }) : null
     });
   }
 

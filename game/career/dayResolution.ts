@@ -8,6 +8,7 @@ import {
 } from "./facilitiesMedia";
 import { advanceProgramPools, expireScoutReports, resolveDueScoutReports, resolvePromises } from "./ecosystem";
 import { getCareerEvent, recordPastCareerEvents } from "./events";
+import { finalizeSeasonReview } from "./lifecycle";
 import type { CareerState } from "./models";
 import { resolveScheduledPreparation, scheduledPreparationForAthlete } from "./preparation";
 import { chargeProgramPayroll, isProgramPayrollDate, weeklyProgramPayroll } from "./program";
@@ -29,7 +30,7 @@ export function resolveCareerDay(args: {
     targetDate: advancedCareer.date
   }).career;
 
-  return refreshAssistantAdvice(
+  const resolvedCareer = refreshAssistantAdvice(
     recordPastCareerEvents(
       resolveMediaObjectives(
         chargeProgramPayroll(
@@ -50,6 +51,8 @@ export function resolveCareerDay(args: {
       )
     )
   );
+
+  return finalizeSeasonReview(resolvedCareer);
 }
 
 export type AdvanceDayForecast = {

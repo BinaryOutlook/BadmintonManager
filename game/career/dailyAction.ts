@@ -39,6 +39,14 @@ export type CareerDailyAction =
       route: "review";
     }
   | {
+      kind: "review_season";
+      tone: "required";
+      label: string;
+      reason: string;
+      route: "reports";
+      seasonId: string;
+    }
+  | {
       kind: "unavailable";
       tone: "disabled";
       label: "Career Unavailable";
@@ -77,6 +85,21 @@ export function getCareerDailyAction(args: {
       label: "Review Match",
       reason: "The latest managed match needs post-match review.",
       route: "review"
+    };
+  }
+
+  const currentSeasonReview = args.career.seasonReviews.find(
+    (review) => review.seasonId === args.career?.seasonId
+  );
+
+  if (currentSeasonReview) {
+    return {
+      kind: "review_season",
+      tone: "required",
+      label: `Review ${currentSeasonReview.seasonId} Season`,
+      reason: "The finalized season review must be acknowledged before the next season is opened.",
+      route: "reports",
+      seasonId: currentSeasonReview.seasonId
     };
   }
 

@@ -1,5 +1,5 @@
 import { seededPlayers } from "../content/players";
-import { careerEventCatalog } from "./events";
+import { careerEventCatalog, generateCareerSeasonEvents } from "./events";
 import { createInitialEconomy } from "./economy";
 import { createDevelopmentBaseline } from "./development";
 import { createInitialEcosystem } from "./ecosystem";
@@ -75,7 +75,7 @@ export function createInitialCareerState(selectedPlayerId: string, seed: number)
 
   const athlete = createCareerAthlete(selectedPlayerId, ranking.rank, ranking.points);
   const career: CareerState = {
-    version: 10,
+    version: 11,
     seed,
     date,
     seasonId,
@@ -86,7 +86,9 @@ export function createInitialCareerState(selectedPlayerId: string, seed: number)
       managedPlayerId: selectedPlayerId
     },
     athletes: [athlete],
-    events: careerEventCatalog,
+    events: generateCareerSeasonEvents(seasonId),
+    seasonStartedAt: date,
+    seasonReviews: [],
     enteredEventIds: [],
     completedEventIds: [],
     eventHistory: [],

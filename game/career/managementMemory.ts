@@ -6,6 +6,7 @@ import { programTasksForCareer } from "./program";
 
 export type ManagementDestination =
   | { kind: "review" }
+  | { kind: "reports" }
   | { kind: "live_match" }
   | { kind: "training" }
   | { kind: "program" }
@@ -17,7 +18,7 @@ export type ManagementDestination =
 
 export type CareerInboxItem = {
   id: string;
-  category: "match" | "event" | "program" | "medical" | "scouting" | "promise" | "facility" | "finance";
+  category: "match" | "event" | "season" | "program" | "medical" | "scouting" | "promise" | "facility" | "finance";
   priority: "required" | "urgent" | "scheduled" | "information";
   date: string;
   title: string;
@@ -79,6 +80,23 @@ function subjectName(state: CareerState, subjectId: string) {
 
 export function careerInboxItems(state: CareerState): CareerInboxItem[] {
   const items: CareerInboxItem[] = [];
+
+  const currentSeasonReview = state.seasonReviews.find(
+    (review) => review.seasonId === state.seasonId
+  );
+
+  if (currentSeasonReview) {
+    items.push({
+      id: `inbox:season-review:${currentSeasonReview.seasonId}`,
+      category: "season",
+      priority: "required",
+      date: currentSeasonReview.createdAt,
+      title: `${currentSeasonReview.seasonId} season review ready`,
+      detail: `${currentSeasonReview.record.wins}-${currentSeasonReview.record.losses} record · ${currentSeasonReview.record.titles} title(s) · ${currentSeasonReview.economy.netCash >= 0 ? "+" : ""}${currentSeasonReview.economy.netCash} net cash.`,
+      actionLabel: "Review Season",
+      destination: { kind: "reports" }
+    });
+  }
 
   if (state.stage === "post_match" && state.lastMatchReport) {
     items.push({

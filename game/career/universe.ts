@@ -621,7 +621,8 @@ function bracketFromTournament(args: {
 }
 
 function recordSignature(record: CareerMatchRecord) {
-  return `${record.eventId}:${record.round}:${record.playerAId}:${record.playerBId}:${record.winnerId}:${record.scoreline}`;
+  const seasonId = record.seasonId ?? record.date.slice(0, 4);
+  return `${seasonId}:${record.eventId}:${record.round}:${record.playerAId}:${record.playerBId}:${record.winnerId}:${record.scoreline}`;
 }
 
 function ensureUniverseMatchRecords(args: {
@@ -635,7 +636,7 @@ function ensureUniverseMatchRecords(args: {
   const matchIds: string[] = [];
 
   for (const match of args.matches) {
-    const signature = `${args.event.id}:${match.round}:${match.playerAId}:${match.playerBId}:${match.winnerId}:${match.scoreline}`;
+    const signature = `${args.career.seasonId}:${args.event.id}:${match.round}:${match.playerAId}:${match.playerBId}:${match.winnerId}:${match.scoreline}`;
     const existingSignatureId = idsBySignature.get(signature);
 
     if (existingSignatureId) {
@@ -864,6 +865,7 @@ function appendUniverseAchievements(args: {
   const candidates = [
     args.championId
       ? {
+          seasonId: args.career.seasonId,
           playerId: args.championId,
           eventId: args.event.id,
           eventName: args.event.name,
@@ -873,6 +875,7 @@ function appendUniverseAchievements(args: {
       : null,
     args.runnerUpId
       ? {
+          seasonId: args.career.seasonId,
           playerId: args.runnerUpId,
           eventId: args.event.id,
           eventName: args.event.name,
@@ -886,6 +889,7 @@ function appendUniverseAchievements(args: {
       !args.career.playerAchievements.some(
         (achievement) =>
           achievement.playerId === candidate.playerId &&
+          achievement.seasonId === candidate.seasonId &&
           achievement.eventId === candidate.eventId &&
           achievement.result === candidate.result
       )
