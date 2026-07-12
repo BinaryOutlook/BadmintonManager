@@ -45,7 +45,8 @@ What is now stable:
 - the tournament setup athlete picker now leads with playstyle/strength recommendation modes, features the strongest choice in a `1 x 2` coach-pick card with four compact alternatives, and moves country, search, tier, style, and sort controls into the Browse All Athletes fallback
 - the first career core slice is implemented with a version `3` save payload, typed `game/career/*` modules, calendar/event entry, training/recovery, fatigue/injury readiness, ranking points, budget ledger, and career-aware pre/post match hubs
 - first launch now visibly presents paired `Start Tournament` and `Start Career` decisions
-- the command shell now exposes a Save Manager for the single local slot, including continue career, export JSON, import preview/confirm, active-save deletion, corrupt-backup deletion, and overwrite warnings
+- the command shell exposes a Local Career Library with named live/archived slots, verified backups, isolated recovery,
+  switching, rename, duplicate, export, import-to-new, archive/restore, and confirmed permanent deletion
 - the career workspace now has visible route chrome and an in-page Career Home map for Training, Calendar, Match Planning, Live Match, Post-Match Review, Save Manager, and New Session actions
 - the Career Home and Calendar now surface the fictional circuit calendar/ranking model: event tiers, entry deadlines, eligibility gates, ranking cutoffs, seed snapshots, draw milestones, points, prize/cost, readiness, and season-race stakes with a simplification boundary
 - public event tiers now use fictional `Circuit 300`, `Circuit 500`, `Circuit 750`, and `Circuit 1000` labels while legacy save imports normalize the previous tier text safely
@@ -217,6 +218,12 @@ What is now stable:
   identities, version-13 migration, required Reports acknowledgement, and durable-history tests
 - [x] implemented the local multi-slot repository and store contract with verified writes, bounded checkpoints,
   per-slot quarantine, legacy singleton migration, backup restore, duplication, archive, and isolated hard deletion
+- [x] replaced the single-save control surface with a responsive Local Career Library for named live/archived slots,
+  visible trust metadata, switching, rename, duplicate, export/import-to-new, archive/restore, backup restore, and
+  keyboard-confirmed permanent deletion; the migrated broad Playwright contract passes all 24 flows
+- [x] implemented a persistent deterministic career world with stored growth/peak/decline curves, retirement, fictional
+  annual intake, active-world rankings/event fields/background matches/rival rosters, generated-player addressing,
+  multi-season golden checks, and a 20-season save round trip
 
 ## In Progress
 

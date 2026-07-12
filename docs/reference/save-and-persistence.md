@@ -94,6 +94,8 @@ reports recovery attention.
 - qualifies current events with `seasonId` and stable `templateId` without resetting generated future dates;
 - derives season identifiers for legacy event, match, and achievement archives from their saved dates;
 - initializes `seasonStartedAt` and an empty `seasonReviews` list without inventing a historical review;
+- initializes a missing career world as an honest catalog snapshot at the saved season/date, with no invented prior
+  progression, retirement, or intake log;
 - hydrates honest `legacy_unavailable` universe evidence when precise old brackets do not exist;
 - simulates overdue universe state through the saved date without overwriting played managed-match facts;
 - normalizes legacy public tier labels, quick-tournament names, and missing archive sources;

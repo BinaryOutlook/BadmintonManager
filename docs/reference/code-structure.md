@@ -41,7 +41,8 @@ Important files:
 
 - `components/CareerWorkbench.tsx` renders the career command surfaces: Portal, Timeline, standalone month Calendar, Training, Rankings, Program Hub, Rival Programs, Facilities, Media, Scouting, Recruitment, Youth, Staff, Promises, Match Planning, Pre-Match, Post-Match, and Tournament Home.
 - `components/SetupView.tsx` owns the launch screen, career-athlete selection modal, quick-tournament selection, resume summary, and recovery entry points.
-- `components/SaveManagerView.tsx` owns import preview, export, active-slot deletion, corrupt-backup deletion, and save metadata presentation.
+- `components/SaveManagerView.tsx` owns the named local-career library: slot switching/metadata, rename, duplicate,
+  archive/restore, backup restore, import-to-new, export, permanent deletion, and legacy recovery presentation.
 - `components/MatchView.tsx` renders the live Match Command Center and dispatches point, set, directive, talk, and advance actions.
 - `components/OverviewView.tsx` and `components/CompleteView.tsx` support the quick-tournament bracket and completion surfaces.
 - `components/KnockoutTree.tsx` renders reusable bracket trees for quick and career contexts.
@@ -72,6 +73,9 @@ Danger zone: `game/core/match.ts` changes can alter deterministic scorelines, sa
 - `events.ts` owns the fictional event catalog, deadline/status derivation, eligibility, seeding snapshots, confirmed match/deadline facts, and archive grouping helpers.
 - `schedule.ts` combines those confirmed event facts with preparation, medical, travel, scouting, and facility commitments into one deterministic manager-facing read model. Portal, Timeline, and Calendar should consume this model instead of independently inferring commitments.
 - `rankings.ts` owns rank ordering and duplicate-safe event point awards.
+- `lifecycle.ts` owns season-review readiness, idempotent review snapshots, and explicit next-season opening.
+- `world.ts` owns persistent player snapshots, stable career curves, retirement/intake, active-world pools/maps, and
+  rival-roster synchronization. It must remain deterministic and independent of stored array order.
 - `hubs.ts` builds pre-match briefs and settles career matches into rewards, reports, rankings, histories, match records, and achievements.
 - `training.ts`, `health.ts`, and `economy.ts` own preparation load, injury/readiness, and budget ledger behavior.
 - `preparation.ts` owns one-block-per-day scheduling, immutable plan snapshots, idempotent resolution, modifier evidence, and bounded development history.

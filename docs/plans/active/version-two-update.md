@@ -90,6 +90,9 @@ For every state, verify horizontal overflow, clipped controls, focus order, visi
   and migrates version-12 careers without fabricating season reviews.
 - Season close requires terminal universe truth and no pending match or preparation intent. Reports is the explicit
   boundary for opening the next generated calendar.
+- Season start now advances a persistent, deterministic world registry: stored peak/decline curves, retirement,
+  fictional intake, active-world rankings/event fields, rival synchronization, and generated-player profiles are backed
+  by current save state. A 20-season save round trip and multi-season golden guard the long-run contract.
 - Browser persistence uses independent named envelopes, a verified active pointer, two rolling per-slot checkpoints,
   and isolated quarantine records. Import creates a new slot; restore writes a new revision.
 - Slot switching, rename, duplicate, archive/restore, permanent delete, legacy singleton migration, and backup restore

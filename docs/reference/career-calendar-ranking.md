@@ -349,8 +349,18 @@ the review, and the manager explicitly starts the next year.
 
 Rollover generates the next calendar and media objectives, resets only current-season entry/stage/preparation/race
 state, and preserves ledger, ranking results, match/event/achievement archives, universe records, development history,
-program state, and all prior reviews. Rival-program athletes age once per rollover with a bounded maximum. Broader
-world-player retirement and intake remain separate lifecycle work and must not be claimed by the UI yet.
+program state, and all prior reviews. It also advances the persisted world registry exactly once for the new season.
+
+The world registry stores immutable-per-revision player snapshots plus career-curve metadata. Its advancement is
+deterministic from career seed, season, and player identity, independent of array order, and idempotent for an already
+advanced season. Active players grow toward a stored peak, plateau, then decline; eligible non-program athletes retire,
+and a fictional annual intake replaces retirements while keeping at least 32 active circuit players. Generated athletes
+enter rankings at zero points and participate in event fields, background simulation, rival rosters, scouting briefs,
+career tournaments, the World Directory, and player profiles. Retired records remain addressable for historical reports.
+
+`world.lifecycleLog` is append-only evidence for progression, retirement, and intake. Migration from an older save
+creates an honest snapshot of the known catalog roster at the saved date; it does not infer past aging, retirements, or
+intakes. Quick Tournament deliberately continues to use the immutable content catalog.
 
 ## Persistence
 

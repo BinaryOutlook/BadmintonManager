@@ -130,6 +130,21 @@ Projected values are bounded to the canonical `1`–`100` rating scale. Career `
 
 This boundary ensures that completed training affects deterministic match resolution without mutating shared content or changing quick-run behavior.
 
+## Persistent Career World
+
+`CareerState.world` is the career-mode source of truth for the evolving circuit. Each record contains a full `Player`
+snapshot, active or retired status, origin, stable ordering and seed metadata, debut/retirement seasons, and stored peak,
+decline, and retirement ages. The content catalog seeds a new career but is not mutated.
+
+At an explicit season rollover, `game/career/world.ts` advances every active snapshot once. Attribute changes are
+bounded to the canonical `1`–`100` scale and derived only from stable career, season, player, and attribute inputs.
+For program athletes that also exist in the world registry, the world delta for smash, stamina, and composure is added
+to persisted career development so aging neither discards training gains nor gets hidden by the match projection.
+Generated intake players use fictional identities and the same canonical schema. Active registry players own career
+rankings, draws, background matches, rival synchronization, and current-career directory/profile presentation; retained
+retired snapshots keep historical names and profiles resolvable. Quick Tournament remains catalog-based and isolated
+from career aging.
+
 ### Persisted Development Evidence
 
 Player Profile development evidence comes from `CareerState.developmentHistory`, not from a synthetic comparison presented as recent training. Completed and blocked preparation records retain their career date, outcome, plan identity, actual post-resolution snapshot, and explanation. The profile derives per-block gains only when an earlier retained snapshot exists for that athlete.

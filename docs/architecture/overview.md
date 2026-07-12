@@ -162,6 +162,9 @@ Responsibilities:
 - training, recovery, injury/readiness, economy, facilities, media, scouting, recruitment, youth, staff, promises, rivals, and tactical planning
 - pre-match brief creation and post-match settlement
 - rankings, event histories, universe event records, match histories, player achievements, and tactical viewer evidence
+- explicit season review/start boundaries plus deterministic future calendar generation
+- persistent world-player snapshots, aging curves, retirement/intake, active-world rankings and fields, and durable
+  lifecycle evidence through `game/career/world.ts`
 
 Career date advancement must respect scheduled managed matches. Direct day advancement must not skip a due or overdue match. Universe progression belongs in `game/career/` services: day advancement, managed match review, and save load/import may run `simulateUniverseThroughDate()`, but React components must not simulate or fabricate tournament outcomes.
 
