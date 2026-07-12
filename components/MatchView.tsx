@@ -1,6 +1,6 @@
 import { liveDirectiveOptions } from "../game/content/tactics.js";
 import { telemetryForCompetitor } from "../game/core/intel.js";
-import type { LiveDirective, LiveMatchSession, Player, Side, TeamTalk } from "../game/core/models.js";
+import type { LiveDirective, LiveMatchSession, MatchTactic, Player, Side, TeamTalk } from "../game/core/models.js";
 import { projectTacticalViewerFromSession } from "../game/career/tacticalViewer.js";
 import { SmartPlayerText } from "./PlayerLink.js";
 import { TacticalMatchViewer } from "./TacticalMatchViewer.js";
@@ -381,6 +381,7 @@ function TelemetryPanel(props: TelemetryPanelProps) {
 
 interface TacticalOptionsPanelProps {
   session: LiveMatchSession;
+  managedTactic: MatchTactic;
   activeDirective?: LiveDirective;
   pendingTeamTalk?: TeamTalk;
   onApplyDirective: (directive: LiveDirective) => void;
@@ -395,6 +396,27 @@ function TacticalOptionsPanel(props: TacticalOptionsPanelProps) {
       <div className="panel-header">
         <h2>Tactical Options</h2>
         <span>{props.activeDirective ? "Directive armed" : "No live directive queued"}</span>
+      </div>
+
+      <div className="tactical-option-group" aria-label="Locked match plan">
+        <div className="panel-header panel-header-inline panel-header-compact">
+          <h3>Locked Match Plan</h3>
+          <span>Persistent</span>
+        </div>
+        <strong>{props.managedTactic.label}</strong>
+        <p className="panel-summary">
+          {props.managedTactic.advancedIntent
+            ? `Tempo ${props.managedTactic.advancedIntent.tempo} / rear ${props.managedTactic.advancedIntent.rearCourtPressure} / net ${props.managedTactic.advancedIntent.netPriority} / risk ${props.managedTactic.advancedIntent.riskTolerance} / ${props.managedTactic.advancedIntent.rallyLengthIntent} rallies`
+            : `${props.managedTactic.tempo} tempo / ${props.managedTactic.pressurePattern.replaceAll("_", " ")} / ${props.managedTactic.riskProfile.replace("_", " ")}`}
+        </p>
+        {props.managedTactic.advancedIntent && props.managedTactic.advancedIntent.modules.length > 0 && (
+          <div className="knowledge-chip-row" aria-label="Active plan modules">
+            {props.managedTactic.advancedIntent.modules.map((module) => (
+              <span className="knowledge-chip knowledge-chip-verified" key={module}>{module.replaceAll("_", " ")}</span>
+            ))}
+          </div>
+        )}
+        <p className="panel-summary">The plan stays active for the match. Live directives alter only the next three points.</p>
       </div>
 
       <div className="tactical-option-group">
@@ -533,6 +555,7 @@ export function MatchView(props: MatchViewProps) {
           />
           <TacticalOptionsPanel
             session={props.session}
+            managedTactic={props.managedSide === "A" ? props.session.competitorA.tactic : props.session.competitorB.tactic}
             activeDirective={activeDirective}
             pendingTeamTalk={pendingTeamTalk}
             onApplyDirective={props.onApplyDirective}

@@ -1164,6 +1164,9 @@ test("can complete and reload the career core slice with tactical viewer proof",
   await page.getByRole("button", { name: "Enter Match" }).click();
   await expect(page.getByRole("button", { name: "Next Point", exact: true })).toBeVisible();
   await expect(page.getByTestId("tactical-viewer")).toBeVisible();
+  await expect(page.getByLabel("Locked match plan")).toContainText("Command Balance");
+  await expect(page.getByLabel("Active plan modules")).toContainText("rear court lock");
+  await expect(page.getByLabel("Active plan modules")).toContainText("net trap");
 
   for (let index = 0; index < 180; index += 1) {
     if (await page.getByRole("button", { name: "Advance", exact: true }).isVisible().catch(() => false)) {

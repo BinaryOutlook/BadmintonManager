@@ -14,6 +14,7 @@ import {
   teamTalkAdjustments,
   tempoModifiers
 } from "./ratings";
+import { deriveTacticRuntimeProfile, runtimePlacementPressure, runtimeZoneWeight } from "./tactics";
 import type {
   CourtZone,
   LiveCompetitorState,
@@ -146,6 +147,7 @@ function shotWeights(input: {
 }): Array<{ item: ShotType; weight: number }> {
   const { shotIndex, incomingBonus, aggression, tactic, directive, safeShotBias = 0 } = input;
   const attackingTilt = aggression / 18 + incomingBonus / 8;
+  const runtime = deriveTacticRuntimeProfile(tactic);
 
   return SHOT_TYPES.map((shotType) => {
     let weight = 4;
@@ -201,6 +203,7 @@ function shotWeights(input: {
     }
 
     weight += directiveShotModifier(directive, shotType);
+    weight += runtime.shotWeightDeltas[shotType];
 
     return { item: shotType, weight: Math.max(1, weight) };
   });
@@ -208,10 +211,12 @@ function shotWeights(input: {
 
 function zoneWeights(input: {
   shotType: ShotType;
+  tactic: LiveCompetitorState["tactic"];
   directive?: LiveDirective;
   defender: MatchInput["playerA"];
 }): Array<{ item: CourtZone; weight: number }> {
-  const { shotType, directive, defender } = input;
+  const { shotType, tactic, directive, defender } = input;
+  const runtime = deriveTacticRuntimeProfile(tactic);
 
   return COURT_ZONES.map((zone) => {
     let weight = 3;
@@ -233,6 +238,7 @@ function zoneWeights(input: {
     }
 
     weight += directiveZoneModifier(directive, zone, defender);
+    weight += runtimeZoneWeight(runtime, zone, defender);
 
     return { item: zone, weight };
   });
@@ -366,21 +372,31 @@ function quickExpectedRallyLoad(input: MatchInput) {
     (input.tacticB.pressurePattern === "rear_court_grind" || input.tacticB.pressurePattern === "defensive_absorb" ? 1 : 0) -
     (input.tacticA.pressurePattern === "all_out_attack" ? 1 : 0) -
     (input.tacticB.pressurePattern === "all_out_attack" ? 1 : 0);
+  const advancedLoad =
+    deriveTacticRuntimeProfile(input.tacticA).expectedRallyDelta +
+    deriveTacticRuntimeProfile(input.tacticB).expectedRallyDelta;
 
-  return clamp(4.5 + defensiveTilt + tacticLoad - attackMismatch / 45, 3.5, 10.5);
+  return clamp(4.5 + defensiveTilt + tacticLoad + advancedLoad - attackMismatch / 45, 3.5, 10.5);
 }
 
 function quickStaminaBurn(player: MatchInput["playerA"], tactic: MatchInput["tacticA"], rallyLength: number) {
   const staminaFactor = 1 - (player.ratings.physical.stamina - 50) / 170;
-  const burn = (0.55 + rallyLength * 0.08) * tempoModifiers(tactic).staminaBurn * staminaFactor;
+  const runtime = deriveTacticRuntimeProfile(tactic);
+  const burn =
+    (0.55 + rallyLength * 0.08) *
+    tempoModifiers(tactic).staminaBurn *
+    runtime.staminaBurnMultiplier *
+    staminaFactor;
   return clamp(burn, 0.35, 1.8);
 }
 
 function rallyContinuationStress(shotIndex: number, tactic: MatchInput["tacticA"]) {
   const tempoLoad = tactic.tempo === "fast" ? 1 : tactic.tempo === "conserve" ? -0.4 : 0;
+  const runtime = deriveTacticRuntimeProfile(tactic);
   return (
     Math.max(0, shotIndex + 1 - RALLY_STRESS_START_SHOT) *
-    (RALLY_STRESS_BASE + RALLY_STRESS_TEMPO_WEIGHT * tempoLoad)
+    (RALLY_STRESS_BASE + RALLY_STRESS_TEMPO_WEIGHT * tempoLoad) *
+    runtime.rallyStressMultiplier
   );
 }
 
@@ -603,6 +619,7 @@ function resolveRally(args: {
     const actorRallyForm = activeSide === "A" ? rallyFormA : rallyFormB;
     const defenderRallyForm = activeSide === "A" ? rallyFormB : rallyFormA;
     const directive = getActiveDirective(actorState);
+    const actorRuntime = deriveTacticRuntimeProfile(actorState.tactic);
     const rallyStress = rallyContinuationStress(shotIndex, actorState.tactic);
     const actorShape = scoreShapeModifiers({
       side: activeSide,
@@ -635,6 +652,7 @@ function resolveRally(args: {
         : rng.weightedPick(
             zoneWeights({
               shotType,
+              tactic: actorState.tactic,
               directive,
               defender
             })
@@ -651,6 +669,7 @@ function resolveRally(args: {
     const difficulty =
       baseDifficulty(shotType) +
       riskModifier(actorState.tactic.riskProfile) +
+      actorRuntime.riskDifficulty +
       directiveRiskModifier(directive) +
       targetZoneModifier(targetZone) +
       (shotType === "smash" ? actorState.aggressionShift * 0.18 : 0);
@@ -736,7 +755,9 @@ function resolveRally(args: {
       (shotType === "net" || shotType === "drop" ? 6 : 0) +
       targetZonePressureModifier(targetZone) +
       tacticPlacementPressure(actorState.tactic, targetZone) +
+      runtimePlacementPressure(actorRuntime, targetZone) +
       tempoModifiers(actorState.tactic).attack +
+      actorRuntime.attackBonus +
       (directive === "push_pace" ? 4 : 0) -
       actorShape.attackDamping;
     const retrievalBase =
@@ -903,8 +924,14 @@ function applyPointFatigue(session: LiveMatchSession, point: PointSummary) {
   const rallyBurn = 1.1 + point.rallyLength * 0.08;
   const directiveBurnA = directiveStaminaBurn(getActiveDirective(session.competitorA));
   const directiveBurnB = directiveStaminaBurn(getActiveDirective(session.competitorB));
-  const tempoA = tempoModifiers(session.competitorA.tactic).staminaBurn * directiveBurnA;
-  const tempoB = tempoModifiers(session.competitorB.tactic).staminaBurn * directiveBurnB;
+  const tempoA =
+    tempoModifiers(session.competitorA.tactic).staminaBurn *
+    deriveTacticRuntimeProfile(session.competitorA.tactic).staminaBurnMultiplier *
+    directiveBurnA;
+  const tempoB =
+    tempoModifiers(session.competitorB.tactic).staminaBurn *
+    deriveTacticRuntimeProfile(session.competitorB.tactic).staminaBurnMultiplier *
+    directiveBurnB;
 
   session.competitorA.stamina = Math.max(38, session.competitorA.stamina - rallyBurn * tempoA);
   session.competitorB.stamina = Math.max(38, session.competitorB.stamina - rallyBurn * tempoB);
@@ -959,9 +986,16 @@ function finalizePendingTalk(target: LiveCompetitorState, teamTalk?: TeamTalk) {
   target.aggressionShift += adjustment.aggressionShift;
 
   if (adjustment.tempo) {
+    const advancedTempo = adjustment.tempo === "fast" ? 78 : 26;
     target.tactic = {
       ...target.tactic,
-      tempo: adjustment.tempo
+      tempo: adjustment.tempo,
+      advancedIntent: target.tactic.advancedIntent
+        ? {
+            ...target.tactic.advancedIntent,
+            tempo: advancedTempo
+          }
+        : undefined
     };
   }
 }
@@ -1189,13 +1223,14 @@ function pickQuickReason(input: {
   const attack = deriveProfile(player).attackPressure;
   const opponentFatigue = fatiguePenalty(opponentStamina);
   const risk = tactic.riskProfile === "high_risk" ? 3 : tactic.riskProfile === "patient" ? -2 : 0;
+  const runtimeRisk = deriveTacticRuntimeProfile(tactic).riskDifficulty;
 
   return input.rng.weightedPick<PointSummary["reason"]>([
     { item: "winner", weight: 4 + attack / 18 + tacticShotModifier(tactic, "smash") * 0.4 },
     { item: "forced_error", weight: 7 + attack / 22 + opponentFatigue * 0.25 },
     { item: "unforced_error", weight: 3 + (100 - opponent.ratings.mental.focus) / 18 + opponentFatigue * 0.3 },
     { item: "net", weight: 2 + (100 - opponent.ratings.technical.netPlay) / 28 - risk * 0.2 },
-    { item: "out", weight: 2 + risk + (100 - opponent.ratings.mental.composure) / 32 },
+    { item: "out", weight: 2 + risk + runtimeRisk * 0.45 + (100 - opponent.ratings.mental.composure) / 32 },
     { item: "left_long", weight: 1 + deriveProfile(player).judgment / 60 }
   ]);
 }
@@ -1219,7 +1254,8 @@ function createQuickStats(args: {
         clamp(
           0.16 +
             (profileA.attackPressure - profileB.recoveryQuality) / 260 +
-            tacticShotModifier(args.input.tacticA, "smash") / 60,
+            tacticShotModifier(args.input.tacticA, "smash") / 60 +
+            deriveTacticRuntimeProfile(args.input.tacticA).shotWeightDeltas.smash / 80,
           0.08,
           0.4
         )
@@ -1229,7 +1265,8 @@ function createQuickStats(args: {
         clamp(
           0.16 +
             (profileB.attackPressure - profileA.recoveryQuality) / 260 +
-            tacticShotModifier(args.input.tacticB, "smash") / 60,
+            tacticShotModifier(args.input.tacticB, "smash") / 60 +
+            deriveTacticRuntimeProfile(args.input.tacticB).shotWeightDeltas.smash / 80,
           0.08,
           0.4
         )
@@ -1580,6 +1617,8 @@ export function simulateQuickMatch(input: MatchInput): MatchResult {
   const ratingB = quickRating(input.playerB);
   const tacticFitA = tacticFit(input.playerA, input.playerB, input.tacticA);
   const tacticFitB = tacticFit(input.playerB, input.playerA, input.tacticB);
+  const runtimeA = deriveTacticRuntimeProfile(input.tacticA);
+  const runtimeB = deriveTacticRuntimeProfile(input.tacticB);
   const rallyLoad = quickExpectedRallyLoad(input);
   const matchFormEdge = rng.nextNumber(-QUICK_MATCH_FORM_RANGE, QUICK_MATCH_FORM_RANGE);
   const sets: SetSummary[] = [];
@@ -1609,6 +1648,8 @@ export function simulateQuickMatch(input: MatchInput): MatchResult {
         (ratingA - ratingB) * QUICK_RATING_EDGE_WEIGHT +
         tacticFitA -
         tacticFitB +
+        runtimeA.quickPointEdge -
+        runtimeB.quickPointEdge +
         fatigueEdge +
         pressurePenaltyB -
         pressurePenaltyA +

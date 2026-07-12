@@ -60,6 +60,39 @@ describe("MatchView", () => {
     expect(props.onFinishSet).toHaveBeenCalledTimes(1);
   });
 
+  it("separates the persistent exact match plan from short live directives", () => {
+    const session = createMatchSession({
+      seed: 90211,
+      playerA: seededPlayers[0].player,
+      playerB: seededPlayers[1].player,
+      tacticA: {
+        label: "Rear Court Blitz",
+        tempo: "fast",
+        pressurePattern: "all_out_attack",
+        riskProfile: "high_risk",
+        advancedIntent: {
+          version: 1,
+          tempo: 84,
+          rearCourtPressure: 91,
+          netPriority: 58,
+          riskTolerance: 79,
+          rallyLengthIntent: "shorten",
+          modules: ["rear_court_lock", "body_smash"]
+        }
+      },
+      tacticB: tacticLibrary.spreadCourt
+    });
+
+    renderMatchView(session);
+
+    const lockedPlan = screen.getByLabelText("Locked match plan");
+    expect(lockedPlan).toHaveTextContent("Rear Court Blitz");
+    expect(lockedPlan).toHaveTextContent("Tempo 84 / rear 91 / net 58 / risk 79 / shorten rallies");
+    expect(within(lockedPlan).getByLabelText("Active plan modules")).toHaveTextContent("rear court lock");
+    expect(within(lockedPlan).getByLabelText("Active plan modules")).toHaveTextContent("body smash");
+    expect(lockedPlan).toHaveTextContent("Live directives alter only the next three points");
+  });
+
   it("renders set one as the only visible score column at match start", () => {
     renderMatchView(createSession());
 

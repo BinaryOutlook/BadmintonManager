@@ -2,6 +2,7 @@ import { playerMap } from "../content/players";
 import { trainingPlans } from "./training";
 import type { MatchTactic, PressurePattern, RiskProfile, TempoSetting } from "../core/models";
 import { deriveProfile } from "../core/ratings";
+import { deriveTacticRuntimeProfile } from "../core/tactics";
 import { getCareerEvent } from "./events";
 import {
   clamp,
@@ -142,6 +143,8 @@ export function calculateTacticEffectProfile(args: {
 }): TacticEffectProfile {
   const athlete = args.state ? managedAthlete(args.state) : null;
   const opponent = args.opponentId ? playerMap[args.opponentId] : null;
+  const tactic = tacticPlanToMatchTactic(args.plan);
+  const runtime = deriveTacticRuntimeProfile(tactic);
   const readinessRelief = athlete ? (100 - athlete.readiness) * 0.18 : 0;
   const rearModule = args.plan.modules.includes("rear_court_lock") ? 6 : 0;
   const netModule = args.plan.modules.includes("net_trap") ? 7 : 0;
@@ -155,13 +158,17 @@ export function calculateTacticEffectProfile(args: {
         : 0;
   const opponentProfile = opponent ? deriveProfile(opponent) : null;
   const notes = [
-    `${tacticPlanToMatchTactic(args.plan).pressurePattern.replaceAll("_", " ")} bridge`,
+    `${tactic.pressurePattern.replaceAll("_", " ")} bridge`,
     args.plan.rallyLengthIntent === "extend"
       ? "built to drag points longer"
       : args.plan.rallyLengthIntent === "shorten"
         ? "built to end rallies before fatigue compounds"
         : "balanced rally target"
   ];
+
+  if (args.plan.modules.length > 0) {
+    notes.push(`engine modules: ${args.plan.modules.map((module) => module.replaceAll("_", " ")).join(", ")}`);
+  }
 
   if (opponentProfile) {
     notes.push(
@@ -173,12 +180,12 @@ export function calculateTacticEffectProfile(args: {
 
   return {
     planId: args.plan.id,
-    staminaLoad: clamp(Math.round(args.plan.tempo * 0.34 + args.plan.rearCourtPressure * 0.24 + Math.max(0, rallyModifier) + readinessRelief), 0, 100),
-    errorRisk: clamp(Math.round(args.plan.riskTolerance * 0.62 + args.plan.tempo * 0.18 - netModule + safetyModule + readinessRelief), 0, 100),
-    winnerPressure: clamp(Math.round(args.plan.rearCourtPressure * 0.46 + args.plan.tempo * 0.24 + args.plan.riskTolerance * 0.18 + bodySmashModule), 0, 100),
-    netControl: clamp(Math.round(args.plan.netPriority * 0.72 + netModule - args.plan.riskTolerance * 0.08), 0, 100),
-    rearCourtControl: clamp(Math.round(args.plan.rearCourtPressure * 0.72 + rearModule + args.plan.tempo * 0.08), 0, 100),
-    strainBias: clamp(Math.round(args.plan.tempo * 0.26 + args.plan.riskTolerance * 0.22 + args.plan.rearCourtPressure * 0.2 + Math.max(0, rallyModifier)), 0, 100),
+    staminaLoad: clamp(Math.round(args.plan.tempo * 0.34 + args.plan.rearCourtPressure * 0.24 + Math.max(0, rallyModifier) + readinessRelief + (runtime.staminaBurnMultiplier - 1) * 80), 0, 100),
+    errorRisk: clamp(Math.round(args.plan.riskTolerance * 0.62 + args.plan.tempo * 0.18 - netModule + safetyModule + readinessRelief + runtime.riskDifficulty * 2), 0, 100),
+    winnerPressure: clamp(Math.round(args.plan.rearCourtPressure * 0.46 + args.plan.tempo * 0.24 + args.plan.riskTolerance * 0.18 + bodySmashModule + runtime.attackBonus * 2 + runtime.backhandZoneWeight * 0.5), 0, 100),
+    netControl: clamp(Math.round(args.plan.netPriority * 0.72 + netModule - args.plan.riskTolerance * 0.08 + runtime.frontZoneWeight), 0, 100),
+    rearCourtControl: clamp(Math.round(args.plan.rearCourtPressure * 0.72 + rearModule + args.plan.tempo * 0.08 + runtime.backZoneWeight), 0, 100),
+    strainBias: clamp(Math.round(args.plan.tempo * 0.26 + args.plan.riskTolerance * 0.22 + args.plan.rearCourtPressure * 0.2 + Math.max(0, rallyModifier) + (runtime.staminaBurnMultiplier - 1) * 100), 0, 100),
     matchupNotes: notes
   };
 }
