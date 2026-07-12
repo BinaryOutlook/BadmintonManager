@@ -1,6 +1,6 @@
 # Project Status
 
-Status date: 2026-05-20
+Status date: 2026-07-13
 Current version target: `v0.3 Stable Career System`
 Overall phase: stable career-system foundation and controlled expansion on top of the completed `v0.2.4` UI/career/save bridge and the `v0.2.3` match-algorithm baseline
 Chosen stack: Option A local-first SPA
@@ -94,6 +94,7 @@ What is now stable:
 - TIX-018 now mediates the sidebar schedule rail by removing the duplicated sidebar brand/player identity block, ordering commands around the requested Core/Program/Match/Operations/System flow, marking `Inbox Preview` as disabled preview-only, and routing `Timeline`/`Calendar` commands into the `Schedule` subtabs
 - TIX-022 now turns documentation into maintenance infrastructure with a true `docs/README.md` map, durable mechanics/code/save/workflow references, refreshed architecture overview, compact `AGENTS.md` documentation discipline, and ADR-003
 - TIX-023 replaces static ranking points with deterministic bootstrap ranking results, rolling 52-week/best-10 snapshots, version `11` / career `9` migration, and rank-seeded event fields with non-entry and alternates.
+- the frontend now has an imagegen-guided court-console redesign layer across launch, athlete selection, career shell, Portal, Calendar, Rankings, Squad, Player Profile, Live Match, and Save Manager surfaces, with a compact brand lockup, calmer court-line atmosphere, tighter management cards/tables, and updated bounded-viewport proof
 
 ## Completed
 
@@ -195,6 +196,7 @@ What is now stable:
 - [x] implemented TIX-018 sidebar schedule rail mediation with a pure navigation sidebar, disabled Inbox Preview, and Timeline/Calendar shortcuts into the Schedule split
 - [x] established the TIX-022 documentation system and maintainer harness with linked subsystem references, save/persistence invariants, source-structure guidance, maintainer workflow rules, and ADR-003
 - [x] implemented TIX-027 Tournament Page Optimization with draw-first Tournament Home ordering, collapsed event notes, compact two-row bracket score cells, deterministic abbreviation/collision handling, selected-match detail, and 32-ready bracket layout coverage
+- [x] implemented the imagegen-guided frontend rework as a shared court-console visual system, including shell/topbar markup, global styling, responsive dense-page constraints, updated unit/e2e expectations, and desktop/mobile screenshot proof
 
 ## In Progress
 
