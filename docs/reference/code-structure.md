@@ -69,7 +69,8 @@ Danger zone: `game/core/match.ts` changes can alter deterministic scorelines, sa
 - `models.ts` defines career schemas, versions, stages, events, rankings, economy, health, ecosystem, rivals, tactics, facilities, media, histories, match records, achievements, and reports.
 - `state.ts` creates the initial career state and locked managed-athlete career record.
 - `calendar.ts`, `dailyAction.ts`, `dayResolution.ts`, and `matchSchedule.ts` own date advancement, daily CTA resolution, pure whole-day consequences/forecasts, due-match guards, scheduled round dates, and activation of due events.
-- `events.ts` owns the fictional event catalog, deadline/status derivation, eligibility, seeding snapshots, timeline entries, confirmed calendar entries, and archive grouping helpers.
+- `events.ts` owns the fictional event catalog, deadline/status derivation, eligibility, seeding snapshots, confirmed match/deadline facts, and archive grouping helpers.
+- `schedule.ts` combines those confirmed event facts with preparation, medical, travel, scouting, and facility commitments into one deterministic manager-facing read model. Portal, Timeline, and Calendar should consume this model instead of independently inferring commitments.
 - `rankings.ts` owns rank ordering and duplicate-safe event point awards.
 - `hubs.ts` builds pre-match briefs and settles career matches into rewards, reports, rankings, histories, match records, and achievements.
 - `training.ts`, `health.ts`, and `economy.ts` own preparation load, injury/readiness, and budget ledger behavior.
@@ -78,7 +79,7 @@ Danger zone: `game/core/match.ts` changes can alter deterministic scorelines, sa
 - `ecosystem.ts`, `rivals.ts`, `tactics.ts`, and `facilitiesMedia.ts` own program depth systems and their migrations.
 - `tacticalViewer.ts` derives Rally Pattern Map evidence from match results or live sessions.
 
-Danger zone: `calendar.ts`, `dailyAction.ts`, `matchSchedule.ts`, `events.ts`, `hubs.ts`, `models.ts`, and migrations in ecosystem/tactics/facilities modules can change whether players can skip matches, duplicate rewards, break old saves, or fabricate archives.
+Danger zone: `calendar.ts`, `dailyAction.ts`, `matchSchedule.ts`, `events.ts`, `schedule.ts`, `hubs.ts`, `models.ts`, and migrations in ecosystem/tactics/facilities modules can change whether players can skip matches, duplicate rewards, break old saves, or fabricate archives.
 
 ## `game/tournament/`
 

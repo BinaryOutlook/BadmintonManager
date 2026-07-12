@@ -172,7 +172,7 @@ Calendar -> one-month manager diary
 
 - `Timeline` is the event ledger. It exposes exactly the primary tabs `Upcoming` and `Past Events`, with `Upcoming`
   first and selected by default.
-- `Upcoming` preserves the compact paged event schedule and upcoming manager-relevant match commitments.
+- `Upcoming` preserves the compact paged event schedule and adds a chronological manager-commitment ledger.
 - `Past Events` is a selectable Timeline tab, not a lower passive section, and contains completed or archived event rows.
 - `Calendar` is a standalone month grid of confirmed manager commitments only.
 - `Calendar` must not render as a Timeline or Schedule tab. It renders exactly one visible month at a time with
@@ -181,8 +181,28 @@ Calendar -> one-month manager diary
 The confirmed calendar rule is:
 
 $$
-\text{Calendar entry} \iff \text{played match} \lor \text{confirmed scheduled commitment} \lor \text{manager-relevant deadline}
+\text{Calendar entry} \iff \text{persisted manager commitment} \lor \text{confirmed event fact}
 $$
+
+`game/career/schedule.ts` is the canonical manager-facing schedule read model. Portal, Timeline, and Calendar all
+consume its stable entries instead of inferring their own labels from `selectedTrainingPlanId`, entered events, or
+raw subsystem state. It combines:
+
+- played or currently confirmed matches and manager-relevant entry/draw deadlines
+- committed event travel, with entry-time cost and load explicitly marked as already applied
+- scheduled or resolved preparation blocks
+- projected medical return dates while an injury remains active
+- scouting assignment due dates and terminal report states
+- facility construction completion dates and retained completion history
+
+Every entry carries a stable semantic id, date, category, status, readable title/detail, and an optional destination.
+Destinations route to tournament, scheduled match, training, scouting, or facilities surfaces; the read model never
+mutates career state. Duplicate source facts are resolved deterministically, with terminal outcomes taking precedence
+over stale pending rows. Dates use inclusive starts and exclusive ends for range and month queries.
+
+Past entry/draw deadlines are not reconstructed after their source stops emitting them. The current save schema does
+not preserve enough historical eligibility evidence to distinguish a relevant missed deadline from an event that was
+never available to the program. Historical months therefore omit those rows instead of fabricating expired facts.
 
 The default visible month is the month containing `career.date`. Month navigation only changes UI-local month cursor
 state; it must not mutate `career.date` or advance simulation state.
