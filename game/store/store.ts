@@ -3,6 +3,7 @@ import { seededPlayers, playerMap } from "../content/players";
 import { tacticLibrary } from "../content/tactics";
 import { advanceCareerCalendar } from "../career/calendar";
 import { canAffordEventEntry, chargeEventEntry } from "../career/economy";
+import { careerPlayerForMatch } from "../career/development";
 import {
   advanceFacilityBuilds,
   applyFacilitiesToTraining,
@@ -1086,6 +1087,10 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
         return state;
       }
 
+      const managedCareerAthlete = state.career?.athletes.find(
+        (entry) => entry.playerId === state.tournament?.managedPlayerId
+      );
+
       if (state.career) {
         const schedule = currentManagedMatchSchedule({
           career: state.career,
@@ -1104,10 +1109,9 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
           return next;
         }
 
-        const athlete = state.career.athletes.find(
-          (entry) => entry.playerId === state.career?.program.managedPlayerId
-        );
-        const medicalGate = athlete ? canCompeteWithInjury(athlete) : { allowed: true, reason: "Available" };
+        const medicalGate = managedCareerAthlete
+          ? canCompeteWithInjury(managedCareerAthlete)
+          : { allowed: true, reason: "Available" };
 
         if (!medicalGate.allowed) {
           const next = {
@@ -1122,9 +1126,17 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
         }
       }
 
+      const baseManagedPlayer = playerMap[state.tournament.managedPlayerId];
+      const matchPlayerMap = managedCareerAthlete && baseManagedPlayer
+        ? {
+            ...playerMap,
+            [managedCareerAthlete.playerId]: careerPlayerForMatch(baseManagedPlayer, managedCareerAthlete)
+          }
+        : playerMap;
+
       const prepared = createManagedMatchInput({
         tournament: state.tournament,
-        playerMap,
+        playerMap: matchPlayerMap,
         tacticA: currentManagedTactic(state)
       });
 

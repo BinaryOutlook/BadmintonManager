@@ -116,6 +116,20 @@ One acceptable example is:
 
 The exact weights can be tuned, but they should stay centralized in one module.
 
+## Career Development Projection
+
+The content catalog remains immutable. A career stores its evolving athlete values separately in `AthleteCareerState.development`; when a managed career match starts, `game/career/development.ts` creates a match-only player projection.
+
+Only values with direct canonical engine equivalents are overlaid:
+
+- career `smash` -> technical `smash`
+- career `stamina` -> physical `stamina`
+- career `composure` -> mental `composure`
+
+Projected values are bounded to the canonical `1`–`100` rating scale. Career `recovery`, fatigue, readiness, injury risk, and injury status remain preparation/medical state rather than being silently converted into unrelated player ratings. Quick tournaments continue to use the immutable catalog player.
+
+This boundary ensures that completed training affects deterministic match resolution without mutating shared content or changing quick-run behavior.
+
 ## Player Identity
 
 Each player should also expose a readable style label such as:

@@ -62,7 +62,7 @@ A managed match begins from an event or quick-tournament bracket state. The app 
 - tactic selected by the player or generated for autoplay opponents
 - deterministic seed state from the tournament
 
-Career matches may also expose a pre-match brief, medical gate, schedule date, and tactical planning bridge.
+Career matches may also expose a pre-match brief, medical gate, schedule date, and tactical planning bridge. Before creating the live session, persisted career development is projected onto the managed athlete's direct match ratings (`smash`, `stamina`, and `composure`). The canonical content player is never mutated, and quick tournaments remain on catalog ratings.
 
 ### Live Match
 

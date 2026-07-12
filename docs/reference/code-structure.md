@@ -73,6 +73,7 @@ Danger zone: `game/core/match.ts` changes can alter deterministic scorelines, sa
 - `rankings.ts` owns rank ordering and duplicate-safe event point awards.
 - `hubs.ts` builds pre-match briefs and settles career matches into rewards, reports, rankings, histories, match records, and achievements.
 - `training.ts`, `health.ts`, and `economy.ts` own preparation load, injury/readiness, and budget ledger behavior.
+- `development.ts` projects persisted career growth onto direct managed-match rating equivalents without mutating canonical player content.
 - `ecosystem.ts`, `rivals.ts`, `tactics.ts`, and `facilitiesMedia.ts` own program depth systems and their migrations.
 - `tacticalViewer.ts` derives Rally Pattern Map evidence from match results or live sessions.
 
