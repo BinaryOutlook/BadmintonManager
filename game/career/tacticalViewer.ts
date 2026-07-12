@@ -1,4 +1,4 @@
-import type { LiveMatchSession, MatchResult, PointSummary, Side, ShotEvent } from "../core/models";
+import type { LiveMatchSession, MatchResult, MatchTactic, PointSummary, Side, ShotEvent } from "../core/models";
 import type { CareerState, TacticalViewerFrame, TacticalViewerZone } from "./models";
 import { activeAdvancedTacticPlan, calculateTacticEffectProfile } from "./tactics";
 
@@ -94,9 +94,21 @@ function allPointsFromSession(session: LiveMatchSession) {
   return [...session.setSummaries.flatMap((set) => set.points), ...session.currentSetPoints];
 }
 
-function tacticMarkersFromState(state?: CareerState, fallbackLabel?: string) {
+function tacticMarkersFromState(state?: CareerState, fallbackTactic?: MatchTactic) {
   if (!state) {
-    return fallbackLabel ? [fallbackLabel] : [];
+    if (!fallbackTactic) {
+      return [];
+    }
+
+    const intent = fallbackTactic.advancedIntent;
+
+    return intent
+      ? [
+          fallbackTactic.label,
+          `tempo ${intent.tempo} / rear ${intent.rearCourtPressure} / net ${intent.netPriority} / risk ${intent.riskTolerance}`,
+          intent.modules.length > 0 ? `modules ${intent.modules.map((module) => module.replaceAll("_", " ")).join(", ")}` : "no plan modules"
+        ]
+      : [fallbackTactic.label];
   }
 
   const plan = activeAdvancedTacticPlan(state);
@@ -114,7 +126,7 @@ function projectFrame(args: {
   points: PointSummary[];
   managedSide: Side;
   state?: CareerState;
-  fallbackTacticLabel?: string;
+  fallbackTactic?: MatchTactic;
 }): TacticalViewerFrame {
   const zones = new Map<TacticalViewerZone["zone"], ZoneAccumulator>(
     COURT_ZONES.map((zone) => [zone, emptyZone(zone)])
@@ -189,7 +201,7 @@ function projectFrame(args: {
     pressure,
     movementStrain,
     momentum,
-    tacticMarkers: tacticMarkersFromState(args.state, args.fallbackTacticLabel),
+    tacticMarkers: tacticMarkersFromState(args.state, args.fallbackTactic),
     momentumTimeline: momentumTimeline.slice(-18),
     turningPoint,
     summary: hotZone && hotZone.shots > 0
@@ -217,13 +229,13 @@ export function projectTacticalViewerFromSession(args: {
   managedSide: Side;
   matchId?: string;
 }): TacticalViewerFrame {
-  const fallbackTacticLabel =
-    args.managedSide === "A" ? args.session.input.tacticA.label : args.session.input.tacticB.label;
+  const fallbackTactic =
+    args.managedSide === "A" ? args.session.competitorA.tactic : args.session.competitorB.tactic;
 
   return projectFrame({
     matchId: args.matchId ?? "live-match",
     points: allPointsFromSession(args.session),
     managedSide: args.managedSide,
-    fallbackTacticLabel
+    fallbackTactic
   });
 }

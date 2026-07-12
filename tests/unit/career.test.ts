@@ -1691,6 +1691,9 @@ describe("tactical viewer evidence projection", () => {
     expect(firstFrame.sequence).toBe(1);
     expect(firstFrame.zones.reduce((total, zone) => total + zone.shots, 0)).toBeGreaterThan(0);
     expect(firstFrame.pressure).toBeGreaterThan(0);
+    expect(firstFrame.tacticMarkers.join(" ")).toContain("tempo 82 / rear 88 / net 61 / risk 72");
+    expect(firstFrame.tacticMarkers.join(" ")).toContain("rear court lock");
+    expect(firstFrame.tacticMarkers.join(" ")).toContain("body smash");
   });
 });
 
