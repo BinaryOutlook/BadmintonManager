@@ -154,6 +154,47 @@ describe("multi-slot save repository", () => {
     expect(storage.getItem(`${SAVE_REPOSITORY_PREFIX}:backup:career-one:1`)).toBeNull();
   });
 
+  it("duplicates a slot into an isolated identity without rewriting the source", () => {
+    const storage = new MemoryStorage();
+    const saves = repository(storage, {
+      times: ["2026-07-13T10:00:00.000Z", "2026-07-13T11:00:00.000Z"],
+      ids: ["career-one", "career-copy"]
+    });
+    const source = saves.createSlot({ name: "Career One", save: gameSave(21) });
+
+    const duplicate = saves.duplicateSlot(source.slotId);
+    saves.updateSlot(duplicate.slotId, gameSave(22));
+
+    expect(duplicate).toMatchObject({
+      slotId: "career-copy",
+      name: "Career One Copy",
+      revision: 1,
+      save: { seed: 21 }
+    });
+    expect(saves.getActiveSlotId()).toBe("career-copy");
+    expect(saves.readSlot(source.slotId)?.save.seed).toBe(21);
+    expect(saves.readSlot(source.slotId)?.revision).toBe(1);
+  });
+
+  it("deletes only the selected slot and its backups after the active pointer is cleared", () => {
+    const storage = new MemoryStorage();
+    const saves = repository(storage, {
+      times: ["2026-07-13T10:00:00.000Z", "2026-07-13T11:00:00.000Z"],
+      ids: ["career-one", "career-two"]
+    });
+    saves.createSlot({ name: "Career One", save: gameSave(31) });
+    saves.updateSlot("career-one", gameSave(32));
+    saves.createSlot({ name: "Career Two", save: gameSave(41) });
+    saves.setActiveSlot("career-one");
+
+    saves.deleteSlot("career-one");
+
+    expect(saves.getActiveSlotId()).toBeNull();
+    expect(saves.readSlot("career-one")).toBeNull();
+    expect(saves.listBackups("career-one")).toEqual([]);
+    expect(saves.readSlot("career-two")?.save.seed).toBe(41);
+  });
+
   it("does not touch the active slot when its pre-overwrite backup cannot be verified", () => {
     const storage = new BackupFailureStorage();
     const saves = repository(storage, {

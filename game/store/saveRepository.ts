@@ -62,6 +62,11 @@ export interface UpdateSaveSlotOptions {
   activate?: boolean;
 }
 
+export interface DuplicateSaveSlotOptions {
+  name?: string;
+  activate?: boolean;
+}
+
 export type LegacySaveMigrationResult =
   | { status: "none" }
   | { status: "invalid"; message: string }
@@ -172,6 +177,40 @@ export class SaveRepository {
     }
 
     return envelope;
+  }
+
+  duplicateSlot(slotId: string, options: DuplicateSaveSlotOptions = {}) {
+    const source = this.requireSlot(slotId);
+
+    return this.createSlot({
+      name: options.name?.trim() || `${source.name} Copy`,
+      save: source.save,
+      activate: options.activate ?? true
+    });
+  }
+
+  deleteSlot(slotId: string) {
+    const validatedSlotId = identifierSchema.parse(slotId);
+    const key = slotKey(validatedSlotId);
+
+    if (this.storage.getItem(key) === null) {
+      throw new SaveRepositoryError(`Save slot ${validatedSlotId} does not exist.`);
+    }
+
+    if (this.getActiveSlotId() === validatedSlotId) {
+      this.setActiveSlot(null);
+    }
+
+    const ownedKeys = this.keys().filter(
+      (candidate) => candidate === key || candidate.startsWith(backupPrefix(validatedSlotId))
+    );
+
+    for (const ownedKey of ownedKeys) {
+      this.storage.removeItem(ownedKey);
+      if (this.storage.getItem(ownedKey) !== null) {
+        throw new SaveRepositoryError(`Save slot data could not be deleted from ${ownedKey}.`);
+      }
+    }
   }
 
   renameSlot(slotId: string, name: string) {

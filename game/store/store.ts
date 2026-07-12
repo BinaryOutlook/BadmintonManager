@@ -48,6 +48,7 @@ import { clearScheduledPreparationBlock, schedulePreparationBlock } from "../car
 import { createEventFieldSnapshot, simulateUniverseThroughDate } from "../career/universe";
 import { getTrainingPlan } from "../career/training";
 import { advanceRivalCircuit } from "../career/rivals";
+import { startNextSeason } from "../career/lifecycle";
 import {
   activeAdvancedTacticPlan,
   applyAssistantAdvice,
@@ -74,6 +75,11 @@ import {
   persistedSavePayloadSchema,
   type PersistedSave
 } from "./save";
+import {
+  SaveRepository,
+  type SaveRepositoryStorage,
+  type SaveSlotEnvelope
+} from "./saveRepository";
 
 export const STORAGE_KEY = "badminton-manager-save";
 export const CORRUPT_STORAGE_KEY = "badminton-manager-save-corrupt";
@@ -108,10 +114,16 @@ export interface TournamentStoreState {
   saveRecovery: SaveRecoveryNotice | null;
   activeSavePresent: boolean;
   corruptSavePresent: boolean;
+  saveSlots: SaveSlotEnvelope[];
+  activeSaveSlotId: string | null;
+  quarantinedSlotCount: number;
+  quarantinedSlotCounts: Record<string, number>;
+  saveBackupCounts: Record<string, number>;
   startCareer: (managedPlayerId?: string) => void;
   scheduleCareerTraining: (planId: string | null) => void;
   enterCareerEvent: (eventId: string) => void;
   advanceCareerDay: () => void;
+  startNextCareerSeason: () => void;
   openScheduledCareerMatch: (eventId?: string) => void;
   continueCareerAfterPostMatch: () => void;
   commissionScoutReport: (subjectId: string, subjectType: "candidate" | "prospect" | "opponent") => void;
@@ -149,6 +161,14 @@ export interface TournamentStoreState {
   reset: () => void;
   exportActiveSave: () => PersistedSave | null;
   replaceActiveSave: (save: PersistedSave) => void;
+  switchSaveSlot: (slotId: string) => void;
+  renameSaveSlot: (slotId: string, name: string) => void;
+  archiveSaveSlot: (slotId: string) => void;
+  duplicateSaveSlot: (slotId: string, name?: string) => void;
+  deleteSaveSlot: (slotId: string) => void;
+  restoreLatestSaveBackup: (slotId: string) => void;
+  createEmptySaveSlot: (name?: string) => void;
+  importSaveAsSlot: (save: PersistedSave, name?: string) => void;
   deleteActiveSave: () => void;
   deleteCorruptSave: () => void;
 }
@@ -174,7 +194,12 @@ function createDefaultPersistedState(
     saveRecovery: null,
     phase: "setup" as AppPhase,
     activeSavePresent: storageFlags.activeSavePresent,
-    corruptSavePresent: storageFlags.corruptSavePresent
+    corruptSavePresent: storageFlags.corruptSavePresent,
+    saveSlots: [] as SaveSlotEnvelope[],
+    activeSaveSlotId: null,
+    quarantinedSlotCount: 0,
+    quarantinedSlotCounts: {} as Record<string, number>,
+    saveBackupCounts: {} as Record<string, number>
   };
 }
 
@@ -211,7 +236,7 @@ function createPersistedSavePayload(
   };
 }
 
-function writeActiveSaveToStorage(save: PersistedSave) {
+function writeLegacyActiveSaveToStorage(save: PersistedSave) {
   if (typeof window === "undefined") {
     return;
   }
@@ -219,14 +244,11 @@ function writeActiveSaveToStorage(save: PersistedSave) {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(save));
 }
 
-function persist(state: TournamentStoreState) {
-  writeActiveSaveToStorage(createPersistedSavePayload(state));
-}
-
 type PersistedRuntimeState = Pick<
   TournamentStoreState,
   "selectedPlayerId" | "plannedTacticKey" | "seed" | "tournament" | "liveMatch" | "phase"
-  | "career" | "saveRecovery" | "activeSavePresent" | "corruptSavePresent"
+  | "career" | "saveRecovery" | "activeSavePresent" | "corruptSavePresent" | "saveSlots"
+  | "activeSaveSlotId" | "quarantinedSlotCount" | "quarantinedSlotCounts" | "saveBackupCounts"
 >;
 
 type StorageAdapter = Pick<Storage, "getItem" | "setItem" | "removeItem">;
@@ -238,6 +260,70 @@ function isStorageAdapter(storage: unknown): storage is StorageAdapter {
       typeof (storage as StorageAdapter).setItem === "function" &&
       typeof (storage as StorageAdapter).removeItem === "function"
   );
+}
+
+function isSaveRepositoryStorage(storage: unknown): storage is SaveRepositoryStorage {
+  return Boolean(
+    isStorageAdapter(storage) &&
+      typeof (storage as SaveRepositoryStorage).length === "number" &&
+      typeof (storage as SaveRepositoryStorage).key === "function"
+  );
+}
+
+function repositoryForBrowser() {
+  if (typeof window === "undefined" || !isSaveRepositoryStorage(window.localStorage)) {
+    return null;
+  }
+
+  return new SaveRepository({ storage: window.localStorage });
+}
+
+function repositoryMetadata(repository: SaveRepository) {
+  const saveSlots = repository.listSlots();
+  const quarantines = repository.listQuarantinedSlots();
+  const quarantinedSlotCounts = quarantines.reduce<Record<string, number>>((counts, entry) => {
+    counts[entry.record.slotId] = (counts[entry.record.slotId] ?? 0) + 1;
+    return counts;
+  }, {});
+  const saveBackupCounts = saveSlots.reduce<Record<string, number>>((counts, slot) => {
+    counts[slot.slotId] = repository.listBackups(slot.slotId).length;
+    return counts;
+  }, {});
+
+  return {
+    saveSlots,
+    activeSaveSlotId: repository.getActiveSlotId(),
+    quarantinedSlotCount: quarantines.length,
+    quarantinedSlotCounts,
+    saveBackupCounts
+  };
+}
+
+function nextSaveName(repository: SaveRepository) {
+  return `Career ${repository.listSlots().filter((slot) => slot.archivedAt === null).length + 1}`;
+}
+
+function persist<T extends TournamentStoreState>(state: T) {
+  const save = createPersistedSavePayload(state);
+  const repository = repositoryForBrowser();
+
+  if (!repository) {
+    writeLegacyActiveSaveToStorage(save);
+    Object.assign(state, { activeSavePresent: true });
+    return state;
+  }
+
+  const capturedSlotId = state.activeSaveSlotId;
+  const activeSlot = capturedSlotId ? repository.readSlot(capturedSlotId) : null;
+  const slot = activeSlot && activeSlot.archivedAt === null
+    ? repository.updateSlot(capturedSlotId!, save)
+    : repository.createSlot({ name: nextSaveName(repository), save });
+
+  Object.assign(state, repositoryMetadata(repository), {
+    activeSavePresent: true,
+    activeSaveSlotId: slot.slotId
+  });
+  return state;
 }
 
 function quarantineCorruptSave(storage: StorageAdapter, raw: string) {
@@ -343,11 +429,29 @@ export function loadPersistedFromStorage(
     saveRecovery: null,
     phase: inferPhase(migrated.tournament, migrated.liveMatch),
     activeSavePresent: true,
-    corruptSavePresent: defaultState.corruptSavePresent
+    corruptSavePresent: defaultState.corruptSavePresent,
+    saveSlots: [],
+    activeSaveSlotId: null,
+    quarantinedSlotCount: 0,
+    quarantinedSlotCounts: {},
+    saveBackupCounts: {}
   };
 }
 
-function runtimeStateFromSave(save: PersistedSave, corruptSavePresent = false): PersistedRuntimeState {
+function runtimeStateFromSave(
+  save: PersistedSave,
+  corruptSavePresent = false,
+  repositoryState: Pick<
+    PersistedRuntimeState,
+    "saveSlots" | "activeSaveSlotId" | "quarantinedSlotCount" | "quarantinedSlotCounts" | "saveBackupCounts"
+  > = {
+    saveSlots: [],
+    activeSaveSlotId: null,
+    quarantinedSlotCount: 0,
+    quarantinedSlotCounts: {},
+    saveBackupCounts: {}
+  }
+): PersistedRuntimeState {
   return {
     selectedPlayerId: save.selectedPlayerId,
     plannedTacticKey: save.plannedTacticKey,
@@ -358,13 +462,70 @@ function runtimeStateFromSave(save: PersistedSave, corruptSavePresent = false): 
     saveRecovery: null,
     phase: inferPhase(save.tournament, save.liveMatch),
     activeSavePresent: true,
-    corruptSavePresent
+    corruptSavePresent,
+    ...repositoryState
+  };
+}
+
+export function loadPersistedFromSaveRepository(
+  storage: SaveRepositoryStorage,
+  seedFactory: () => number = randomSeed
+): PersistedRuntimeState {
+  const repository = new SaveRepository({ storage });
+  const legacyMigration = repository.migrateLegacySave();
+  const legacyRecovery = legacyMigration.status === "invalid"
+    ? loadPersistedFromStorage(storage, seedFactory)
+    : null;
+
+  let activeSlot = repository.getActiveSlot();
+  if (activeSlot?.archivedAt) {
+    repository.setActiveSlot(null);
+    activeSlot = null;
+  }
+  if (!activeSlot) {
+    activeSlot = repository.listSlots({ includeArchived: false })[0] ?? null;
+    repository.setActiveSlot(activeSlot?.slotId ?? null);
+  }
+
+  const metadata = repositoryMetadata(repository);
+  if (activeSlot) {
+    const runtime = runtimeStateFromSave(
+      activeSlot.save,
+      storage.getItem(CORRUPT_STORAGE_KEY) !== null,
+      metadata
+    );
+    return legacyRecovery
+      ? {
+          ...runtime,
+          saveRecovery: legacyRecovery.saveRecovery,
+          corruptSavePresent: legacyRecovery.corruptSavePresent
+        }
+      : runtime;
+  }
+
+  if (legacyRecovery) {
+    return {
+      ...legacyRecovery,
+      ...metadata
+    };
+  }
+
+  return {
+    ...createDefaultPersistedState(seedFactory(), {
+      activeSavePresent: false,
+      corruptSavePresent: storage.getItem(CORRUPT_STORAGE_KEY) !== null
+    }),
+    ...metadata
   };
 }
 
 function loadPersisted(): PersistedRuntimeState {
   if (typeof window === "undefined" || !isStorageAdapter(window.localStorage)) {
     return createDefaultPersistedState();
+  }
+
+  if (isSaveRepositoryStorage(window.localStorage)) {
+    return loadPersistedFromSaveRepository(window.localStorage);
   }
 
   return loadPersistedFromStorage(window.localStorage);
@@ -702,6 +863,29 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
         career: withTournament.career,
         tournament: withTournament.tournament,
         phase: withTournament.phase
+      };
+      persist(next);
+      return next;
+    });
+  },
+  startNextCareerSeason: () => {
+    set((state) => {
+      if (!state.career) {
+        return state;
+      }
+
+      const career = startNextSeason(state.career);
+
+      if (career === state.career) {
+        return state;
+      }
+
+      const next = {
+        ...state,
+        career,
+        tournament: null,
+        liveMatch: null,
+        phase: "setup" as AppPhase
       };
       persist(next);
       return next;
@@ -1311,13 +1495,238 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
     return createPersistedSavePayload(state);
   },
   replaceActiveSave: (save) => {
-    writeActiveSaveToStorage(save);
+    const repository = repositoryForBrowser();
+
+    if (!repository) {
+      writeLegacyActiveSaveToStorage(save);
+      set((state) => ({
+        ...state,
+        ...runtimeStateFromSave(save, state.corruptSavePresent)
+      }));
+      return;
+    }
+
+    set((state) => {
+      const capturedSlotId = state.activeSaveSlotId;
+      const capturedSlot = capturedSlotId ? repository.readSlot(capturedSlotId) : null;
+      const slot = capturedSlot && capturedSlot.archivedAt === null
+        ? repository.updateSlot(capturedSlotId!, save)
+        : repository.createSlot({ name: nextSaveName(repository), save });
+
+      return {
+        ...state,
+        ...runtimeStateFromSave(save, state.corruptSavePresent, repositoryMetadata(repository)),
+        activeSaveSlotId: slot.slotId
+      };
+    });
+  },
+  switchSaveSlot: (slotId) => {
+    const repository = repositoryForBrowser();
+    if (!repository) {
+      return;
+    }
+
+    const slot = repository.readSlot(slotId);
+    if (!slot || slot.archivedAt !== null) {
+      return;
+    }
+
+    repository.setActiveSlot(slot.slotId);
     set((state) => ({
       ...state,
-      ...runtimeStateFromSave(save, state.corruptSavePresent)
+      ...runtimeStateFromSave(slot.save, state.corruptSavePresent, repositoryMetadata(repository))
+    }));
+  },
+  renameSaveSlot: (slotId, name) => {
+    const repository = repositoryForBrowser();
+    if (!repository || name.trim().length === 0) {
+      return;
+    }
+
+    repository.renameSlot(slotId, name);
+    set((state) => ({
+      ...state,
+      ...repositoryMetadata(repository)
+    }));
+  },
+  archiveSaveSlot: (slotId) => {
+    const repository = repositoryForBrowser();
+    if (!repository) {
+      return;
+    }
+
+    const slot = repository.readSlot(slotId);
+    if (!slot) {
+      return;
+    }
+
+    if (slot.archivedAt !== null) {
+      repository.setSlotArchived(slotId, false);
+      set((state) => ({ ...state, ...repositoryMetadata(repository) }));
+      return;
+    }
+
+    const archivedActiveSlot = repository.getActiveSlotId() === slotId;
+    repository.setSlotArchived(slotId, true);
+    if (!archivedActiveSlot) {
+      set((state) => ({ ...state, ...repositoryMetadata(repository) }));
+      return;
+    }
+
+    const fallbackSlot = repository.listSlots({ includeArchived: false })[0] ?? null;
+    repository.setActiveSlot(fallbackSlot?.slotId ?? null);
+    const metadata = repositoryMetadata(repository);
+    if (fallbackSlot) {
+      set((state) => ({
+        ...state,
+        ...runtimeStateFromSave(
+          fallbackSlot.save,
+          state.corruptSavePresent,
+          metadata
+        )
+      }));
+      return;
+    }
+
+    set((state) => ({
+      ...state,
+      ...createDefaultPersistedState(randomSeed(), {
+        activeSavePresent: false,
+        corruptSavePresent: state.corruptSavePresent
+      }),
+      ...metadata
+    }));
+  },
+  duplicateSaveSlot: (slotId, name) => {
+    const repository = repositoryForBrowser();
+    if (!repository) {
+      return;
+    }
+
+    const duplicate = repository.duplicateSlot(slotId, { name });
+    set((state) => ({
+      ...state,
+      ...runtimeStateFromSave(
+        duplicate.save,
+        state.corruptSavePresent,
+        repositoryMetadata(repository)
+      )
+    }));
+  },
+  deleteSaveSlot: (slotId) => {
+    const repository = repositoryForBrowser();
+    if (!repository || !repository.readSlot(slotId)) {
+      return;
+    }
+
+    const deletedActiveSlot = repository.getActiveSlotId() === slotId;
+    repository.deleteSlot(slotId);
+    if (!deletedActiveSlot) {
+      set((state) => ({ ...state, ...repositoryMetadata(repository) }));
+      return;
+    }
+
+    const fallbackSlot = repository.listSlots({ includeArchived: false })[0] ?? null;
+    repository.setActiveSlot(fallbackSlot?.slotId ?? null);
+    const metadata = repositoryMetadata(repository);
+    if (fallbackSlot) {
+      set((state) => ({
+        ...state,
+        ...runtimeStateFromSave(
+          fallbackSlot.save,
+          state.corruptSavePresent,
+          metadata
+        )
+      }));
+      return;
+    }
+
+    set((state) => ({
+      ...state,
+      ...createDefaultPersistedState(randomSeed(), {
+        activeSavePresent: false,
+        corruptSavePresent: state.corruptSavePresent
+      }),
+      ...metadata
+    }));
+  },
+  restoreLatestSaveBackup: (slotId) => {
+    const repository = repositoryForBrowser();
+    if (!repository) {
+      return;
+    }
+
+    const backup = repository.listBackups(slotId)[0];
+    if (!backup) {
+      return;
+    }
+
+    const restored = repository.updateSlot(slotId, backup.save);
+    set((state) => ({
+      ...state,
+      ...runtimeStateFromSave(
+        restored.save,
+        state.corruptSavePresent,
+        repositoryMetadata(repository)
+      )
+    }));
+  },
+  createEmptySaveSlot: (name) => {
+    const emptyRuntime = createDefaultPersistedState();
+    const save = createPersistedSavePayload(emptyRuntime);
+    const repository = repositoryForBrowser();
+
+    if (!repository) {
+      writeLegacyActiveSaveToStorage(save);
+      set((state) => ({
+        ...state,
+        ...runtimeStateFromSave(save, state.corruptSavePresent)
+      }));
+      return;
+    }
+
+    const slot = repository.createSlot({
+      name: name?.trim() || nextSaveName(repository),
+      save
+    });
+    set((state) => ({
+      ...state,
+      ...runtimeStateFromSave(save, state.corruptSavePresent, repositoryMetadata(repository)),
+      activeSaveSlotId: slot.slotId
+    }));
+  },
+  importSaveAsSlot: (save, name) => {
+    const repository = repositoryForBrowser();
+
+    if (!repository) {
+      writeLegacyActiveSaveToStorage(save);
+      set((state) => ({
+        ...state,
+        ...runtimeStateFromSave(save, state.corruptSavePresent)
+      }));
+      return;
+    }
+
+    const slot = repository.createSlot({
+      name: name?.trim() || `Imported ${nextSaveName(repository)}`,
+      save
+    });
+    set((state) => ({
+      ...state,
+      ...runtimeStateFromSave(save, state.corruptSavePresent, repositoryMetadata(repository)),
+      activeSaveSlotId: slot.slotId
     }));
   },
   deleteActiveSave: () => {
+    const repository = repositoryForBrowser();
+    if (repository) {
+      const activeSlotId = get().activeSaveSlotId ?? repository.getActiveSlotId();
+      if (activeSlotId) {
+        get().deleteSaveSlot(activeSlotId);
+      }
+      return;
+    }
+
     const corruptSavePresent =
       typeof window !== "undefined" && window.localStorage.getItem(CORRUPT_STORAGE_KEY) !== null;
 
