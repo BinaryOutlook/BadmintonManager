@@ -224,6 +224,8 @@ What is now stable:
 - [x] implemented a persistent deterministic career world with stored growth/peak/decline curves, retirement, fictional
   annual intake, active-world rankings/event fields/background matches/rival rosters, generated-player addressing,
   multi-season golden checks, and a 20-season save round trip
+- [x] completed the Version Two UX gate with all 39 Playwright scenarios passing and committed current-state evidence
+  for shell/drawer, program, schedule, Inbox, Reports, Calendar, and save-library surfaces at all four target widths
 
 ## In Progress
 

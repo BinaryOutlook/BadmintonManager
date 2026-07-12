@@ -97,6 +97,8 @@ For every state, verify horizontal overflow, clipped controls, focus order, visi
   and isolated quarantine records. Import creates a new slot; restore writes a new revision.
 - Slot switching, rename, duplicate, archive/restore, permanent delete, legacy singleton migration, and backup restore
   have focused repository/store coverage. Responsive and keyboard Save Manager proof remains part of the UX gate.
+- Final responsive evidence is committed under `docs/rescue_MVP/visual_qa/version-two-update/`. The complete 39-scenario
+  Playwright suite and the 12-scenario four-width evidence run pass against the same implementation.
 
 ## Save Invariants
 
