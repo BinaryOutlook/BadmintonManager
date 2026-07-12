@@ -11141,3 +11141,233 @@ body {
     padding: 0.52rem;
   }
 }
+
+.mobile-navigation-toggle,
+.mobile-navigation-close,
+.mobile-navigation-scrim {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+@media (min-width: 781px) and (max-width: 1100px) {
+  .topbar .command-search {
+    display: none;
+  }
+}
+
+@media (min-width: 981px) and (max-width: 1100px) {
+  .topbar {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .topbar-brand-block {
+    gap: 0.65rem;
+  }
+}
+
+/* Keep last: Version Two mobile shell cascade guard. */
+@media (max-width: 780px) {
+  .workspace-shell,
+  .workspace-shell-profile,
+  .workspace-shell:has(.player-profile-page) {
+    display: block;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sidebar.command-sidebar,
+  .workspace-shell-profile .sidebar.command-sidebar,
+  .workspace-shell:has(.player-profile-page) .sidebar.command-sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 45;
+    display: block;
+    width: min(20rem, calc(100vw - 3rem));
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 0.75rem;
+    border-right: 1px solid var(--border-strong);
+    border-bottom: 0;
+    transform: translateX(-105%);
+    transition: transform 160ms ease;
+  }
+
+  .sidebar.command-sidebar-mobile-open,
+  .workspace-shell-profile .sidebar.command-sidebar-mobile-open,
+  .workspace-shell:has(.player-profile-page) .sidebar.command-sidebar-mobile-open {
+    transform: translateX(0);
+  }
+
+  .mobile-navigation-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    width: 100%;
+    min-height: 100%;
+    border: 0;
+    background: rgba(2, 4, 5, 0.76);
+  }
+
+  .workspace-shell-mobile-nav-open .mobile-navigation-scrim {
+    display: block;
+  }
+
+  .mobile-navigation-toggle,
+  .mobile-navigation-close {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border-strong);
+    border-radius: 0.2rem;
+    background: var(--panel-2);
+    color: var(--text);
+    font-size: 0.72rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .mobile-navigation-close {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    width: 100%;
+    margin-bottom: 0.7rem;
+    background: var(--panel-3);
+  }
+
+  .sidebar.command-sidebar .sidenav {
+    display: grid;
+    gap: 0.8rem;
+    overflow: visible;
+    padding-top: 0;
+  }
+
+  .sidebar.command-sidebar .command-group {
+    min-width: 0;
+  }
+
+  .sidebar.command-sidebar .command-group h3 {
+    display: block;
+  }
+
+  .sidebar.command-sidebar .command-group-list {
+    display: grid;
+    gap: 0.3rem;
+  }
+
+  .sidebar.command-sidebar .sidenav-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+    min-width: 0;
+    min-height: 2.75rem;
+    justify-items: start;
+    border-left: 0;
+    padding: 0.65rem 0.75rem;
+    font-size: 0.76rem;
+    text-align: left;
+    white-space: normal;
+  }
+
+  .sidebar.command-sidebar .sidenav-item > span,
+  .sidebar.command-sidebar .sidenav-item > small {
+    display: block;
+    grid-column: 1;
+  }
+
+  .sidebar.command-sidebar .sidenav-item::before,
+  .sidebar.command-sidebar .sidenav-item::after {
+    display: none;
+    content: none;
+  }
+
+  .sidebar.command-sidebar .sidebar-collapse-button,
+  .sidebar.command-sidebar .sidebar-resize-handle {
+    display: none;
+  }
+
+  .topbar {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
+    gap: 0.5rem;
+    padding: 0.55rem 0.7rem;
+  }
+
+  .topbar-brand-block {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    width: 100%;
+    gap: 0.55rem;
+    align-items: center;
+  }
+
+  .topbar .command-search {
+    display: none;
+  }
+
+  .topbar-athlete-chip {
+    grid-column: 1 / -1;
+    width: 100%;
+    max-width: none;
+    flex: none;
+  }
+
+  .topbar-command-zone {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+    gap: 0.42rem;
+    align-items: stretch;
+  }
+
+  .topbar-actions,
+  .topbar-daily-cluster {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    min-width: 0;
+    gap: 0.42rem;
+  }
+
+  .topbar-actions .icon-command-button,
+  .topbar-date,
+  .topbar-continue {
+    min-height: 2.75rem;
+  }
+
+  .workspace-shell > .main-canvas {
+    width: 100%;
+    padding: 0.7rem;
+  }
+}
+
+@media (min-width: 521px) and (max-width: 780px) {
+  .topbar-command-zone {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 420px) {
+  .brand-lockup {
+    min-width: 0;
+  }
+
+  .brand-lockup strong {
+    font-size: 0.78rem;
+  }
+
+  .brand-lockup span {
+    font-size: 0.56rem;
+  }
+}

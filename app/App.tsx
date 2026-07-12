@@ -1,4 +1,12 @@
-import { useEffect, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+  type RefObject
+} from "react";
 import { CompleteView } from "../components/CompleteView";
 import {
   CareerAthletePromisesPage,
@@ -282,6 +290,12 @@ function loadSidebarCollapsed() {
   return window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === "true";
 }
 
+function loadMobileViewport() {
+  return typeof window !== "undefined"
+    && typeof window.matchMedia === "function"
+    && window.matchMedia("(max-width: 780px)").matches;
+}
+
 export function commandIdForPage(page: AppPage): CommandId {
   switch (page.id) {
     case "saveManager":
@@ -387,6 +401,10 @@ export function App() {
   const [sidebarWidth, setSidebarWidth] = useState(loadSidebarWidth);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(loadSidebarCollapsed);
   const [themeAccent, setThemeAccent] = useState<ThemeAccent>(loadThemeAccent);
+  const [mobileViewport, setMobileViewport] = useState(loadMobileViewport);
+  const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
+  const mobileNavigationToggleRef = useRef<HTMLButtonElement>(null);
+  const mobileNavigationPanelRef = useRef<HTMLElement>(null);
   const selectedPlayer = playerMap[selectedPlayerId];
   const activeAthlete = career ? playerMap[career.program.managedPlayerId] : selectedPlayer;
   const setupSelectedPlayerId = career
@@ -434,6 +452,86 @@ export function App() {
       window.localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, String(sidebarCollapsed));
     }
   }, [sidebarCollapsed]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+      return;
+    }
+
+    const query = window.matchMedia("(max-width: 780px)");
+    const updateViewport = () => setMobileViewport(query.matches);
+
+    updateViewport();
+    query.addEventListener("change", updateViewport);
+
+    return () => query.removeEventListener("change", updateViewport);
+  }, []);
+
+  useEffect(() => {
+    if (!mobileViewport) {
+      setMobileNavigationOpen(false);
+    }
+  }, [mobileViewport]);
+
+  useEffect(() => {
+    if (!mobileViewport || !mobileNavigationOpen) {
+      return;
+    }
+
+    const panel = mobileNavigationPanelRef.current;
+    const previousOverflow = document.body.style.overflow;
+    const focusableSelector = "button:not([disabled]), a[href], input:not([disabled]), [tabindex]:not([tabindex='-1'])";
+    const focusableElements = () => Array.from(panel?.querySelectorAll<HTMLElement>(focusableSelector) ?? []);
+
+    document.body.style.overflow = "hidden";
+    focusableElements()[0]?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setMobileNavigationOpen(false);
+        window.requestAnimationFrame(() => mobileNavigationToggleRef.current?.focus());
+        return;
+      }
+
+      if (event.key !== "Tab") {
+        return;
+      }
+
+      const elements = focusableElements();
+
+      if (elements.length === 0) {
+        event.preventDefault();
+        return;
+      }
+
+      const first = elements[0];
+      const last = elements[elements.length - 1];
+
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [mobileNavigationOpen, mobileViewport]);
+
+  function closeMobileNavigation(restoreFocus = false) {
+    setMobileNavigationOpen(false);
+
+    if (restoreFocus && mobileViewport) {
+      window.requestAnimationFrame(() => mobileNavigationToggleRef.current?.focus());
+    }
+  }
 
   function setThemeAccentPreference(accent: ThemeAccent) {
     setThemeAccent(accent);
@@ -1318,19 +1416,36 @@ export function App() {
             dateLabel={shellDate}
             saveButtonLabel={saveButtonLabel}
             saveStatus={saveStatus}
+            navigationOpen={mobileNavigationOpen}
+            navigationToggleRef={mobileNavigationToggleRef}
+            onToggleNavigation={() => setMobileNavigationOpen((current) => !current)}
             onContinue={handleShellContinue}
             onOpenSaveManager={openSaveManager}
             onOpenSettings={() => setSettingsOpen(true)}
           />
 
           <div
-            className={activePage.id === "playerProfile" ? "workspace-shell workspace-shell-profile" : "workspace-shell"}
+            className={[
+              "workspace-shell",
+              activePage.id === "playerProfile" ? "workspace-shell-profile" : "",
+              mobileNavigationOpen ? "workspace-shell-mobile-nav-open" : ""
+            ].filter(Boolean).join(" ")}
             style={workspaceStyle}
           >
+            <button
+              className="mobile-navigation-scrim"
+              type="button"
+              aria-label="Close navigation menu"
+              onClick={() => closeMobileNavigation(true)}
+            />
             <CommandSidebar
               activeCommandId={activeCommandId}
               commands={shellCommands}
               collapsed={sidebarCollapsed}
+              mobileMode={mobileViewport}
+              mobileOpen={mobileNavigationOpen}
+              mobilePanelRef={mobileNavigationPanelRef}
+              onCloseMobile={() => closeMobileNavigation(true)}
               onResizeStart={beginSidebarResize}
               onToggleCollapsed={() => setSidebarCollapsed((current) => !current)}
             />
@@ -1384,6 +1499,9 @@ function TopStatusBar(props: {
   dateLabel: string;
   saveButtonLabel: string;
   saveStatus: string;
+  navigationOpen: boolean;
+  navigationToggleRef: RefObject<HTMLButtonElement | null>;
+  onToggleNavigation: () => void;
   onContinue: () => void;
   onOpenSaveManager: () => void;
   onOpenSettings: () => void;
@@ -1406,6 +1524,16 @@ function TopStatusBar(props: {
           <strong>Badminton Manager</strong>
           <span>Coach OS</span>
         </span>
+        <button
+          ref={props.navigationToggleRef}
+          className="mobile-navigation-toggle"
+          type="button"
+          aria-label={props.navigationOpen ? "Close navigation menu" : "Open navigation menu"}
+          aria-expanded={props.navigationOpen}
+          onClick={props.onToggleNavigation}
+        >
+          Menu
+        </button>
         <span className="topbar-athlete-chip" aria-label="Managed athlete">
           <span>Managed</span>
           <strong>{props.activeAthleteName}</strong>
@@ -1448,11 +1576,23 @@ function CommandSidebar(props: {
   activeCommandId: CommandId;
   collapsed: boolean;
   commands: ShellCommand[];
+  mobileMode: boolean;
+  mobileOpen: boolean;
+  mobilePanelRef: RefObject<HTMLElement | null>;
+  onCloseMobile: () => void;
   onResizeStart: (event: ReactPointerEvent<HTMLButtonElement>) => void;
   onToggleCollapsed: () => void;
 }) {
   return (
-    <aside className="sidebar command-sidebar" aria-label="Primary command sidebar">
+    <aside
+      ref={props.mobilePanelRef}
+      className={props.mobileOpen ? "sidebar command-sidebar command-sidebar-mobile-open" : "sidebar command-sidebar"}
+      aria-label="Primary command sidebar"
+      inert={props.mobileMode && !props.mobileOpen}
+    >
+      <button className="mobile-navigation-close" type="button" onClick={props.onCloseMobile}>
+        Close Menu
+      </button>
       <nav className="sidenav command-groups" aria-label="Primary commands">
         {commandGroupOrder.map((group) => (
           <section className="command-group" key={group} data-group={group} aria-labelledby={`command-group-${group}`}>
@@ -1474,7 +1614,10 @@ function CommandSidebar(props: {
                       aria-current={active ? "page" : undefined}
                       aria-label={`${command.label}${command.preview ? " preview-only" : ""}: ${command.description}`}
                       title={`${command.label}: ${command.description}`}
-                      onClick={command.onActivate}
+                      onClick={() => {
+                        command.onActivate();
+                        props.onCloseMobile();
+                      }}
                     >
                       <span>{command.label}</span>
                       {command.preview && <small>Preview only</small>}

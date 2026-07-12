@@ -76,6 +76,14 @@ Critical surfaces must be checked at widths `320`, `768`, `1024`, and `1440` whe
 
 For every state, verify horizontal overflow, clipped controls, focus order, visible focus, heading hierarchy, non-color status labels, modal focus containment, and that the primary next action remains discoverable.
 
+### Shell checkpoint — 2026-07-13
+
+- At `320` and `768`, the permanent abbreviation rail is replaced by a full-label navigation drawer so the page canvas keeps the full viewport width.
+- The drawer is inert while closed, traps keyboard focus while open, closes on `Escape`, restores focus to its trigger, and prevents background scrolling.
+- At `1024`, the non-functional command field no longer truncates the product or managed-athlete identity; the full command surface remains available at `1440`.
+- `e2e/version-two-responsive.spec.ts` enforces all four widths, horizontal bounds, mobile drawer geometry, full command labels, focus restoration, and identity-label truncation.
+- Optional visual evidence can be regenerated with `VERSION_TWO_SCREENSHOT_DIR=<directory> npx playwright test e2e/version-two-responsive.spec.ts`.
+
 ## Save Invariants
 
 Version Two persistence work must preserve these rules:

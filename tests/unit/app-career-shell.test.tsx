@@ -639,6 +639,7 @@ describe("career shell daily action", () => {
     const dailyCluster = within(banner).getByLabelText("Career clock control");
     const careerSave = within(utilityControls).getByRole("button", { name: "Career Save" });
     const settings = within(utilityControls).getByRole("button", { name: "Settings" });
+    const mobileNavigationToggle = within(banner).getByRole("button", { name: "Open navigation menu" });
     const brandMark = banner.querySelector(".brand-mark");
     const brandLockup = banner.querySelector(".brand-lockup");
     const commandSearch = banner.querySelector(".command-search");
@@ -653,7 +654,8 @@ describe("career shell daily action", () => {
     expect(brandLockup).toHaveTextContent("Coach OS");
     expect(managedAthlete).toHaveTextContent(seededPlayers[0].player.name);
     expect(brandMark?.nextElementSibling).toBe(brandLockup);
-    expect(managedAthlete.previousElementSibling).toBe(brandLockup);
+    expect(brandLockup?.nextElementSibling).toBe(mobileNavigationToggle);
+    expect(managedAthlete.previousElementSibling).toBe(mobileNavigationToggle);
     expect(managedAthlete.nextElementSibling).toBe(commandSearch);
     expect(careerSave.nextElementSibling).toBe(settings);
     expect(date?.nextElementSibling).toBe(dailyAction);
