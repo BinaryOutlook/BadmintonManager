@@ -519,10 +519,15 @@ export function getCareerEvent<TEvent extends CareerEventDefinition>(events: TEv
 }
 
 export function hydrateCareerEventDefinition(event: CareerEventDefinition): CareerEventDefinition {
+  const seasonQualified = "seasonId" in event && "templateId" in event;
   const templateId = "templateId" in event && typeof event.templateId === "string"
     ? event.templateId
     : event.id;
   const catalogEvent = careerEventCatalog.find((candidate) => candidate.id === templateId);
+
+  if (catalogEvent && !seasonQualified) {
+    return { ...catalogEvent };
+  }
 
   return catalogEvent
     ? {

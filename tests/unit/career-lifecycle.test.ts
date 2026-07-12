@@ -38,23 +38,19 @@ function seasonEvents(seasonId: string) {
   return generateCareerSeasonEvents(seasonId) as SeasonEvent[];
 }
 
-function endOfSeasonCareer(): CareerState {
-  const initial = createInitialCareerState(seededPlayers[0].player.id, 41_041);
-  const events = seasonEvents("2026");
-  const lastEventEnd = events.reduce(
+function resolveSeasonEnd(state: CareerState): CareerState {
+  const lastEventEnd = state.events.reduce(
     (latest, event) => eventEndDate(event) > latest ? eventEndDate(event) : latest,
-    "2026-01-01"
+    `${state.seasonId}-01-01`
   );
   const rolloverDate = addDays(lastEventEnd, 1);
   const dated: CareerState = {
-    ...initial,
-    seasonId: "2026",
+    ...state,
     date: rolloverDate,
     stage: "event_complete",
     activeEventId: null,
     enteredEventIds: [],
-    completedEventIds: [],
-    events
+    completedEventIds: []
   };
   const simulated = simulateUniverseThroughDate({
     career: dated,
@@ -63,6 +59,10 @@ function endOfSeasonCareer(): CareerState {
   }).career;
 
   return recordPastCareerEvents(simulated);
+}
+
+function endOfSeasonCareer(): CareerState {
+  return resolveSeasonEnd(createInitialCareerState(seededPlayers[0].player.id, 41_041));
 }
 
 describe("career season lifecycle", () => {
@@ -238,5 +238,36 @@ describe("career season lifecycle", () => {
     const next = startNextSeason(finalized);
 
     expect(startNextSeason(next)).toEqual(next);
+  });
+
+  it("progresses deterministically through multiple seasons with unique editions and durable reviews", () => {
+    const initial = createInitialCareerState(seededPlayers[0].player.id, 41_099);
+    const initialRivalAges = initial.rivals.programs.flatMap((program) =>
+      program.roster.map((athlete) => [athlete.playerId, athlete.age] as const)
+    );
+    const closed2026 = finalizeSeasonReview(resolveSeasonEnd(initial));
+    const season2027 = startNextSeason(closed2026);
+    const closed2027 = finalizeSeasonReview(resolveSeasonEnd(season2027));
+    const season2028 = startNextSeason(closed2027);
+    const allEventIds = [
+      ...closed2026.seasonReviews[0]!.events.map((event) => event.id),
+      ...closed2027.seasonReviews[1]!.events.map((event) => event.id),
+      ...season2028.events.map((event) => event.id)
+    ];
+
+    expect(season2028.seasonId).toBe("2028");
+    expect(season2028.seasonReviews.map((review) => review.seasonId)).toEqual(["2026", "2027"]);
+    expect(new Set(allEventIds).size).toBe(allEventIds.length);
+    expect(season2028.eventHistory.every((record) => Boolean(record.seasonId))).toBe(true);
+    expect(season2028.universeEvents.every((record) => Boolean(record.seasonId))).toBe(true);
+
+    const ageByPlayer = new Map(
+      season2028.rivals.programs.flatMap((program) =>
+        program.roster.map((athlete) => [athlete.playerId, athlete.age] as const)
+      )
+    );
+    for (const [playerId, age] of initialRivalAges) {
+      expect(ageByPlayer.get(playerId)).toBe(Math.min(42, age + 2));
+    }
   });
 });

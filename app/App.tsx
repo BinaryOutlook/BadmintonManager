@@ -45,9 +45,8 @@ import {
   careerInboxItems,
   type ManagementDestination
 } from "../game/career/managementMemory";
-import { useTournamentStore, type AppPhase, type TournamentStoreState } from "../game/store/store";
+import { STORAGE_KEY, useTournamentStore, type AppPhase, type TournamentStoreState } from "../game/store/store";
 import type { CareerStage, CareerState, TournamentAddress } from "../game/career/models";
-import type { PersistedSave } from "../game/store/save";
 import { getManagedMatchContext, type TournamentState } from "../game/tournament/tournament";
 import { isPhaseBoundPage, pageForPhase, type AppPage } from "./pages";
 import { PlayerProfilePage } from "./pages/PlayerProfilePage";
@@ -365,10 +364,16 @@ export function App() {
     saveRecovery,
     activeSavePresent,
     corruptSavePresent,
+    saveSlots,
+    activeSaveSlotId,
+    quarantinedSlotCount,
+    quarantinedSlotCounts,
+    saveBackupCounts,
     startCareer,
     scheduleCareerTraining,
     enterCareerEvent,
     advanceCareerDay,
+    startNextCareerSeason,
     openScheduledCareerMatch,
     continueCareerAfterPostMatch,
     commissionScoutReport,
@@ -398,8 +403,14 @@ export function App() {
     advanceAfterMatch,
     reset,
     exportActiveSave,
-    replaceActiveSave,
-    deleteActiveSave,
+    switchSaveSlot,
+    renameSaveSlot,
+    archiveSaveSlot,
+    restoreLatestSaveBackup,
+    createEmptySaveSlot,
+    importSaveAsSlot,
+    duplicateSaveSlot,
+    deleteSaveSlot,
     deleteCorruptSave
   } = useTournamentStore();
   const [activePage, setActivePage] = useState<AppPage>(() => pageForRuntime(career, phase));
@@ -685,29 +696,47 @@ export function App() {
     );
   }
 
-  function confirmImport(save: PersistedSave) {
-    replaceActiveSave(save);
-    const next = useTournamentStore.getState();
-    setActivePage(
-      next.career
-        ? next.career.stage === "post_match"
-          ? { id: "review" }
-          : next.career.stage === "pre_match"
-            ? { id: "bracket" }
-            : { id: "home" }
-        : pageForPhase(next.phase)
-    );
-  }
+  function handleDeleteLegacySource() {
+    if (typeof window === "undefined") {
+      return false;
+    }
 
-  function handleDeleteActiveSave() {
-    deleteActiveSave();
-    setActivePage({ id: "setup" });
+    try {
+      window.localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      return false;
+    }
+
+    if (window.localStorage.getItem(STORAGE_KEY) !== null) {
+      return false;
+    }
+
+    useTournamentStore.setState((state) => ({
+      saveRecovery: state.saveRecovery?.disposition === "source_preserved" ? null : state.saveRecovery,
+      activeSavePresent: Boolean(state.activeSaveSlotId)
+    }));
+    return true;
   }
 
   function handleAdvanceCareerDay() {
     advanceCareerDay();
     const next = useTournamentStore.getState();
-    setActivePage(next.career?.stage === "pre_match" ? { id: "bracket" } : { id: "timeline" });
+    const seasonReviewReady = next.career?.seasonReviews.some(
+      (review) => review.seasonId === next.career?.seasonId
+    );
+    setActivePage(
+      seasonReviewReady
+        ? { id: "reports" }
+        : next.career?.stage === "pre_match"
+          ? { id: "bracket" }
+          : { id: "timeline" }
+    );
+  }
+
+  function handleStartNextCareerSeason() {
+    startNextCareerSeason();
+    const next = useTournamentStore.getState();
+    setActivePage(next.career ? { id: "home" } : pageForPhase(next.phase));
   }
 
   function handleOpenScheduledCareerMatch(eventId?: string) {
@@ -771,6 +800,9 @@ export function App() {
     switch (destination.kind) {
       case "review":
         setActivePage({ id: "review" });
+        return;
+      case "reports":
+        setActivePage({ id: "reports" });
         return;
       case "live_match":
         openLiveMatchRoute();
@@ -860,7 +892,9 @@ export function App() {
     const urgentInboxCount = inboxItems.filter(
       (item) => item.priority === "required" || item.priority === "urgent"
     ).length;
-    const reportCount = career ? careerArchiveReports(career).length : 0;
+    const reportCount = career
+      ? careerArchiveReports(career).length + career.seasonReviews.length
+      : 0;
     const liveMatchDescription =
       phase === "match" || liveMatch
         ? "Point control"
@@ -1030,6 +1064,9 @@ export function App() {
         case "review_match":
           setActivePage({ id: "review" });
           return;
+        case "review_season":
+          setActivePage({ id: "reports" });
+          return;
         case "unavailable":
           break;
       }
@@ -1169,6 +1206,7 @@ export function App() {
       onOpenScheduledCareerMatch: handleOpenScheduledCareerMatch,
       onStartManagedMatch: handleStartManagedMatch,
       onContinueAfterPostMatch: handleContinueCareerAfterPostMatch,
+      onStartNextCareerSeason: handleStartNextCareerSeason,
       onCommissionScoutReport: commissionScoutReport,
       onMakeRecruitmentOffer: makeRecruitmentOffer,
       onScheduleRosterPreparation: scheduleRosterAthletePreparation,
@@ -1212,23 +1250,24 @@ export function App() {
     if (activePage.id === "saveManager") {
       return (
         <SaveManagerView
-          activeSavePresent={activeSavePresent}
+          saveSlots={saveSlots}
+          activeSaveSlotId={activeSaveSlotId}
+          quarantinedSlotCount={quarantinedSlotCount}
+          quarantinedSlotCounts={quarantinedSlotCounts}
+          saveBackupCounts={saveBackupCounts}
           corruptSavePresent={corruptSavePresent}
           saveRecovery={saveRecovery}
-          phase={phase}
-          selectedPlayerId={selectedPlayerId}
-          plannedTacticKey={plannedTacticKey}
-          seed={seed}
-          tournament={tournament}
-          liveMatchActive={Boolean(liveMatch)}
-          career={career}
           onContinueLocalSave={continueLocalSave}
-          onContinueCareer={continueCareer}
-          onStartTournament={requestStartTournament}
-          onStartNewCareer={() => setActivePage({ id: "setup" })}
+          onSwitchSaveSlot={switchSaveSlot}
+          onRenameSaveSlot={renameSaveSlot}
+          onArchiveSaveSlot={archiveSaveSlot}
+          onRestoreLatestSaveBackup={restoreLatestSaveBackup}
+          onCreateEmptySaveSlot={createEmptySaveSlot}
+          onImportSaveAsSlot={importSaveAsSlot}
+          onDuplicateSaveSlot={duplicateSaveSlot}
+          onDeleteSaveSlot={deleteSaveSlot}
           onExportSave={exportActiveSave}
-          onConfirmImport={confirmImport}
-          onDeleteActiveSave={handleDeleteActiveSave}
+          onDeleteLegacySource={handleDeleteLegacySource}
           onDeleteCorruptSave={deleteCorruptSave}
         />
       );

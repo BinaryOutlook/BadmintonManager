@@ -988,15 +988,21 @@ describe("fictional career calendar and ranking model", () => {
   it("loads legacy match records without a source as safe archive imports", () => {
     const career = createInitialCareerState(seededPlayers[0].player.id, 6807);
     const event = getCareerEvent(career.events, "metro-open-300")!;
+    const {
+      seasonStartedAt: _seasonStartedAt,
+      seasonReviews: _seasonReviews,
+      ...legacyCareer
+    } = career;
     const save = {
-      version: CURRENT_SAVE_VERSION,
+      version: 12,
       selectedPlayerId: seededPlayers[0].player.id,
       plannedTacticKey: "balancedControl",
       seed: 6807,
       tournament: null,
       liveMatch: null,
       career: {
-        ...career,
+        ...legacyCareer,
+        version: 10 as const,
         matchHistory: [
           {
             id: `${event.id}:legacy-R16-1`,
@@ -1018,6 +1024,7 @@ describe("fictional career calendar and ranking model", () => {
 
     expect(migrated.career?.matchHistory[0]).toMatchObject({
       id: `${event.id}:legacy-R16-1`,
+      seasonId: "2026",
       source: "archive_import"
     });
     expect(persistedSaveSchema.parse(migrated)).toEqual(migrated);

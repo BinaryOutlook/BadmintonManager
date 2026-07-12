@@ -11232,6 +11232,261 @@ body {
   border-color: rgba(126, 231, 135, 0.28);
 }
 
+.save-library-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(18rem, 24rem);
+  gap: 1rem;
+  align-items: start;
+}
+
+.save-library-main,
+.save-library-tools,
+.save-career-list {
+  display: grid;
+  min-width: 0;
+  gap: 1rem;
+}
+
+.save-library-tools {
+  position: sticky;
+  top: 1rem;
+}
+
+.save-library-status {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.save-career-card {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 0.34rem;
+  padding: 0.9rem;
+  background: rgba(10, 14, 16, 0.72);
+}
+
+.save-career-card-active {
+  border-color: rgba(126, 231, 135, 0.5);
+  box-shadow: inset 0.2rem 0 0 rgba(126, 231, 135, 0.78);
+}
+
+.save-career-card-heading,
+.save-career-badges {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.save-career-card-heading h3 {
+  margin: 0.18rem 0 0;
+  color: var(--text);
+  font-size: 1.15rem;
+  overflow-wrap: anywhere;
+}
+
+.save-career-mode,
+.save-create-form label,
+.save-import-name,
+.save-rename-form label {
+  color: var(--lime-soft);
+  font-size: 0.7rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.save-career-identity {
+  display: grid;
+  gap: 0.16rem;
+  margin: 0.8rem 0;
+}
+
+.save-career-identity strong {
+  color: var(--text);
+}
+
+.save-career-identity span,
+.save-library-empty p {
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.save-career-trust-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.55rem;
+  margin: 0;
+}
+
+.save-career-trust-grid div {
+  min-width: 0;
+  border-top: 1px solid rgba(48, 54, 61, 0.78);
+  padding-top: 0.5rem;
+}
+
+.save-career-trust-grid dt {
+  color: var(--muted-soft);
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.save-career-trust-grid dd {
+  margin: 0.18rem 0 0;
+  color: var(--text);
+  font-weight: 750;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.save-career-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.9rem;
+}
+
+.command-button-danger {
+  border-color: rgba(255, 141, 141, 0.4);
+  background: rgba(88, 22, 22, 0.3);
+  color: #ffd0d0;
+}
+
+.command-button-danger:hover:not(:disabled) {
+  border-color: rgba(255, 141, 141, 0.76);
+  background: rgba(112, 28, 28, 0.46);
+}
+
+.save-create-form,
+.save-rename-form {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 0.8rem;
+}
+
+.save-create-form label span,
+.save-import-name span {
+  color: var(--muted-soft);
+  font-weight: 650;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.save-create-form input,
+.save-import-panel > input,
+.save-rename-form input {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 0.28rem;
+  padding: 0.7rem;
+  background: rgba(12, 14, 17, 0.96);
+  color: var(--text);
+}
+
+.save-import-name {
+  display: block;
+  margin: 0.8rem 0 0.35rem;
+}
+
+.save-library-empty {
+  border: 1px dashed rgba(126, 231, 135, 0.3);
+  border-radius: 0.34rem;
+  padding: 1rem;
+  background: rgba(12, 14, 17, 0.58);
+}
+
+.save-library-empty strong {
+  color: var(--text);
+}
+
+.save-library-empty p {
+  margin: 0.25rem 0 0;
+}
+
+.save-confirmation {
+  position: static;
+  z-index: 30;
+  width: min(46rem, 100%);
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  bottom: 0.75rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: center;
+  border: 1px solid rgba(255, 141, 141, 0.5);
+  border-radius: 0.36rem;
+  padding: 0.9rem;
+  background: rgba(36, 13, 15, 0.98);
+  box-shadow: 0 0.8rem 2rem rgba(0, 0, 0, 0.34);
+}
+
+.save-confirmation strong {
+  color: #ffd0d0;
+}
+
+.save-confirmation p {
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+@media (max-width: 1100px) {
+  .save-library-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .save-library-tools {
+    position: static;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .save-legacy-recovery-panel {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 720px) {
+  .save-library-status,
+  .save-career-trust-grid,
+  .save-library-tools {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .save-library-tools > *,
+  .save-legacy-recovery-panel {
+    grid-column: 1 / -1;
+  }
+
+  .save-confirmation {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 400px) {
+  .save-career-card-heading {
+    display: grid;
+  }
+
+  .save-career-badges {
+    justify-content: flex-start;
+  }
+
+  .save-career-actions .command-button,
+  .save-create-form .command-button,
+  .save-confirmation .command-button,
+  .save-import-panel .save-action-row .command-button {
+    width: 100%;
+  }
+
+  .save-confirmation .save-action-row {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}
+
 .danger-zone,
 .import-error-box,
 .schedule-calendar-badge-result-l {
@@ -12110,6 +12365,38 @@ body {
   font-size: 1.05rem;
 }
 
+.reports-season-layout {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.reports-season-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem;
+  border: 1px solid rgba(57, 255, 20, 0.28);
+  border-radius: 0.35rem;
+  background: rgba(57, 255, 20, 0.06);
+}
+
+.reports-season-action > div {
+  display: grid;
+  gap: 0.28rem;
+  min-width: 0;
+}
+
+.reports-season-action p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.reports-season-action .command-button {
+  flex: 0 0 auto;
+}
+
 .reports-archive-header,
 .reports-filter-tabs {
   flex-wrap: wrap;
@@ -12184,6 +12471,15 @@ body {
 
   .reports-latest-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .reports-season-action {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .reports-season-action .command-button {
+    width: 100%;
   }
 
   .reports-filter-tabs {

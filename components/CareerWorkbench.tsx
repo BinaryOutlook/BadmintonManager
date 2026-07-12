@@ -111,6 +111,7 @@ interface CareerPageProps {
   onOpenScheduledCareerMatch: (eventId?: string) => void;
   onStartManagedMatch: () => void;
   onContinueAfterPostMatch: () => void;
+  onStartNextCareerSeason?: () => void;
   onCommissionScoutReport: (subjectId: string, subjectType: "candidate" | "prospect" | "opponent") => void;
   onMakeRecruitmentOffer: (candidateId: string) => void;
   onScheduleRosterPreparation: (athleteId: string) => void;
@@ -217,6 +218,7 @@ function ProfileNameButton(props: {
 
 function CareerTournamentLink(props: {
   career: CareerState;
+  seasonId?: string;
   eventId?: string | null;
   children: ReactNode;
   className?: string;
@@ -224,7 +226,7 @@ function CareerTournamentLink(props: {
 }) {
   return (
     <TournamentLink
-      seasonId={props.career.seasonId}
+      seasonId={props.seasonId ?? props.career.seasonId}
       eventId={props.eventId}
       className={props.className}
       ariaLabel={props.ariaLabel}
@@ -258,7 +260,7 @@ type CareerCalendarPageProps = CareerPageProps & {
   initialMonthCursor?: CalendarMonthCursor;
 };
 
-function nextCalendarMilestone(career: CareerState, event: CareerState["events"][number] | undefined) {
+function nextCalendarMilestone(career: CareerState, event: CareerEventDefinition | undefined) {
   if (career.stage === "pre_match") {
     return "Match briefing ready today";
   }
@@ -650,8 +652,13 @@ function rankingStatus(entry: CareerState["rankings"][number]) {
 
 const RANKINGS_PAGE_SIZE = 8;
 
-function openTournamentHome(props: CareerPageProps, career: CareerState, eventId: string) {
-  props.onOpenTournamentHome({ seasonId: career.seasonId, eventId });
+function openTournamentHome(
+  props: CareerPageProps,
+  career: CareerState,
+  eventId: string,
+  seasonId = career.seasonId
+) {
+  props.onOpenTournamentHome({ seasonId, eventId });
 }
 
 function tournamentFromSnapshot(args: {
@@ -722,9 +729,13 @@ const completeBracketMatchCount: Record<RoundName, number> = {
   F: 1
 };
 
-function eventMatchHistory(career: CareerState, eventId: string) {
+function eventMatchHistory(career: CareerState, seasonId: string, eventId: string) {
   return [...career.matchHistory]
-    .filter((record) => record.eventId === eventId)
+    .filter(
+      (record) =>
+        (record.seasonId ?? record.date.slice(0, 4)) === seasonId &&
+        record.eventId === eventId
+    )
     .sort(
       (left, right) =>
         archiveRoundIndex[left.round] - archiveRoundIndex[right.round] ||
@@ -810,12 +821,18 @@ function tournamentOutcome(tournament: TournamentState, sourceLabel: string): Ev
   return null;
 }
 
-function achievementOutcome(career: CareerState, eventId: string): EventOutcome | null {
+function achievementOutcome(career: CareerState, seasonId: string, eventId: string): EventOutcome | null {
   const champion = career.playerAchievements.find(
-    (achievement) => achievement.eventId === eventId && achievement.result === "champion"
+    (achievement) =>
+      (achievement.seasonId ?? achievement.date.slice(0, 4)) === seasonId &&
+      achievement.eventId === eventId &&
+      achievement.result === "champion"
   );
   const runnerUp = career.playerAchievements.find(
-    (achievement) => achievement.eventId === eventId && achievement.result === "runner_up"
+    (achievement) =>
+      (achievement.seasonId ?? achievement.date.slice(0, 4)) === seasonId &&
+      achievement.eventId === eventId &&
+      achievement.result === "runner_up"
   );
 
   if (!champion && !runnerUp) {
@@ -828,6 +845,22 @@ function achievementOutcome(career: CareerState, eventId: string): EventOutcome 
     finalScoreline: null,
     sourceLabel: "Career achievement archive",
     confidence: champion && runnerUp ? "partial" : "legacy"
+  };
+}
+
+function universeOutcome(
+  record: CareerState["universeEvents"][number] | undefined
+): EventOutcome | null {
+  if (!record || (!record.championId && !record.runnerUpId)) {
+    return null;
+  }
+
+  return {
+    championId: record.championId,
+    runnerUpId: record.runnerUpId,
+    finalScoreline: null,
+    sourceLabel: "Universe event archive",
+    confidence: record.championId && record.runnerUpId ? "partial" : "legacy"
   };
 }
 
@@ -956,6 +989,7 @@ function evidenceFromTournament(tournament: TournamentState): EventMatchEvidence
 
 function rankingLedgerLine(args: {
   career: CareerState;
+  seasonId: string;
   eventId: string;
   playerId: string | null;
   fallbackPoints: number | null;
@@ -965,11 +999,15 @@ function rankingLedgerLine(args: {
     return "Unknown athlete; no ranking ledger lookup possible.";
   }
 
-  const entry = args.career.rankings.find((ranking) => ranking.playerId === args.playerId);
-  const history = entry?.eventHistory.find((record) => record.eventId === args.eventId);
+  const result = args.career.rankingResults.find(
+    (record) =>
+      record.seasonId === args.seasonId &&
+      record.eventId === args.eventId &&
+      record.playerId === args.playerId
+  );
 
-  if (history) {
-    return `Ranking ledger +${points(history.points)} (${history.round}).`;
+  if (result) {
+    return `Ranking ledger +${points(result.points)} (${result.resultRound}).`;
   }
 
   if (args.fallbackPoints !== null) {
@@ -2211,6 +2249,7 @@ type ReportFilter = "all" | CareerArchiveReport["category"];
 
 export function CareerReportsArchivePage(props: CareerPageProps) {
   const [filter, setFilter] = useState<ReportFilter>("all");
+  const [selectedSeasonId, setSelectedSeasonId] = useState<string | null>(null);
 
   if (!props.career) {
     return <CareerEmpty onStartCareer={props.onStartCareer} saveRecovery={props.saveRecovery} />;
@@ -2218,6 +2257,14 @@ export function CareerReportsArchivePage(props: CareerPageProps) {
 
   const latest = latestDetailedMatchMemory(props.career);
   const archive = careerArchiveReports(props.career);
+  const seasonReviews = [...props.career.seasonReviews]
+    .sort((left, right) => right.seasonId.localeCompare(left.seasonId));
+  const selectedSeasonReview = seasonReviews.find((review) => review.seasonId === selectedSeasonId)
+    ?? seasonReviews[0]
+    ?? null;
+  const currentSeasonReview = props.career.seasonReviews.find(
+    (review) => review.seasonId === props.career?.seasonId
+  ) ?? null;
   const filtered = filter === "all" ? archive : archive.filter((report) => report.category === filter);
   const filters: Array<{ id: ReportFilter; label: string }> = [
     { id: "all", label: "All" },
@@ -2234,15 +2281,80 @@ export function CareerReportsArchivePage(props: CareerPageProps) {
           <p className="screen-kicker">Reports Archive</p>
           <h1 className="screen-title">Institutional Memory</h1>
           <p className="screen-copy">
-            Read-only match, event, scouting, and development facts retained by this save. Missing historical detail is
-            labelled honestly; this page never settles or advances the career.
+            Read-only match, event, scouting, development, and season facts retained by this save. Missing historical
+            detail is labelled honestly; only the explicit next-season control can advance the career.
           </p>
         </div>
         <div className="screen-meta">
-          <span>{archive.length} persisted record(s)</span>
+          <span>{archive.length + props.career.seasonReviews.length} persisted record(s)</span>
           <span>{latest ? "Latest detailed report available" : "No detailed match report"}</span>
         </div>
       </div>
+
+      <section className="command-panel command-panel-full reports-season-panel">
+        <div className="panel-header">
+          <h2>Season Review</h2>
+          <span>{selectedSeasonReview ? `${selectedSeasonReview.seasonId} finalized ${selectedSeasonReview.createdAt}` : "No finalized season"}</span>
+        </div>
+        {seasonReviews.length > 1 ? (
+          <div className="reports-filter-tabs" role="tablist" aria-label="Season review archive">
+            {seasonReviews.map((review) => (
+              <button
+                key={review.seasonId}
+                className={review.seasonId === selectedSeasonReview?.seasonId ? "calendar-subnav-tab calendar-subnav-tab-active" : "calendar-subnav-tab"}
+                type="button"
+                role="tab"
+                aria-selected={review.seasonId === selectedSeasonReview?.seasonId}
+                onClick={() => setSelectedSeasonId(review.seasonId)}
+              >
+                {review.seasonId}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        {selectedSeasonReview ? (
+          <div className="reports-season-layout">
+            <div className="reports-latest-grid">
+              <div>
+                <span>Managed record</span>
+                <strong>{selectedSeasonReview.record.wins}-{selectedSeasonReview.record.losses}</strong>
+                <p>{selectedSeasonReview.record.played} matches · {selectedSeasonReview.record.titles} title(s) · {selectedSeasonReview.record.runnerUps} runner-up finish(es)</p>
+              </div>
+              <div>
+                <span>Competition</span>
+                <strong>{selectedSeasonReview.record.completedEvents}/{selectedSeasonReview.record.enteredEvents}</strong>
+                <p>Completed entered events · calendar closed {selectedSeasonReview.endDate}</p>
+              </div>
+              <div>
+                <span>Economy</span>
+                <strong>{signedMoney(selectedSeasonReview.economy.netCash)}</strong>
+                <p>{money(selectedSeasonReview.economy.openingCash)} opening · {money(selectedSeasonReview.economy.closingCash)} closing</p>
+              </div>
+            </div>
+            {currentSeasonReview?.seasonId === selectedSeasonReview.seasonId ? (
+              <div className="reports-season-action">
+                <div>
+                  <strong>{currentSeasonReview.seasonId} is complete</strong>
+                  <p>Starting the next season generates its calendar and objectives while preserving this report and durable history.</p>
+                </div>
+                <button
+                  className="command-button"
+                  type="button"
+                  disabled={!props.onStartNextCareerSeason}
+                  onClick={props.onStartNextCareerSeason}
+                >
+                  Start {Number(currentSeasonReview.seasonId) + 1} Season
+                </button>
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <div className="profile-empty-state" role="status">
+            <strong>No finalized season review</strong>
+            <p>A review appears only after the full calendar and every managed obligation are terminal.</p>
+          </div>
+        )}
+      </section>
 
       <section className="command-panel command-panel-full reports-latest-panel">
         <div className="panel-header">
@@ -4634,48 +4746,52 @@ export function CareerTimelinePage(props: CareerPageProps) {
                     <span>Evidence</span>
                     <span>Action</span>
                   </div>
-                  {pastPage.items.map((record) => (
-                    <article key={record.eventId} className="calendar-event-row">
-                      <div className="calendar-event-main">
-                        <span>{record.tier} / {record.status.replace(/_/g, " ")}</span>
-                        <strong>
-                          <CareerTournamentLink career={career} eventId={record.eventId}>
-                            {record.eventName}
-                          </CareerTournamentLink>
-                        </strong>
-                        <p>{record.entered ? "Entered event" : "Not entered"} / completed {record.completedAt}</p>
-                      </div>
-                      <div>
-                        <span>Window</span>
-                        <strong>{record.startDate} - {record.endDate}</strong>
-                        <small>Archived newest first</small>
-                      </div>
-                      <div>
-                        <span>Result</span>
-                        <strong>{record.resultRound ?? record.status.replace(/_/g, " ")}</strong>
-                        <small>{record.achievements.length > 0 ? record.achievements.join(", ") : "No achievement tag"}</small>
-                      </div>
-                      <div>
-                        <span>Rewards / Costs</span>
-                        <strong>{points(record.pointsAwarded)} / {money(record.prizeMoney)}</strong>
-                        <small>Costs {money(record.entryCost + record.travelCost)}; net {signedMoney(record.netCash)}</small>
-                      </div>
-                      <div>
-                        <span>Evidence</span>
-                        <strong>{record.scorelines[0] ?? "No match played"}</strong>
-                        <small>{record.matchIds.length} match record(s)</small>
-                      </div>
-                      <div className="calendar-event-actions">
-                        <button
-                          className="command-button command-button-secondary"
-                          type="button"
-                          onClick={() => openTournamentHome(props, career, record.eventId)}
-                        >
-                          Open Event
-                        </button>
-                      </div>
-                    </article>
-                  ))}
+                  {pastPage.items.map((record) => {
+                    const recordSeasonId = record.seasonId ?? record.startDate.slice(0, 4);
+
+                    return (
+                      <article key={`${recordSeasonId}:${record.eventId}`} className="calendar-event-row">
+                        <div className="calendar-event-main">
+                          <span>{record.tier} / {record.status.replace(/_/g, " ")}</span>
+                          <strong>
+                            <CareerTournamentLink career={career} seasonId={recordSeasonId} eventId={record.eventId}>
+                              {record.eventName}
+                            </CareerTournamentLink>
+                          </strong>
+                          <p>{record.entered ? "Entered event" : "Not entered"} / completed {record.completedAt}</p>
+                        </div>
+                        <div>
+                          <span>Window</span>
+                          <strong>{record.startDate} - {record.endDate}</strong>
+                          <small>Archived newest first</small>
+                        </div>
+                        <div>
+                          <span>Result</span>
+                          <strong>{record.resultRound ?? record.status.replace(/_/g, " ")}</strong>
+                          <small>{record.achievements.length > 0 ? record.achievements.join(", ") : "No achievement tag"}</small>
+                        </div>
+                        <div>
+                          <span>Rewards / Costs</span>
+                          <strong>{points(record.pointsAwarded)} / {money(record.prizeMoney)}</strong>
+                          <small>Costs {money(record.entryCost + record.travelCost)}; net {signedMoney(record.netCash)}</small>
+                        </div>
+                        <div>
+                          <span>Evidence</span>
+                          <strong>{record.scorelines[0] ?? "No match played"}</strong>
+                          <small>{record.matchIds.length} match record(s)</small>
+                        </div>
+                        <div className="calendar-event-actions">
+                          <button
+                            className="command-button command-button-secondary"
+                            type="button"
+                            onClick={() => openTournamentHome(props, career, record.eventId, recordSeasonId)}
+                          >
+                            Open Event
+                          </button>
+                        </div>
+                      </article>
+                    );
+                  })}
                 </div>
                 <CalendarPager
                   label="Past events"
@@ -4781,13 +4897,23 @@ export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddr
   }
 
   const career = props.career;
-  const event = getCareerEvent(career.events, props.eventId);
-  const historyRecord = career.eventHistory.find((record) => record.eventId === props.eventId);
+  const historicalSeason = props.seasonId !== career.seasonId;
+  const seasonReview = historicalSeason
+    ? career.seasonReviews.find((review) => review.seasonId === props.seasonId) ?? null
+    : null;
+  const event = historicalSeason
+    ? seasonReview?.events.find((entry) => entry.id === props.eventId)
+    : getCareerEvent(career.events, props.eventId);
+  const historyRecord = career.eventHistory.find(
+    (record) =>
+      (record.seasonId ?? record.startDate.slice(0, 4)) === props.seasonId &&
+      record.eventId === props.eventId
+  );
   const universeRecord = career.universeEvents.find(
-    (record) => record.seasonId === career.seasonId && record.eventId === props.eventId
+    (record) => record.seasonId === props.seasonId && record.eventId === props.eventId
   );
 
-  if (!event || props.seasonId !== career.seasonId) {
+  if (!event) {
     return (
       <section className="screen-shell career-page">
         <div className="screen-header">
@@ -4795,7 +4921,7 @@ export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddr
             <p className="screen-kicker">Tournament Home</p>
             <h1 className="screen-title">Tournament Not Found</h1>
             <p className="screen-copy">
-              The selected tournament address is unavailable for this career season. Address: {props.seasonId} / {props.eventId}.
+              The selected tournament address is unavailable in the current calendar or finalized season reviews. Address: {props.seasonId} / {props.eventId}.
             </p>
           </div>
           <div className="career-action-row">
@@ -4810,39 +4936,65 @@ export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddr
 
   const athlete = managedAthlete(career);
   const medicalGate = canCompeteWithInjury(athlete);
-  const entered = career.enteredEventIds.includes(event.id);
+  const entered = historicalSeason
+    ? historyRecord?.entered ?? false
+    : career.enteredEventIds.includes(event.id);
   const completed =
+    historicalSeason ||
     career.completedEventIds.includes(event.id) ||
     Boolean(historyRecord) ||
     universeRecord?.status === "completed" ||
     universeRecord?.status === "legacy_unavailable";
   const tierGate = eventEligibilityFor(career, event);
-  const seedingSnapshot = buildEventSeedingSnapshot({ state: career, event });
-  const entryCosts = effectiveEventEntryCosts(event, career.facilities);
+  const historicalSeeds = universeRecord?.fieldSnapshot?.seeds ?? [];
+  const seedingSnapshot = historicalSeason
+    ? {
+        eventId: event.id,
+        status: historicalSeeds.length > 0 ? "locked" as const : "not_retained" as const,
+        rankingCutoffDate: event.rankingCutoffDate,
+        seedingDate: event.seedingDate,
+        drawDate: event.drawDate,
+        drawSize: event.drawSize,
+        seedCount: event.seedCount,
+        source: historicalSeeds.length > 0 ? "archived event field snapshot" : "not retained",
+        seeds: historicalSeeds,
+        managedSeed: historicalSeeds.find((entry) => entry.playerId === career.program.managedPlayerId) ?? null
+      }
+    : buildEventSeedingSnapshot({ state: career, event });
+  const entryCosts = historicalSeason
+    ? {
+        travelCost: historyRecord?.travelCost ?? event.travelCost,
+        entryFee: historyRecord?.entryCost ?? event.entryFee,
+        savedTravelCost: 0,
+        travelFatigue: 0
+      }
+    : effectiveEventEntryCosts(event, career.facilities);
   const totalCost = eventEntryCost(entryCosts);
   const affordable = canAffordEventEntry({
     economy: career.economy,
     travelCost: entryCosts.travelCost,
     entryFee: entryCosts.entryFee
   });
-  const action = calendarEventActionFor({
-    career,
-    event,
-    tournament: props.tournament,
-    completed,
-    entered,
-    blocked: !affordable || !medicalGate.allowed || !tierGate.allowed,
-    medicalAllowed: medicalGate.allowed,
-    tierAllowed: tierGate.allowed,
-    affordable
-  });
-  const status = historyRecord ? "completed" : eventStatusFor(career, event);
-  const activeTournament = props.tournament?.id === event.id ? props.tournament : null;
+  const action: CalendarEventAction = historicalSeason
+    ? { kind: "completed", label: "Complete", disabled: true, tone: "muted" }
+    : calendarEventActionFor({
+        career,
+        event,
+        tournament: props.tournament,
+        completed,
+        entered,
+        blocked: !affordable || !medicalGate.allowed || !tierGate.allowed,
+        medicalAllowed: medicalGate.allowed,
+        tierAllowed: tierGate.allowed,
+        affordable
+      });
+  const status = historyRecord || historicalSeason ? "completed" as const : eventStatusFor(career, event);
+  const activeTournament = !historicalSeason && props.tournament?.id === event.id ? props.tournament : null;
   const archivedTournament =
     !activeTournament && historyRecord?.bracketSnapshot
       ? tournamentFromSnapshot({ event, record: historyRecord, snapshot: historyRecord.bracketSnapshot })
       : null;
-  const matchRecords = eventMatchHistory(career, event.id);
+  const matchRecords = eventMatchHistory(career, props.seasonId, event.id);
   const reconstructedTournament =
     !activeTournament && !archivedTournament
       ? completeTournamentFromMatchHistory({
@@ -4865,7 +5017,8 @@ export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddr
       : null;
   const eventOutcome =
     tournamentEventOutcome ??
-    achievementOutcome(career, event.id) ??
+    universeOutcome(universeRecord) ??
+    achievementOutcome(career, props.seasonId, event.id) ??
     managedHistoryOnlyOutcome({
       record: historyRecord,
       managedPlayerId: career.program.managedPlayerId
@@ -4899,28 +5052,44 @@ export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddr
               title: "Partial match evidence",
               detail: `${matchRecords.length} recorded match result(s); champion stays unknown until final evidence exists.`
             }
+          : historicalSeason && universeRecord?.championId
+            ? {
+                title: "Universe outcome archive",
+                detail: "The season archive retains champion and runner-up facts, but not enough match evidence to rebuild the draw."
+              }
           : historyRecord
             ? {
                 title: "Legacy summary only",
                 detail: "This save predates complete bracket truth, so unknown champions are not claimed."
               }
-            : {
-                title: "Pending draw",
-                detail: "Bracket evidence appears after the event reaches match day."
-              };
-  const fieldPressure = pressureForEvent(career, event.id);
+            : historicalSeason
+              ? {
+                  title: "Historical calendar snapshot",
+                  detail: universeRecord?.status === "legacy_unavailable"
+                    ? "The finalized season preserves this event, but the legacy save has no bracket truth."
+                    : "The finalized season preserves the event definition, but no complete bracket evidence exists."
+                }
+              : {
+                  title: "Pending draw",
+                  detail: "Bracket evidence appears after the event reaches match day."
+                };
+  const fieldPressure = historicalSeason ? null : pressureForEvent(career, event.id);
   const fieldSnapshot = universeRecord?.fieldSnapshot ?? null;
-  const fieldSummary = fieldChangeSummary(universeRecord);
+  const fieldSummary = historicalSeason && !fieldSnapshot
+    ? "No event-time field snapshot was retained for this edition."
+    : fieldChangeSummary(universeRecord);
   const championName = eventOutcome?.championId ? playerDisplayName(eventOutcome.championId) : null;
   const runnerUpName = eventOutcome?.runnerUpId ? playerDisplayName(eventOutcome.runnerUpId) : null;
   const mainActionLabel =
-    historyRecord || completed
-      ? "Completed"
-      : action.kind === "open_draw"
-        ? entered
-          ? "Entered"
-          : "Open Event"
-        : action.label;
+    historicalSeason
+      ? "Historical"
+      : historyRecord || completed
+        ? "Completed"
+        : action.kind === "open_draw"
+          ? entered
+            ? "Entered"
+            : "Open Event"
+          : action.label;
   const handleAction = () => {
     switch (action.kind) {
       case "enter_event":
@@ -4938,7 +5107,7 @@ export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddr
         return;
     }
   };
-  const actionDisabled = completed || action.disabled || action.kind === "open_draw";
+  const actionDisabled = historicalSeason || completed || action.disabled || action.kind === "open_draw";
   const eligibilityRows = [
     ["Rank", event.eligibility.minRank ? `Top ${event.eligibility.minRank}` : "Open", `Current rank ${tierGate.rank}`],
     ["Points", event.eligibility.minPoints ? points(event.eligibility.minPoints) : "Open", `Current ${points(tierGate.points)}`],
@@ -4962,7 +5131,7 @@ export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddr
           <h1 className="screen-title">{event.name}</h1>
           <p className="screen-copy">
             {event.tier} event in week {event.weekNumber}, hosted at {event.location.venue} in {event.location.city},{" "}
-            {event.location.country}. Address: {career.seasonId} / {event.id}.
+            {event.location.country}. Address: {props.seasonId} / {event.id}.
           </p>
         </div>
         <div className="career-action-row">
@@ -5002,7 +5171,7 @@ export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddr
                 fallback={championName ?? "Unknown"}
                 onOpenPlayerProfile={props.onOpenPlayerProfile}
               />
-            ) : historyRecord ? (
+            ) : historyRecord || historicalSeason ? (
               "Unknown"
             ) : (
               "Pending"
@@ -5018,7 +5187,7 @@ export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddr
                 fallback={runnerUpName ?? "Unknown"}
                 onOpenPlayerProfile={props.onOpenPlayerProfile}
               />
-            ) : historyRecord ? (
+            ) : historyRecord || historicalSeason ? (
               "Unknown"
             ) : (
               "Pending"
@@ -5036,8 +5205,8 @@ export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddr
           <KnockoutTree
             tournament={displayTournament}
             selectedPlayerId={career.program.managedPlayerId}
-            title={historyRecord ? "Archived Knockout Draw" : "Current Knockout Draw"}
-            subtitle={historyRecord ? archiveStatus.detail : "Live event path and background results"}
+            title={historicalSeason || historyRecord ? "Archived Knockout Draw" : "Current Knockout Draw"}
+            subtitle={historicalSeason || historyRecord ? archiveStatus.detail : "Live event path and background results"}
             onOpenPlayerProfile={props.onOpenPlayerProfile}
           />
         ) : (
@@ -5056,12 +5225,18 @@ export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddr
               <div>
                 <span>Draw Size</span>
                 <strong>{event.drawSize}</strong>
-                <small>{event.seedCount} seeds; draw publishes {event.drawDate}</small>
+                <small>{event.seedCount} seeds; draw {historicalSeason ? "published" : "publishes"} {event.drawDate}</small>
               </div>
               <div>
                 <span>Managed Seed</span>
-                <strong>{seedingSnapshot.managedSeed ? `Seed ${seedingSnapshot.managedSeed.seed}` : "Outside seeds"}</strong>
-                <small>{seedingSnapshot.status} from fictional circuit ranking</small>
+                <strong>
+                  {seedingSnapshot.managedSeed
+                    ? `Seed ${seedingSnapshot.managedSeed.seed}`
+                    : historicalSeason
+                      ? "Not retained"
+                      : "Outside seeds"}
+                </strong>
+                <small>{historicalSeason ? seedingSnapshot.source : `${seedingSnapshot.status} from fictional circuit ranking`}</small>
               </div>
               <div>
                 <span>Draw State</span>
@@ -5069,7 +5244,9 @@ export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddr
                 <small>
                   {universeRecord?.entrants.length
                     ? `${universeRecord.entrants.length} deterministic entrant(s) published.`
-                    : "Playable bracket appears when the event reaches match day."}
+                    : historicalSeason
+                      ? "No entrant list was retained for this historical edition."
+                      : "Playable bracket appears when the event reaches match day."}
                 </small>
               </div>
             </div>
@@ -5108,6 +5285,7 @@ export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddr
                 <small>
                   {rankingLedgerLine({
                     career,
+                    seasonId: props.seasonId,
                     eventId: event.id,
                     playerId: eventOutcome?.championId ?? null,
                     fallbackPoints: eventOutcome?.championId ? event.rankingPoints.champion : null,
@@ -5131,6 +5309,7 @@ export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddr
                 <small>
                   {rankingLedgerLine({
                     career,
+                    seasonId: props.seasonId,
                     eventId: event.id,
                     playerId: eventOutcome?.runnerUpId ?? null,
                     fallbackPoints: eventOutcome?.runnerUpId ? event.rankingPoints.F : null,
@@ -5234,24 +5413,24 @@ export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddr
 
             <section className="tournament-note-block">
               <div className="panel-header">
-                <h3>Decision Gates</h3>
-                <span>{tierGate.allowed && medicalGate.allowed && affordable ? "ready" : "check gates"}</span>
+                <h3>{historicalSeason ? "Archive Context" : "Decision Gates"}</h3>
+                <span>{historicalSeason ? `${props.seasonId} closed` : tierGate.allowed && medicalGate.allowed && affordable ? "ready" : "check gates"}</span>
               </div>
               <div className="career-event-brief calendar-brief-grid">
                 <div>
                   <span>Entry Deadline</span>
                   <strong>{event.entryDeadline}</strong>
-                  <small>{daysUntilLabel(career.date, event.entryDeadline)}</small>
+                  <small>{historicalSeason ? "Historical deadline" : daysUntilLabel(career.date, event.entryDeadline)}</small>
                 </div>
                 <div>
-                  <span>Eligibility</span>
-                  <strong>{tierGate.allowed ? "Gate clear" : "Blocked"}</strong>
-                  <small>Rank {tierGate.rank}, readiness {tierGate.readiness}</small>
+                  <span>{historicalSeason ? "Entry State" : "Eligibility"}</span>
+                  <strong>{historicalSeason ? entered ? "Entered" : "Not entered" : tierGate.allowed ? "Gate clear" : "Blocked"}</strong>
+                  <small>{historicalSeason ? "Resolved from the event archive when retained." : `Rank ${tierGate.rank}, readiness ${tierGate.readiness}`}</small>
                 </div>
                 <div>
-                  <span>Readiness</span>
-                  <strong>{athlete.readiness}</strong>
-                  <small>{medicalGate.allowed ? "Medical gate clear" : medicalGate.reason}</small>
+                  <span>{historicalSeason ? "Season Snapshot" : "Readiness"}</span>
+                  <strong>{historicalSeason ? seasonReview?.source.replace(/_/g, " ") ?? "Unavailable" : athlete.readiness}</strong>
+                  <small>{historicalSeason ? `Review finalized ${seasonReview?.createdAt ?? "without a date"}.` : medicalGate.allowed ? "Medical gate clear" : medicalGate.reason}</small>
                 </div>
                 <div>
                   <span>Champion Upside</span>
@@ -5317,10 +5496,18 @@ export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddr
         <section className="command-panel tournament-secondary-panel tournament-eligibility-panel">
           <div className="panel-header">
             <h2>Eligibility</h2>
-            <span>{tierGate.allowed ? "clear" : "blocked"}</span>
+            <span>{historicalSeason ? "historical requirements" : tierGate.allowed ? "clear" : "blocked"}</span>
           </div>
           <div className="management-table" aria-label={`${event.name} eligibility checks`}>
-            {eligibilityRows.map(([label, requirement, current]) => (
+            {(historicalSeason
+              ? [
+                  ["Rank", event.eligibility.minRank ? `Top ${event.eligibility.minRank}` : "Open", "Requirement at that edition"],
+                  ["Points", event.eligibility.minPoints ? points(event.eligibility.minPoints) : "Open", "Requirement at that edition"],
+                  ["Readiness", `${event.eligibility.readinessFloor}+`, "No historical medical snapshot retained"],
+                  ["Entry", historyRecord ? entered ? "Entered" : "Not entered" : "Unknown", "Resolved only from retained event history"]
+                ]
+              : eligibilityRows
+            ).map(([label, requirement, current]) => (
               <div className="management-table-row" key={label}>
                 <span>{label}</span>
                 <strong>{requirement}</strong>
@@ -5362,27 +5549,47 @@ export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddr
         <section className="command-panel tournament-secondary-panel tournament-field-panel">
           <div className="panel-header">
             <h2>Field And Scouting</h2>
-            <span>{seedingSnapshot.status}</span>
+            <span>{historicalSeason ? "archived field" : seedingSnapshot.status}</span>
           </div>
           <div className="career-event-brief calendar-brief-grid">
             <div>
               <span>Rival Pressure</span>
-              <strong>{fieldPressure ? Math.round(fieldPressure.pressureScore) : "Open"}</strong>
-              <small>{fieldPressure ? `${fieldPressure.rivalCount} rival programs entered` : "No rival pressure estimate yet"}</small>
+              <strong>{fieldPressure ? Math.round(fieldPressure.pressureScore) : historicalSeason ? "Not retained" : "Open"}</strong>
+              <small>{fieldPressure ? `${fieldPressure.rivalCount} rival programs entered` : historicalSeason ? "Current rival pressure is never projected backward." : "No rival pressure estimate yet"}</small>
             </div>
             <div>
               <span>Top Threat</span>
               <strong>{fieldPressure?.topThreatName ?? "Unknown"}</strong>
-              <small>Scout reports improve opponent certainty.</small>
+              <small>{historicalSeason ? "No historical scouting claim without retained evidence." : "Scout reports improve opponent certainty."}</small>
             </div>
             <div>
               <span>Seed Snapshot</span>
-              <strong>{seedingSnapshot.managedSeed ? `Seed ${seedingSnapshot.managedSeed.seed}` : "Outside top seeds"}</strong>
-              <small>Locked on {event.seedingDate}, draw on {event.drawDate}</small>
+              <strong>
+                {seedingSnapshot.managedSeed
+                  ? `Seed ${seedingSnapshot.managedSeed.seed}`
+                  : historicalSeason
+                    ? "Not retained"
+                    : "Outside top seeds"}
+              </strong>
+              <small>
+                {historicalSeason
+                  ? historicalSeeds.length > 0
+                    ? `Archived field locked on ${event.seedingDate}.`
+                    : "No event-time seed snapshot was retained."
+                  : `Locked on ${event.seedingDate}, draw on ${event.drawDate}`}
+              </small>
             </div>
             <div>
               <span>Draw Honesty</span>
-              <strong>{displayTournament ? "Actual draw" : fieldSnapshot ? "Final field published" : "Projected until match day"}</strong>
+              <strong>
+                {displayTournament
+                  ? "Actual draw"
+                  : fieldSnapshot
+                    ? "Final field published"
+                    : historicalSeason
+                      ? "Not retained"
+                      : "Projected until match day"}
+              </strong>
               <small>{fieldSummary}</small>
             </div>
           </div>

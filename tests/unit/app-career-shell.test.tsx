@@ -1029,7 +1029,7 @@ describe("career shell daily action", () => {
     const banner = screen.getByRole("banner");
     fireEvent.click(within(banner).getByRole("button", { name: "Career Save" }));
 
-    expect(screen.getByRole("heading", { level: 1, name: "Local Save Control" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Local Career Library" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Save Manager: Active slot online/ })).toHaveAttribute("aria-current", "page");
 
     fireEvent.click(within(banner).getByRole("button", { name: "Settings" }));

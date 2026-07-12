@@ -73,7 +73,7 @@ async function captureResponsiveEvidence(page: Page, name: string) {
 async function activateCareerCommand(
   page: Page,
   viewport: ResponsiveViewport,
-  command: "portal" | "timeline" | "calendar" | "training" | "inbox" | "reports"
+  command: "portal" | "timeline" | "calendar" | "training" | "inbox" | "reports" | "saveManager"
 ) {
   const sidebar = page.getByRole("complementary", { name: "Primary command sidebar" });
   const commandButton = sidebar.locator(`[data-command="${command}"]`);
@@ -261,5 +261,24 @@ for (const viewport of viewports) {
     await expect(page.getByRole("heading", { level: 1, name: "Institutional Memory" })).toBeVisible();
     await expectNoHorizontalOverflow(page);
     await captureResponsiveEvidence(page, `reports-${viewport.width}x${viewport.height}`);
+  });
+
+  test(`keeps the local career library bounded at ${viewport.width}x${viewport.height}`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await startCareer(page);
+
+    await activateCareerCommand(page, viewport, "saveManager");
+    await expect(page.getByRole("heading", { level: 1, name: "Local Career Library" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "Live careers" })).toBeVisible();
+    await expect(page.getByText("Verified backups").first()).toBeVisible();
+    await expect(page.getByText("Quarantined records").first()).toBeVisible();
+    await expect(page.getByRole("button", { name: "Continue" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Create Empty Career" })).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+    await captureResponsiveEvidence(page, `save-library-${viewport.width}x${viewport.height}`);
+    const activeCareerCard = page.getByRole("heading", { level: 3, name: "Career 1" }).locator("xpath=ancestor::article");
+    await activeCareerCard.scrollIntoViewIfNeeded();
+    await expectNoHorizontalOverflow(page);
+    await captureResponsiveEvidence(page, `save-library-card-${viewport.width}x${viewport.height}`);
   });
 }
