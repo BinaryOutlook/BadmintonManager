@@ -3,7 +3,12 @@ import { playerMap } from "../game/content/players";
 import { addCalendarMonths, addDays, buildWeek, calendarMonthCursorForDate, daysBetween } from "../game/career/calendar";
 import type { AdvanceDayForecast } from "../game/career/dayResolution";
 import { canAffordEventEntry, eventEntryCost } from "../game/career/economy";
-import { canCommissionScoutReport, roleLabel, staffModifiers } from "../game/career/ecosystem";
+import {
+  canCommissionScoutReport,
+  recruitmentOfferPreview,
+  roleLabel,
+  staffModifiers
+} from "../game/career/ecosystem";
 import {
   buildEventSeedingSnapshot,
   CALENDAR_PAGE_SIZE,
@@ -37,6 +42,12 @@ import type {
 import { managedMatchScheduleForEvent } from "../game/career/matchSchedule";
 import { effectiveEventEntryCosts, facilityModifiers } from "../game/career/facilitiesMedia";
 import { previewPreparationPlan, scheduledPreparationForAthlete } from "../game/career/preparation";
+import {
+  previewRosterPreparation,
+  programRoleLabel,
+  programTasksForCareer,
+  weeklyProgramPayroll
+} from "../game/career/program";
 import {
   groupManagerScheduleEntriesByDate,
   managerScheduleEntriesBetween,
@@ -95,7 +106,7 @@ interface CareerPageProps {
   onContinueAfterPostMatch: () => void;
   onCommissionScoutReport: (subjectId: string, subjectType: "candidate" | "prospect" | "opponent") => void;
   onMakeRecruitmentOffer: (candidateId: string) => void;
-  onTrainRosterAthlete: (athleteId: string) => void;
+  onScheduleRosterPreparation: (athleteId: string) => void;
   onEnterRosterAthleteLowerEvent: (athleteId: string) => void;
   onDevelopYouthProspect: (prospectId: string) => void;
   onEnterYouthLowerEvent: (prospectId: string) => void;
@@ -1493,6 +1504,15 @@ function homeTaskRowsFor(args: {
     }
   }
 
+  for (const task of programTasksForCareer(args.career)) {
+    rows.push({
+      label: task.label,
+      value: task.detail,
+      action: task.urgent ? "Open Program" : "Scheduled",
+      urgent: task.urgent
+    });
+  }
+
   if (args.athlete.injury.status !== "healthy" || args.athlete.fatigue >= 60 || args.athlete.injuryRisk >= 0.24) {
     rows.push({
       label: "Condition",
@@ -2558,6 +2578,7 @@ export function CareerProgramHubPage(props: CareerPageProps) {
   }
 
   const modifiers = staffModifiers(props.career.ecosystem);
+  const payroll = weeklyProgramPayroll(props.career);
   const psychology = props.career.ecosystem.psychology.find(
     (entry) => entry.athleteId === props.career?.program.managedPlayerId
   );
@@ -2578,6 +2599,7 @@ export function CareerProgramHubPage(props: CareerPageProps) {
         </div>
         <div className="screen-meta">
           <span>Cash {money(props.career.economy.cash)}</span>
+          <span>Weekly payroll {money(payroll.total)}</span>
           <span>Roster {props.career.ecosystem.recruitment.roster.length}/{props.career.ecosystem.recruitment.rosterLimit}</span>
           <span>Scout capacity {pendingAssignments.length}/{modifiers.scoutCapacity}</span>
           <button className="command-button command-button-secondary" type="button" onClick={props.onOpenHome}>
@@ -3145,7 +3167,8 @@ export function CareerRecruitmentDeskPage(props: CareerPageProps) {
           <p className="screen-kicker">Recruitment Desk</p>
           <h1 className="screen-title">Offer Flow</h1>
           <p className="screen-copy">
-            Evaluate fit, interest, report confidence, budget pressure, and roster slots before signing athletes.
+            Evaluate source confidence and full contract consequences before signing. Market interest and risk move
+            deterministically when the calendar advances.
           </p>
         </div>
         <button className="command-button command-button-secondary" type="button" onClick={props.onOpenProgram}>
@@ -3162,49 +3185,59 @@ export function CareerRecruitmentDeskPage(props: CareerPageProps) {
           <div className="program-card-grid">
             {props.career.ecosystem.recruitment.candidates.map((candidate) => {
               const report = props.career?.ecosystem.scouting.reports.find((entry) => entry.subjectId === candidate.id);
-              const offerCost = candidate.knowledge.cost === "verified" ? candidate.verifiedCost : candidate.estimatedCost;
-              const rosterFull =
-                props.career!.ecosystem.recruitment.roster.length >= props.career!.ecosystem.recruitment.rosterLimit;
+              const preview = recruitmentOfferPreview(career, candidate.id)!;
+              const trustedProfile = report && report.state !== "expired";
+              const metric = (value: number) => trustedProfile ? `${Math.round(value)}` : "Unverified";
 
               return (
                 <article key={candidate.id} className="program-decision-card">
-                  <span>{candidate.country} / {candidate.rosterImpact}</span>
+                  <span>{candidate.country} / {preview.roleLabel} target</span>
                   <strong>{candidate.name}</strong>
-                  <p>{candidate.source}</p>
+                  <p>Source: {candidate.source}</p>
                   <div className="career-stat-grid">
                     <div>
                       <span>Interest</span>
-                      <strong>{candidate.interest}</strong>
+                      <strong>{metric(candidate.interest)}</strong>
                     </div>
                     <div>
                       <span>Fit</span>
-                      <strong>{candidate.fit}</strong>
+                      <strong>{metric(candidate.fit)}</strong>
                     </div>
                     <div>
                       <span>Risk</span>
-                      <strong>{candidate.risk}</strong>
+                      <strong>{metric(candidate.risk)}</strong>
                     </div>
                     <div>
-                      <span>Cost</span>
-                      <strong>{money(offerCost)}</strong>
+                      <span>{preview.confidence === "verified" ? "Verified cost" : "Estimated cost"}</span>
+                      <strong>{preview.confidence === "verified" ? money(preview.offerCost) : `~${money(preview.offerCost)}`}</strong>
                     </div>
                   </div>
                   <p>
-                    Report: {report ? `${report.confidence}% confidence, ${report.state}` : "not commissioned; cost remains estimated"}.
-                    Promise request: {candidate.promiseRequested ?? "none"}.
+                    Evidence: {trustedProfile
+                      ? `scout report ${report.confidence}% confidence, ${report.state}, expires ${report.expiresAt}`
+                      : report?.state === "expired"
+                        ? `report expired ${report.expiresAt}; profile is stale`
+                        : "source note only; fit, interest, and risk are not verified"}.
                   </p>
+                  <div className="program-log-row">
+                    <span>Offer consequence</span>
+                    <strong>{money(preview.offerCost)} signing fee · {money(preview.weeklyContract)} weekly</strong>
+                    <p>
+                      {preview.roleLabel} roster slot. {preview.promiseConsequence}. Decision model: {preview.offerState}.
+                    </p>
+                  </div>
                   <button
                     className="command-button command-button-primary"
                     type="button"
-                    disabled={candidate.offerState !== "none" || rosterFull || props.career!.economy.cash < offerCost}
+                    disabled={candidate.offerState !== "none" || preview.rosterFull || !preview.affordable}
                     onClick={() => props.onMakeRecruitmentOffer(candidate.id)}
                   >
                     {candidate.offerState === "none"
-                      ? rosterFull
+                      ? preview.rosterFull
                         ? "Roster Full"
-                        : props.career!.economy.cash < offerCost
+                        : !preview.affordable
                           ? "Unaffordable"
-                          : "Make Offer"
+                          : `Offer ${money(preview.offerCost)}`
                       : `Offer ${candidate.offerState}`}
                   </button>
                 </article>
@@ -3221,10 +3254,15 @@ export function CareerRecruitmentDeskPage(props: CareerPageProps) {
           <div className="program-log-list">
             {career.ecosystem.recruitment.roster.map((slot) => {
               const athleteState = career.athletes.find((athlete) => athlete.playerId === slot.athleteId);
+              const preparation = slot.athleteId === career.program.managedPlayerId
+                ? null
+                : previewRosterPreparation({ state: career, athleteId: slot.athleteId });
+              const scheduled = scheduledPreparationForAthlete(career, slot.athleteId);
+              const previewRecord = preparation?.record?.kind === "preparation" ? preparation.record : null;
 
               return (
                 <div key={slot.athleteId} className="program-log-row">
-                  <span>{slot.role} / {slot.status}</span>
+                  <span>{programRoleLabel(slot)} / {slot.status}</span>
                   <strong>
                     <ProfileNameButton
                       playerId={slot.athleteId}
@@ -3239,22 +3277,25 @@ export function CareerRecruitmentDeskPage(props: CareerPageProps) {
                       : "Roster display only."}
                   </p>
                   {slot.athleteId !== career.program.managedPlayerId && (
-                    <div className="career-action-row career-action-row-left">
-                      <button
-                        className="command-button command-button-secondary"
-                        type="button"
-                        onClick={() => props.onTrainRosterAthlete(slot.athleteId)}
-                      >
-                        Train Athlete
-                      </button>
-                      <button
-                        className="command-button command-button-primary"
-                        type="button"
-                        onClick={() => props.onEnterRosterAthleteLowerEvent(slot.athleteId)}
-                      >
-                        Enter Lower Event
-                      </button>
-                    </div>
+                    <>
+                      <p>
+                        {scheduled
+                          ? `${scheduled.planSnapshot.label} is scheduled for ${scheduled.scheduledDate} and resolves once on Advance Day.`
+                          : preparation && previewRecord
+                            ? `${preparation.plan.label}: ${money(preparation.plan.cost)} on resolution; readiness ${signedNumber(preparation.after.readiness - preparation.before.readiness)}, fatigue ${signedNumber(preparation.after.fatigue - preparation.before.fatigue)}.`
+                            : "No valid preparation block is available."}
+                      </p>
+                      <div className="career-action-row career-action-row-left">
+                        <button
+                          className="command-button command-button-secondary"
+                          type="button"
+                          disabled={!preparation}
+                          onClick={() => props.onScheduleRosterPreparation(slot.athleteId)}
+                        >
+                          {scheduled ? "Replace Preparation" : `Schedule ${preparation?.plan.label ?? "Preparation"}`}
+                        </button>
+                      </div>
+                    </>
                   )}
                 </div>
               );
@@ -3293,7 +3334,8 @@ export function CareerYouthAcademyPage(props: CareerPageProps) {
           <p className="screen-kicker">Youth Academy</p>
           <h1 className="screen-title">Prospect Pipeline</h1>
           <p className="screen-copy">
-            Develop 16-year-old prospects toward readiness and lower-event eligibility without treating them as senior players.
+            Track 16-year-old prospects as readiness and morale evolve each day from staff, facilities, and the academy
+            plan without treating them as senior players.
           </p>
         </div>
         <button className="command-button command-button-secondary" type="button" onClick={props.onOpenProgram}>
@@ -3302,45 +3344,49 @@ export function CareerYouthAcademyPage(props: CareerPageProps) {
       </div>
 
       <div className="program-card-grid">
-        {props.career.ecosystem.academy.prospects.map((prospect) => (
-          <article key={prospect.id} className="command-panel program-decision-card">
-            <span>Age {prospect.age} / {prospect.developmentPlan}</span>
-            <strong>{prospect.name}</strong>
-            <p>
-              Potential {prospect.potentialRange[0]}-{prospect.potentialRange[1]} / traits{" "}
-              {prospect.developmentTraits.join(", ")}
-            </p>
-            <div className="career-stat-grid">
-              <div>
-                <span>Readiness</span>
-                <strong>{Math.round(prospect.readiness)}</strong>
+        {props.career.ecosystem.academy.prospects.map((prospect) => {
+          const report = props.career?.ecosystem.scouting.reports.find(
+            (entry) => entry.subjectId === prospect.id && entry.state !== "expired"
+          );
+
+          return (
+            <article key={prospect.id} className="command-panel program-decision-card">
+              <span>Age {prospect.age} / {prospect.developmentPlan}</span>
+              <strong>{prospect.name}</strong>
+              <p>
+                Potential {report ? `${prospect.potentialRange[0]}-${prospect.potentialRange[1]}` : "unverified"} / traits{" "}
+                {report ? prospect.developmentTraits.join(", ") : "hidden until a current academy report is available"}
+              </p>
+              <div className="career-stat-grid">
+                <div>
+                  <span>Readiness</span>
+                  <strong>{Math.round(prospect.readiness)}</strong>
+                </div>
+                <div>
+                  <span>Morale</span>
+                  <strong>{Math.round(prospect.morale)}</strong>
+                </div>
+                <div>
+                  <span>Program support</span>
+                  <strong>{prospect.mentorOrStaffModifier}</strong>
+                </div>
+                <div>
+                  <span>Lower Event</span>
+                  <strong>{prospect.lowerEventEligibility ? "Eligible" : "Not ready"}</strong>
+                </div>
               </div>
-              <div>
-                <span>Morale</span>
-                <strong>{Math.round(prospect.morale)}</strong>
-              </div>
-              <div>
-                <span>Staff Modifier</span>
-                <strong>{prospect.mentorOrStaffModifier}</strong>
-              </div>
-              <div>
-                <span>Lower Event</span>
-                <strong>{prospect.lowerEventEligibility ? "Eligible" : "Not ready"}</strong>
-              </div>
-            </div>
-            <button className="command-button command-button-primary" type="button" onClick={() => props.onDevelopYouthProspect(prospect.id)}>
-              Run Development Block
-            </button>
-            <button
-              className="command-button command-button-secondary"
-              type="button"
-              disabled={!prospect.lowerEventEligibility}
-              onClick={() => props.onEnterYouthLowerEvent(prospect.id)}
-            >
-              {prospect.lowerEventEligibility ? "Enter Lower Event" : "Lower Event Locked"}
-            </button>
-          </article>
-        ))}
+              <p>
+                {report
+                  ? `Academy report: ${report.confidence}% confidence, expires ${report.expiresAt}.`
+                  : "Evidence: academy observation only. Commission a report before trusting potential or traits."}{" "}
+                Daily development resolves once when you Advance Day.
+              </p>
+              <button className="command-button command-button-secondary" type="button" onClick={props.onOpenScouting}>
+                {report ? "Review Academy Report" : "Commission Academy Report"}
+              </button>
+            </article>
+          );
+        })}
         {props.career.ecosystem.lowerEventEntries
           .filter((entry) => entry.subjectType === "youth_prospect")
           .map((entry) => (
@@ -3363,6 +3409,7 @@ export function CareerStaffRoomPage(props: CareerPageProps) {
   }
 
   const modifiers = staffModifiers(props.career.ecosystem);
+  const payroll = weeklyProgramPayroll(props.career);
 
   return (
     <section className="screen-shell career-page">
@@ -3375,7 +3422,7 @@ export function CareerStaffRoomPage(props: CareerPageProps) {
           </p>
         </div>
         <div className="screen-meta">
-          <span>Salary {money(modifiers.salary)}</span>
+          <span>Weekly payroll {money(payroll.total)}</span>
           <span>Scout cap {modifiers.scoutCapacity}</span>
           <button className="command-button command-button-secondary" type="button" onClick={props.onOpenProgram}>
             Program Hub
@@ -3396,7 +3443,7 @@ export function CareerStaffRoomPage(props: CareerPageProps) {
                 <strong>{staff.name}</strong>
                 <p>{staff.adviceBias}</p>
                 <p>
-                  Salary {money(staff.salary)} / training +{Math.round(staff.modifiers.training * 100)}%, recovery +
+                  Onboarding fee {money(staff.salary)} and weekly salary {money(staff.salary)} / training +{Math.round(staff.modifiers.training * 100)}%, recovery +
                   {Math.round(staff.modifiers.recovery * 100)}%, scouting +{Math.round(staff.modifiers.scouting * 100)}%,
                   morale +{Math.round(staff.modifiers.morale * 100)}%.
                 </p>
@@ -3406,7 +3453,7 @@ export function CareerStaffRoomPage(props: CareerPageProps) {
                   disabled={props.career!.economy.cash < staff.salary}
                   onClick={() => props.onHireStaffMember(staff.id)}
                 >
-                  {props.career!.economy.cash < staff.salary ? "Unaffordable" : "Hire Staff"}
+                  {props.career!.economy.cash < staff.salary ? "Unaffordable" : `Hire · ${money(staff.salary)} now`}
                 </button>
               </article>
             ))}

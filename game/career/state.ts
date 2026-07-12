@@ -111,7 +111,11 @@ export function createInitialCareerState(selectedPlayerId: string, seed: number)
     selectedTrainingPlanId: null,
     lastPreMatchBrief: null,
     lastMatchReport: null,
-    ecosystem: createInitialEcosystem(selectedPlayerId),
+    ecosystem: createInitialEcosystem(
+      selectedPlayerId,
+      date,
+      seededPlayers.find((entry) => entry.player.id === selectedPlayerId)?.player.name
+    ),
     rivals: createInitialRivalCircuit(date, rankings),
     matchPlanning: createInitialMatchPlanning(date),
     facilities: createInitialFacilities(date),

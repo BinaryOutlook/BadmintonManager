@@ -133,6 +133,29 @@ const youthSeed: YouthProspect[] = [
   }
 ];
 
+function stableSignal(value: string) {
+  let hash = 2_166_136_261;
+
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16_777_619);
+  }
+
+  return (hash >>> 0) / 4_294_967_295;
+}
+
+function stableLogId(args: {
+  date: string;
+  source: ProgramEventLog["source"];
+  message: string;
+  relatedIds: string[];
+}) {
+  const signal = stableSignal(
+    [args.date, args.source, args.message, ...[...args.relatedIds].sort()].join("|")
+  );
+  return `program-log-${args.date}-${args.source}-${Math.floor(signal * 0xffff_ffff).toString(16)}`;
+}
+
 function logEntry(args: {
   state: ProgramEcosystemState;
   date: string;
@@ -142,7 +165,7 @@ function logEntry(args: {
   relatedIds: string[];
 }) {
   const entry: ProgramEventLog = {
-    id: `program-log-${args.date}-${args.state.programLog.length + 1}`,
+    id: stableLogId(args),
     date: args.date,
     source: args.source,
     message: args.message,
@@ -150,7 +173,7 @@ function logEntry(args: {
     relatedIds: args.relatedIds
   };
 
-  return [entry, ...args.state.programLog].slice(0, 18);
+  return [entry, ...args.state.programLog.filter((existing) => existing.id !== entry.id)].slice(0, 18);
 }
 
 export function staffModifiers(state: ProgramEcosystemState) {
@@ -168,6 +191,67 @@ export function staffModifiers(state: ProgramEcosystemState) {
   );
 }
 
+export function advanceProgramPools(state: CareerState): CareerState {
+  const markerId = `program-pools-${state.date}`;
+
+  if (state.ecosystem.programLog.some((entry) => entry.id === markerId)) {
+    return state;
+  }
+
+  const staff = staffModifiers(state.ecosystem);
+  const facilities = facilityModifiers(state.facilities);
+  const candidates = [...state.ecosystem.recruitment.candidates]
+    .sort((left, right) => left.id.localeCompare(right.id))
+    .map((candidate) => {
+      if (candidate.offerState === "accepted") {
+        return candidate;
+      }
+
+      const interestMovement = (stableSignal(`${state.seed}|${state.date}|${candidate.id}|interest`) - 0.5) * 3;
+      const riskMovement = (stableSignal(`${state.seed}|${state.date}|${candidate.id}|risk`) - 0.5) * 2;
+
+      return {
+        ...candidate,
+        interest: Math.round(clamp(candidate.interest + interestMovement, 0, 100) * 100) / 100,
+        risk: Math.round(clamp(candidate.risk + riskMovement, 0, 100) * 100) / 100
+      };
+    });
+  const prospects = [...state.ecosystem.academy.prospects]
+    .sort((left, right) => left.id.localeCompare(right.id))
+    .map((prospect) => {
+      const dailyVariation = (stableSignal(`${state.seed}|${state.date}|${prospect.id}|academy`) - 0.5) * 0.3;
+      const readinessGain = 0.35 + staff.training * 0.8 + facilities.youthReadiness * 0.06 + dailyVariation;
+      const moraleMovement = staff.morale * 2 + (stableSignal(`${state.seed}|${state.date}|${prospect.id}|morale`) - 0.5) * 0.6;
+      const readiness = Math.round(clamp(prospect.readiness + readinessGain, 0, 100) * 100) / 100;
+
+      return {
+        ...prospect,
+        readiness,
+        morale: Math.round(clamp(prospect.morale + moraleMovement, 0, 100) * 100) / 100,
+        mentorOrStaffModifier: Math.round((staff.training + facilities.youthReadiness / 100) * 100) / 100,
+        lowerEventEligibility: prospect.lowerEventEligibility || readiness >= 55
+      };
+    });
+  const marker: ProgramEventLog = {
+    id: markerId,
+    date: state.date,
+    source: "system",
+    message: "Program talent pools evolved",
+    stateDelta: "Recruitment interest and risk moved; academy readiness and morale resolved from program support.",
+    relatedIds: [...candidates.map((candidate) => candidate.id), ...prospects.map((prospect) => prospect.id)]
+  };
+
+  return {
+    ...state,
+    ecosystem: {
+      ...state.ecosystem,
+      recruitment: { ...state.ecosystem.recruitment, candidates },
+      academy: { prospects },
+      programLog: [marker, ...state.ecosystem.programLog].slice(0, 18)
+    }
+  };
+}
+
 export function createInitialPsychology(athleteId: string): AthletePsychology {
   return {
     athleteId,
@@ -179,11 +263,15 @@ export function createInitialPsychology(athleteId: string): AthletePsychology {
   };
 }
 
-export function createInitialEcosystem(managedPlayerId: string, date = "2026-06-01"): ProgramEcosystemState {
+export function createInitialEcosystem(
+  managedPlayerId: string,
+  date = "2026-06-01",
+  managedPlayerName = "Managed lead athlete"
+): ProgramEcosystemState {
   const roster: ProgramRosterSlot[] = [
     {
       athleteId: managedPlayerId,
-      name: "Managed lead athlete",
+      name: managedPlayerName,
       role: "lead",
       contractCost: 3_500,
       status: "active",
@@ -535,7 +623,7 @@ export function hireStaffMember(state: CareerState, staffId: string) {
     economy: state.economy,
     date: state.date,
     category: "staff",
-    label: `${staff.name} signing salary`,
+    label: `${staff.name} onboarding fee`,
     amount: -staff.salary
   });
   const ecosystem = {
@@ -562,6 +650,40 @@ export function hireStaffMember(state: CareerState, staffId: string) {
   };
 }
 
+export function recruitmentOfferPreview(state: CareerState, candidateId: string) {
+  const candidate = state.ecosystem.recruitment.candidates.find((entry) => entry.id === candidateId);
+
+  if (!candidate) {
+    return null;
+  }
+
+  const rosterFull = state.ecosystem.recruitment.roster.length >= state.ecosystem.recruitment.rosterLimit;
+  const offerCost = candidate.knowledge.cost === "verified" ? candidate.verifiedCost : candidate.estimatedCost;
+  const interestScore = candidate.interest +
+    (candidate.fit - candidate.risk) * 0.22 +
+    staffModifiers(state.ecosystem).morale * 60;
+  const affordable = state.economy.cash >= offerCost;
+  const accepted = !rosterFull && affordable && interestScore >= 62;
+  const offerState = rosterFull || !affordable ? "blocked" : accepted ? "accepted" : "rejected";
+  const rosterRole: ProgramRosterSlot["role"] = candidate.rosterImpact === "academy_bridge"
+    ? "academy"
+    : "senior";
+
+  return {
+    candidate,
+    rosterFull,
+    affordable,
+    accepted,
+    offerState,
+    offerCost,
+    weeklyContract: Math.round(offerCost / 8),
+    rosterRole,
+    roleLabel: rosterRole === "academy" ? "Development" : "Rotation",
+    promiseConsequence: candidate.promiseRequested ?? "No signing promise",
+    confidence: candidate.knowledge.cost === "verified" ? "verified" : "estimated"
+  } as const;
+}
+
 export function makeRecruitmentOffer(state: CareerState, candidateId: string) {
   const candidate = state.ecosystem.recruitment.candidates.find((entry) => entry.id === candidateId);
 
@@ -570,23 +692,20 @@ export function makeRecruitmentOffer(state: CareerState, candidateId: string) {
   }
 
   if (
-    candidate.offerState === "accepted" ||
+    candidate.offerState !== "none" ||
     state.ecosystem.recruitment.roster.some((slot) => slot.athleteId === candidateId)
   ) {
     return state;
   }
 
-  const rosterFull = state.ecosystem.recruitment.roster.length >= state.ecosystem.recruitment.rosterLimit;
-  const offerCost = candidate.knowledge.cost === "verified" ? candidate.verifiedCost : candidate.estimatedCost;
-  const interest = candidate.interest + (candidate.fit - candidate.risk) * 0.22 + staffModifiers(state.ecosystem).morale * 60;
-  const accepted = !rosterFull && state.economy.cash >= offerCost && interest >= 62;
-  const offerState = rosterFull || state.economy.cash < offerCost ? "blocked" : accepted ? "accepted" : "rejected";
+  const preview = recruitmentOfferPreview(state, candidateId)!;
+  const { accepted, offerCost, offerState, rosterFull } = preview;
   const rosterSlot: ProgramRosterSlot | null = accepted
     ? {
         athleteId: candidate.id,
         name: candidate.name,
-        role: candidate.rosterImpact === "academy_bridge" ? "academy" : "senior",
-        contractCost: Math.round(offerCost / 8),
+        role: preview.rosterRole,
+        contractCost: preview.weeklyContract,
         status: "active",
         joinedAt: state.date,
         source: candidate.source
@@ -604,6 +723,12 @@ export function makeRecruitmentOffer(state: CareerState, candidateId: string) {
         amount: -offerCost
       })
     : state.economy;
+  const economyWithContract = accepted && rosterSlot
+    ? {
+        ...economy,
+        contractCostPerWeek: economy.contractCostPerWeek + rosterSlot.contractCost
+      }
+    : economy;
   const ecosystem: ProgramEcosystemState = {
     ...state.ecosystem,
     recruitment: {
@@ -660,7 +785,7 @@ export function makeRecruitmentOffer(state: CareerState, candidateId: string) {
           })
         ]
       : state.developmentHistory,
-    economy,
+    economy: economyWithContract,
     ecosystem,
     notes: [`${candidate.name} offer ${offerState}`, ...state.notes].slice(0, 6)
   };

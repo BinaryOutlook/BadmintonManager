@@ -12,6 +12,8 @@ import {
 } from "../../game/selectors/player";
 import type { AppPhase } from "../../game/store/store";
 import type { CareerState } from "../../game/career/models";
+import { programRoleLabel } from "../../game/career/program";
+import { scheduledPreparationForAthlete } from "../../game/career/preparation";
 import type { LiveMatchSession } from "../../game/core/models";
 import type { TournamentState } from "../../game/tournament/tournament";
 
@@ -283,6 +285,87 @@ export function PlayerProfilePage(props: PlayerProfilePageProps) {
     career: props.career,
     canSelect
   });
+  const programSlot = props.career?.ecosystem.recruitment.roster.find(
+    (slot) => slot.athleteId === props.playerId
+  ) ?? null;
+  const programAthlete = props.career?.athletes.find((athlete) => athlete.playerId === props.playerId) ?? null;
+
+  if (!model && props.career && programSlot && programAthlete) {
+    const preparation = scheduledPreparationForAthlete(props.career, props.playerId);
+    const history = props.career.developmentHistory
+      .filter((entry) => entry.athleteId === props.playerId)
+      .slice(-6)
+      .reverse();
+
+    return (
+      <section className="screen-shell career-page" data-page-contract="dynamic-program-athlete-profile">
+        <div className="screen-header">
+          <div>
+            <p className="screen-kicker">My Program · {programRoleLabel(programSlot)}</p>
+            <h1 className="screen-title">{programSlot.name}</h1>
+            <p className="screen-copy">
+              A career-generated athlete profile. Viewing this record does not change the managed lead,
+              {" "}{props.career.ecosystem.recruitment.roster.find((slot) => slot.role === "lead")?.name ?? "who remains locked"}.
+            </p>
+          </div>
+          <button className="command-button command-button-secondary" type="button" onClick={props.onBack}>
+            Back to My Program
+          </button>
+        </div>
+
+        <div className="program-grid">
+          <section className="command-panel command-panel-wide">
+            <div className="panel-header">
+              <h2>Career Athlete State</h2>
+              <span>{programSlot.status} · joined {programSlot.joinedAt}</span>
+            </div>
+            <div className="career-stat-grid">
+              <div><span>Readiness</span><strong>{Math.round(programAthlete.readiness)}</strong></div>
+              <div><span>Fatigue</span><strong>{Math.round(programAthlete.fatigue)}</strong></div>
+              <div><span>Injury risk</span><strong>{Math.round(programAthlete.injuryRisk * 100)}%</strong></div>
+              <div><span>Weekly contract</span><strong>${programSlot.contractCost.toLocaleString()}</strong></div>
+              <div><span>Smash</span><strong>{Math.round(programAthlete.development.smash)}</strong></div>
+              <div><span>Stamina</span><strong>{Math.round(programAthlete.development.stamina)}</strong></div>
+              <div><span>Composure</span><strong>{Math.round(programAthlete.development.composure)}</strong></div>
+              <div><span>Recovery</span><strong>{Math.round(programAthlete.development.recovery)}</strong></div>
+            </div>
+          </section>
+
+          <section className="command-panel">
+            <div className="panel-header">
+              <h2>Today&apos;s Commitment</h2>
+              <span>{props.career.date}</span>
+            </div>
+            <div className="program-log-row">
+              <span>{preparation ? "Scheduled" : "Open"}</span>
+              <strong>{preparation?.planSnapshot.label ?? "No preparation block"}</strong>
+              <p>
+                {preparation
+                  ? `${preparation.planSnapshot.intensity} ${preparation.planSnapshot.focus}; resolves once on Advance Day for $${preparation.planSnapshot.cost.toLocaleString()}.`
+                  : "Use the Recruitment Desk to schedule this athlete before advancing."}
+              </p>
+            </div>
+          </section>
+
+          <section className="command-panel command-panel-full">
+            <div className="panel-header">
+              <h2>Development Evidence</h2>
+              <span>{history.length} persisted record(s)</span>
+            </div>
+            <div className="program-log-list">
+              {history.map((entry) => (
+                <div key={entry.id} className="program-log-row">
+                  <span>{entry.date} · {entry.kind}</span>
+                  <strong>{entry.kind === "preparation" ? entry.planLabel : "Career baseline"}</strong>
+                  <p>{entry.kind === "preparation" ? entry.reason : entry.note}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+      </section>
+    );
+  }
 
   if (!model) {
     return (

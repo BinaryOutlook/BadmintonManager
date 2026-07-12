@@ -6,10 +6,11 @@ import {
   chargeFacilityUpkeep,
   resolveMediaObjectives
 } from "./facilitiesMedia";
-import { expireScoutReports, resolveDueScoutReports, resolvePromises } from "./ecosystem";
+import { advanceProgramPools, expireScoutReports, resolveDueScoutReports, resolvePromises } from "./ecosystem";
 import { getCareerEvent, recordPastCareerEvents } from "./events";
 import type { CareerState } from "./models";
 import { resolveScheduledPreparation, scheduledPreparationForAthlete } from "./preparation";
+import { chargeProgramPayroll, isProgramPayrollDate, weeklyProgramPayroll } from "./program";
 import { advanceRivalCircuit } from "./rivals";
 import { managedAthlete } from "./state";
 import { refreshAssistantAdvice } from "./tactics";
@@ -31,13 +32,15 @@ export function resolveCareerDay(args: {
   return refreshAssistantAdvice(
     recordPastCareerEvents(
       resolveMediaObjectives(
-        chargeFacilityUpkeep(
-          applyFacilityDailyRecovery(
-            advanceFacilityBuilds(
-              advanceRivalCircuit(
-                resolvePromises(
-                  expireScoutReports(
-                    resolveDueScoutReports(universeCareer)
+        chargeProgramPayroll(
+          chargeFacilityUpkeep(
+            applyFacilityDailyRecovery(
+              advanceFacilityBuilds(
+                advanceRivalCircuit(
+                  resolvePromises(
+                    expireScoutReports(
+                      advanceProgramPools(resolveDueScoutReports(universeCareer))
+                    )
                   )
                 )
               )
@@ -119,6 +122,10 @@ export function buildAdvanceDayForecast(args: {
       .filter((athlete) => athlete.injury.returnDate === targetDate)
       .map((athlete) => `${athlete.injury.label} medical return`)
   ];
+
+  if (isProgramPayrollDate(targetDate)) {
+    dueItems.push(`Program payroll due: ${weeklyProgramPayroll(args.career).total.toLocaleString()}`);
+  }
 
   if (resolved.stage === "pre_match" && args.career.stage !== "pre_match") {
     const event = resolved.activeEventId ? getCareerEvent(resolved.events, resolved.activeEventId) : null;

@@ -96,6 +96,9 @@ What is now stable:
 - TIX-023 replaces static ranking points with deterministic bootstrap ranking results, rolling 52-week/best-10 snapshots, version `11` / career `9` migration, and rank-seeded event fields with non-entry and alternates.
 - Version Two preparation work advances persistence to version `12` / career `10`, adds exact pending training snapshots and honest development baselines, and resolves one current-day block through the same deterministic day pipeline used by advance-day forecasts.
 - Version Two schedule work now gives Portal, Timeline, and Calendar one deterministic manager diary for confirmed events, preparation, active medical returns, committed travel, scouting, and facility work, with semantic navigation and four-width browser proof.
+- Version Two program work now separates My Program from World Directory, gives recruited athletes real career profiles,
+  routes rotation/development preparation through the shared day resolver, exposes recruitment confidence and full
+  consequences, charges idempotent Monday payroll, and evolves candidate/prospect pools from seed-stable daily signals.
 - the frontend now has an imagegen-guided court-console redesign layer across launch, athlete selection, career shell, Portal, Calendar, Rankings, Squad, Player Profile, Live Match, and Save Manager surfaces, with a compact brand lockup, calmer court-line atmosphere, tighter management cards/tables, and updated bounded-viewport proof
 - Version Two tactical fidelity now snapshots exact career sliders, rally intent, and modules into live/save match input; a shared bounded resolver drives detailed and quick match shape, live plan/module evidence, and state-derived projections while legacy tactics retain a neutral compatibility path
 

@@ -151,7 +151,7 @@ function buildCareerPageProps(
     onContinueAfterPostMatch: noop,
     onCommissionScoutReport: noop,
     onMakeRecruitmentOffer: noop,
-    onTrainRosterAthlete: noop,
+    onScheduleRosterPreparation: noop,
     onEnterRosterAthleteLowerEvent: noop,
     onDevelopYouthProspect: noop,
     onEnterYouthLowerEvent: noop,

@@ -3717,6 +3717,183 @@ textarea:focus-visible {
   gap: 0.9rem;
 }
 
+.squad-view-tabs {
+  display: flex;
+  width: fit-content;
+  max-width: 100%;
+  gap: 0.45rem;
+  padding: 0.3rem;
+  border: 1px solid rgba(79, 94, 97, 0.5);
+  border-radius: 0.32rem;
+  background: rgba(12, 16, 19, 0.82);
+}
+
+.squad-panel-note {
+  margin: 0.24rem 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.program-squad-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.program-squad-row {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1.15fr) minmax(17rem, 1fr) minmax(14rem, 0.9fr);
+  align-items: center;
+  gap: 1rem;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 0.35rem;
+  padding: 0.85rem 0.9rem;
+  background: rgba(17, 19, 22, 0.96);
+}
+
+.program-squad-row-lead {
+  border-color: rgba(126, 231, 135, 0.38);
+  box-shadow: inset 0.22rem 0 0 var(--lime-soft);
+}
+
+.program-squad-identity {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 0.75rem;
+}
+
+.program-squad-identity > div {
+  min-width: 0;
+}
+
+.program-squad-identity .athlete-profile-button {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.program-squad-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.3rem;
+}
+
+.managed-lead-label {
+  color: var(--lime-soft);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.program-squad-facts {
+  display: grid;
+  grid-template-columns: 0.7fr 1fr 1.25fr;
+  gap: 0.45rem;
+  min-width: 0;
+  margin: 0;
+}
+
+.program-squad-facts div {
+  min-width: 0;
+  border-left: 1px solid rgba(79, 94, 97, 0.46);
+  padding-left: 0.65rem;
+}
+
+.program-squad-facts dt,
+.program-squad-preparation span {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.program-squad-facts dd {
+  margin: 0.22rem 0 0;
+  color: var(--text);
+  font-size: 0.86rem;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.program-squad-preparation {
+  min-width: 0;
+  border-left: 0.2rem solid var(--border-strong);
+  padding: 0.45rem 0 0.45rem 0.72rem;
+}
+
+.program-squad-preparation.is-scheduled {
+  border-left-color: var(--cyan);
+}
+
+.program-squad-preparation strong,
+.program-squad-preparation small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.program-squad-preparation strong {
+  margin-top: 0.2rem;
+  color: var(--text);
+  font-size: 0.88rem;
+}
+
+.program-squad-preparation small {
+  margin-top: 0.18rem;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+@media (max-width: 1120px) {
+  .program-squad-row {
+    grid-template-columns: minmax(12rem, 1fr) minmax(17rem, 1.2fr);
+  }
+
+  .program-squad-preparation {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 720px) {
+  .squad-view-tabs {
+    width: 100%;
+  }
+
+  .squad-view-tabs .profile-tab {
+    flex: 1 1 50%;
+    min-width: 0;
+  }
+
+  .program-squad-row {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .program-squad-facts {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .program-squad-preparation {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 420px) {
+  .program-squad-facts {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .program-squad-facts div:last-child {
+    grid-column: 1 / -1;
+  }
+}
+
 .athlete-card,
 .tactic-option-card,
 .directive-card {

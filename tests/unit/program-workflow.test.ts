@@ -2,13 +2,17 @@ import { describe, expect, it } from "vitest";
 import { seededPlayers } from "../../game/content/players";
 import { resolveCareerDay } from "../../game/career/dayResolution";
 import {
+  advanceProgramPools,
   commissionScoutReport,
+  hireStaffMember,
   makeRecruitmentOffer,
   resolveDueScoutReports
 } from "../../game/career/ecosystem";
 import {
   previewRosterPreparation,
-  scheduleRosterPreparation
+  programTasksForCareer,
+  scheduleRosterPreparation,
+  weeklyProgramPayroll
 } from "../../game/career/program";
 import { resolveScheduledPreparation } from "../../game/career/preparation";
 import { createInitialCareerState } from "../../game/career/state";
@@ -71,11 +75,18 @@ describe("multi-athlete program workflow", () => {
     expect(scheduled.economy).toEqual(signed.economy);
     expect(scheduled.economy.cash).toBe(cashBefore);
     expect(scheduled.selectedTrainingPlanId).toBe(signed.selectedTrainingPlanId);
+    expect(programTasksForCareer(signed)).toContainEqual(
+      expect.objectContaining({ athleteId: RECRUIT_ID, urgent: true })
+    );
+    expect(programTasksForCareer(scheduled)).toContainEqual(
+      expect.objectContaining({ athleteId: RECRUIT_ID, urgent: false })
+    );
   });
 
   it("previews the exact preparation outcome and lets the career day consume it once", () => {
     const signed = careerWithAcceptedRotationRecruit(9953);
-    const preview = previewRosterPreparation({ state: signed, athleteId: RECRUIT_ID });
+    const staffed = hireStaffMember(signed, "staff-assistant-ruiz");
+    const preview = previewRosterPreparation({ state: staffed, athleteId: RECRUIT_ID });
 
     expect(preview).not.toBeNull();
 
@@ -83,9 +94,9 @@ describe("multi-athlete program workflow", () => {
       throw new Error("Expected an active recruited roster athlete to have a preparation preview.");
     }
 
-    const scheduled = scheduleRosterPreparation({ state: signed, athleteId: RECRUIT_ID });
+    const scheduled = scheduleRosterPreparation({ state: staffed, athleteId: RECRUIT_ID });
     const block = scheduled.preparationSchedule.find(
-      (entry) => entry.athleteId === RECRUIT_ID && entry.scheduledDate === signed.date
+      (entry) => entry.athleteId === RECRUIT_ID && entry.scheduledDate === staffed.date
     )!;
     const preparationResolved = resolveScheduledPreparation(scheduled);
     const resolved = resolveCareerDay({ career: scheduled, tournament: null });
@@ -100,12 +111,13 @@ describe("multi-athlete program workflow", () => {
       blockId: block.id,
       outcome: "completed",
       planId: block.planSnapshot.id,
-      cost: block.planSnapshot.cost
+      cost: block.planSnapshot.cost,
+      modifierSourceIds: expect.arrayContaining(["staff:staff-assistant-ruiz"])
     });
     expect(resolved.preparationSchedule.some((entry) => entry.id === block.id)).toBe(false);
     expect(recruitAthlete(preparationResolved)).toEqual(preview.after);
     expect(preparationResolved.economy).toEqual(preview.economyAfter);
-    expect(preparationResolved.economy.cash).toBe(signed.economy.cash - block.planSnapshot.cost);
+    expect(preparationResolved.economy.cash).toBe(staffed.economy.cash - block.planSnapshot.cost);
     expect(
       resolved.economy.ledger.filter(
         (entry) =>
@@ -140,5 +152,52 @@ describe("multi-athlete program workflow", () => {
       )
     ).toHaveLength(1);
     expect(recruitAthlete(nextDay).development).toEqual(recruitAthlete(resolved).development);
+  });
+
+  it("charges roster and staff payroll once on the weekly boundary", () => {
+    const signed = careerWithAcceptedRotationRecruit(9954);
+    const staffed = hireStaffMember(signed, "staff-assistant-ruiz");
+    const beforePayroll = { ...staffed, date: "2026-06-07" };
+    const payroll = weeklyProgramPayroll(beforePayroll);
+    const resolved = resolveCareerDay({ career: beforePayroll, tournament: null });
+    const replayed = resolveCareerDay({ career: beforePayroll, tournament: null });
+    const entries = resolved.economy.ledger.filter((entry) => entry.label === "Program payroll · 2026-06-08");
+
+    expect(payroll.rosterContracts).toBeGreaterThan(3_500);
+    expect(payroll.staffSalaries).toBe(5_600);
+    expect(entries).toHaveLength(1);
+    expect(entries[0]?.amount).toBe(-payroll.total);
+    expect(resolved.economy.contractCostPerWeek).toBe(payroll.rosterContracts);
+    expect(replayed).toEqual(resolved);
+
+    const nextDay = resolveCareerDay({ career: resolved, tournament: null });
+    expect(nextDay.economy.ledger.filter((entry) => entry.label.startsWith("Program payroll ·"))).toHaveLength(1);
+  });
+
+  it("evolves candidate and prospect pools deterministically and independent of input order", () => {
+    const base = { ...createInitialCareerState(seededPlayers[0].player.id, 9955), date: "2026-06-04" };
+    const reversed = {
+      ...base,
+      ecosystem: {
+        ...base.ecosystem,
+        recruitment: {
+          ...base.ecosystem.recruitment,
+          candidates: [...base.ecosystem.recruitment.candidates].reverse()
+        },
+        academy: { prospects: [...base.ecosystem.academy.prospects].reverse() }
+      }
+    };
+    const evolved = advanceProgramPools(base);
+    const evolvedReversed = advanceProgramPools(reversed);
+    const otherSeed = advanceProgramPools({ ...base, seed: 9956 });
+
+    expect(evolved.ecosystem.recruitment.candidates).toEqual(evolvedReversed.ecosystem.recruitment.candidates);
+    expect(evolved.ecosystem.academy.prospects).toEqual(evolvedReversed.ecosystem.academy.prospects);
+    expect(evolved.ecosystem.recruitment.candidates).not.toEqual(base.ecosystem.recruitment.candidates);
+    expect(evolved.ecosystem.academy.prospects[0]?.readiness).toBeGreaterThan(
+      base.ecosystem.academy.prospects[0]!.readiness
+    );
+    expect(otherSeed.ecosystem.recruitment.candidates).not.toEqual(evolved.ecosystem.recruitment.candidates);
+    expect(advanceProgramPools(evolved)).toBe(evolved);
   });
 });

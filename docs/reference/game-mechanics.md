@@ -33,7 +33,9 @@ The player can influence the world through management intent:
 - **Training and recovery**: choose load/recovery blocks that affect readiness, fatigue, cash, and injury risk.
 - **Event entry**: enter fictional circuit events when deadline, rank, readiness, economy, and eligibility gates allow it.
 - **Match decisions**: start scheduled managed matches, apply live directives, choose between-set team talks, finish sets, and advance after match completion.
-- **Program actions**: use bounded staff, scouting, recruitment, youth, facilities, promises, media, and rival-circuit actions as career signals.
+- **Program actions**: manage one locked lead plus rotation/development athletes, schedule roster preparation, inspect
+  recruitment evidence and consequences, meet weekly payroll, and use bounded staff, scouting, youth, facilities,
+  promises, media, and rival-circuit signals.
 
 These inputs should remain coaching and program-management decisions.
 
@@ -109,8 +111,14 @@ launch -> managed athlete -> career command center
 Key rules:
 
 - A career has one locked managed athlete.
+- My Program can contain rotation and development athletes without changing that locked competition lead. World
+  Directory and recruited-athlete profile viewing are read-only identity contexts.
 - The career date starts from a fictional season timeline and advances through store actions.
 - Training choices schedule one exact block for the current day; they do not change cash or athlete state until `Advance Day` resolves that block once.
+- Recruited-athlete preparation uses the same plan snapshots, medical gates, staff/facility modifiers, ledger, and
+  development history as lead preparation.
+- Candidate/prospect state evolves once per resolved date from seed-stable signals. Weekly roster/staff payroll resolves
+  through the same day pipeline and posts one dated ledger fact.
 - Advance-day forecasts call the same pure day resolver as the real action, so displayed cash, readiness, fatigue, risk, and development deltas cannot drift into a second formula.
 - Entered events become playable only when schedule helpers say the managed round is due or overdue.
 - Direct day advancement must not skip a due managed match.

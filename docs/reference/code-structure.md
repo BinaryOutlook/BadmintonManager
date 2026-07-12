@@ -75,8 +75,11 @@ Danger zone: `game/core/match.ts` changes can alter deterministic scorelines, sa
 - `hubs.ts` builds pre-match briefs and settles career matches into rewards, reports, rankings, histories, match records, and achievements.
 - `training.ts`, `health.ts`, and `economy.ts` own preparation load, injury/readiness, and budget ledger behavior.
 - `preparation.ts` owns one-block-per-day scheduling, immutable plan snapshots, idempotent resolution, modifier evidence, and bounded development history.
+- `program.ts` owns manager-facing role mapping, roster preparation defaults/previews, Portal program tasks, and derived
+  weekly payroll. It composes preparation and economy services rather than duplicating their formulas.
 - `development.ts` projects persisted career growth onto direct managed-match rating equivalents without mutating canonical player content.
-- `ecosystem.ts`, `rivals.ts`, `tactics.ts`, and `facilitiesMedia.ts` own program depth systems and their migrations.
+- `ecosystem.ts`, `rivals.ts`, `tactics.ts`, and `facilitiesMedia.ts` own program depth systems. Ecosystem recruitment
+  previews and dated talent-pool evolution remain pure career-domain behavior.
 - `tacticalViewer.ts` derives Rally Pattern Map evidence from match results or live sessions.
 
 Danger zone: `calendar.ts`, `dailyAction.ts`, `matchSchedule.ts`, `events.ts`, `schedule.ts`, `hubs.ts`, `models.ts`, and migrations in ecosystem/tactics/facilities modules can change whether players can skip matches, duplicate rewards, break old saves, or fabricate archives.

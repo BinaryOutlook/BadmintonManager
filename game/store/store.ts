@@ -116,7 +116,7 @@ export interface TournamentStoreState {
   continueCareerAfterPostMatch: () => void;
   commissionScoutReport: (subjectId: string, subjectType: "candidate" | "prospect" | "opponent") => void;
   makeRecruitmentOffer: (candidateId: string) => void;
-  trainRosterAthlete: (athleteId: string) => void;
+  scheduleRosterAthletePreparation: (athleteId: string) => void;
   enterRosterAthleteLowerEvent: (athleteId: string) => void;
   developYouthProspect: (prospectId: string) => void;
   enterYouthLowerEvent: (prospectId: string) => void;
@@ -829,7 +829,7 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
       return next;
     });
   },
-  trainRosterAthlete: (athleteId) => {
+  scheduleRosterAthletePreparation: (athleteId) => {
     set((state) => {
       if (!state.career) {
         return state;

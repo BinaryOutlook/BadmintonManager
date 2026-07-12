@@ -135,6 +135,10 @@ for (const viewport of viewports) {
     if (!viewport.mobileNavigation) {
       await expect(menuButton).toBeHidden();
       await expectNoHorizontalOverflow(page);
+      await sidebar.locator('[data-command="squad"]').click();
+      await expect(page.getByRole("heading", { name: "My Program", level: 1 })).toBeVisible();
+      await expectNoHorizontalOverflow(page);
+      await captureResponsiveEvidence(page, `my-program-${viewport.width}x${viewport.height}`);
       return;
     }
 
@@ -171,7 +175,7 @@ for (const viewport of viewports) {
     await expectNoHorizontalOverflow(page);
     await sidebar.locator('[data-command="squad"]').click();
 
-    await expect(page.getByRole("heading", { name: "Athlete Directory" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "My Program", level: 1 })).toBeVisible();
     await expect(menuButton).toHaveAccessibleName("Open navigation menu");
     await expect(menuButton).toHaveAttribute("aria-expanded", "false");
     await expect(sidebar).not.toHaveClass(/command-sidebar-mobile-open/);
@@ -180,6 +184,7 @@ for (const viewport of viewports) {
     }).toBeLessThanOrEqual(1);
     await expectClosedDrawerOutsideLayout(page);
     await expectNoHorizontalOverflow(page);
+    await captureResponsiveEvidence(page, `my-program-${viewport.width}x${viewport.height}`);
   });
 
   test(`keeps the unified manager schedule trustworthy at ${viewport.width}x${viewport.height}`, async ({ page }) => {
@@ -225,7 +230,7 @@ for (const viewport of viewports) {
     await managerCommitments.locator(".panel-header").scrollIntoViewIfNeeded();
     await captureResponsiveEvidence(page, `timeline-schedule-${viewport.width}x${viewport.height}`);
 
-    await trainingCommitment.getByRole("button", { name: /^Open training: Rally Base/ }).click();
+    await trainingCommitment.getByRole("button", { name: /^Open training: .*Rally Base/ }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Load Management" })).toBeVisible();
     await expect(page.getByLabel("Training status")).toContainText("Rally Base");
 
@@ -243,7 +248,7 @@ for (const viewport of viewports) {
       "aria-current",
       "date"
     );
-    await expect(calendarGrid.getByRole("button", { name: /^Open training: Rally Base/ })).toBeVisible();
+    await expect(calendarGrid.getByRole("button", { name: /^Open training: .*Rally Base/ })).toBeVisible();
     await expectNoHorizontalOverflow(page);
     await captureResponsiveEvidence(page, `calendar-schedule-${viewport.width}x${viewport.height}`);
   });

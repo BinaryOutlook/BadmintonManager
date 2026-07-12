@@ -242,7 +242,7 @@ function renderCalendarPage(overrides: Partial<Parameters<typeof CareerCalendarP
         onContinueAfterPostMatch={vi.fn()}
         onCommissionScoutReport={vi.fn()}
         onMakeRecruitmentOffer={vi.fn()}
-        onTrainRosterAthlete={vi.fn()}
+        onScheduleRosterPreparation={vi.fn()}
         onEnterRosterAthleteLowerEvent={vi.fn()}
         onDevelopYouthProspect={vi.fn()}
         onEnterYouthLowerEvent={vi.fn()}
@@ -302,7 +302,7 @@ function renderTimelinePage(overrides: Partial<Parameters<typeof CareerTimelineP
         onContinueAfterPostMatch={vi.fn()}
         onCommissionScoutReport={vi.fn()}
         onMakeRecruitmentOffer={vi.fn()}
-        onTrainRosterAthlete={vi.fn()}
+        onScheduleRosterPreparation={vi.fn()}
         onEnterRosterAthleteLowerEvent={vi.fn()}
         onDevelopYouthProspect={vi.fn()}
         onEnterYouthLowerEvent={vi.fn()}
@@ -362,7 +362,7 @@ function renderHomePage(overrides: Partial<Parameters<typeof CareerHomePage>[0]>
         onContinueAfterPostMatch={vi.fn()}
         onCommissionScoutReport={vi.fn()}
         onMakeRecruitmentOffer={vi.fn()}
-        onTrainRosterAthlete={vi.fn()}
+        onScheduleRosterPreparation={vi.fn()}
         onEnterRosterAthleteLowerEvent={vi.fn()}
         onDevelopYouthProspect={vi.fn()}
         onEnterYouthLowerEvent={vi.fn()}
@@ -427,7 +427,7 @@ function renderTrainingPage(overrides: Partial<Parameters<typeof CareerTrainingP
       onContinueAfterPostMatch={vi.fn()}
       onCommissionScoutReport={vi.fn()}
       onMakeRecruitmentOffer={vi.fn()}
-      onTrainRosterAthlete={vi.fn()}
+      onScheduleRosterPreparation={vi.fn()}
       onEnterRosterAthleteLowerEvent={vi.fn()}
       onDevelopYouthProspect={vi.fn()}
       onEnterYouthLowerEvent={vi.fn()}
@@ -485,7 +485,7 @@ function renderRankingsPage(overrides: Partial<Parameters<typeof CareerRankingsP
       onContinueAfterPostMatch={vi.fn()}
       onCommissionScoutReport={vi.fn()}
       onMakeRecruitmentOffer={vi.fn()}
-      onTrainRosterAthlete={vi.fn()}
+      onScheduleRosterPreparation={vi.fn()}
       onEnterRosterAthleteLowerEvent={vi.fn()}
       onDevelopYouthProspect={vi.fn()}
       onEnterYouthLowerEvent={vi.fn()}
@@ -549,7 +549,7 @@ function renderTournamentHomePage(
       onContinueAfterPostMatch={vi.fn()}
       onCommissionScoutReport={vi.fn()}
       onMakeRecruitmentOffer={vi.fn()}
-      onTrainRosterAthlete={vi.fn()}
+      onScheduleRosterPreparation={vi.fn()}
       onEnterRosterAthleteLowerEvent={vi.fn()}
       onDevelopYouthProspect={vi.fn()}
       onEnterYouthLowerEvent={vi.fn()}
@@ -845,16 +845,16 @@ describe("career shell daily action", () => {
     renderHomePage({ career, onOpenTraining });
 
     const snapshot = screen.getByLabelText("Portal calendar snapshot");
-    const planLabel = within(snapshot).getByText(plan.label);
+    const planLabel = within(snapshot).getByText(new RegExp(`${plan.label}$`));
     const scheduledDay = planLabel.closest(".career-day") as HTMLElement;
 
-    expect(within(snapshot).getAllByText(plan.label)).toHaveLength(1);
+    expect(within(snapshot).getAllByText(new RegExp(`${plan.label}$`))).toHaveLength(1);
     expect(scheduledDay).toHaveTextContent("06-05");
     expect(scheduledDay).toHaveTextContent("Training");
     expect(scheduledDay).toHaveTextContent("Due");
 
     fireEvent.click(within(scheduledDay).getByRole("button", {
-      name: `Open training: ${plan.label}, Training, Due, ${career.date}`
+      name: new RegExp(`^Open training: .*${plan.label}, Training, Due, ${career.date}$`)
     }));
 
     expect(onOpenTraining).toHaveBeenCalledTimes(1);
@@ -1368,13 +1368,13 @@ describe("career calendar event actions", () => {
     }
     expect(within(commitments).getAllByText("Due").length).toBeGreaterThanOrEqual(6);
     expect(within(commitments).getAllByText("Scheduled").length).toBeGreaterThan(0);
-    expect(within(commitments).getByText(plan.label)).toBeInTheDocument();
+    expect(within(commitments).getByText(new RegExp(`${plan.label}$`))).toBeInTheDocument();
     expect(within(commitments).getByText(`${athleteName} medical return`)).toBeInTheDocument();
     expect(within(commitments).getByText(`Scout report · ${candidate.name}`)).toBeInTheDocument();
     expect(within(commitments).getByText(`${facility.label} level ${facility.level} completion`)).toBeInTheDocument();
 
     fireEvent.click(within(commitments).getByRole("button", { name: new RegExp(`^Open event: ${event.name} R16,`) }));
-    fireEvent.click(within(commitments).getByRole("button", { name: new RegExp(`^Open training: ${plan.label},`) }));
+    fireEvent.click(within(commitments).getByRole("button", { name: new RegExp(`^Open training: .*${plan.label},`) }));
     fireEvent.click(within(commitments).getByRole("button", { name: new RegExp(`^Open scouting: Scout report · ${candidate.name},`) }));
     fireEvent.click(within(commitments).getByRole("button", {
       name: new RegExp(`^Open facilities: ${facility.label} level ${facility.level} completion,`)
@@ -1442,10 +1442,10 @@ describe("career calendar event actions", () => {
     }
     expect(within(grid).getAllByText(/· Due$/).length).toBeGreaterThanOrEqual(6);
     expect(within(grid).getAllByText(/· Scheduled$/).length).toBeGreaterThan(0);
-    expect(within(grid).getByText(plan.label)).toBeInTheDocument();
+    expect(within(grid).getByText(new RegExp(`${plan.label}$`))).toBeInTheDocument();
 
     fireEvent.click(within(grid).getByRole("button", { name: new RegExp(`^Open event: ${event.name} R16,`) }));
-    fireEvent.click(within(grid).getByRole("button", { name: new RegExp(`^Open training: ${plan.label},`) }));
+    fireEvent.click(within(grid).getByRole("button", { name: new RegExp(`^Open training: .*${plan.label},`) }));
     fireEvent.click(within(grid).getByRole("button", { name: new RegExp(`^Open scouting: Scout report · ${candidate.name},`) }));
     fireEvent.click(within(grid).getByRole("button", {
       name: new RegExp(`^Open facilities: ${facility.label} level ${facility.level} completion,`)

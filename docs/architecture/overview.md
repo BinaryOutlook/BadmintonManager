@@ -93,6 +93,8 @@ Responsibilities:
 - launch shell versus command shell selection
 - top status bar, primary command sidebar, page canvas, and overlay host
 - navigation to player profiles and tournament homes through provider helpers
+- career Squad separation between My Program and the view-only World Directory; recruited athletes use a career-state
+  profile while the locked lead identity remains unchanged
 - route-like page rendering without a URL router
 - wiring UI callbacks to Zustand store actions
 

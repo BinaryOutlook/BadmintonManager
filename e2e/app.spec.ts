@@ -2077,26 +2077,162 @@ test("can run the Phase 2 program ecosystem flow and persist it after reload", a
   await page.getByRole("button", { name: "Program Hub" }).click();
   await page.getByRole("button", { name: "Recruitment Desk" }).click();
   await expect(page.getByRole("heading", { name: "Offer Flow" })).toBeVisible();
-  await page.getByRole("button", { name: "Make Offer" }).first().click();
+  await page.getByRole("button", { name: /Offer \$[\d,]+/ }).first().click();
   await expect(page.getByText(/Offer accepted/).first()).toBeVisible();
   await expect(page.getByText(/weekly contract/).first()).toBeVisible();
-  await page.getByRole("button", { name: "Train Athlete" }).click();
-  await page.getByRole("button", { name: "Enter Lower Event" }).click();
-  await expect(page.getByText(/Circuit Futures Invitational/)).toBeVisible();
 
+  await page.locator(".sidenav").getByRole("button", { name: "Squad" }).click();
+  await expect(page.getByRole("heading", { name: "My Program", level: 1 })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "World Directory" })).toBeVisible();
+  const managedLead = page.locator(".program-squad-row-lead");
+  await expect(page.getByLabel("Managed athlete")).toContainText(seededPlayers[0].player.name);
+  await expect(managedLead.getByText("Managed lead", { exact: true })).toBeVisible();
+  await expect(page.getByText("Rotation", { exact: true })).toBeVisible();
+  await captureFocusedScreenshot(page, "version-two-my-program-roster");
+
+  await page.locator(".sidenav").getByRole("button", { name: "Portal" }).click();
+  await page.getByRole("button", { name: "Program Hub" }).click();
+  await page.getByRole("button", { name: "Recruitment Desk" }).click();
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+
+  const beforeScheduling = await page.evaluate(() => {
+    const raw = window.localStorage.getItem("badminton-manager-save");
+    if (!raw) {
+      throw new Error("Expected the recruited program to be persisted.");
+    }
+
+    const career = JSON.parse(raw).career;
+    const rosterSlot = career.ecosystem.recruitment.roster.find(
+      (slot: { athleteId: string }) => slot.athleteId !== career.program.managedPlayerId
+    );
+    const athlete = career.athletes.find(
+      (entry: { playerId: string }) => entry.playerId === rosterSlot?.athleteId
+    );
+
+    if (!rosterSlot || !athlete) {
+      throw new Error("Expected a recruited rotation athlete in the career save.");
+    }
+
+    return {
+      athleteId: rosterSlot.athleteId as string,
+      cash: career.economy.cash as number,
+      readiness: athlete.readiness as number,
+      fatigue: athlete.fatigue as number,
+      development: athlete.development as Record<string, number>,
+      historyLength: career.developmentHistory.length as number
+    };
+  });
+
+  await page.getByRole("button", { name: "Schedule Rally Base" }).click();
+  await expect(page.getByText(/Rally Base is scheduled .* resolves once on Advance Day/)).toBeVisible();
+  await captureFocusedScreenshot(page, "version-two-recruitment-scheduled");
+  await page.waitForFunction(
+    (athleteId) => {
+      const raw = window.localStorage.getItem("badminton-manager-save");
+      const career = raw ? JSON.parse(raw).career : null;
+      return career?.preparationSchedule.some(
+        (block: { athleteId: string; planSnapshot: { id: string } }) =>
+          block.athleteId === athleteId && block.planSnapshot.id === "rally-base"
+      );
+    },
+    beforeScheduling.athleteId
+  );
+
+  const afterScheduling = await page.evaluate((athleteId) => {
+    const career = JSON.parse(window.localStorage.getItem("badminton-manager-save")!).career;
+    const athlete = career.athletes.find((entry: { playerId: string }) => entry.playerId === athleteId);
+
+    return {
+      cash: career.economy.cash as number,
+      readiness: athlete.readiness as number,
+      fatigue: athlete.fatigue as number,
+      development: athlete.development as Record<string, number>,
+      historyLength: career.developmentHistory.length as number
+    };
+  }, beforeScheduling.athleteId);
+  expect(afterScheduling).toEqual({
+    cash: beforeScheduling.cash,
+    readiness: beforeScheduling.readiness,
+    fatigue: beforeScheduling.fatigue,
+    development: beforeScheduling.development,
+    historyLength: beforeScheduling.historyLength
+  });
+
+  await page.getByRole("button", { name: "Program Hub" }).click();
+  await page.getByRole("button", { name: "Career Home" }).click();
+  const portalTasks = page.getByLabel("Portal tasks inbox");
+  await expect(portalTasks.getByText("Rotation preparation", { exact: true })).toBeVisible();
+  await expect(portalTasks).toContainText("Rally Base resolves on Advance Day");
+
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
+  await expect(page.getByLabel("Portal tasks inbox")).toContainText("Rally Base resolves on Advance Day");
+  await page.evaluate((athleteId) => {
+    const raw = window.localStorage.getItem("badminton-manager-save");
+    const career = raw ? JSON.parse(raw).career : null;
+    if (!career?.preparationSchedule.some((block: { athleteId: string }) => block.athleteId === athleteId)) {
+      throw new Error("Expected the pending rotation preparation to survive reload.");
+    }
+  }, beforeScheduling.athleteId);
+
+  await page.getByRole("button", { name: "Advance Day" }).click();
+  await expect(page.getByRole("heading", { name: "Timeline" })).toBeVisible();
+  await page.waitForFunction(
+    (athleteId) => {
+      const raw = window.localStorage.getItem("badminton-manager-save");
+      const career = raw ? JSON.parse(raw).career : null;
+      return Boolean(
+        career &&
+          !career.preparationSchedule.some((block: { athleteId: string }) => block.athleteId === athleteId) &&
+          career.developmentHistory.some(
+            (entry: { athleteId: string; kind: string; planId?: string; outcome?: string }) =>
+              entry.athleteId === athleteId &&
+              entry.kind === "preparation" &&
+              entry.planId === "rally-base" &&
+              entry.outcome === "completed"
+          )
+      );
+    },
+    beforeScheduling.athleteId
+  );
+  const afterResolution = await page.evaluate((athleteId) => {
+    const career = JSON.parse(window.localStorage.getItem("badminton-manager-save")!).career;
+    const athlete = career.athletes.find((entry: { playerId: string }) => entry.playerId === athleteId);
+    const history = career.developmentHistory.find(
+      (entry: { athleteId: string; kind: string; planId?: string }) =>
+        entry.athleteId === athleteId && entry.kind === "preparation" && entry.planId === "rally-base"
+    );
+
+    return {
+      cash: career.economy.cash as number,
+      stamina: athlete.development.stamina as number,
+      pending: career.preparationSchedule.some(
+        (block: { athleteId: string }) => block.athleteId === athleteId
+      ) as boolean,
+      historyOutcome: history?.outcome as string | undefined,
+      historyCost: history?.cost as number | undefined
+    };
+  }, beforeScheduling.athleteId);
+  expect(afterResolution.pending).toBe(false);
+  expect(afterResolution.cash).toBeLessThan(beforeScheduling.cash);
+  expect(afterResolution.stamina).toBeGreaterThan(beforeScheduling.development.stamina);
+  expect(afterResolution.historyOutcome).toBe("completed");
+  expect(afterResolution.historyCost).toBe(1800);
+
+  await page.getByRole("button", { name: "Career Home" }).click();
   await page.getByRole("button", { name: "Program Hub" }).click();
   await page.getByRole("button", { name: "Youth Academy" }).click();
   await expect(page.getByRole("heading", { name: "Prospect Pipeline" })).toBeVisible();
-  await page.getByRole("button", { name: "Run Development Block" }).click();
-  await page.getByRole("button", { name: "Run Development Block" }).click();
-  await expect(page.getByText(/Eligible/)).toBeVisible();
-  await page.getByRole("button", { name: "Enter Lower Event" }).click();
-  await expect(page.getByText(/National Junior Futures/)).toBeVisible();
+  await expect(page.getByText(/Potential unverified/)).toBeVisible();
+  await expect(page.getByText(/Daily development resolves once when you Advance Day/)).toBeVisible();
+  await page.getByRole("button", { name: "Commission Academy Report" }).click();
+  await expect(page.getByRole("heading", { name: "Reduce Uncertainty" })).toBeVisible();
 
   await page.getByRole("button", { name: "Program Hub" }).click();
   await page.getByRole("button", { name: "Staff Room" }).click();
   await expect(page.getByRole("heading", { name: "Hire Modifiers" })).toBeVisible();
-  await page.getByRole("button", { name: "Hire Staff" }).first().click();
+  await expect(page.getByText(/Onboarding fee .* weekly salary/).first()).toBeVisible();
+  await page.getByRole("button", { name: /Hire · \$[\d,]+ now/ }).first().click();
   await expect(page.getByText(/Active Modifiers/)).toBeVisible();
   await expect(page.getByText(/Marta Ruiz/)).toBeVisible();
 
@@ -2104,11 +2240,14 @@ test("can run the Phase 2 program ecosystem flow and persist it after reload", a
   await page.getByRole("button", { name: "Athlete State + Promises" }).click();
   await expect(page.getByRole("heading", { name: "Psychology Desk" })).toBeVisible();
   await expect(page.getByText("Owner: Arya Prakash")).toBeVisible();
-  await expect(page.getByText(/kept/).first()).toBeVisible();
+  await expect(page.getByText("Reach a quarterfinal within 30 days", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Promise Stamina" }).click();
-  await expect(page.getByText(/Promise created/).first()).toBeVisible();
-  await page.getByRole("button", { name: "Withdraw Promise" }).first().click();
-  await expect(page.getByText(/withdrawn/).first()).toBeVisible();
+  const staminaPromise = page.locator("article.program-decision-card").filter({
+    hasText: "Improve stamina through the next training block"
+  });
+  await expect(staminaPromise).toContainText(`Owner: ${seededPlayers[0].player.name}`);
+  await staminaPromise.getByRole("button", { name: "Withdraw Promise" }).click();
+  await expect(staminaPromise).toContainText("withdrawn");
 
   await page.reload();
   await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
@@ -2116,9 +2255,6 @@ test("can run the Phase 2 program ecosystem flow and persist it after reload", a
   await page.getByRole("button", { name: "Athlete State + Promises" }).click();
   await expect(page.getByRole("heading", { name: "Psychology Desk" })).toBeVisible();
   await expect(page.getByText(/withdrawn/).first()).toBeVisible();
-  await page.getByRole("button", { name: "Program Hub" }).click();
-  await page.getByRole("button", { name: "Recruitment Desk" }).click();
-  await expect(page.getByText(/Circuit Futures Invitational/)).toBeVisible();
   await page.getByRole("button", { name: "Program Hub" }).click();
   await page.evaluate(() => {
     const raw = window.localStorage.getItem("badminton-manager-save");

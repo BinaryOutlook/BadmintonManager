@@ -363,7 +363,7 @@ export function App() {
     continueCareerAfterPostMatch,
     commissionScoutReport,
     makeRecruitmentOffer,
-    trainRosterAthlete,
+    scheduleRosterAthletePreparation,
     enterRosterAthleteLowerEvent,
     developYouthProspect,
     enterYouthLowerEvent,
@@ -1123,7 +1123,7 @@ export function App() {
       onContinueAfterPostMatch: handleContinueCareerAfterPostMatch,
       onCommissionScoutReport: commissionScoutReport,
       onMakeRecruitmentOffer: makeRecruitmentOffer,
-      onTrainRosterAthlete: trainRosterAthlete,
+      onScheduleRosterPreparation: scheduleRosterAthletePreparation,
       onEnterRosterAthleteLowerEvent: enterRosterAthleteLowerEvent,
       onDevelopYouthProspect: developYouthProspect,
       onEnterYouthLowerEvent: enterYouthLowerEvent,
@@ -1251,7 +1251,7 @@ export function App() {
         <SquadPage
           selectedPlayerId={career ? career.program.managedPlayerId : selectedPlayerId}
           phase={phase}
-          careerPresent={Boolean(career)}
+          career={career}
           tournament={tournament}
           liveMatchSession={liveMatch?.session}
           onOpenPlayerProfile={openPlayerProfile}

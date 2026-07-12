@@ -57,6 +57,7 @@ Use the smallest matching reference before changing behavior:
 - [`reference/tournament-system.md`](reference/tournament-system.md) - 16-player knockout, quick background matches, bracket progression, archives
 - [`reference/player-model.md`](reference/player-model.md) - player schema, ratings, derived attributes, traits
 - [`reference/tactics-system.md`](reference/tactics-system.md) - tactical inputs, team talks, bounded tactical effects
+- [`reference/program-ecosystem.md`](reference/program-ecosystem.md) - program identity, roster preparation, recruitment evidence, payroll, and talent-pool evolution
 
 ### Active Work And History
 
