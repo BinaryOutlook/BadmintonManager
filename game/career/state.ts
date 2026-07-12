@@ -9,6 +9,7 @@ import { refreshAthleteReadiness } from "./health";
 import { createInitialRivalCircuit } from "./rivals";
 import { createInitialMatchPlanning, refreshAssistantAdvice } from "./tactics";
 import { createInitialFacilities, createInitialMediaState } from "./facilitiesMedia";
+import { createInitialWorldRegistry } from "./world";
 
 export function createCareerAthlete(playerId: string, rank: number, points: number): AthleteCareerState {
   const entry = seededPlayers.find((seeded) => seeded.player.id === playerId) ?? seededPlayers[0];
@@ -89,6 +90,7 @@ export function createInitialCareerState(selectedPlayerId: string, seed: number)
     events: generateCareerSeasonEvents(seasonId),
     seasonStartedAt: date,
     seasonReviews: [],
+    world: createInitialWorldRegistry({ seed, seasonId, date }),
     enteredEventIds: [],
     completedEventIds: [],
     eventHistory: [],

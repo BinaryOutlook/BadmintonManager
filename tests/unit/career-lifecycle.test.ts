@@ -218,11 +218,17 @@ describe("career season lifecycle", () => {
     expect(next.activeEventId).toBeNull();
     expect(next.stage).toBe("planning");
     expect(next.economy.cash).toBe(cashBefore);
-    expect(next.rankings.map((entry) => ({
-      playerId: entry.playerId,
-      rank: entry.rank,
-      points: entry.points
-    }))).toEqual(rankingsBefore);
+    const nextRankingByPlayer = new Map(next.rankings.map((entry) => [entry.playerId, entry]));
+    for (const previous of rankingsBefore) {
+      expect(nextRankingByPlayer.get(previous.playerId)).toMatchObject({
+        playerId: previous.playerId,
+        points: previous.points
+      });
+    }
+    expect(next.rankings.filter((entry) => !rankingsBefore.some((previous) => previous.playerId === entry.playerId)))
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({ points: 0, seasonPoints: 0 })
+      ]));
     expect({
       eventHistory: next.eventHistory,
       matchHistory: next.matchHistory,

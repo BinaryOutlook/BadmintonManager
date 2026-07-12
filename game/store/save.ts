@@ -37,6 +37,7 @@ import { normalizeTournamentName } from "../tournament/metadata";
 import { hydrateLegacyUniverseEventRecords, simulateUniverseThroughDate } from "../career/universe";
 import { rebuildCareerRankingSnapshot } from "../career/rankings";
 import { createDevelopmentBaseline } from "../career/development";
+import { ensureWorldRegistry } from "../career/world";
 
 const matchSummaryEventSchema = z.object({
   kind: z.enum([
@@ -326,6 +327,7 @@ type MigratableCurrentCareer = Omit<
   developmentHistory?: CareerState["developmentHistory"];
   seasonStartedAt?: string;
   seasonReviews?: CareerState["seasonReviews"];
+  world?: CareerState["world"];
 };
 
 function legacyRankingResultsFromSnapshot(career: Pick<CareerStateV10, "date" | "seasonId" | "events"> & {
@@ -416,6 +418,12 @@ function withCareerHistoryDefaults(career: MigratableCurrentCareer): CareerState
     version: 11,
     seasonStartedAt: seasonStartedAtForMigration(career),
     seasonReviews: career.seasonReviews ?? [],
+    world: ensureWorldRegistry({
+      registry: career.world,
+      seed: career.seed,
+      seasonId: career.seasonId,
+      date: career.date
+    }),
     events,
     eventHistory: (career.eventHistory ?? []).map((record) => ({
       ...record,

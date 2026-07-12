@@ -1,4 +1,3 @@
-import { seededPlayers, playerMap } from "../content/players";
 import { tacticLibrary } from "../content/tactics";
 import { simulateMatchByFidelity } from "../core/match";
 import type { MatchTactic, Player } from "../core/models";
@@ -28,6 +27,7 @@ import type {
 } from "./models";
 import { appendRankingResultsAndRebuild, createRankingResult, rebuildCareerRankingSnapshot } from "./rankings";
 import { syncManagedAthleteFromRankings } from "./state";
+import { activeWorldSeededPlayers, careerWorldPlayerMap } from "./world";
 import type { RoundName, TournamentState } from "../tournament/tournament";
 
 const bracketOpeningOrder = [1, 16, 8, 9, 5, 12, 4, 13, 6, 11, 3, 14, 7, 10, 2, 15] as const;
@@ -78,7 +78,7 @@ function uniquePlayerIds(ids: string[]) {
   const unique: string[] = [];
 
   for (const id of ids) {
-    if (!playerMap[id] || seen.has(id)) {
+    if (!id || seen.has(id)) {
       continue;
     }
 
@@ -93,7 +93,7 @@ function rankedCandidateIds(career: CareerState) {
   const ranked = [...career.rankings]
     .sort((left, right) => left.rank - right.rank || left.playerId.localeCompare(right.playerId))
     .map((entry) => entry.playerId);
-  const roster = seededPlayers.map((entry) => entry.player.id);
+  const roster = activeWorldSeededPlayers(career).map((entry) => entry.player.id);
 
   return uniquePlayerIds([...ranked, ...roster]);
 }
@@ -451,8 +451,13 @@ function simulateUniverseMatch(args: {
   rng: SeededRng;
   source: CareerMatchRecordSource;
 }): UniverseMatchFact {
-  const playerA = playerMap[args.playerAId];
-  const playerB = playerMap[args.playerBId];
+  const worldPlayerMap = careerWorldPlayerMap(args.career);
+  const playerA = worldPlayerMap[args.playerAId];
+  const playerB = worldPlayerMap[args.playerBId];
+
+  if (!playerA || !playerB) {
+    throw new Error(`World match entrants are unavailable: ${args.playerAId} vs ${args.playerBId}.`);
+  }
   const result = simulateMatchByFidelity(
     {
       seed: args.rng.nextInt(1, 2_147_483_000),

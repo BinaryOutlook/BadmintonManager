@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  playerSchema,
   rallyLengthIntentSchema as coreRallyLengthIntentSchema,
   tacticModuleSchema as coreTacticModuleSchema,
   type RallyLengthIntent as CoreRallyLengthIntent,
@@ -970,6 +971,51 @@ export const seasonReviewRecordSchema = z.object({
 });
 export type SeasonReviewRecord = z.infer<typeof seasonReviewRecordSchema>;
 
+export const worldPlayerRecordSchema = z.object({
+  player: playerSchema,
+  status: z.enum(["active", "retired"]),
+  origin: z.enum(["legacy_snapshot", "generated_intake"]),
+  seed: z.number().int(),
+  order: z.number().int().nonnegative(),
+  debutSeason: z.string(),
+  retiredSeason: z.string().nullable(),
+  peakAge: z.number().int().min(18).max(32),
+  declineAge: z.number().int().min(20).max(38),
+  retirementAge: z.number().int().min(28).max(45)
+});
+export type WorldPlayerRecord = z.infer<typeof worldPlayerRecordSchema>;
+
+export const worldLifecycleEventSchema = z.object({
+  id: z.string(),
+  seasonId: z.string(),
+  date: z.string(),
+  playerId: z.string(),
+  type: z.enum(["progression", "retirement", "intake"]),
+  ageBefore: z.number().int().nullable(),
+  ageAfter: z.number().int(),
+  ratingBefore: z.number().min(1).max(100).nullable(),
+  ratingAfter: z.number().min(1).max(100),
+  summary: z.string()
+});
+export type WorldLifecycleEvent = z.infer<typeof worldLifecycleEventSchema>;
+
+export const emptyWorldRegistryState = {
+  version: 1 as const,
+  initializedAt: "",
+  lastAdvancedSeasonId: null,
+  players: [],
+  lifecycleLog: []
+};
+
+export const worldRegistryStateSchema = z.object({
+  version: z.literal(1),
+  initializedAt: z.string(),
+  lastAdvancedSeasonId: z.string().nullable(),
+  players: z.array(worldPlayerRecordSchema),
+  lifecycleLog: z.array(worldLifecycleEventSchema)
+});
+export type WorldRegistryState = z.infer<typeof worldRegistryStateSchema>;
+
 export const preMatchBriefSchema = z.object({
   eventId: z.string(),
   opponentId: z.string(),
@@ -1132,6 +1178,7 @@ export const careerStateSchema = careerStateV10Schema.extend({
   version: z.literal(11),
   seasonStartedAt: z.string(),
   seasonReviews: z.array(seasonReviewRecordSchema),
+  world: worldRegistryStateSchema.default(emptyWorldRegistryState),
   events: z.array(careerSeasonEventDefinitionSchema),
   eventHistory: z.array(careerEventHistoryRecordSchema),
   matchHistory: z.array(careerMatchRecordSchema),

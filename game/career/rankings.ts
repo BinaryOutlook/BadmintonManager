@@ -13,6 +13,7 @@ import {
   type RankingResultSource,
   type RankingSettings
 } from "./models";
+import { activeWorldSeededPlayers } from "./world";
 
 const bootstrapTiers: CareerTier[] = [
   "National",
@@ -326,14 +327,19 @@ export function appendRankingResultsAndRebuild(args: {
   );
 }
 
-function careerPlayersFromState(career: Pick<CareerState, "rankings">) {
-  const rankedIds = new Set(career.rankings.map((entry) => entry.playerId));
+function careerPlayersFromState(career: CareerState) {
+  const activePlayers = activeWorldSeededPlayers(career);
+  const byId = new Map(activePlayers.map((entry) => [entry.player.id, entry]));
   const rankedPlayers = career.rankings
-    .map((entry) => seededPlayers.find((playerEntry) => playerEntry.player.id === entry.playerId))
+    .map((entry) => byId.get(entry.playerId))
     .filter((entry): entry is SeededPlayer => Boolean(entry));
-  const missingPlayers = seededPlayers.filter((entry) => !rankedIds.has(entry.player.id));
+  const rankedIds = new Set(rankedPlayers.map((entry) => entry.player.id));
+  const unrankedPlayers = activePlayers.filter((entry) => !rankedIds.has(entry.player.id));
 
-  return [...rankedPlayers, ...missingPlayers];
+  return [...rankedPlayers, ...unrankedPlayers].map((entry, index) => ({
+    seed: index + 1,
+    player: entry.player
+  }));
 }
 
 export function registerRankingPlayerPool(players: SeededPlayer[]) {

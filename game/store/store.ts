@@ -49,6 +49,7 @@ import { createEventFieldSnapshot, simulateUniverseThroughDate } from "../career
 import { getTrainingPlan } from "../career/training";
 import { advanceRivalCircuit } from "../career/rivals";
 import { startNextSeason } from "../career/lifecycle";
+import { activeWorldSeededPlayers, careerWorldPlayerMap } from "../career/world";
 import {
   activeAdvancedTacticPlan,
   applyAssistantAdvice,
@@ -543,7 +544,7 @@ function tournamentForCareerEvent(career: CareerState, seed: number) {
   const event = career.activeEventId ? getCareerEvent(career.events, career.activeEventId) : undefined;
 
   if (!event) {
-    return createTournament(seededPlayers, career.program.managedPlayerId, seed);
+    return createTournament(activeWorldSeededPlayers(career), career.program.managedPlayerId, seed);
   }
 
   const fieldSnapshot = createEventFieldSnapshot({
@@ -553,7 +554,7 @@ function tournamentForCareerEvent(career: CareerState, seed: number) {
   });
 
   return createTournamentFromPlayerIds({
-    seededEntries: seededPlayers,
+    seededEntries: activeWorldSeededPlayers(career),
     playerIds: fieldSnapshot.finalPlayerIds,
     managedPlayerId: career.program.managedPlayerId,
     seed,
@@ -1294,13 +1295,14 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
         }
       }
 
-      const baseManagedPlayer = playerMap[state.tournament.managedPlayerId];
+      const careerPlayerMap = state.career ? careerWorldPlayerMap(state.career) : playerMap;
+      const baseManagedPlayer = careerPlayerMap[state.tournament.managedPlayerId];
       const matchPlayerMap = managedCareerAthlete && baseManagedPlayer
         ? {
-            ...playerMap,
+            ...careerPlayerMap,
             [managedCareerAthlete.playerId]: careerPlayerForMatch(baseManagedPlayer, managedCareerAthlete)
           }
-        : playerMap;
+        : careerPlayerMap;
 
       const prepared = createManagedMatchInput({
         tournament: state.tournament,
@@ -1429,7 +1431,7 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
       const managedResult = getMatchResultFromSession(state.liveMatch.session);
       const tournament = advanceTournament({
         tournament: state.tournament,
-        seededEntries: seededPlayers,
+        seededEntries: state.career ? activeWorldSeededPlayers(state.career) : seededPlayers,
         managedMatchId: state.liveMatch.matchId,
         managedResult
       });

@@ -2,7 +2,15 @@ import { addDays } from "./calendar";
 import { eventEndDate, generateCareerSeasonEvents } from "./events";
 import { createInitialMediaState } from "./facilitiesMedia";
 import type { CareerState, MediaSponsorState, SeasonReviewRecord } from "./models";
+import { rebuildCareerRankingSnapshot } from "./rankings";
+import { syncManagedAthleteFromRankings } from "./state";
 import { refreshAssistantAdvice } from "./tactics";
+import {
+  advanceWorldRegistry,
+  ensureWorldRegistry,
+  protectedWorldPlayerIds,
+  syncRivalCircuitWithWorld
+} from "./world";
 
 export { generateCareerSeasonEvents } from "./events";
 
@@ -203,7 +211,20 @@ export function startNextSeason(state: CareerState): CareerState {
   const seasonStartedAt = `${seasonId}-01-01`;
   const events = generateCareerSeasonEvents(seasonId);
   const openingEventId = events[0]?.id ?? `${seasonId}:opening-event`;
-  const next: CareerState = {
+  const protectedPlayerIds = protectedWorldPlayerIds(state);
+  const world = advanceWorldRegistry({
+    registry: ensureWorldRegistry({
+      registry: state.world,
+      seed: state.seed,
+      seasonId: state.seasonId,
+      date: state.seasonStartedAt
+    }),
+    careerSeed: state.seed,
+    seasonId,
+    date: seasonStartedAt,
+    protectedPlayerIds
+  });
+  let next: CareerState = {
     ...state,
     seasonId,
     seasonStartedAt,
@@ -220,16 +241,12 @@ export function startNextSeason(state: CareerState): CareerState {
     preparationSchedule: [],
     selectedTrainingPlanId: null,
     lastPreMatchBrief: null,
+    world,
     rivals: {
       ...state.rivals,
       programs: state.rivals.programs.map((program) => ({
         ...program,
-        eventEntries: [],
-        roster: program.roster.map((athlete) => ({
-          ...athlete,
-          age: Math.min(42, athlete.age + 1),
-          fatigue: Math.max(8, athlete.fatigue * 0.35)
-        }))
+        eventEntries: []
       })),
       fieldPressure: [],
       lastSimulatedDate: seasonStartedAt
@@ -243,5 +260,17 @@ export function startNextSeason(state: CareerState): CareerState {
     notes: [`${seasonId} season opened with ${events.length} confirmed events`, ...state.notes].slice(0, 6)
   };
 
-  return refreshAssistantAdvice(next);
+  next = rebuildCareerRankingSnapshot(next, seasonStartedAt);
+  next = {
+    ...next,
+    rivals: syncRivalCircuitWithWorld({
+      rivals: next.rivals,
+      world,
+      rankings: next.rankings,
+      protectedPlayerIds,
+      date: seasonStartedAt
+    })
+  };
+
+  return refreshAssistantAdvice(syncManagedAthleteFromRankings(next));
 }

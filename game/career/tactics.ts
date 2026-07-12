@@ -17,6 +17,7 @@ import {
 } from "./models";
 import { staffModifiers } from "./ecosystem";
 import { facilityModifiers } from "./facilitiesMedia";
+import { careerWorldPlayerMap } from "./world";
 
 const DEFAULT_PLAN_ID = "plan-command-balance";
 
@@ -142,7 +143,11 @@ export function calculateTacticEffectProfile(args: {
   opponentId?: string;
 }): TacticEffectProfile {
   const athlete = args.state ? managedAthlete(args.state) : null;
-  const opponent = args.opponentId ? playerMap[args.opponentId] : null;
+  const opponent = args.opponentId
+    ? args.state
+      ? careerWorldPlayerMap(args.state)[args.opponentId]
+      : playerMap[args.opponentId]
+    : null;
   const tactic = tacticPlanToMatchTactic(args.plan);
   const runtime = deriveTacticRuntimeProfile(tactic);
   const readinessRelief = athlete ? (100 - athlete.readiness) * 0.18 : 0;

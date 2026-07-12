@@ -1,4 +1,3 @@
-import { playerMap } from "../content/players";
 import type { MatchResult } from "../core/models";
 import type { ManagedRunMatch, TournamentState } from "../tournament/tournament";
 import {
@@ -21,6 +20,7 @@ import { recordPrizeMoney } from "./economy";
 import { activeAdvancedTacticPlan, calculateTacticEffectProfile, tacticPlanToMatchTactic } from "./tactics";
 import { projectTacticalViewerFromResult } from "./tacticalViewer";
 import { appendRankingResultsAndRebuild, createRankingResult } from "./rankings";
+import { careerWorldPlayerMap } from "./world";
 
 export function buildPreMatchBrief(args: {
   state: CareerState;
@@ -28,7 +28,7 @@ export function buildPreMatchBrief(args: {
 }): PreMatchBrief | null {
   const event = args.state.activeEventId ? getCareerEvent(args.state.events, args.state.activeEventId) : undefined;
   const athlete = managedAthlete(args.state);
-  const opponent = playerMap[args.opponentId];
+  const opponent = careerWorldPlayerMap(args.state)[args.opponentId];
   const psychModifier = psychologyReadinessModifier(args.state, args.state.program.managedPlayerId);
   const latestReport = args.state.ecosystem.scouting.reports.find((report) => report.subjectId === args.opponentId);
 
