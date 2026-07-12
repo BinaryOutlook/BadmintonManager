@@ -63,7 +63,7 @@ For documentation-system work, also run:
 
 ```sh
 rg -n "game-mechanics|code-structure|save-and-persistence|maintainer-workflow|Documentation Discipline" AGENTS.md docs
-rg -n "badminton-manager-save|badminton-manager-save-corrupt|SAVE|migration|import" game docs/reference
+rg -n "badminton-manager-saves|badminton-manager-save|SAVE|migration|import" game docs/reference
 ```
 
 If you touch a page or browser flow, add or run focused Playwright proof. If you touch engine, career, tournament, selector, or save logic, add or run focused Vitest proof.

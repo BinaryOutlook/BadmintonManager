@@ -328,6 +328,30 @@ Bracket snapshots in `eventHistory.bracketSnapshot` are presentation archives fo
 timeline context. They must not be re-read as player-profile match records; doing so would fabricate
 history for old saves and can double-count matches already persisted in `career.matchHistory`.
 
+## Season Lifecycle
+
+`game/career/lifecycle.ts` owns the explicit season boundary.
+
+Each live edition is qualified by `seasonId` plus a stable catalog `templateId`. The initial 2026 identifiers stay
+compatible with old saves; later editions use identifiers such as `2027:metro-open-300`. Generation shifts operational
+dates into the target year without changing the template or using runtime randomness.
+
+A season review can finalize only when:
+
+- the career date is after the final event window;
+- every current event has terminal universe truth;
+- no active event, due managed-match stage, or scheduled preparation remains unresolved; and
+- a review for that season does not already exist.
+
+Finalization is idempotent and records the event-edition snapshots, final ranking snapshot, managed match record,
+entered/completed-event counts, and opening/closing/net cash. It does not itself start another season. Reports presents
+the review, and the manager explicitly starts the next year.
+
+Rollover generates the next calendar and media objectives, resets only current-season entry/stage/preparation/race
+state, and preserves ledger, ranking results, match/event/achievement archives, universe records, development history,
+program state, and all prior reviews. Rival-program athletes age once per rollover with a bounded maximum. Broader
+world-player retirement and intake remain separate lifecycle work and must not be claimed by the UI yet.
+
 ## Persistence
 
 Older current saves that predate event operations fields, `seasonPoints`, universe records, or rolling ranking fields remain valid.
@@ -336,14 +360,18 @@ Migration safety works in two layers:
 
 - Zod defaults let old ranking/event rows parse.
 - `migratePersistedSave` hydrates saved event rows from the fictional catalog so deadlines, locations, draw dates, and eligibility metadata are present after load/import.
-- legacy top-level versions `3` through `8` migrate into the current top-level save version `12` and career schema version `10`; gaps that lack trustworthy event facts remain empty or honest legacy-unavailable records.
-- top-level versions `9` and `10` preserve `universeEvents` when present and gain rolling `rankingResults` plus `rankingSettings`; version `11` then migrates to version `12` with an empty preparation schedule and honest current-value development baselines.
-- current version `12` saves run `simulateUniverseThroughDate` safely on load/import for the saved career date so overdue universe records and rolling ranking snapshots are current.
+- legacy versions migrate directly into current top-level version `13` / career version `11`; gaps that lack
+  trustworthy event facts remain empty or honest `legacy_unavailable` records.
+- version `11` adds rolling ranking truth; version `12` adds exact preparation snapshots and honest development
+  baselines; version `13` qualifies event/archive seasons and adds an empty review ledger without inventing history.
+- current saves run `simulateUniverseThroughDate` safely on load/import for the saved career date so overdue universe
+  records and rolling ranking snapshots are current.
 - legacy ranking aggregates become dated `archive_import` rows when event-history dates exist, or explicit `legacy_snapshot` bridge rows when only aggregate points are available.
 - legacy quick-tournament saves that contain the previous real event name are normalized to the fictional `Harborline Open` name during load/import.
 - legacy match history rows without a source hydrate with the honest `archive_import` fallback.
 
-The active local storage key remains `badminton-manager-save`.
+Portable saves are stored inside independent `badminton-manager-saves:slot:<slotId>` envelopes. The former
+`badminton-manager-save` singleton is now a verified migration input only.
 
 ## Rolling Ranking Result Ledger
 

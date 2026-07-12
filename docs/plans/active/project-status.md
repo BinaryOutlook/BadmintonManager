@@ -102,6 +102,12 @@ What is now stable:
   consequences, charges idempotent Monday payroll, and evolves candidate/prospect pools from seed-stable daily signals.
 - Version Two management-memory work now derives Inbox and Portal tasks from one authoritative selector and gives
   Reports a read-only persisted archive for managed matches, event closeouts, scouting, and development evidence.
+- Version Two lifecycle work advances persistence to version `13` / career `11`, generates season-qualified future
+  calendars, finalizes one evidence-backed review only after terminal world truth, and requires an explicit Reports
+  action before starting the next season while preserving durable history.
+- Version Two save trust now uses independent named local slots with verified writes, two rolling backups, per-slot
+  quarantine, singleton migration, switch/rename/duplicate/archive/delete/import operations, and restore-as-new-revision
+  behavior.
 - the frontend now has an imagegen-guided court-console redesign layer across launch, athlete selection, career shell, Portal, Calendar, Rankings, Squad, Player Profile, Live Match, and Save Manager surfaces, with a compact brand lockup, calmer court-line atmosphere, tighter management cards/tables, and updated bounded-viewport proof
 - Version Two tactical fidelity now snapshots exact career sliders, rally intent, and modules into live/save match input; a shared bounded resolver drives detailed and quick match shape, live plan/module evidence, and state-derived projections while legacy tactics retain a neutral compatibility path
 
@@ -207,6 +213,10 @@ What is now stable:
 - [x] implemented TIX-027 Tournament Page Optimization with draw-first Tournament Home ordering, collapsed event notes, compact two-row bracket score cells, deterministic abbreviation/collision handling, selected-match detail, and 32-ready bracket layout coverage
 - [x] implemented the imagegen-guided frontend rework as a shared court-console visual system, including shell/topbar markup, global styling, responsive dense-page constraints, updated unit/e2e expectations, and desktop/mobile screenshot proof
 - [x] implemented the first Version Two tactical-fidelity slice with exact intent snapshots, module-specific court/shot evidence, same-category slider effects, team-talk compatibility, mid-match save round trips, calibration proof, and live Match Command Center plan markers
+- [x] implemented explicit season review and rollover with deterministic future event editions, multi-season archive
+  identities, version-13 migration, required Reports acknowledgement, and durable-history tests
+- [x] implemented the local multi-slot repository and store contract with verified writes, bounded checkpoints,
+  per-slot quarantine, legacy singleton migration, backup restore, duplication, archive, and isolated hard deletion
 
 ## In Progress
 

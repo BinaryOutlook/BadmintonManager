@@ -92,7 +92,8 @@ At minimum, save:
 
 Legacy save compatibility:
 
-- the active local key remains `badminton-manager-save`
+- portable tournament state now lives inside independent `badminton-manager-saves:slot:<slotId>` envelopes; the
+  former `badminton-manager-save` key remains a verified one-time migration source
 - older saves that contain the previous quick-tournament real event name are accepted and normalized
   to `Harborline Open` during load/import
 - older public tier labels are accepted and normalized to fictional `Circuit` labels

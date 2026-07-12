@@ -111,7 +111,7 @@ Useful commands:
 
 ```sh
 rg -n "game-mechanics|code-structure|save-and-persistence|maintainer-workflow|Documentation Discipline" AGENTS.md docs
-rg -n "badminton-manager-save|badminton-manager-save-corrupt|SAVE|migration|import" game docs/reference
+rg -n "badminton-manager-saves|badminton-manager-save|SAVE|migration|import" game docs/reference
 npm run typecheck
 npm run test
 ```

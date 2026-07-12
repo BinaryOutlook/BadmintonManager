@@ -61,8 +61,8 @@ Staff hiring has an immediate onboarding fee equal to the listed salary and adds
 The UI must describe both consequences. Payroll may take cash negative; that deterministic shortfall is recorded in
 career notes rather than silently suppressing the charge.
 
-No persistence version bump was required: roster contracts, hired staff, ledger entries, and
-`economy.contractCostPerWeek` already exist in save version 12 / career version 10.
+No program-specific persistence bump was required: roster contracts, hired staff, ledger entries, and
+`economy.contractCostPerWeek` already existed before the current save version 13 / career version 11 lifecycle shape.
 
 ## Evolving Talent Pools
 

@@ -34,13 +34,17 @@ There is no required backend, auth, account system, database, or cloud save for 
 
 Persistence is browser-local and portable:
 
-- active local save key: `badminton-manager-save`
-- corrupt active-save quarantine key: `badminton-manager-save-corrupt`
-- current top-level save version: `12`
-- current career schema version: `10`
-- import path: parse -> validate -> migrate -> universe simulation through saved date -> preview -> confirm
+- multi-slot repository prefix: `badminton-manager-saves`
+- independent slot envelopes, rolling per-slot backups, and per-slot quarantine records
+- legacy singleton keys remain migration/recovery inputs only
+- current top-level save version: `13`
+- current career schema version: `11`
+- import path: parse -> validate -> migrate -> preview -> create a new slot
 
-Version `12` / career `10` saves add exact pending preparation snapshots and honest development-history baselines to the version-11 universe/ranking contract. `game/store/save.ts` owns load/import migration and runs `simulateUniverseThroughDate()` through the saved career date; React routes must render the resolved world state rather than trigger universe simulation.
+Version `13` / career `11` adds season-qualified event editions, durable season reviews, and explicit rollover to the
+version-12 preparation/development contract. `game/store/save.ts` owns portable migration;
+`game/store/saveRepository.ts` owns slot envelopes, verified writes, backups, and quarantine. React routes render the
+resolved state and dispatch explicit intent; they do not manufacture lifecycle or recovery outcomes.
 
 See `docs/reference/save-and-persistence.md` for the persistence contract.
 
@@ -117,15 +121,16 @@ Large page-level components such as `components/CareerWorkbench.tsx` may organiz
 
 ### 3. Store And Persistence Orchestration
 
-Owned by `game/store/store.ts` and `game/store/save.ts`.
+Owned by `game/store/store.ts`, `game/store/save.ts`, and `game/store/saveRepository.ts`.
 
 Responsibilities:
 
 - Zustand runtime state
 - app phase, selected player, tournament, live match, career, save-recovery flags
 - state-changing actions for career, tournament, match, save, and UI-facing commands
-- active save writes and runtime hydration
+- multi-slot autosave, switching, metadata, archive/delete, duplicate, import-to-slot, and backup restore orchestration
 - Zod schemas, supported legacy save versions, migration, and import validation
+- verified local envelope writes, bounded backups, per-slot quarantine, and singleton migration
 
 The store is the bridge between UI intent and game modules. It should remain thin enough that subsystem formulas stay in `game/core/`, `game/career/`, or `game/tournament/`.
 

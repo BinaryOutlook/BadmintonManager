@@ -84,6 +84,17 @@ For every state, verify horizontal overflow, clipped controls, focus order, visi
 - `e2e/version-two-responsive.spec.ts` enforces all four widths, horizontal bounds, mobile drawer geometry, full command labels, focus restoration, and identity-label truncation.
 - Optional visual evidence can be regenerated with `VERSION_TWO_SCREENSHOT_DIR=<directory> npx playwright test e2e/version-two-responsive.spec.ts`.
 
+### Lifecycle and save checkpoint — 2026-07-13
+
+- Save version 13 / career 11 qualifies event editions and archive facts by season, preserves generated future dates,
+  and migrates version-12 careers without fabricating season reviews.
+- Season close requires terminal universe truth and no pending match or preparation intent. Reports is the explicit
+  boundary for opening the next generated calendar.
+- Browser persistence uses independent named envelopes, a verified active pointer, two rolling per-slot checkpoints,
+  and isolated quarantine records. Import creates a new slot; restore writes a new revision.
+- Slot switching, rename, duplicate, archive/restore, permanent delete, legacy singleton migration, and backup restore
+  have focused repository/store coverage. Responsive and keyboard Save Manager proof remains part of the UX gate.
+
 ## Save Invariants
 
 Version Two persistence work must preserve these rules:

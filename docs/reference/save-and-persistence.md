@@ -8,159 +8,131 @@ $$
 \text{invalid import} \Rightarrow \text{no active-save mutation}
 $$
 
-## Storage Keys
+## Storage Layers And Keys
 
-Current keys live in `game/store/store.ts`:
+Portable gameplay state and browser slot metadata are deliberately separate:
 
-| Key | Purpose |
+```text
+SaveSlotEnvelope v1
+  -> slot identity + timestamps + revision + archive state
+  -> PersistedSave v13
+       -> tournament/live/career gameplay truth
+```
+
+`game/store/saveRepository.ts` owns the browser repository:
+
+| Key pattern | Purpose |
 | --- | --- |
-| `badminton-manager-save` | Single active local save slot |
-| `badminton-manager-save-corrupt` | Quarantined raw active-save payload when boot finds malformed JSON or an unsupported schema |
+| `badminton-manager-saves:active` | Active slot identifier only |
+| `badminton-manager-saves:slot:<slotId>` | Validated storage-envelope version 1 plus portable save |
+| `badminton-manager-saves:backup:<slotId>:<revision>` | Pre-overwrite checkpoint; newest two are retained |
+| `badminton-manager-saves:quarantine:<slotId>:<id>` | Raw unreadable slot isolated from every healthy slot |
+| `badminton-manager-save` | Legacy singleton source, migrated once after verified writes |
+| `badminton-manager-save-corrupt` | Legacy singleton quarantine retained for compatibility |
 
-Settings and shell preferences use separate local-storage keys and are not part of the gameplay save schema.
+There is no global slot manifest. Discovery enumerates matching keys so one damaged index cannot hide every career.
+Settings and shell preferences use separate keys and are not gameplay saves.
 
 ## Current Save Versions
 
-The current top-level persisted save version is `12`.
-
-The current career schema version inside a version-12 save is `10`.
-
-`game/store/save.ts` supports legacy top-level versions `2` through `11` and migrates them to the current `PersistedSave` shape before hydration or import confirmation.
-
-Current payload shape, simplified:
+The portable top-level save version is `13`; its current career schema version is `11`. The storage envelope has its
+own independent `storageVersion: 1`.
 
 ```ts
 PersistedSave = {
-  version: 12;
+  version: 13;
   selectedPlayerId: string;
   plannedTacticKey: TacticKey;
   seed: number;
   tournament: TournamentState | null;
   liveMatch: LiveManagedMatch | null;
-  career: CareerState | null;
+  career: CareerState | null; // version 11
 };
 ```
 
-`MatchTactic` may contain an optional version-1 `advancedIntent` snapshot for career matches. The field carries exact tactic sliders, rally intent, and modules through active-match saves. It remains optional so old version-11 mid-match saves and compact quick/autoplay tactics migrate safely. JSON round-trip tests verify that a resumed exact-intent session produces the same next deterministic point.
+`game/store/save.ts` accepts top-level versions `2` through `13`. Migration reaches the current portable shape before
+repository writes, runtime hydration, or import confirmation.
 
-## Boot Load Behavior
+## Repository Write Contract
 
-`loadPersistedFromStorage()` in `game/store/store.ts` is the boot-time local-storage gate.
-
-Flow:
-
-```text
-read badminton-manager-save
-  -> no value: clean default state
-  -> malformed JSON: verify quarantine write, then clear active key and open safe state
-  -> schema invalid: verify quarantine write, then clear active key and open safe state
-  -> quarantine unavailable: preserve the original active key and expose recovery attention
-  -> schema valid: migrate payload, infer phase, hydrate runtime state
-```
-
-Quarantine writes the raw invalid active save to `badminton-manager-save-corrupt`, reads it back, and only then attempts to remove `badminton-manager-save`. If the backup write fails or cannot be verified, the original active entry is preserved in place. The runtime does not hydrate the invalid payload, but Save Manager names the preserved source and leaves it available for explicit deletion or future recovery tooling.
-
-## Migration Responsibilities
-
-`migratePersistedSave()` in `game/store/save.ts` owns save migration.
-
-Current responsibilities include:
-
-- migrating legacy tournament-only saves to top-level version `12`
-- upgrading career versions through ecosystem, rivals, tactics, facilities/media, event history, match history, player achievements, universe event records, and tactical-viewer defaults
-- defaulting missing `career.universeEvents` to `[]` before runtime hydration
-- hydrating career events from the current fictional catalog
-- hydrating old event-history rows into universe records when complete bracket evidence exists, or `legacy_unavailable` when it does not
-- running `simulateUniverseThroughDate()` through the saved career date during load/import so overdue non-managed events gain deterministic universe records without waiting for React routes to open
-- preserving played managed-match facts during load/import simulation; entered overdue events with only partial played evidence remain incomplete rather than receiving fabricated brackets
-- normalizing legacy public tier labels to fictional `Circuit` labels
-- normalizing legacy quick-tournament names to `Harborline Open`
-- defaulting legacy match-history rows without source metadata to `archive_import`
-- refreshing assistant advice after career migration
-
-When the save shape changes:
-
-1. Add or extend the schema in `game/store/save.ts` or `game/career/models.ts`.
-2. Migrate old versions without assuming users have intermediate saves.
-3. Preserve the ability to import valid old JSON.
-4. Add focused migration tests in `tests/unit/save-migration.test.ts`.
-5. Update this document and any affected subsystem reference.
-
-## Import Validation
-
-Import preview is intentionally separate from import confirmation.
-
-`validateImportedSaveText(raw)` performs:
+Every slot mutation is read back byte-for-byte. Gameplay overwrite follows:
 
 ```text
-JSON.parse
-  -> persistedSavePayloadSchema.safeParse
-  -> migratePersistedSave
-  -> persistedSaveSchema.safeParse
-  -> return preview save or validation error
+validate current slot
+  -> write + verify current revision as backup
+  -> write + verify next revision
+  -> restore prior raw slot if next write verification fails
+  -> prune backups to newest two
 ```
 
-It does not write to local storage. It does not delete the active save. It does not delete a corrupt backup.
+Slot corruption is quarantined under that slot's identity and cannot delete or quarantine another slot. Renaming,
+duplicating, archiving/restoring, permanent deletion, switching, and backup restoration are explicit store actions.
+A backup restore is written as a new revision; the pre-restore current revision becomes the newest backup.
 
-`components/SaveManagerView.tsx` stores the preview result in component state and only calls `onConfirmImport` after the user confirms a valid preview.
+## Boot And Legacy Migration
 
-`replaceActiveSave(save)` in `game/store/store.ts` is the active overwrite point. It writes the migrated save to `badminton-manager-save` and updates runtime state from that save.
+`loadPersistedFromSaveRepository()` is the browser boot gate. It first attempts an idempotent singleton migration,
+then loads the active healthy slot or the most recently played unarchived fallback.
 
-## Preview And Confirm Behavior
+Legacy migration follows a strict order:
 
-Save Manager behavior:
+1. Parse, validate, and migrate `badminton-manager-save` to version 13.
+2. Create or reuse a byte-identical slot and verify its readback.
+3. Write and verify the active pointer.
+4. Only then remove the singleton source.
 
-- Paste or file-select JSON.
-- Preview parses, validates, migrates, and summarizes the save.
-- Invalid previews show an error and leave local storage untouched.
-- Valid previews show metadata before overwrite.
-- Confirm import writes the migrated save to the active slot.
-- Export creates portable pretty-printed JSON from the current runtime save payload.
+If cleanup fails, the verified slot is reused on retry rather than duplicated. Malformed legacy singleton data follows
+the verified legacy quarantine path; if quarantine storage is unavailable, the source remains in place and the UI
+reports recovery attention.
 
-This separation is required because a user may paste malformed JSON while still relying on the current active save.
+## Gameplay Migration Responsibilities
 
-## Deletion Behavior
+`migratePersistedSave()` owns portable schema migration. It currently:
 
-### Active Save Deletion
+- upgrades every supported career generation through ecosystem, tactics, infrastructure, universe, ranking,
+  preparation, development, and season-lifecycle state;
+- qualifies current events with `seasonId` and stable `templateId` without resetting generated future dates;
+- derives season identifiers for legacy event, match, and achievement archives from their saved dates;
+- initializes `seasonStartedAt` and an empty `seasonReviews` list without inventing a historical review;
+- hydrates honest `legacy_unavailable` universe evidence when precise old brackets do not exist;
+- simulates overdue universe state through the saved date without overwriting played managed-match facts;
+- normalizes legacy public tier labels, quick-tournament names, and missing archive sources;
+- refreshes derived rankings and assistant advice after migration.
 
-`deleteActiveSave()` removes only `badminton-manager-save`, resets runtime state to a clean launch slot, and keeps any corrupt backup flag if `badminton-manager-save-corrupt` still exists.
+When the portable shape changes, add the prior current schema to the migration union, migrate directly to current,
+add focused round-trip/idempotency tests, and update this reference.
 
-### Corrupt Backup Deletion
+## Import, Export, And Slot Operations
 
-`deleteCorruptSave()` removes only `badminton-manager-save-corrupt`, clears the recovery notice, and marks quarantine as absent.
+`validateImportedSaveText(raw)` performs JSON parse, supported-schema validation, migration, and final current-schema
+validation. Preview is read-only. Confirming a valid preview creates a new slot; it never overwrites the active career.
 
-Deleting a corrupt backup must not delete the active save. Deleting the active save must not silently delete the corrupt backup.
+Export remains portable JSON for the active `PersistedSave`, not a browser-specific envelope. Duplicate creates a new
+slot identity from the same portable state. Archive is reversible. Permanent delete is separately confirmed and removes
+only the selected slot and its rolling backups; quarantine evidence remains independently visible.
 
 ## What Must Never Happen
 
-Malformed or schema-invalid imports must never:
+- An invalid import must not mutate any slot, pointer, backup, quarantine, or Zustand runtime state.
+- A failed overwrite must not destroy the last verified current revision.
+- Corruption in one slot must not affect another slot.
+- A legacy singleton must not be removed before both migrated slot and active pointer verify.
+- Backup restoration must not rewrite history in place; it creates a new revision.
+- Migration must not fabricate unavailable brackets, matches, achievements, or season reviews.
 
-- overwrite `badminton-manager-save`
-- delete `badminton-manager-save`
-- overwrite `badminton-manager-save-corrupt`
-- delete `badminton-manager-save-corrupt`
-- mutate the live Zustand state
-- move the app into a migrated preview as if it had been confirmed
+## Verification Contract
 
-Boot-time corrupted active saves are different: the app hydrates a safe runtime state because the payload cannot be trusted. It may clear the active key only after a byte-for-byte quarantine copy has been verified. If backup storage is unavailable, preserving the original entry takes precedence over clearing the broken slot.
+At minimum, prove current and legacy round trips, singleton migration idempotency, slot isolation, bounded backups,
+restore behavior, per-slot quarantine, failed write/readback recovery, import-to-new-slot safety, explicit archive/delete,
+and accessible responsive Save Manager operations. Focused coverage lives in `tests/unit/save-migration.test.ts`,
+`tests/unit/save-repository.test.ts`, and `tests/unit/save-store.test.ts`; browser proof lives under `e2e/`.
 
-## Test Expectations
+## Version 13 Season Lifecycle Migration
 
-When save shape, migration, import, or persistence behavior changes, tests should cover:
-
-- current version round-trip through `persistedSaveSchema`
-- all supported legacy versions that can still appear in user exports
-- migration defaults for newly added required fields
-- local boot quarantine for malformed JSON
-- local boot quarantine for schema-invalid active saves
-- quarantine-write failure preserving the original active payload
-- import preview of valid current and legacy saves
-- malformed import rejection without active/corrupt key mutation
-- schema-invalid import rejection without active/corrupt key mutation
-- active save deletion and corrupt backup deletion as separate actions
-- legacy label/name/source normalization when affected
-
-The focused file today is `tests/unit/save-migration.test.ts`; browser proof for the Save Manager lives in `e2e/app.spec.ts`.
+Version 13 / career 11 introduces `seasonStartedAt`, season-qualified event editions and archive records, and durable
+`seasonReviews`. Migration from version 12 / career 10 preserves all saved dates and facts, derives only missing season
+identity, starts with no fabricated review, and is idempotent. A finalized review is created only by the live career
+resolver after every event is terminal and no managed match or scheduled preparation remains pending.
 
 ## Version 12 Preparation Migration
 
