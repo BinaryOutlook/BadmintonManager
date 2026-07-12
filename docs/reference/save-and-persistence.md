@@ -21,17 +21,17 @@ Settings and shell preferences use separate local-storage keys and are not part 
 
 ## Current Save Versions
 
-The current top-level persisted save version is `11`.
+The current top-level persisted save version is `12`.
 
-The current career schema version inside a version-11 save is `9`.
+The current career schema version inside a version-12 save is `10`.
 
-`game/store/save.ts` supports legacy top-level versions `2` through `10` and migrates them to the current `PersistedSave` shape before hydration or import confirmation.
+`game/store/save.ts` supports legacy top-level versions `2` through `11` and migrates them to the current `PersistedSave` shape before hydration or import confirmation.
 
 Current payload shape, simplified:
 
 ```ts
 PersistedSave = {
-  version: 11;
+  version: 12;
   selectedPlayerId: string;
   plannedTacticKey: TacticKey;
   seed: number;
@@ -41,7 +41,7 @@ PersistedSave = {
 };
 ```
 
-`MatchTactic` may contain an optional version-1 `advancedIntent` snapshot for career matches. The field carries exact tactic sliders, rally intent, and modules through active-match saves. It remains optional so old version-11 mid-match saves and compact quick/autoplay tactics load without a top-level save-version bump. JSON round-trip tests verify that a resumed exact-intent session produces the same next deterministic point.
+`MatchTactic` may contain an optional version-1 `advancedIntent` snapshot for career matches. The field carries exact tactic sliders, rally intent, and modules through active-match saves. It remains optional so old version-11 mid-match saves and compact quick/autoplay tactics migrate safely. JSON round-trip tests verify that a resumed exact-intent session produces the same next deterministic point.
 
 ## Boot Load Behavior
 
@@ -66,7 +66,7 @@ Quarantine writes the raw invalid active save to `badminton-manager-save-corrupt
 
 Current responsibilities include:
 
-- migrating legacy tournament-only saves to top-level version `11`
+- migrating legacy tournament-only saves to top-level version `12`
 - upgrading career versions through ecosystem, rivals, tactics, facilities/media, event history, match history, player achievements, universe event records, and tactical-viewer defaults
 - defaulting missing `career.universeEvents` to `[]` before runtime hydration
 - hydrating career events from the current fictional catalog
@@ -161,6 +161,25 @@ When save shape, migration, import, or persistence behavior changes, tests shoul
 - legacy label/name/source normalization when affected
 
 The focused file today is `tests/unit/save-migration.test.ts`; browser proof for the Save Manager lives in `e2e/app.spec.ts`.
+
+## Version 12 Preparation Migration
+
+Version Two bumps the active shape to top-level version `12` and career version `10` because scheduled preparation intent and dated development history are canonical gameplay facts.
+
+New career fields:
+
+- `career.preparationSchedule`, containing exact versioned training-plan snapshots for pending blocks
+- `career.developmentHistory`, containing career-start, recruitment, legacy, and resolved-preparation snapshots
+
+Migration from version `11` / career `9` follows these rules:
+
+- the pending schedule starts empty
+- `selectedTrainingPlanId` is never converted into a scheduled block because it may represent assistant advice rather than completed training
+- each current athlete receives one `legacy_snapshot` at the saved career date
+- the snapshot preserves known current values while explicitly stating that earlier development events are unavailable
+- migration uses no randomness and is idempotent
+
+New careers receive a `career_start` baseline. Pending blocks preserve the full plan inputs plus `rulesVersion`, so later catalog tuning cannot rewrite a saved commitment.
 
 ## Version 11 Rolling Ranking Migration
 

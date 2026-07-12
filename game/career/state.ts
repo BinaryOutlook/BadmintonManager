@@ -1,6 +1,7 @@
 import { seededPlayers } from "../content/players";
 import { careerEventCatalog } from "./events";
 import { createInitialEconomy } from "./economy";
+import { createDevelopmentBaseline } from "./development";
 import { createInitialEcosystem } from "./ecosystem";
 import { createHealthyInjuryState, defaultRankingSettings, type AthleteCareerState, type CareerState } from "./models";
 import { buildRankingSnapshot, createBootstrapRankingResults, rankingFor, registerRankingPlayerPool } from "./rankings";
@@ -72,8 +73,9 @@ export function createInitialCareerState(selectedPlayerId: string, seed: number)
   });
   const ranking = rankingFor(rankings, selectedPlayerId) ?? rankings[0];
 
+  const athlete = createCareerAthlete(selectedPlayerId, ranking.rank, ranking.points);
   const career: CareerState = {
-    version: 9,
+    version: 10,
     seed,
     date,
     seasonId,
@@ -83,7 +85,7 @@ export function createInitialCareerState(selectedPlayerId: string, seed: number)
       name: "Command Performance Unit",
       managedPlayerId: selectedPlayerId
     },
-    athletes: [createCareerAthlete(selectedPlayerId, ranking.rank, ranking.points)],
+    athletes: [athlete],
     events: careerEventCatalog,
     enteredEventIds: [],
     completedEventIds: [],
@@ -95,6 +97,16 @@ export function createInitialCareerState(selectedPlayerId: string, seed: number)
     rankingResults,
     rankings,
     rankingSettings,
+    preparationSchedule: [],
+    developmentHistory: [
+      createDevelopmentBaseline({
+        athlete,
+        date,
+        seasonId,
+        source: "career_start",
+        note: "Career-start development baseline."
+      })
+    ],
     economy: createInitialEconomy(),
     selectedTrainingPlanId: null,
     lastPreMatchBrief: null,

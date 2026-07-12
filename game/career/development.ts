@@ -1,5 +1,39 @@
 import type { Player } from "../core/models";
-import { clamp, type AthleteCareerState } from "./models";
+import {
+  clamp,
+  type AthleteCareerState,
+  type DevelopmentHistoryRecord,
+  type DevelopmentSnapshot
+} from "./models";
+
+export function developmentSnapshotFromAthlete(athlete: AthleteCareerState): DevelopmentSnapshot {
+  return {
+    development: { ...athlete.development },
+    fatigue: athlete.fatigue,
+    injuryRisk: athlete.injuryRisk,
+    readiness: athlete.readiness,
+    recoveryStatus: athlete.recoveryStatus,
+    injuryStatus: athlete.injury.status
+  };
+}
+
+export function createDevelopmentBaseline(args: {
+  athlete: AthleteCareerState;
+  date: string;
+  seasonId: string;
+  source: "career_start" | "recruitment" | "legacy_snapshot";
+  note: string;
+}): DevelopmentHistoryRecord {
+  return {
+    kind: "snapshot",
+    id: `development:${args.seasonId}:${args.date}:${args.athlete.playerId}:${args.source}`,
+    athleteId: args.athlete.playerId,
+    date: args.date,
+    source: args.source,
+    snapshot: developmentSnapshotFromAthlete(args.athlete),
+    note: args.note
+  };
+}
 
 /**
  * Projects persisted career development into the canonical player shape used by

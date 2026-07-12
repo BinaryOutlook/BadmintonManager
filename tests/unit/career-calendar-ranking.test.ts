@@ -37,7 +37,12 @@ import {
 } from "../../game/career/universe";
 import { defaultRankingSettings, type CareerEventDefinition, type RankingResult } from "../../game/career/models";
 import type { MatchResult, Side } from "../../game/core/models";
-import { migratePersistedSave, persistedSavePayloadSchema, persistedSaveSchema } from "../../game/store/save";
+import {
+  CURRENT_SAVE_VERSION,
+  migratePersistedSave,
+  persistedSavePayloadSchema,
+  persistedSaveSchema
+} from "../../game/store/save";
 import { advanceTournament, createTournament, getManagedMatchContext } from "../../game/tournament/tournament";
 
 function straightGamesResult(winner: Side): MatchResult {
@@ -984,7 +989,7 @@ describe("fictional career calendar and ranking model", () => {
     const career = createInitialCareerState(seededPlayers[0].player.id, 6807);
     const event = getCareerEvent(career.events, "metro-open-300")!;
     const save = {
-      version: 11,
+      version: CURRENT_SAVE_VERSION,
       selectedPlayerId: seededPlayers[0].player.id,
       plannedTacticKey: "balancedControl",
       seed: 6807,

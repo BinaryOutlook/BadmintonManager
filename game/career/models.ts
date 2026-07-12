@@ -586,6 +586,14 @@ export const trainingPlanSchema = z.object({
 });
 export type TrainingPlan = z.infer<typeof trainingPlanSchema>;
 
+export const athleteDevelopmentSchema = z.object({
+  smash: z.number(),
+  stamina: z.number(),
+  composure: z.number(),
+  recovery: z.number()
+});
+export type AthleteDevelopment = z.infer<typeof athleteDevelopmentSchema>;
+
 export const injuryEpisodeSchema = z.object({
   status: z.enum(["healthy", "managed", "out"]),
   label: z.string(),
@@ -609,12 +617,7 @@ export function createHealthyInjuryState(): InjuryEpisode {
 
 export const athleteCareerStateSchema = z.object({
   playerId: z.string(),
-  development: z.object({
-    smash: z.number(),
-    stamina: z.number(),
-    composure: z.number(),
-    recovery: z.number()
-  }),
+  development: athleteDevelopmentSchema,
   fatigue: z.number().min(0).max(100),
   injuryRisk: z.number().min(0).max(1),
   readiness: z.number().min(0).max(100),
@@ -624,6 +627,57 @@ export const athleteCareerStateSchema = z.object({
   currentRank: z.number().int().positive()
 });
 export type AthleteCareerState = z.infer<typeof athleteCareerStateSchema>;
+
+export const developmentSnapshotSchema = z.object({
+  development: athleteDevelopmentSchema,
+  fatigue: z.number().min(0).max(100),
+  injuryRisk: z.number().min(0).max(1),
+  readiness: z.number().min(0).max(100),
+  recoveryStatus: athleteCareerStateSchema.shape.recoveryStatus,
+  injuryStatus: injuryEpisodeSchema.shape.status
+});
+export type DevelopmentSnapshot = z.infer<typeof developmentSnapshotSchema>;
+
+export const scheduledPreparationBlockSchema = z.object({
+  id: z.string(),
+  athleteId: z.string(),
+  scheduledDate: z.string(),
+  scheduledOn: z.string(),
+  source: z.enum(["manager", "assistant"]),
+  rulesVersion: z.literal(1),
+  planSnapshot: trainingPlanSchema
+});
+export type ScheduledPreparationBlock = z.infer<typeof scheduledPreparationBlockSchema>;
+
+export const developmentHistoryRecordSchema = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("snapshot"),
+    id: z.string(),
+    athleteId: z.string(),
+    date: z.string(),
+    source: z.enum(["career_start", "recruitment", "legacy_snapshot"]),
+    snapshot: developmentSnapshotSchema,
+    note: z.string()
+  }),
+  z.object({
+    kind: z.literal("preparation"),
+    id: z.string(),
+    athleteId: z.string(),
+    date: z.string(),
+    blockId: z.string(),
+    outcome: z.enum(["completed", "blocked"]),
+    planId: z.string(),
+    planLabel: z.string(),
+    focus: trainingPlanSchema.shape.focus,
+    intensity: trainingPlanSchema.shape.intensity,
+    rulesVersion: z.literal(1),
+    cost: z.number().int().nonnegative(),
+    modifierSourceIds: z.array(z.string()),
+    snapshot: developmentSnapshotSchema,
+    reason: z.string()
+  })
+]);
+export type DevelopmentHistoryRecord = z.infer<typeof developmentHistoryRecordSchema>;
 
 export const economyLedgerEntrySchema = z.object({
   id: z.string(),
@@ -1012,10 +1066,17 @@ export const careerStateV8Schema = careerStateV7Schema.extend({
 });
 export type CareerStateV8 = z.infer<typeof careerStateV8Schema>;
 
-export const careerStateSchema = careerStateV8Schema.extend({
+export const careerStateV9Schema = careerStateV8Schema.extend({
   version: z.literal(9),
   rankingResults: z.array(rankingResultSchema).default([]),
   rankingSettings: rankingSettingsSchema.default(defaultRankingSettings)
+});
+export type CareerStateV9 = z.infer<typeof careerStateV9Schema>;
+
+export const careerStateSchema = careerStateV9Schema.extend({
+  version: z.literal(10),
+  preparationSchedule: z.array(scheduledPreparationBlockSchema).default([]),
+  developmentHistory: z.array(developmentHistoryRecordSchema).default([])
 });
 export type CareerState = z.infer<typeof careerStateSchema>;
 

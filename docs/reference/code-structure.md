@@ -155,7 +155,7 @@ Rolling ranking and event-entry simulation ownership is split deliberately:
 - `game/career/rankings.ts` owns pure ranking-window calculation, bootstrap prior-year ranking generation, ranking-result creation, and snapshot rebuild helpers.
 - `game/career/universe.ts` owns deterministic career event fields, non-entry/dropout resolution, weighted alternates, final seeding snapshots, universe bracket completion, and idempotent ranking-result writes.
 - `game/tournament/tournament.ts` can construct a playable 16-player tournament from an already-finalized career field; it does not decide career entry policy.
-- `game/store/save.ts` owns version `11` / career `9` migration for rolling ranking fields and legacy ranking snapshots.
+- `game/store/save.ts` owns version `12` / career `10` migration for preparation state plus the earlier rolling-ranking and legacy-snapshot migrations.
 - React components may display rolling-window explanations and field-change summaries, but they must not select entrants, mutate ranking ledgers, or simulate tournament outcomes.
 
 Danger zone: adding ranking rows without rebuilding snapshots, or completing universe events without stable ranking-result ids, can duplicate points after reload/import/day advance.
