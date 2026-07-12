@@ -22,6 +22,29 @@ export type PressurePattern = z.infer<typeof pressurePatternSchema>;
 export const riskProfileSchema = z.enum(["patient", "standard", "high_risk"]);
 export type RiskProfile = z.infer<typeof riskProfileSchema>;
 
+export const tacticModuleSchema = z.enum([
+  "target_backhand",
+  "net_trap",
+  "rear_court_lock",
+  "body_smash",
+  "safe_lift_release"
+]);
+export type TacticModule = z.infer<typeof tacticModuleSchema>;
+
+export const rallyLengthIntentSchema = z.enum(["shorten", "balanced", "extend"]);
+export type RallyLengthIntent = z.infer<typeof rallyLengthIntentSchema>;
+
+export const advancedMatchIntentSchema = z.object({
+  version: z.literal(1),
+  tempo: z.number().int().min(0).max(100),
+  rearCourtPressure: z.number().int().min(0).max(100),
+  netPriority: z.number().int().min(0).max(100),
+  riskTolerance: z.number().int().min(0).max(100),
+  rallyLengthIntent: rallyLengthIntentSchema,
+  modules: z.array(tacticModuleSchema)
+});
+export type AdvancedMatchIntent = z.infer<typeof advancedMatchIntentSchema>;
+
 export const teamTalkSchema = z.enum([
   "encourage",
   "demand_focus",
@@ -104,7 +127,8 @@ export const matchTacticSchema = z.object({
   label: z.string(),
   tempo: tempoSchema,
   pressurePattern: pressurePatternSchema,
-  riskProfile: riskProfileSchema
+  riskProfile: riskProfileSchema,
+  advancedIntent: advancedMatchIntentSchema.optional()
 });
 export type MatchTactic = z.infer<typeof matchTacticSchema>;
 

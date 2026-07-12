@@ -1,4 +1,10 @@
 import { z } from "zod";
+import {
+  rallyLengthIntentSchema as coreRallyLengthIntentSchema,
+  tacticModuleSchema as coreTacticModuleSchema,
+  type RallyLengthIntent as CoreRallyLengthIntent,
+  type TacticModule as CoreTacticModule
+} from "../core/models";
 
 const circuitPointTiers = ["300", "500", "750", "1000"] as const;
 const legacyTierPrefix = "Super";
@@ -340,17 +346,11 @@ export const rivalCircuitStateSchema = z.object({
 });
 export type RivalCircuitState = z.infer<typeof rivalCircuitStateSchema>;
 
-export const tacticModuleSchema = z.enum([
-  "target_backhand",
-  "net_trap",
-  "rear_court_lock",
-  "body_smash",
-  "safe_lift_release"
-]);
-export type TacticModule = z.infer<typeof tacticModuleSchema>;
+export const tacticModuleSchema = coreTacticModuleSchema;
+export type TacticModule = CoreTacticModule;
 
-export const rallyLengthIntentSchema = z.enum(["shorten", "balanced", "extend"]);
-export type RallyLengthIntent = z.infer<typeof rallyLengthIntentSchema>;
+export const rallyLengthIntentSchema = coreRallyLengthIntentSchema;
+export type RallyLengthIntent = CoreRallyLengthIntent;
 
 export const advancedTacticPlanSchema = z.object({
   id: z.string(),

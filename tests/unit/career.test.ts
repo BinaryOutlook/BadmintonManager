@@ -1489,7 +1489,16 @@ describe("advanced tactics and assistant advice", () => {
       label: "Rear Court Blitz",
       tempo: "fast",
       pressurePattern: "all_out_attack",
-      riskProfile: "high_risk"
+      riskProfile: "high_risk",
+      advancedIntent: {
+        version: 1,
+        tempo: 82,
+        rearCourtPressure: 88,
+        netPriority: 48,
+        riskTolerance: 76,
+        rallyLengthIntent: "shorten",
+        modules: ["rear_court_lock", "body_smash"]
+      }
     });
     expect(effect.winnerPressure).toBeGreaterThan(70);
     expect(effect.rearCourtControl).toBeGreaterThan(effect.netControl);

@@ -122,7 +122,16 @@ export function tacticPlanToMatchTactic(plan: AdvancedTacticPlan): MatchTactic {
     label: plan.name,
     tempo: tempoSetting(plan.tempo),
     pressurePattern: pressurePattern(plan),
-    riskProfile: riskProfile(plan.riskTolerance)
+    riskProfile: riskProfile(plan.riskTolerance),
+    advancedIntent: {
+      version: 1,
+      tempo: plan.tempo,
+      rearCourtPressure: plan.rearCourtPressure,
+      netPriority: plan.netPriority,
+      riskTolerance: plan.riskTolerance,
+      rallyLengthIntent: plan.rallyLengthIntent,
+      modules: [...plan.modules]
+    }
   };
 }
 
