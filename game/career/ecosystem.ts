@@ -569,6 +569,13 @@ export function makeRecruitmentOffer(state: CareerState, candidateId: string) {
     return state;
   }
 
+  if (
+    candidate.offerState === "accepted" ||
+    state.ecosystem.recruitment.roster.some((slot) => slot.athleteId === candidateId)
+  ) {
+    return state;
+  }
+
   const rosterFull = state.ecosystem.recruitment.roster.length >= state.ecosystem.recruitment.rosterLimit;
   const offerCost = candidate.knowledge.cost === "verified" ? candidate.verifiedCost : candidate.estimatedCost;
   const interest = candidate.interest + (candidate.fit - candidate.risk) * 0.22 + staffModifiers(state.ecosystem).morale * 60;
@@ -578,7 +585,7 @@ export function makeRecruitmentOffer(state: CareerState, candidateId: string) {
     ? {
         athleteId: candidate.id,
         name: candidate.name,
-        role: candidate.rosterImpact === "senior" ? "senior" : "academy",
+        role: candidate.rosterImpact === "academy_bridge" ? "academy" : "senior",
         contractCost: Math.round(offerCost / 8),
         status: "active",
         joinedAt: state.date,
@@ -656,65 +663,6 @@ export function makeRecruitmentOffer(state: CareerState, candidateId: string) {
     economy,
     ecosystem,
     notes: [`${candidate.name} offer ${offerState}`, ...state.notes].slice(0, 6)
-  };
-}
-
-export function trainRosterAthlete(state: CareerState, athleteId: string) {
-  const rosterSlot = state.ecosystem.recruitment.roster.find(
-    (slot) => slot.athleteId === athleteId && slot.status === "active"
-  );
-  const athlete = state.athletes.find((entry) => entry.playerId === athleteId);
-  const cost = 950;
-
-  if (!rosterSlot || !athlete) {
-    return state;
-  }
-
-  if (state.economy.cash < cost) {
-    return { ...state, notes: [`Insufficient funds to train ${rosterSlot.name}`, ...state.notes].slice(0, 6) };
-  }
-
-  const trained = refreshAthleteReadiness({
-    ...athlete,
-    development: {
-      ...athlete.development,
-      stamina: clamp(athlete.development.stamina + 4.5, 1, 100),
-      composure: clamp(athlete.development.composure + 2, 1, 100),
-      recovery: clamp(athlete.development.recovery + 1, 1, 100)
-    },
-    fatigue: clamp(athlete.fatigue + 5, 0, 100),
-    injuryRisk: clamp(athlete.injuryRisk + 0.01, 0.02, 1)
-  });
-  const economy = addLedgerEntry({
-    economy: state.economy,
-    date: state.date,
-    category: "recruitment",
-    label: `${rosterSlot.name} roster training`,
-    amount: -cost
-  });
-  const ecosystem = updatePsychology(state.ecosystem, athleteId, {
-    form: 2,
-    morale: 1,
-    confidence: 2,
-    driver: "Roster training block completed"
-  });
-
-  return {
-    ...state,
-    economy,
-    athletes: state.athletes.map((entry) => (entry.playerId === athleteId ? trained : entry)),
-    ecosystem: {
-      ...ecosystem,
-      programLog: logEntry({
-        state: ecosystem,
-        date: state.date,
-        source: "recruitment",
-        message: `${rosterSlot.name} completed roster training`,
-        stateDelta: "Stamina, composure, readiness, and psychology updated.",
-        relatedIds: [athleteId]
-      })
-    },
-    notes: [`${rosterSlot.name} roster training completed`, ...state.notes].slice(0, 6)
   };
 }
 

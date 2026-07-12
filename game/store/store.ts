@@ -21,7 +21,6 @@ import {
   makeRecruitmentOffer,
   resolvePromises,
   setManagedAthletePromise,
-  trainRosterAthlete,
   withdrawPromise
 } from "../career/ecosystem";
 import { eventEligibilityFor, eventEndDate, getCareerEvent } from "../career/events";
@@ -44,6 +43,7 @@ import {
 import type { LiveDirective, LiveMatchSession, MatchTactic, Side, TeamTalk } from "../core/models";
 import type { AdvancedTacticPlan, CareerState, FacilityType, PlayerPromise } from "../career/models";
 import { createInitialCareerState } from "../career/state";
+import { scheduleRosterPreparation } from "../career/program";
 import { clearScheduledPreparationBlock, schedulePreparationBlock } from "../career/preparation";
 import { createEventFieldSnapshot, simulateUniverseThroughDate } from "../career/universe";
 import { getTrainingPlan } from "../career/training";
@@ -837,7 +837,7 @@ export const useTournamentStore = create<TournamentStoreState>((set, get) => ({
 
       const next = {
         ...state,
-        career: resolvePromises(trainRosterAthlete(state.career, athleteId))
+        career: resolvePromises(scheduleRosterPreparation({ state: state.career, athleteId }))
       };
       persist(next);
       return next;

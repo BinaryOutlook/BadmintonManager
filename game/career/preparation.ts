@@ -59,7 +59,9 @@ export function schedulePreparationBlock(args: {
 
   return {
     ...args.state,
-    selectedTrainingPlanId: args.plan.id,
+    selectedTrainingPlanId: athleteId === args.state.program.managedPlayerId
+      ? args.plan.id
+      : args.state.selectedTrainingPlanId,
     preparationSchedule: [
       ...args.state.preparationSchedule.filter(
         (entry) => entry.athleteId !== athleteId || entry.scheduledDate !== args.state.date

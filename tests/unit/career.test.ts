@@ -26,7 +26,6 @@ import {
   resolvePromises,
   setManagedAthletePromise,
   staffModifiers,
-  trainRosterAthlete,
   withdrawPromise
 } from "../../game/career/ecosystem";
 import { eventEligibilityFor, getCareerEvent } from "../../game/career/events";
@@ -34,6 +33,8 @@ import { settleCareerMatch } from "../../game/career/hubs";
 import { scheduledDateForRound } from "../../game/career/matchSchedule";
 import { rankingFor } from "../../game/career/rankings";
 import { advanceRivalCircuit } from "../../game/career/rivals";
+import { scheduleRosterPreparation } from "../../game/career/program";
+import { resolveScheduledPreparation } from "../../game/career/preparation";
 import { createInitialCareerState, managedAthlete } from "../../game/career/state";
 import { projectTacticalViewerFromResult, projectTacticalViewerFromSession } from "../../game/career/tacticalViewer";
 import { simulateUniverseThroughDate } from "../../game/career/universe";
@@ -1223,7 +1224,7 @@ describe("program ecosystem depth", () => {
     );
   });
 
-  it("gives accepted recruits functional training and lower-event paths", () => {
+  it("gives accepted recruits scheduled training and lower-event paths", () => {
     const signed = makeRecruitmentOffer(
       resolveDueScoutReports({
         ...commissionScoutReport(createInitialCareerState(seededPlayers[0].player.id, 8112), "cand-arya-prakash", "candidate"),
@@ -1232,10 +1233,13 @@ describe("program ecosystem depth", () => {
       "cand-arya-prakash"
     );
     const signedAthlete = signed.athletes.find((athlete) => athlete.playerId === "cand-arya-prakash")!;
-    const trained = trainRosterAthlete(signed, "cand-arya-prakash");
+    const scheduled = scheduleRosterPreparation({ state: signed, athleteId: "cand-arya-prakash" });
+    const trained = resolveScheduledPreparation(scheduled);
     const trainedAthlete = trained.athletes.find((athlete) => athlete.playerId === "cand-arya-prakash")!;
     const entered = enterRosterAthleteLowerEvent(trained, "cand-arya-prakash");
 
+    expect(scheduled.athletes).toEqual(signed.athletes);
+    expect(scheduled.economy).toEqual(signed.economy);
     expect(trainedAthlete.development.stamina).toBeGreaterThan(signedAthlete.development.stamina);
     expect(trained.economy.cash).toBeLessThan(signed.economy.cash);
     expect(entered.ecosystem.lowerEventEntries[0]?.subjectId).toBe("cand-arya-prakash");
