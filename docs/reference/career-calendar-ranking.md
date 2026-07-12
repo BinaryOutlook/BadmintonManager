@@ -143,6 +143,23 @@ Career stage semantics:
 - `between_rounds`: a non-final managed win has been reviewed; the next round is scheduled for a future career date.
 - `event_complete`: the active event has closed.
 
+## One-Day Preparation Resolution
+
+Training is now a scheduled current-day manager intent rather than an immediate repeatable mutation.
+
+```text
+choose or replace one block
+  -> persist exact plan snapshot for career.date
+  -> Advance Day resolves the block once
+  -> append actual development outcome
+  -> clear pending block
+  -> advance calendar and resolve daily world systems
+```
+
+`game/career/preparation.ts` owns schedule upsert, clearing, exact plan snapshots, staff/facility modifier evidence, and idempotent outcome history. `game/career/dayResolution.ts` owns the pure whole-day pipeline and the advance-day forecast derived from that same resolver.
+
+A due match, live match, or pending post-match review outranks preparation scheduling. The store enforces that guard with `getCareerDailyAction`; disabling a button in React is not sufficient. Passive recovery remains the result when no block is scheduled.
+
 ## Timeline And Calendar Route Split
 
 The left command rail treats `Timeline` and `Calendar` as separate first-class pages, not tabs inside a shared

@@ -1214,6 +1214,13 @@ describe("program ecosystem depth", () => {
     expect(signed.ecosystem.recruitment.candidates.find((entry) => entry.id === "cand-arya-prakash")?.offerState).toBe("accepted");
     expect(signed.economy.cash).toBeLessThan(withReport.economy.cash);
     expect(signed.ecosystem.promises.some((promise) => promise.athleteId === "cand-arya-prakash")).toBe(true);
+    expect(signed.developmentHistory).toContainEqual(
+      expect.objectContaining({
+        kind: "snapshot",
+        athleteId: "cand-arya-prakash",
+        source: "recruitment"
+      })
+    );
   });
 
   it("gives accepted recruits functional training and lower-event paths", () => {

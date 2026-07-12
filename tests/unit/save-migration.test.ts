@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { seededPlayers } from "../../game/content/players";
 import { getCareerEvent } from "../../game/career/events";
+import { schedulePreparationBlock } from "../../game/career/preparation";
 import { careerStateSchema } from "../../game/career/models";
 import { createInitialCareerState } from "../../game/career/state";
+import { trainingPlans } from "../../game/career/training";
 import type { MatchResult, Side } from "../../game/core/models";
 import {
   CURRENT_SAVE_VERSION,
@@ -285,6 +287,30 @@ describe("career save migration", () => {
     };
 
     expect(persistedSaveSchema.parse(save).career).toEqual(careerStateSchema.parse(career));
+  });
+
+  it("round-trips an exact pending preparation block and development baseline", () => {
+    const career = schedulePreparationBlock({
+      state: createInitialCareerState(seededPlayers[0].player.id, 4567),
+      plan: trainingPlans[0]
+    });
+    const save = {
+      version: CURRENT_SAVE_VERSION,
+      selectedPlayerId: career.program.managedPlayerId,
+      plannedTacticKey: "balancedControl" as const,
+      seed: 4567,
+      tournament: null,
+      liveMatch: null,
+      career
+    };
+
+    const parsed = persistedSavePayloadSchema.parse(JSON.parse(JSON.stringify(save)));
+    const migrated = migratePersistedSave(parsed);
+
+    expect(migrated.career?.preparationSchedule).toEqual(career.preparationSchedule);
+    expect(migrated.career?.preparationSchedule[0]?.planSnapshot).toEqual(trainingPlans[0]);
+    expect(migrated.career?.developmentHistory).toEqual(career.developmentHistory);
+    expect(persistedSaveSchema.parse(migrated)).toEqual(migrated);
   });
 
   it("migrates version 11 preparation state without inventing a scheduled block", () => {

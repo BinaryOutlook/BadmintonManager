@@ -110,6 +110,8 @@ Key rules:
 
 - A career has one locked managed athlete.
 - The career date starts from a fictional season timeline and advances through store actions.
+- Training choices schedule one exact block for the current day; they do not change cash or athlete state until `Advance Day` resolves that block once.
+- Advance-day forecasts call the same pure day resolver as the real action, so displayed cash, readiness, fatigue, risk, and development deltas cannot drift into a second formula.
 - Entered events become playable only when schedule helpers say the managed round is due or overdue.
 - Direct day advancement must not skip a due managed match.
 - Non-final managed wins usually move the career into `between_rounds` until the next scheduled round date.

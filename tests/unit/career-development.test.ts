@@ -38,17 +38,28 @@ function installWindowStorage() {
   });
 }
 
-function createPreparedCareer(seed = 8801) {
+function resolveTrainingBeforePreparedCareerMatch(seed: number) {
+  installWindowStorage();
   const managedPlayerId = seededPlayers[0].player.id;
-  const initial = createInitialCareerState(managedPlayerId, seed);
-  const event = getCareerEvent(initial.events, "metro-open-300")!;
-  const career = {
-    ...initial,
-    date: event.startDate,
-    activeEventId: event.id,
-    enteredEventIds: [event.id],
-    stage: "pre_match" as const
-  };
+  const planningCareer = createInitialCareerState(managedPlayerId, seed);
+
+  useTournamentStore.setState({
+    phase: "overview",
+    selectedPlayerId: managedPlayerId,
+    plannedTacticKey: "balancedControl",
+    seed,
+    tournament: null,
+    liveMatch: null,
+    career: planningCareer,
+    saveRecovery: null,
+    activeSavePresent: true,
+    corruptSavePresent: false
+  });
+  useTournamentStore.getState().scheduleCareerTraining("rear-court-power");
+  useTournamentStore.getState().advanceCareerDay();
+
+  const evolvedCareer = useTournamentStore.getState().career!;
+  const event = getCareerEvent(evolvedCareer.events, "metro-open-300")!;
   const tournament = {
     ...createTournament(seededPlayers, managedPlayerId, seed),
     id: event.id,
@@ -56,27 +67,20 @@ function createPreparedCareer(seed = 8801) {
     tier: event.tier
   };
 
-  return { career, managedPlayerId, tournament };
-}
-
-function resetStoreForPreparedCareer(seed = 8801) {
-  installWindowStorage();
-  const prepared = createPreparedCareer(seed);
-
   useTournamentStore.setState({
-    phase: "overview",
-    selectedPlayerId: prepared.managedPlayerId,
-    plannedTacticKey: "balancedControl",
-    seed,
-    tournament: prepared.tournament,
+    career: {
+      ...evolvedCareer,
+      date: event.startDate,
+      activeEventId: event.id,
+      enteredEventIds: [event.id],
+      stage: "pre_match"
+    },
+    tournament,
     liveMatch: null,
-    career: prepared.career,
-    saveRecovery: null,
-    activeSavePresent: true,
-    corruptSavePresent: false
+    phase: "overview"
   });
 
-  return prepared;
+  return { managedPlayerId };
 }
 
 function managedMatchPlayer() {
@@ -115,10 +119,9 @@ describe("career development match bridge", () => {
   });
 
   it("feeds completed career training into the managed match engine input", () => {
-    const { managedPlayerId } = resetStoreForPreparedCareer(8801);
+    const { managedPlayerId } = resolveTrainingBeforePreparedCareerMatch(8801);
     const basePlayer = playerMap[managedPlayerId];
 
-    useTournamentStore.getState().applyCareerTraining("rear-court-power");
     const trainedAthlete = managedAthlete(useTournamentStore.getState().career!);
     useTournamentStore.getState().startManagedMatch();
 
@@ -154,8 +157,7 @@ describe("career development match bridge", () => {
   });
 
   it("recreates the same evolved input and outcome after a save replacement", () => {
-    resetStoreForPreparedCareer(8803);
-    useTournamentStore.getState().applyCareerTraining("rear-court-power");
+    resolveTrainingBeforePreparedCareerMatch(8803);
     const saved = useTournamentStore.getState().exportActiveSave();
 
     expect(saved).not.toBeNull();

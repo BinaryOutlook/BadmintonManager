@@ -1,4 +1,5 @@
 import { addDays, daysBetween } from "./calendar";
+import { createDevelopmentBaseline } from "./development";
 import { addLedgerEntry } from "./economy";
 import type {
   AthleteCareerState,
@@ -584,6 +585,9 @@ export function makeRecruitmentOffer(state: CareerState, candidateId: string) {
         source: candidate.source
       }
     : null;
+  const recruitedAthlete = accepted && !state.athletes.some((athlete) => athlete.playerId === candidate.id)
+    ? createRecruitAthlete(candidate, 120 + state.athletes.length)
+    : null;
   const economy = accepted
     ? addLedgerEntry({
         economy: state.economy,
@@ -636,9 +640,19 @@ export function makeRecruitmentOffer(state: CareerState, candidateId: string) {
 
   return {
     ...state,
-    athletes: accepted && !state.athletes.some((athlete) => athlete.playerId === candidate.id)
-      ? [...state.athletes, createRecruitAthlete(candidate, 120 + state.athletes.length)]
-      : state.athletes,
+    athletes: recruitedAthlete ? [...state.athletes, recruitedAthlete] : state.athletes,
+    developmentHistory: recruitedAthlete
+      ? [
+          ...state.developmentHistory,
+          createDevelopmentBaseline({
+            athlete: recruitedAthlete,
+            date: state.date,
+            seasonId: state.seasonId,
+            source: "recruitment",
+            note: `${candidate.name} recruitment development baseline.`
+          })
+        ]
+      : state.developmentHistory,
     economy,
     ecosystem,
     notes: [`${candidate.name} offer ${offerState}`, ...state.notes].slice(0, 6)
