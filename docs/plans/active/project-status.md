@@ -91,7 +91,8 @@ What is now stable:
 - TIX-016 now renames the top-level career planning surface to `Schedule`, preserves the old chronological commitment list under `Timeline`, and adds a confirmed month-grid `Calendar` that hides future knockout rounds until the managed athlete qualifies
 - TIX-019 now makes Player Profile Career records universe-wide: W-L, win percentage, titles, runner-up finishes, finals, head-to-head leaders, and optional managed-player spotlights derive from recorded `career.matchHistory` and `career.playerAchievements` rather than managed-player-only slices or bracket snapshots
 - TIX-021 added the autonomous universe simulation contract: `career.universeEvents`, deterministic non-entered event completion, idempotent match/ranking/achievement writes, load/day-advance simulation, and tournament homes/Past Events fed by universe records while preserving managed-match immutability; its save version `10` shape is now superseded by TIX-023 version `11` saves
-- TIX-018 now mediates the sidebar schedule rail by removing the duplicated sidebar brand/player identity block, ordering commands around the requested Core/Program/Match/Operations/System flow, marking `Inbox Preview` as disabled preview-only, and routing `Timeline`/`Calendar` commands into the `Schedule` subtabs
+- TIX-018 established the mediated sidebar rail; Version Two now promotes Inbox into a live state-backed decision desk,
+  separates read-only Reports from post-match settlement, and retains Timeline/Calendar shortcuts.
 - TIX-022 now turns documentation into maintenance infrastructure with a true `docs/README.md` map, durable mechanics/code/save/workflow references, refreshed architecture overview, compact `AGENTS.md` documentation discipline, and ADR-003
 - TIX-023 replaces static ranking points with deterministic bootstrap ranking results, rolling 52-week/best-10 snapshots, version `11` / career `9` migration, and rank-seeded event fields with non-entry and alternates.
 - Version Two preparation work advances persistence to version `12` / career `10`, adds exact pending training snapshots and honest development baselines, and resolves one current-day block through the same deterministic day pipeline used by advance-day forecasts.
@@ -99,6 +100,8 @@ What is now stable:
 - Version Two program work now separates My Program from World Directory, gives recruited athletes real career profiles,
   routes rotation/development preparation through the shared day resolver, exposes recruitment confidence and full
   consequences, charges idempotent Monday payroll, and evolves candidate/prospect pools from seed-stable daily signals.
+- Version Two management-memory work now derives Inbox and Portal tasks from one authoritative selector and gives
+  Reports a read-only persisted archive for managed matches, event closeouts, scouting, and development evidence.
 - the frontend now has an imagegen-guided court-console redesign layer across launch, athlete selection, career shell, Portal, Calendar, Rankings, Squad, Player Profile, Live Match, and Save Manager surfaces, with a compact brand lockup, calmer court-line atmosphere, tighter management cards/tables, and updated bounded-viewport proof
 - Version Two tactical fidelity now snapshots exact career sliders, rally intent, and modules into live/save match input; a shared bounded resolver drives detailed and quick match shape, live plan/module evidence, and state-derived projections while legacy tactics retain a neutral compatibility path
 
@@ -199,7 +202,7 @@ What is now stable:
 - [x] implemented TIX-016 Schedule hub separation with Upcoming, Past Events, Timeline, and confirmed month-grid Calendar tabs
 - [x] implemented TIX-019 universe-wide player career records with non-managed H2H support, finals counts, managed-player spotlight context, old-save empty states, and duplicate-safe selector coverage
 - [x] implemented TIX-021 autonomous universe simulation with completed skipped events, universe event persistence, ranking/achievement settlement, save migration safety, and route-facing archive consumption
-- [x] implemented TIX-018 sidebar schedule rail mediation with a pure navigation sidebar, disabled Inbox Preview, and Timeline/Calendar shortcuts into the Schedule split
+- [x] implemented TIX-018 sidebar schedule rail mediation; Inbox is now a live navigation desk and Timeline/Calendar remain distinct shortcuts
 - [x] established the TIX-022 documentation system and maintainer harness with linked subsystem references, save/persistence invariants, source-structure guidance, maintainer workflow rules, and ADR-003
 - [x] implemented TIX-027 Tournament Page Optimization with draw-first Tournament Home ordering, collapsed event notes, compact two-row bracket score cells, deterministic abbreviation/collision handling, selected-match detail, and 32-ready bracket layout coverage
 - [x] implemented the imagegen-guided frontend rework as a shared court-console visual system, including shell/topbar markup, global styling, responsive dense-page constraints, updated unit/e2e expectations, and desktop/mobile screenshot proof

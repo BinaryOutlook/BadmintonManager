@@ -40,12 +40,18 @@ import type {
   TournamentAddress
 } from "../game/career/models";
 import { managedMatchScheduleForEvent } from "../game/career/matchSchedule";
+import {
+  careerArchiveReports,
+  careerInboxItems,
+  latestDetailedMatchMemory,
+  type CareerArchiveReport,
+  type ManagementDestination
+} from "../game/career/managementMemory";
 import { effectiveEventEntryCosts, facilityModifiers } from "../game/career/facilitiesMedia";
 import { previewPreparationPlan, scheduledPreparationForAthlete } from "../game/career/preparation";
 import {
   previewRosterPreparation,
   programRoleLabel,
-  programTasksForCareer,
   weeklyProgramPayroll
 } from "../game/career/program";
 import {
@@ -99,6 +105,7 @@ interface CareerPageProps {
   onOpenStaff: () => void;
   onOpenPromises: () => void;
   onOpenPlayerProfile: (playerId: string) => void;
+  onOpenManagementDestination: (destination: ManagementDestination) => void;
   onApplyTraining: (planId: string | null) => void;
   onEnterEvent: (eventId: string) => void;
   onOpenScheduledCareerMatch: (eventId?: string) => void;
@@ -1475,52 +1482,12 @@ function homeTaskRowsFor(args: {
   corruptSavePresent: boolean;
   saveRecovery: SaveRecoveryNotice | null;
 }): HomeTaskRow[] {
-  const rows: HomeTaskRow[] = [];
-
-  if (args.career.stage === "post_match") {
-    rows.push({
-      label: "Review desk",
-      value: "Post-match report waiting",
-      action: "Review Match",
-      urgent: true
-    });
-  } else if (args.career.stage === "pre_match") {
-    rows.push({
-      label: "Match day",
-      value: "Opponent briefing ready",
-      action: "Open Pre-Match",
-      urgent: true
-    });
-  } else if (args.event && !args.career.enteredEventIds.includes(args.event.id)) {
-    const gate = eventEligibilityFor(args.career, args.event);
-
-    if (gate.daysUntilEntryDeadline <= 3 && gate.daysUntilEntryDeadline >= 0) {
-      rows.push({
-        label: "Entry deadline",
-        value: `Window closes ${daysUntilLabel(args.career.date, args.event.entryDeadline)}`,
-        action: gate.allowed ? "Decide entry" : "Check gate",
-        urgent: gate.daysUntilEntryDeadline <= 1
-      });
-    }
-  }
-
-  for (const task of programTasksForCareer(args.career)) {
-    rows.push({
-      label: task.label,
-      value: task.detail,
-      action: task.urgent ? "Open Program" : "Scheduled",
-      urgent: task.urgent
-    });
-  }
-
-  if (args.athlete.injury.status !== "healthy" || args.athlete.fatigue >= 60 || args.athlete.injuryRisk >= 0.24) {
-    rows.push({
-      label: "Condition",
-      value: `${args.athlete.recoveryStatus.replace(/_/g, " ")} / ${Math.round(args.athlete.fatigue)} fatigue`,
-      action: "Protect load",
-      urgent: args.athlete.recoveryStatus === "red_zone" || args.athlete.recoveryStatus === "injured"
-    });
-  }
+  const rows: HomeTaskRow[] = careerInboxItems(args.career).map((item) => ({
+    label: item.title,
+    value: item.detail,
+    action: item.actionLabel,
+    urgent: item.priority === "required" || item.priority === "urgent"
+  }));
 
   if (!args.activeSavePresent || args.corruptSavePresent || args.saveRecovery) {
     rows.push({
@@ -2095,7 +2062,7 @@ export function CareerHomePage(props: CareerPageProps) {
               </div>
               <div className="career-ecosystem-strip career-ecosystem-strip-compact">
                 <button className="career-system-tile" type="button" onClick={props.onOpenScouting}>
-                  <span>Reports</span>
+                  <span>Scout Intel</span>
                   <strong>{career.ecosystem.scouting.reports.length}</strong>
                   <small>{career.ecosystem.scouting.assignments.length} assignments</small>
                 </button>
@@ -2150,6 +2117,218 @@ export function CareerHomePage(props: CareerPageProps) {
           </div>
         </section>
       </div>
+    </section>
+  );
+}
+
+const inboxPriorityLabel = {
+  required: "Required",
+  urgent: "Urgent",
+  scheduled: "Scheduled",
+  information: "Information"
+} as const;
+
+export function CareerInboxPage(props: CareerPageProps) {
+  if (!props.career) {
+    return <CareerEmpty onStartCareer={props.onStartCareer} saveRecovery={props.saveRecovery} />;
+  }
+
+  const items = careerInboxItems(props.career);
+  const requiredCount = items.filter(
+    (item) => item.priority === "required" || item.priority === "urgent"
+  ).length;
+
+  return (
+    <section className="screen-shell career-page" data-page-contract="career-inbox">
+      <div className="screen-header">
+        <div>
+          <p className="screen-kicker">Manager Inbox</p>
+          <h1 className="screen-title">Actionable Career Desk</h1>
+          <p className="screen-copy">
+            Every row is projected from a real career fact. Actions open the owning desk; resolving that underlying
+            decision removes or changes the item without a second inbox state.
+          </p>
+        </div>
+        <div className="screen-meta">
+          <span>{requiredCount} urgent</span>
+          <span>{items.length} total</span>
+        </div>
+      </div>
+
+      <section className="command-panel command-panel-full">
+        <div className="panel-header">
+          <h2>Current Decisions</h2>
+          <span>Required → urgent → scheduled</span>
+        </div>
+        {items.length > 0 ? (
+          <div className="management-table career-inbox-table" aria-label="Career inbox items">
+            <div className="management-table-row management-table-row-head" aria-hidden="true">
+              <span>Priority</span>
+              <strong>Decision</strong>
+              <small>Due / Action</small>
+            </div>
+            {items.map((item) => (
+              <div
+                key={item.id}
+                className={
+                  item.priority === "required" || item.priority === "urgent"
+                    ? "management-table-row management-table-row-urgent career-inbox-row"
+                    : "management-table-row career-inbox-row"
+                }
+                data-inbox-category={item.category}
+                data-inbox-priority={item.priority}
+              >
+                <span>{inboxPriorityLabel[item.priority]} · {item.category}</span>
+                <div>
+                  <strong>{item.title}</strong>
+                  <p>{item.detail}</p>
+                </div>
+                <div className="career-inbox-action">
+                  <small>{item.date}</small>
+                  <button
+                    className="command-button command-button-secondary"
+                    type="button"
+                    onClick={() => props.onOpenManagementDestination(item.destination)}
+                  >
+                    {item.actionLabel}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="profile-empty-state" role="status">
+            <strong>No current manager decisions</strong>
+            <p>The persisted schedule, medical, program, promise, scouting, and facility facts have no open action.</p>
+          </div>
+        )}
+      </section>
+    </section>
+  );
+}
+
+type ReportFilter = "all" | CareerArchiveReport["category"];
+
+export function CareerReportsArchivePage(props: CareerPageProps) {
+  const [filter, setFilter] = useState<ReportFilter>("all");
+
+  if (!props.career) {
+    return <CareerEmpty onStartCareer={props.onStartCareer} saveRecovery={props.saveRecovery} />;
+  }
+
+  const latest = latestDetailedMatchMemory(props.career);
+  const archive = careerArchiveReports(props.career);
+  const filtered = filter === "all" ? archive : archive.filter((report) => report.category === filter);
+  const filters: Array<{ id: ReportFilter; label: string }> = [
+    { id: "all", label: "All" },
+    { id: "match", label: "Matches" },
+    { id: "event", label: "Events" },
+    { id: "scouting", label: "Scouting" },
+    { id: "development", label: "Development" }
+  ];
+
+  return (
+    <section className="screen-shell career-page" data-page-contract="reports-archive">
+      <div className="screen-header">
+        <div>
+          <p className="screen-kicker">Reports Archive</p>
+          <h1 className="screen-title">Institutional Memory</h1>
+          <p className="screen-copy">
+            Read-only match, event, scouting, and development facts retained by this save. Missing historical detail is
+            labelled honestly; this page never settles or advances the career.
+          </p>
+        </div>
+        <div className="screen-meta">
+          <span>{archive.length} persisted record(s)</span>
+          <span>{latest ? "Latest detailed report available" : "No detailed match report"}</span>
+        </div>
+      </div>
+
+      <section className="command-panel command-panel-full reports-latest-panel">
+        <div className="panel-header">
+          <h2>Latest Detailed Match</h2>
+          <span>{latest?.record?.date ?? "Not recorded in this save"}</span>
+        </div>
+        {latest ? (
+          <div className="reports-latest-grid">
+            <div>
+              <span>{latest.report.result} · {latest.report.round}</span>
+              <strong>{latest.report.scoreline}</strong>
+              <p>
+                Opponent {playerMap[latest.report.opponentId]?.name ?? latest.report.opponentId}. Detailed evidence is
+                attached only to this exact saved report.
+              </p>
+            </div>
+            <div>
+              <span>Evidence</span>
+              <strong>{latest.report.evidence.length} fact(s)</strong>
+              <p>{latest.report.evidence.join(" · ")}</p>
+            </div>
+            <div>
+              <span>Recommendations</span>
+              <strong>{latest.report.recommendations.length} retained</strong>
+              <p>{latest.report.recommendations.join(" · ")}</p>
+            </div>
+          </div>
+        ) : (
+          <div className="profile-empty-state" role="status">
+            <strong>Not recorded in this save</strong>
+            <p>Match archive rows may still exist, but no saved detailed evidence is available to attach to them.</p>
+          </div>
+        )}
+      </section>
+
+      <section className="command-panel command-panel-full">
+        <div className="panel-header reports-archive-header">
+          <div>
+            <h2>Persisted Archive</h2>
+            <p className="panel-summary panel-summary-tight">Newest retained facts first</p>
+          </div>
+          <div className="profile-tabs reports-filter-tabs" role="tablist" aria-label="Report archive filters">
+            {filters.map((entry) => (
+              <button
+                key={entry.id}
+                className={filter === entry.id ? "profile-tab profile-tab-active" : "profile-tab"}
+                type="button"
+                role="tab"
+                aria-selected={filter === entry.id}
+                onClick={() => setFilter(entry.id)}
+              >
+                {entry.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        {filtered.length > 0 ? (
+          <div className="calendar-commitment-list reports-archive-list" aria-label="Career reports archive">
+            {filtered.map((report) => (
+              <article key={report.id} className="calendar-commitment-card reports-archive-row">
+                <div className="calendar-commitment-copy">
+                  <div className="manager-schedule-meta">
+                    <span className="manager-schedule-category">{report.category}</span>
+                    <span className="manager-schedule-status">{report.date}</span>
+                  </div>
+                  <strong className="calendar-commitment-title">{report.title}</strong>
+                  <p>{report.detail}</p>
+                  <small>{report.evidence.join(" · ")}</small>
+                </div>
+                <button
+                  className="command-button command-button-secondary calendar-commitment-action"
+                  type="button"
+                  onClick={() => props.onOpenManagementDestination(report.destination)}
+                >
+                  Open source
+                </button>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <div className="profile-empty-state" role="status">
+            <strong>Not recorded in this save</strong>
+            <p>No persisted {filter === "all" ? "archive" : filter} record is available.</p>
+          </div>
+        )}
+      </section>
     </section>
   );
 }

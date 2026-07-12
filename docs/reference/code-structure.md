@@ -77,6 +77,8 @@ Danger zone: `game/core/match.ts` changes can alter deterministic scorelines, sa
 - `preparation.ts` owns one-block-per-day scheduling, immutable plan snapshots, idempotent resolution, modifier evidence, and bounded development history.
 - `program.ts` owns manager-facing role mapping, roster preparation defaults/previews, Portal program tasks, and derived
   weekly payroll. It composes preparation and economy services rather than duplicating their formulas.
+- `managementMemory.ts` projects authoritative career facts into stable Inbox decisions and a read-only Reports archive.
+  It must remain pure; React owns page navigation and store modules own mutations.
 - `development.ts` projects persisted career growth onto direct managed-match rating equivalents without mutating canonical player content.
 - `ecosystem.ts`, `rivals.ts`, `tactics.ts`, and `facilitiesMedia.ts` own program depth systems. Ecosystem recruitment
   previews and dated talent-pool evolution remain pure career-domain behavior.

@@ -4,6 +4,8 @@ import type { TournamentAddress } from "../game/career/models";
 export type AppPage =
   | { id: "setup" }
   | { id: "home" }
+  | { id: "inbox" }
+  | { id: "reports" }
   | { id: "timeline" }
   | { id: "squad" }
   | { id: "playerProfile"; playerId: string }

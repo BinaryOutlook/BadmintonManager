@@ -144,6 +144,7 @@ function buildCareerPageProps(
     onOpenStaff: noop,
     onOpenPromises: noop,
     onOpenPlayerProfile,
+    onOpenManagementDestination: noop,
     onApplyTraining: noop,
     onEnterEvent: noop,
     onOpenScheduledCareerMatch: noop,

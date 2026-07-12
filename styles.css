@@ -12052,6 +12052,79 @@ body {
     rgba(10, 14, 16, 0.86);
 }
 
+.career-inbox-row > div {
+  min-width: 0;
+}
+
+.career-inbox-row > div:nth-child(2) {
+  display: grid;
+  gap: 0.28rem;
+}
+
+.career-inbox-row p,
+.reports-archive-row p,
+.reports-latest-grid p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.career-inbox-action {
+  display: grid;
+  justify-items: end;
+  gap: 0.42rem;
+}
+
+.career-inbox-action .command-button {
+  width: min(100%, 12rem);
+}
+
+.reports-latest-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.reports-latest-grid > div {
+  display: grid;
+  gap: 0.42rem;
+  min-width: 0;
+  padding: 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 0.35rem;
+  background: rgba(12, 14, 17, 0.72);
+}
+
+.reports-latest-grid span,
+.reports-archive-row small {
+  color: var(--muted-soft);
+  font-size: 0.67rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.reports-latest-grid strong {
+  overflow-wrap: anywhere;
+  color: var(--text);
+  font-size: 1.05rem;
+}
+
+.reports-archive-header,
+.reports-filter-tabs {
+  flex-wrap: wrap;
+}
+
+.reports-filter-tabs {
+  width: auto;
+  margin: 0;
+}
+
+.reports-archive-row small {
+  overflow-wrap: anywhere;
+  line-height: 1.45;
+}
+
 @media (max-width: 780px) {
   .manager-schedule-action {
     width: min(100%, 14rem);
@@ -12085,6 +12158,38 @@ body {
   .schedule-calendar-badge[class*="manager-schedule-category-"] small {
     font-size: 0.56rem;
     line-height: 1.2;
+  }
+
+  .career-inbox-table .management-table-row-head {
+    display: none;
+  }
+
+  .career-inbox-row,
+  .reports-archive-row {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .career-inbox-action {
+    justify-items: stretch;
+  }
+
+  .career-inbox-action small {
+    text-align: left;
+  }
+
+  .career-inbox-action .command-button {
+    width: 100%;
+  }
+
+  .reports-latest-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .reports-filter-tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    width: 100%;
   }
 }
 

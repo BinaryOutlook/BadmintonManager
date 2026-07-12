@@ -58,6 +58,7 @@ Use the smallest matching reference before changing behavior:
 - [`reference/player-model.md`](reference/player-model.md) - player schema, ratings, derived attributes, traits
 - [`reference/tactics-system.md`](reference/tactics-system.md) - tactical inputs, team talks, bounded tactical effects
 - [`reference/program-ecosystem.md`](reference/program-ecosystem.md) - program identity, roster preparation, recruitment evidence, payroll, and talent-pool evolution
+- [`reference/management-memory.md`](reference/management-memory.md) - actionable Inbox projection, read-only Reports archive, and semantic navigation
 
 ### Active Work And History
 

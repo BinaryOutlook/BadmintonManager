@@ -235,6 +235,7 @@ function renderCalendarPage(overrides: Partial<Parameters<typeof CareerCalendarP
         onOpenStaff={vi.fn()}
         onOpenPromises={vi.fn()}
         onOpenPlayerProfile={vi.fn()}
+        onOpenManagementDestination={vi.fn()}
         onApplyTraining={vi.fn()}
         onEnterEvent={vi.fn()}
         onOpenScheduledCareerMatch={vi.fn()}
@@ -295,6 +296,7 @@ function renderTimelinePage(overrides: Partial<Parameters<typeof CareerTimelineP
         onOpenStaff={vi.fn()}
         onOpenPromises={vi.fn()}
         onOpenPlayerProfile={vi.fn()}
+        onOpenManagementDestination={vi.fn()}
         onApplyTraining={vi.fn()}
         onEnterEvent={vi.fn()}
         onOpenScheduledCareerMatch={vi.fn()}
@@ -355,6 +357,7 @@ function renderHomePage(overrides: Partial<Parameters<typeof CareerHomePage>[0]>
         onOpenStaff={vi.fn()}
         onOpenPromises={vi.fn()}
         onOpenPlayerProfile={vi.fn()}
+        onOpenManagementDestination={vi.fn()}
         onApplyTraining={vi.fn()}
         onEnterEvent={vi.fn()}
         onOpenScheduledCareerMatch={vi.fn()}
@@ -420,6 +423,7 @@ function renderTrainingPage(overrides: Partial<Parameters<typeof CareerTrainingP
       onOpenStaff={vi.fn()}
       onOpenPromises={vi.fn()}
       onOpenPlayerProfile={vi.fn()}
+      onOpenManagementDestination={vi.fn()}
       onApplyTraining={vi.fn()}
       onEnterEvent={vi.fn()}
       onOpenScheduledCareerMatch={vi.fn()}
@@ -478,6 +482,7 @@ function renderRankingsPage(overrides: Partial<Parameters<typeof CareerRankingsP
       onOpenStaff={vi.fn()}
       onOpenPromises={vi.fn()}
       onOpenPlayerProfile={vi.fn()}
+      onOpenManagementDestination={vi.fn()}
       onApplyTraining={vi.fn()}
       onEnterEvent={vi.fn()}
       onOpenScheduledCareerMatch={vi.fn()}
@@ -542,6 +547,7 @@ function renderTournamentHomePage(
       onOpenStaff={vi.fn()}
       onOpenPromises={vi.fn()}
       onOpenPlayerProfile={vi.fn()}
+      onOpenManagementDestination={vi.fn()}
       onApplyTraining={vi.fn()}
       onEnterEvent={vi.fn()}
       onOpenScheduledCareerMatch={vi.fn()}
@@ -622,7 +628,7 @@ describe("career shell daily action", () => {
       "Portal",
       "Timeline",
       "Calendar",
-      "Inbox Preview",
+      "Inbox",
       "Squad",
       "Training",
       "Tactics",
@@ -639,7 +645,28 @@ describe("career shell daily action", () => {
     expect(commandIdForPage({ id: "bracket" })).toBe("live");
     expect(commandIdForPage({ id: "timeline" })).toBe("timeline");
     expect(commandIdForPage({ id: "calendar" })).toBe("calendar");
-    expect(within(commandRail).getByRole("button", { name: /Inbox Preview preview-only/ })).toBeDisabled();
+    expect(commandIdForPage({ id: "inbox" })).toBe("inbox");
+    expect(commandIdForPage({ id: "reports" })).toBe("reports");
+    expect(within(commandRail).getByRole("button", { name: /^Inbox:/ })).toBeEnabled();
+    expect(within(commandRail).getByRole("button", { name: /^Reports:/ })).toBeEnabled();
+  });
+
+  it("routes Inbox and read-only Reports without mutating the planning career", () => {
+    resetStoreForCareer();
+    const before = useTournamentStore.getState().career;
+
+    render(<App />);
+
+    const commandRail = screen.getByRole("navigation", { name: "Primary commands" });
+    fireEvent.click(within(commandRail).getByRole("button", { name: /^Inbox:/ }));
+    expect(screen.getByRole("heading", { level: 1, name: "Actionable Career Desk" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Career inbox items")).toBeInTheDocument();
+
+    fireEvent.click(within(commandRail).getByRole("button", { name: /^Reports:/ }));
+    expect(screen.getByRole("heading", { level: 1, name: "Institutional Memory" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Persisted Archive" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Continue|Close Event/ })).not.toBeInTheDocument();
+    expect(useTournamentStore.getState().career).toBe(before);
   });
 
   it("derives a career-safe fallback page without trusting the setup phase", () => {

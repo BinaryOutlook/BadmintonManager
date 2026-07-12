@@ -19,7 +19,7 @@ const expectedPrimaryCommandLabels = [
   "Portal",
   "Timeline",
   "Calendar",
-  "Inbox Preview",
+  "Inbox",
   "Squad",
   "Training",
   "Tactics",
@@ -1471,7 +1471,7 @@ test("exposes the grouped management shell as the primary command surface", asyn
 
   await expect(commandRail.getByRole("button", { name: /Portal/ })).toHaveAttribute("aria-current", "page");
   await expectPrimaryCommandLabels(commandRail);
-  await expect(commandRail.getByRole("button", { name: /Inbox Preview preview-only/ })).toBeDisabled();
+  await expect(commandRail.getByRole("button", { name: /^Inbox:/ })).toBeEnabled();
   await expect(page.getByRole("heading", { name: "Career Workspace Map" })).toHaveCount(0);
   await expect(page.getByRole("region", { name: "Career workspace navigation" })).toHaveCount(0);
 
@@ -2274,6 +2274,32 @@ test("can run the Phase 2 program ecosystem flow and persist it after reload", a
   await page.getByRole("button", { name: "Program Hub" }).click();
   await page.getByRole("button", { name: "Scouting Network" }).click();
   await expect(page.getByText(/expired/).first()).toBeVisible();
+});
+
+test("routes the state-backed Inbox and keeps Reports read-only", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/");
+  await startNewCareer(page);
+
+  const sidebar = page.locator(".sidenav");
+  const savedBefore = await page.evaluate(() => window.localStorage.getItem("badminton-manager-save"));
+
+  await sidebar.getByRole("button", { name: /^Inbox:/ }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Actionable Career Desk" })).toBeVisible();
+  const inbox = page.getByLabel("Career inbox items");
+  await expect(inbox).toContainText("Metro Open entry decision");
+  await inbox.getByRole("button", { name: "Open Event" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Metro Open" })).toBeVisible();
+
+  await sidebar.getByRole("button", { name: /^Reports:/ }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Institutional Memory" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Persisted Archive" })).toBeVisible();
+  await expect(page.getByText("Development baseline", { exact: false }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: /Continue|Close Event/ })).toHaveCount(0);
+  await captureFocusedScreenshot(page, "version-two-reports-archive");
+
+  const savedAfter = await page.evaluate(() => window.localStorage.getItem("badminton-manager-save"));
+  expect(savedAfter).toBe(savedBefore);
 });
 
 test("surfaces dynamic rival pressure and persists the circuit room", async ({ page }) => {

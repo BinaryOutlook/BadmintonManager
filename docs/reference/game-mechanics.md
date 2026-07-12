@@ -119,6 +119,10 @@ Key rules:
   development history as lead preparation.
 - Candidate/prospect state evolves once per resolved date from seed-stable signals. Weekly roster/staff payroll resolves
   through the same day pipeline and posts one dated ledger fact.
+- Inbox items are actionable projections of real career facts. They navigate to the owning desk and resolve only when
+  that system changes state.
+- Reports is a read-only archive of persisted match, event, scouting, and development evidence. It does not reuse the
+  post-match Continue action or fabricate missing tactical history.
 - Advance-day forecasts call the same pure day resolver as the real action, so displayed cash, readiness, fatigue, risk, and development deltas cannot drift into a second formula.
 - Entered events become playable only when schedule helpers say the managed round is due or overdue.
 - Direct day advancement must not skip a due managed match.

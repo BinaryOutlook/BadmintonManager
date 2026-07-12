@@ -73,7 +73,7 @@ async function captureResponsiveEvidence(page: Page, name: string) {
 async function activateCareerCommand(
   page: Page,
   viewport: ResponsiveViewport,
-  command: "portal" | "timeline" | "calendar" | "training"
+  command: "portal" | "timeline" | "calendar" | "training" | "inbox" | "reports"
 ) {
   const sidebar = page.getByRole("complementary", { name: "Primary command sidebar" });
   const commandButton = sidebar.locator(`[data-command="${command}"]`);
@@ -251,5 +251,15 @@ for (const viewport of viewports) {
     await expect(calendarGrid.getByRole("button", { name: /^Open training: .*Rally Base/ })).toBeVisible();
     await expectNoHorizontalOverflow(page);
     await captureResponsiveEvidence(page, `calendar-schedule-${viewport.width}x${viewport.height}`);
+
+    await activateCareerCommand(page, viewport, "inbox");
+    await expect(page.getByRole("heading", { level: 1, name: "Actionable Career Desk" })).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+    await captureResponsiveEvidence(page, `inbox-${viewport.width}x${viewport.height}`);
+
+    await activateCareerCommand(page, viewport, "reports");
+    await expect(page.getByRole("heading", { level: 1, name: "Institutional Memory" })).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+    await captureResponsiveEvidence(page, `reports-${viewport.width}x${viewport.height}`);
   });
 }

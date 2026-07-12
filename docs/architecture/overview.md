@@ -95,6 +95,8 @@ Responsibilities:
 - navigation to player profiles and tournament homes through provider helpers
 - career Squad separation between My Program and the view-only World Directory; recruited athletes use a career-state
   profile while the locked lead identity remains unchanged
+- dedicated Inbox and Reports routes: Inbox maps semantic destinations to owning desks, while Reports remains read-only
+  and separate from the mutating post-match Review route
 - route-like page rendering without a URL router
 - wiring UI callbacks to Zustand store actions
 

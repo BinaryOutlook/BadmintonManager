@@ -13,12 +13,14 @@ import {
   CareerCalendarPage,
   CareerFacilitiesPage,
   CareerHomePage,
+  CareerInboxPage,
   CareerMatchPlanningPage,
   CareerMediaObjectivesPage,
   CareerPostMatchHubPage,
   CareerPreMatchHubPage,
   CareerProgramHubPage,
   CareerRankingsPage,
+  CareerReportsArchivePage,
   CareerRecruitmentDeskPage,
   CareerRivalCircuitPage,
   CareerScoutingNetworkPage,
@@ -38,6 +40,11 @@ import { playerMap } from "../game/content/players";
 import { getCareerDailyAction, type CareerDailyActionTone } from "../game/career/dailyAction";
 import { buildAdvanceDayForecast } from "../game/career/dayResolution";
 import { getCareerEvent } from "../game/career/events";
+import {
+  careerArchiveReports,
+  careerInboxItems,
+  type ManagementDestination
+} from "../game/career/managementMemory";
 import { useTournamentStore, type AppPhase, type TournamentStoreState } from "../game/store/store";
 import type { CareerStage, CareerState, TournamentAddress } from "../game/career/models";
 import type { PersistedSave } from "../game/store/save";
@@ -313,6 +320,8 @@ export function commandIdForPage(page: AppPage): CommandId {
       return "calendar";
     case "timeline":
       return "timeline";
+    case "inbox":
+      return "inbox";
     case "rankings":
       return "rankings";
     case "bracket":
@@ -322,6 +331,7 @@ export function commandIdForPage(page: AppPage): CommandId {
     case "liveMatch":
       return "live";
     case "review":
+    case "reports":
       return "reports";
     case "scouting":
     case "recruitment":
@@ -757,6 +767,38 @@ export function App() {
     setActivePage({ id: "review" });
   }
 
+  function openManagementDestination(destination: ManagementDestination) {
+    switch (destination.kind) {
+      case "review":
+        setActivePage({ id: "review" });
+        return;
+      case "live_match":
+        openLiveMatchRoute();
+        return;
+      case "training":
+        setActivePage({ id: "season" });
+        return;
+      case "program":
+        setActivePage({ id: "program" });
+        return;
+      case "scouting":
+        setActivePage({ id: "scouting" });
+        return;
+      case "promises":
+        setActivePage({ id: "promises" });
+        return;
+      case "facilities":
+        setActivePage({ id: "facilities" });
+        return;
+      case "player_profile":
+        openPlayerProfile(destination.playerId);
+        return;
+      case "tournament":
+        openTournamentHome(destination);
+        return;
+    }
+  }
+
   function handleAdvanceAfterMatch() {
     advanceAfterMatch();
     const next = useTournamentStore.getState();
@@ -775,6 +817,7 @@ export function App() {
         setActivePage({ id: "calendar" });
         break;
       case "inbox":
+        setActivePage(career ? { id: "inbox" } : { id: "setup" });
         break;
       case "squad":
         setActivePage({ id: "squad" });
@@ -792,7 +835,7 @@ export function App() {
         openLiveMatchRoute();
         break;
       case "reports":
-        openCareerPostMatchRoute();
+        setActivePage(career ? { id: "reports" } : { id: "setup" });
         break;
       case "scouting":
         setActivePage(career ? { id: "scouting" } : { id: "setup" });
@@ -813,6 +856,11 @@ export function App() {
   }
 
   function buildShellCommands(): ShellCommand[] {
+    const inboxItems = career ? careerInboxItems(career) : [];
+    const urgentInboxCount = inboxItems.filter(
+      (item) => item.priority === "required" || item.priority === "urgent"
+    ).length;
+    const reportCount = career ? careerArchiveReports(career).length : 0;
     const liveMatchDescription =
       phase === "match" || liveMatch
         ? "Point control"
@@ -858,11 +906,10 @@ export function App() {
       {
         id: "inbox",
         group: "CORE",
-        label: "Inbox Preview",
+        label: "Inbox",
         short: "INB",
-        description: "Preview only - not live",
-        disabled: true,
-        preview: true,
+        description: career ? `${urgentInboxCount} urgent / ${inboxItems.length} total` : "Career required",
+        disabled: !career,
         onActivate: () => activateCommand("inbox")
       },
       {
@@ -911,8 +958,8 @@ export function App() {
         group: "MATCH",
         label: "Reports",
         short: "REP",
-        description: career?.lastMatchReport ? "Post-match evidence" : "Report pending",
-        disabled: !career?.lastMatchReport,
+        description: career ? `${reportCount} persisted record(s)` : "Career required",
+        disabled: !career,
         onActivate: () => activateCommand("reports")
       },
       {
@@ -1116,6 +1163,7 @@ export function App() {
       onOpenStaff: () => setActivePage({ id: "staff" }),
       onOpenPromises: () => setActivePage({ id: "promises" }),
       onOpenPlayerProfile: openPlayerProfile,
+      onOpenManagementDestination: openManagementDestination,
       onApplyTraining: scheduleCareerTraining,
       onEnterEvent: enterCareerEvent,
       onOpenScheduledCareerMatch: handleOpenScheduledCareerMatch,
@@ -1188,6 +1236,14 @@ export function App() {
 
     if (activePage.id === "home") {
       return <CareerHomePage {...careerPageProps} />;
+    }
+
+    if (activePage.id === "inbox") {
+      return <CareerInboxPage {...careerPageProps} />;
+    }
+
+    if (activePage.id === "reports") {
+      return <CareerReportsArchivePage {...careerPageProps} />;
     }
 
     if (activePage.id === "program") {
