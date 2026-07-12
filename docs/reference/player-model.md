@@ -130,6 +130,12 @@ Projected values are bounded to the canonical `1`–`100` rating scale. Career `
 
 This boundary ensures that completed training affects deterministic match resolution without mutating shared content or changing quick-run behavior.
 
+### Persisted Development Evidence
+
+Player Profile development evidence comes from `CareerState.developmentHistory`, not from a synthetic comparison presented as recent training. Completed and blocked preparation records retain their career date, outcome, plan identity, actual post-resolution snapshot, and explanation. The profile derives per-block gains only when an earlier retained snapshot exists for that athlete.
+
+Career-start and recruitment snapshots provide cumulative baselines. A migrated `legacy_snapshot` preserves the athlete values known at migration time, but must state that earlier training detail is unavailable; it must not be presented as a reconstructed training session.
+
 ## Player Identity
 
 Each player should also expose a readable style label such as:

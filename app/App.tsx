@@ -36,6 +36,7 @@ import { SettingsOverlay, type ThemeAccent } from "../components/SettingsOverlay
 import { SetupView, type LaunchSaveSummary } from "../components/SetupView";
 import { playerMap } from "../game/content/players";
 import { getCareerDailyAction, type CareerDailyActionTone } from "../game/career/dailyAction";
+import { buildAdvanceDayForecast } from "../game/career/dayResolution";
 import { getCareerEvent } from "../game/career/events";
 import { useTournamentStore, type AppPhase, type TournamentStoreState } from "../game/store/store";
 import type { CareerStage, CareerState, TournamentAddress } from "../game/career/models";
@@ -1069,9 +1070,18 @@ export function App() {
   }
 
   function renderPage() {
+    const advanceDayForecast = career
+      ? buildAdvanceDayForecast({
+          career,
+          tournament,
+          phase,
+          liveMatchActive: Boolean(liveMatch)
+        })
+      : null;
     const careerPageProps = {
       career,
       tournament,
+      advanceDayForecast,
       saveRecovery,
       activeSavePresent,
       corruptSavePresent,
@@ -1369,6 +1379,9 @@ export function App() {
     : activeSavePresent
       ? "Continue Save"
       : "Start";
+  const continueReason = careerDailyAction?.reason ?? (activeSavePresent
+    ? "Continue the active local save."
+    : "Open the start screen.");
   const continueTone: CareerDailyActionTone = careerDailyAction?.tone ?? "ready";
   const shouldRenderLaunchShell =
     activePage.id === "setup" ||
@@ -1412,6 +1425,7 @@ export function App() {
           <TopStatusBar
             activeAthleteName={activeAthlete.name}
             continueLabel={continueLabel}
+            continueReason={continueReason}
             continueTone={continueTone}
             dateLabel={shellDate}
             saveButtonLabel={saveButtonLabel}
@@ -1495,6 +1509,7 @@ function LaunchTopBar(props: {
 function TopStatusBar(props: {
   activeAthleteName: string;
   continueLabel: string;
+  continueReason: string;
   continueTone: CareerDailyActionTone;
   dateLabel: string;
   saveButtonLabel: string;
@@ -1563,7 +1578,13 @@ function TopStatusBar(props: {
           <span className="topbar-date" aria-label={`Career date ${props.dateLabel}`}>
             {props.dateLabel}
           </span>
-          <button className={continueClass} data-tone={props.continueTone} type="button" onClick={props.onContinue}>
+          <button
+            className={continueClass}
+            data-tone={props.continueTone}
+            type="button"
+            title={props.continueReason}
+            onClick={props.onContinue}
+          >
             {props.continueLabel}
           </button>
         </div>

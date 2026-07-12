@@ -1,6 +1,7 @@
 import { type ReactNode, useState } from "react";
 import { playerMap } from "../game/content/players";
 import { addCalendarMonths, addDays, buildWeek, calendarMonthCursorForDate, daysBetween } from "../game/career/calendar";
+import type { AdvanceDayForecast } from "../game/career/dayResolution";
 import { canAffordEventEntry, eventEntryCost } from "../game/career/economy";
 import { canCommissionScoutReport, roleLabel, staffModifiers } from "../game/career/ecosystem";
 import {
@@ -37,6 +38,7 @@ import type {
 } from "../game/career/models";
 import { managedMatchScheduleForEvent } from "../game/career/matchSchedule";
 import { effectiveEventEntryCosts, facilityModifiers } from "../game/career/facilitiesMedia";
+import { previewPreparationPlan, scheduledPreparationForAthlete } from "../game/career/preparation";
 import { managedAthlete } from "../game/career/state";
 import { activeAdvancedTacticPlan, buildPreMatchPlanningBridge, calculateTacticEffectProfile, tacticPlanToMatchTactic } from "../game/career/tactics";
 import { trainingPlans } from "../game/career/training";
@@ -55,6 +57,7 @@ import { TournamentLink } from "./TournamentLink";
 interface CareerPageProps {
   career: CareerState | null;
   tournament: TournamentState | null;
+  advanceDayForecast?: AdvanceDayForecast | null;
   saveRecovery: SaveRecoveryNotice | null;
   activeSavePresent: boolean;
   corruptSavePresent: boolean;
@@ -78,7 +81,7 @@ interface CareerPageProps {
   onOpenStaff: () => void;
   onOpenPromises: () => void;
   onOpenPlayerProfile: (playerId: string) => void;
-  onApplyTraining: (planId: string) => void;
+  onApplyTraining: (planId: string | null) => void;
   onEnterEvent: (eventId: string) => void;
   onOpenScheduledCareerMatch: (eventId?: string) => void;
   onStartManagedMatch: () => void;
@@ -118,6 +121,18 @@ function points(value: number) {
 
 function signedMoney(value: number) {
   return `${value >= 0 ? "+" : "-"}${money(Math.abs(value))}`;
+}
+
+function compactNumber(value: number, maximumFractionDigits = 1) {
+  return new Intl.NumberFormat("en-US", {
+    maximumFractionDigits,
+    minimumFractionDigits: 0
+  }).format(value);
+}
+
+function signedNumber(value: number, suffix = "") {
+  const normalized = Math.abs(value) < 0.000_1 ? 0 : value;
+  return `${normalized > 0 ? "+" : ""}${compactNumber(normalized)}${suffix}`;
 }
 
 function statusLabel(status: ReturnType<typeof eventStatusFor>) {
@@ -1641,7 +1656,7 @@ export function CareerHomePage(props: CareerPageProps) {
   });
   const evidenceRows = homeEvidenceRows(career, athlete);
   const psychology = managedPsychology(career);
-  const plan = selectedTrainingPlan(career);
+  const advanceDayForecast = props.advanceDayForecast ?? null;
   const entryCosts = event ? effectiveEventEntryCosts(event, career.facilities) : null;
   const nextEventCost = event && entryCosts && !career.enteredEventIds.includes(event.id)
     ? eventEntryCost(entryCosts)
@@ -1765,6 +1780,91 @@ export function CareerHomePage(props: CareerPageProps) {
                   ))}
                 </div>
               </div>
+            </section>
+
+            <section
+              className={
+                advanceDayForecast?.available
+                  ? "command-panel career-dashboard-card career-dashboard-card-forecast"
+                  : "command-panel career-dashboard-card career-dashboard-card-forecast career-dashboard-card-forecast-blocked"
+              }
+              aria-label="Advance Day Forecast"
+            >
+              <div className="panel-header">
+                <h2>Advance Day Forecast</h2>
+                <span>
+                  {advanceDayForecast?.available
+                    ? `${advanceDayForecast.fromDate} → ${advanceDayForecast.targetDate}`
+                    : "Required action blocks advance"}
+                </span>
+              </div>
+              {advanceDayForecast?.available ? (
+                <>
+                  <div className="career-advance-forecast-summary">
+                    <div>
+                      <span>Target</span>
+                      <strong>{advanceDayForecast.targetDate}</strong>
+                    </div>
+                    <div>
+                      <span>Preparation</span>
+                      <strong>{advanceDayForecast.preparationLabel}</strong>
+                      <small>{advanceDayForecast.preparationOutcome.replace(/_/g, " ")}</small>
+                    </div>
+                    <div>
+                      <span>Cash</span>
+                      <strong>{signedMoney(advanceDayForecast.cashDelta)}</strong>
+                    </div>
+                  </div>
+                  <div
+                    className="career-advance-forecast-deltas"
+                    aria-label="Forecast condition and development deltas"
+                  >
+                    <div>
+                      <span>Readiness</span>
+                      <strong>{signedNumber(advanceDayForecast.readinessDelta)}</strong>
+                    </div>
+                    <div>
+                      <span>Fatigue</span>
+                      <strong>{signedNumber(advanceDayForecast.fatigueDelta)}</strong>
+                    </div>
+                    <div>
+                      <span>Injury Risk</span>
+                      <strong>{signedNumber(advanceDayForecast.injuryRiskDelta * 100, " pts")}</strong>
+                    </div>
+                    <div>
+                      <span>Smash</span>
+                      <strong>{signedNumber(advanceDayForecast.developmentDelta.smash)}</strong>
+                    </div>
+                    <div>
+                      <span>Stamina</span>
+                      <strong>{signedNumber(advanceDayForecast.developmentDelta.stamina)}</strong>
+                    </div>
+                    <div>
+                      <span>Composure</span>
+                      <strong>{signedNumber(advanceDayForecast.developmentDelta.composure)}</strong>
+                    </div>
+                    <div>
+                      <span>Recovery</span>
+                      <strong>{signedNumber(advanceDayForecast.developmentDelta.recovery)}</strong>
+                    </div>
+                  </div>
+                  <div className="career-advance-forecast-due" aria-label="Next due item">
+                    <span>Due next</span>
+                    <strong>{advanceDayForecast.dueItems[0]}</strong>
+                    {advanceDayForecast.dueItems.length > 1 && (
+                      <small>+{advanceDayForecast.dueItems.length - 1} more scheduled item(s)</small>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div className="career-advance-forecast-unavailable" role="status">
+                  <strong>{advanceDayForecast?.action.label ?? "Forecast unavailable"}</strong>
+                  <p>
+                    {advanceDayForecast?.action.reason ??
+                      "The next-day resolver is unavailable for this career state. Complete the required action first."}
+                  </p>
+                </div>
+              )}
             </section>
 
             <section className="command-panel career-dashboard-card career-dashboard-card-readiness">
@@ -3697,16 +3797,74 @@ export function CareerTrainingPage(props: CareerPageProps) {
     return <CareerEmpty onStartCareer={props.onStartCareer} saveRecovery={props.saveRecovery} />;
   }
 
-  const athlete = managedAthlete(props.career);
+  const career = props.career;
+  const athlete = managedAthlete(career);
+  const scheduledBlock = scheduledPreparationForAthlete(career);
+  const selectedPlan = selectedTrainingPlan(career);
+  const previewPlan = scheduledBlock?.planSnapshot ?? selectedPlan;
+  const preview = previewPlan ? previewPreparationPlan({ state: career, plan: previewPlan }) : null;
+  const previewRecord = preview?.record?.kind === "preparation" ? preview.record : null;
+  const schedulingAvailable = props.advanceDayForecast?.available === true;
+  const schedulingBlockedReason = props.advanceDayForecast?.action.reason ??
+    props.advanceDayForecast?.dueItems[0] ??
+    "Advance-day planning is unavailable for this career state.";
+  const previewCost = preview ? career.economy.cash - preview.economyAfter.cash : 0;
+  const projectionRows = preview
+    ? [
+        {
+          label: "Smash",
+          before: preview.before.development.smash,
+          after: preview.after.development.smash,
+          suffix: ""
+        },
+        {
+          label: "Stamina",
+          before: preview.before.development.stamina,
+          after: preview.after.development.stamina,
+          suffix: ""
+        },
+        {
+          label: "Composure",
+          before: preview.before.development.composure,
+          after: preview.after.development.composure,
+          suffix: ""
+        },
+        {
+          label: "Recovery",
+          before: preview.before.development.recovery,
+          after: preview.after.development.recovery,
+          suffix: ""
+        },
+        {
+          label: "Readiness",
+          before: preview.before.readiness,
+          after: preview.after.readiness,
+          suffix: ""
+        },
+        {
+          label: "Fatigue",
+          before: preview.before.fatigue,
+          after: preview.after.fatigue,
+          suffix: ""
+        },
+        {
+          label: "Injury Risk",
+          before: preview.before.injuryRisk * 100,
+          after: preview.after.injuryRisk * 100,
+          suffix: "%"
+        }
+      ]
+    : [];
 
   return (
-    <section className="screen-shell career-page">
+    <section className="screen-shell career-page career-training-page" data-page-contract="training-preparation">
       <div className="screen-header">
         <div>
           <p className="screen-kicker">Training / Recovery</p>
           <h1 className="screen-title">Load Management</h1>
           <p className="screen-copy">
-            Choose one training block. Every option changes development, fatigue, injury risk, and budget.
+            Schedule one current-day preparation block. It resolves once when you advance; replacing or clearing it
+            does not spend cash or change the athlete immediately.
           </p>
         </div>
         <button className="command-button command-button-secondary" type="button" onClick={props.onOpenHome}>
@@ -3716,24 +3874,24 @@ export function CareerTrainingPage(props: CareerPageProps) {
 
       <section className="management-status-strip" aria-label="Training status">
         <div>
-          <span>Selected block</span>
-          <strong>{(props.career.selectedTrainingPlanId ?? "No training").replace(/-/g, " ")}</strong>
+          <span>Scheduled block</span>
+          <strong>{scheduledBlock?.planSnapshot.label ?? "Passive recovery only"}</strong>
         </div>
         <div>
-          <span>Readiness</span>
-          <strong>{athlete.readiness}</strong>
+          <span>Current date</span>
+          <strong>{career.date}</strong>
         </div>
         <div>
-          <span>Fatigue</span>
-          <strong>{Math.round(athlete.fatigue)}</strong>
+          <span>Block cost</span>
+          <strong>{scheduledBlock ? money(scheduledBlock.planSnapshot.cost) : money(0)}</strong>
         </div>
         <div>
-          <span>Injury risk</span>
-          <strong>{Math.round(athlete.injuryRisk * 100)}%</strong>
+          <span>Advance target</span>
+          <strong>{props.advanceDayForecast?.available ? props.advanceDayForecast.targetDate : "Blocked"}</strong>
         </div>
         <div>
-          <span>Next action</span>
-          <strong>{athlete.fatigue >= 65 ? "Reduce load" : "Commit block"}</strong>
+          <span>Scheduling</span>
+          <strong>{schedulingAvailable ? "Available" : props.advanceDayForecast?.action.label ?? "Unavailable"}</strong>
         </div>
       </section>
 
@@ -3741,19 +3899,44 @@ export function CareerTrainingPage(props: CareerPageProps) {
         <section className="command-panel command-panel-wide">
           <div className="panel-header">
             <h2>Training Plans</h2>
-            <span>Cash {money(props.career.economy.cash)}</span>
+            <div className="career-training-plan-actions">
+              <span>Cash {money(career.economy.cash)}</span>
+              <button
+                className="command-button command-button-secondary"
+                type="button"
+                disabled={!scheduledBlock}
+                onClick={() => props.onApplyTraining(null)}
+              >
+                Clear Block
+              </button>
+            </div>
           </div>
+          {!schedulingAvailable && (
+            <div className="career-training-blocked-reason" role="status" aria-label="Training scheduling blocked">
+              <strong>Scheduling locked</strong>
+              <p>{schedulingBlockedReason}</p>
+            </div>
+          )}
           <div className="career-plan-grid">
             {trainingPlans.map((plan) => {
               const medicalGate = canTrainWithInjury(athlete, plan.intensity);
-              const affordable = props.career!.economy.cash >= plan.cost;
-              const disabled = !medicalGate.allowed || !affordable;
+              const affordable = career.economy.cash >= plan.cost;
+              const disabled = !schedulingAvailable || !medicalGate.allowed || !affordable;
+              const active = scheduledBlock?.planSnapshot.id === plan.id;
+              const planPreview = previewPreparationPlan({ state: career, plan });
+              const disabledReason = !schedulingAvailable
+                ? schedulingBlockedReason
+                : !affordable
+                  ? `Insufficient budget for ${money(plan.cost)} block.`
+                  : !medicalGate.allowed
+                    ? medicalGate.reason
+                    : null;
 
               return (
                 <button
                   key={plan.id}
                   className={
-                    props.career?.selectedTrainingPlanId === plan.id
+                    active
                       ? "career-plan-card career-plan-card-active"
                       : disabled
                         ? "career-plan-card career-plan-card-blocked"
@@ -3761,57 +3944,77 @@ export function CareerTrainingPage(props: CareerPageProps) {
                   }
                   type="button"
                   disabled={disabled}
-                  aria-pressed={props.career?.selectedTrainingPlanId === plan.id}
+                  aria-pressed={active}
+                  title={disabledReason ?? `Schedule ${plan.label} for ${career.date}`}
                   onClick={() => props.onApplyTraining(plan.id)}
                 >
                   <span>{plan.intensity}</span>
                   <strong>{plan.label}</strong>
                   <p>
-                    {disabled
-                      ? !affordable
-                        ? `Insufficient budget for ${money(plan.cost)} block.`
-                        : medicalGate.reason
-                      : `${plan.focus} + cost ${money(plan.cost)} - fatigue ${plan.fatigueDelta >= 0 ? "+" : ""}${plan.fatigueDelta}, risk ${plan.injuryRiskDelta >= 0 ? "+" : ""}${Math.round(plan.injuryRiskDelta * 100)} pts`}
+                    {disabledReason ??
+                      `${plan.focus} / ${money(plan.cost)} / readiness ${compactNumber(planPreview.before.readiness)} → ${compactNumber(planPreview.after.readiness)}, fatigue ${compactNumber(planPreview.before.fatigue)} → ${compactNumber(planPreview.after.fatigue)}`}
                   </p>
+                  <small className="career-plan-card-action">
+                    {active ? `Scheduled for ${career.date}; choose another block to replace it` : `Schedule for ${career.date}`}
+                  </small>
                 </button>
               );
             })}
           </div>
         </section>
 
-        <section className="command-panel">
+        <section className="command-panel career-training-projection-panel" aria-label="Preparation block preview">
           <div className="panel-header">
-            <h2>Projected Athlete</h2>
-            <span>{athlete.recoveryStatus}</span>
+            <h2>Exact Block Preview</h2>
+            <span>
+              {previewPlan
+                ? scheduledBlock
+                  ? `Scheduled ${career.date}`
+                  : "Selected, not scheduled"
+                : "Choose a block"}
+            </span>
           </div>
-          <div className="career-stat-grid">
-            <div>
-              <span>Smash</span>
-              <strong>{Math.round(athlete.development.smash)}</strong>
+          {preview && previewPlan ? (
+            <>
+              <div className="career-training-preview-meta">
+                <div>
+                  <span>Plan</span>
+                  <strong>{previewPlan.label}</strong>
+                </div>
+                <div>
+                  <span>Date</span>
+                  <strong>{career.date}</strong>
+                </div>
+                <div>
+                  <span>Exact cost</span>
+                  <strong>{money(previewCost)}</strong>
+                </div>
+              </div>
+              <div className="career-training-projection-grid">
+                {projectionRows.map((row) => (
+                  <div key={row.label} aria-label={`${row.label} projection`}>
+                    <span>{row.label}</span>
+                    <strong>
+                      {compactNumber(row.before)}{row.suffix} → {compactNumber(row.after)}{row.suffix}
+                    </strong>
+                    <small>{signedNumber(row.after - row.before, row.suffix)}</small>
+                  </div>
+                ))}
+              </div>
+              <div className="program-log-row career-training-preview-outcome">
+                <span>projected {previewRecord?.outcome ?? "preview"} / {preview.after.recoveryStatus.replace(/_/g, " ")}</span>
+                <strong>{preview.after.injury.label}</strong>
+                <p>
+                  Resolver projection: {previewRecord?.reason ?? "This uses the persisted athlete, staff, facility, and medical state."}
+                </p>
+              </div>
+            </>
+          ) : (
+            <div className="career-training-preview-empty">
+              <strong>Passive recovery remains the current plan.</strong>
+              <p>Choose a block to inspect its exact one-time cost and before-to-after athlete state before scheduling it.</p>
             </div>
-            <div>
-              <span>Stamina</span>
-              <strong>{Math.round(athlete.development.stamina)}</strong>
-            </div>
-            <div>
-              <span>Composure</span>
-              <strong>{Math.round(athlete.development.composure)}</strong>
-            </div>
-            <div>
-              <span>Recovery</span>
-              <strong>{Math.round(athlete.development.recovery)}</strong>
-            </div>
-          </div>
-          <div className="career-meter-list career-meter-list-spaced">
-            <CareerMeter label="Readiness" value={athlete.readiness} />
-            <CareerMeter label="Fatigue" value={Math.round(athlete.fatigue)} danger />
-            <CareerMeter label="Injury Risk" value={Math.round(athlete.injuryRisk * 100)} danger />
-          </div>
-          <div className="program-log-row career-button-spaced">
-            <span>{athlete.injury.status} / return {athlete.injury.returnDate ?? "available"}</span>
-            <strong>{athlete.injury.label}</strong>
-            <p>{athlete.injury.notes[0]}</p>
-          </div>
+          )}
         </section>
       </div>
     </section>

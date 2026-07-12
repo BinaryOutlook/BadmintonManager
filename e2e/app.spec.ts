@@ -12,7 +12,7 @@ import {
 import { appendRankingResultsAndRebuild, createRankingResult } from "../game/career/rankings";
 import type { CareerState } from "../game/career/models";
 import type { MatchResult, Side } from "../game/core/models";
-import type { PersistedSave } from "../game/store/save";
+import { CURRENT_SAVE_VERSION, type PersistedSave } from "../game/store/save";
 import { advanceTournament, createTournament, getManagedMatchContext } from "../game/tournament/tournament";
 
 const expectedPrimaryCommandLabels = [
@@ -121,7 +121,7 @@ function createBetweenRoundsCareerSave() {
   const nextOpponentId = nextContext.playerAId === managedPlayerId ? nextContext.playerBId : nextContext.playerAId;
   const opponentId = context.playerAId === managedPlayerId ? context.playerBId : context.playerAId;
   const save = {
-    version: 11,
+    version: CURRENT_SAVE_VERSION,
     selectedPlayerId: managedPlayerId,
     plannedTacticKey: "balancedControl",
     seed: 61001,
@@ -205,7 +205,7 @@ function createPostMatchCloseoutCareerSave(outcome: "loss" | "title") {
   });
   const placementKey = won ? "champion" : context.roundName;
   const save = {
-    version: 11,
+    version: CURRENT_SAVE_VERSION,
     selectedPlayerId: managedPlayerId,
     plannedTacticKey: "balancedControl",
     seed: outcome === "title" ? 62002 : 62001,
@@ -319,7 +319,7 @@ function createCompletedNonManagedArchiveSave() {
     asOfDate: archiveDate
   });
   const save = {
-    version: 11,
+    version: CURRENT_SAVE_VERSION,
     selectedPlayerId: managedPlayerId,
     plannedTacticKey: "balancedControl",
     seed,
@@ -433,7 +433,7 @@ function createTix030ProfileVisualSave() {
     }
   ];
   const save: PersistedSave = {
-    version: 11,
+    version: CURRENT_SAVE_VERSION,
     selectedPlayerId: managedPlayerId,
     plannedTacticKey: "balancedControl",
     seed,
@@ -1147,8 +1147,10 @@ test("can complete and reload the career core slice with tactical viewer proof",
   const rallyBase = page.getByRole("button", { name: /Rally Base/ });
   await rallyBase.click();
   await expect(rallyBase).toHaveAttribute("aria-pressed", "true");
+  await captureFocusedScreenshot(page, "version-two-training-scheduled");
 
   await page.getByRole("button", { name: "Career Home" }).click();
+  await captureFocusedScreenshot(page, "version-two-portal-forecast");
   await page.getByRole("main").getByRole("button", { name: "Timeline" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Timeline" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Upcoming Event Schedule" })).toBeVisible();
@@ -1712,7 +1714,7 @@ test("surfaces dense page contracts and Save Manager metadata", async ({ page })
   await expect(page.getByLabel("Active save slot metadata")).toContainText("Active local slot");
   await expect(page.getByLabel("Active save slot metadata")).toContainText("Managed athlete");
   await expect(page.getByLabel("Active save slot metadata")).toContainText("Save version");
-  await expect(page.getByLabel("Active save slot metadata")).toContainText("v11");
+  await expect(page.getByLabel("Active save slot metadata")).toContainText(`v${CURRENT_SAVE_VERSION}`);
   await expect(page.getByRole("heading", { name: "Danger Zone" })).toBeVisible();
 
   const betweenRounds = createBetweenRoundsCareerSave();

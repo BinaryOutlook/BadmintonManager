@@ -858,10 +858,17 @@ export function PlayerProfilePage(props: PlayerProfilePageProps) {
             </section>
             <section className="command-panel">
               <div className="panel-header">
-                <h2>Recent Training Gains</h2>
-                <span>Persisted development only</span>
+                <h2>Cumulative Development</h2>
+                <span>Against earliest honest baseline</span>
               </div>
-              <TextList items={model.development.recentTrainingGains} empty="No training gains recorded." />
+              <TextList items={model.development.cumulativeDevelopment} empty="No development baseline recorded." />
+            </section>
+            <section className="command-panel">
+              <div className="panel-header">
+                <h2>Development History</h2>
+                <span>Dated persisted outcomes only</span>
+              </div>
+              <TextList items={model.development.recentTrainingGains} empty="No preparation outcomes recorded." />
             </section>
             <section className="command-panel">
               <div className="panel-header">

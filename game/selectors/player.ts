@@ -181,6 +181,7 @@ export interface DevelopmentSummary {
   workloadImplication: string;
   potentialNote: string;
   recentTrainingGains: string[];
+  cumulativeDevelopment: string[];
   coachNotes: string[];
   injuryRisk: string;
 }
@@ -1702,6 +1703,120 @@ function recentEvidenceItems(performance: PlayerPerformanceSummary): PlayerDecis
   ] satisfies PlayerDecisionItem[];
 }
 
+type DevelopmentHistoryEntry = CareerState["developmentHistory"][number];
+type DevelopmentValues = AthleteCareerState["development"];
+
+const developmentFields = [
+  ["smash", "Smash"],
+  ["stamina", "Stamina"],
+  ["composure", "Composure"],
+  ["recovery", "Recovery"]
+] as const satisfies ReadonlyArray<readonly [keyof DevelopmentValues, string]>;
+
+function formatDevelopmentValue(value: number) {
+  const rounded = Math.round(value * 10) / 10;
+  return Number.isInteger(rounded) ? `${rounded}` : rounded.toFixed(1);
+}
+
+function formatDevelopmentChange(value: number) {
+  const rounded = Math.round(value * 10) / 10;
+
+  if (Math.abs(rounded) < 0.05) {
+    return "no change";
+  }
+
+  return `${rounded > 0 ? "+" : ""}${formatDevelopmentValue(rounded)}`;
+}
+
+function retainedDevelopmentHistory(career: CareerState | null | undefined, athleteId: string) {
+  return (career?.developmentHistory ?? [])
+    .map((entry, index) => ({ entry, index }))
+    .filter(({ entry }) => entry.athleteId === athleteId)
+    .sort(
+      (left, right) =>
+        left.entry.date.localeCompare(right.entry.date) || left.index - right.index
+    )
+    .map(({ entry }) => entry);
+}
+
+function developmentChangeList(current: DevelopmentValues, previous: DevelopmentValues) {
+  const changes = developmentFields.flatMap(([key, label]) => {
+    const delta = current[key] - previous[key];
+    return Math.abs(delta) < 0.05 ? [] : [`${label} ${formatDevelopmentChange(delta)}`];
+  });
+
+  return changes.length > 0 ? changes.join(", ") : "No development rating change";
+}
+
+function developmentSnapshotList(values: DevelopmentValues) {
+  return developmentFields
+    .map(([key, label]) => `${label} ${formatDevelopmentValue(values[key])}`)
+    .join(", ");
+}
+
+function persistedPreparationHistory(history: DevelopmentHistoryEntry[]) {
+  const rows: string[] = [];
+  let previousDevelopment: DevelopmentValues | null = null;
+
+  for (const entry of history) {
+    if (entry.kind === "snapshot") {
+      if (entry.source === "legacy_snapshot") {
+        rows.push(
+          `${entry.date} · Legacy development snapshot · Earlier training detail unavailable. ${entry.note}`
+        );
+      }
+
+      previousDevelopment = entry.snapshot.development;
+      continue;
+    }
+
+    if (entry.outcome === "blocked") {
+      rows.push(`${entry.date} · ${entry.planLabel} blocked · ${entry.reason}`);
+      previousDevelopment = entry.snapshot.development;
+      continue;
+    }
+
+    const outcome = previousDevelopment
+      ? developmentChangeList(entry.snapshot.development, previousDevelopment)
+      : `Development after block: ${developmentSnapshotList(entry.snapshot.development)}; earlier comparison unavailable`;
+    rows.push(`${entry.date} · ${entry.planLabel} completed · ${outcome}. ${entry.reason}`);
+    previousDevelopment = entry.snapshot.development;
+  }
+
+  return rows.reverse().slice(0, 6);
+}
+
+function cumulativeDevelopmentSummary(args: {
+  player: Player;
+  careerAthlete: AthleteCareerState | null;
+  history: DevelopmentHistoryEntry[];
+}) {
+  if (!args.careerAthlete) {
+    return ["Career development tracking unlocks when this athlete is in the managed program."];
+  }
+
+  const earliest = args.history[0];
+  const baseline = earliest?.snapshot.development ?? {
+    smash: args.player.ratings.technical.smash,
+    stamina: args.player.ratings.physical.stamina,
+    composure: args.player.ratings.mental.composure,
+    recovery: args.careerAthlete.development.recovery
+  };
+  const baselineLabel = earliest
+    ? earliest.kind === "snapshot"
+      ? earliest.source === "legacy_snapshot"
+        ? `since the ${earliest.date} legacy snapshot`
+        : `since the ${earliest.date} ${earliest.source === "career_start" ? "career" : "recruitment"} baseline`
+      : `since the earliest retained record on ${earliest.date}`
+    : "versus the catalog baseline; persisted baseline unavailable";
+
+  return developmentFields.map(([key, label]) => {
+    const current = args.careerAthlete!.development[key];
+    const change = formatDevelopmentChange(current - baseline[key]);
+    return `${label} ${formatDevelopmentValue(current)} (${change} ${baselineLabel})`;
+  });
+}
+
 function deriveDevelopmentSummary(args: {
   player: Player;
   career: CareerState | null | undefined;
@@ -1709,19 +1824,24 @@ function deriveDevelopmentSummary(args: {
   careerAthlete: AthleteCareerState | null;
   tacticFits: TacticFitSummary[];
 }): DevelopmentSummary {
-  const selectedPlan = args.career?.selectedTrainingPlanId
-    ? trainingPlans.find((plan) => plan.id === args.career?.selectedTrainingPlanId)
-    : null;
+  const scheduledBlock = [...(args.career?.preparationSchedule ?? [])]
+    .filter(
+      (block) =>
+        block.athleteId === args.player.id &&
+        (!args.career || block.scheduledDate >= args.career.date)
+    )
+    .sort((left, right) => left.scheduledDate.localeCompare(right.scheduledDate) || left.id.localeCompare(right.id))[0];
   const careerAthlete = args.careerAthlete;
-  const currentPlan = selectedPlan?.label ?? "No active career training plan";
-  const recentTrainingGains = careerAthlete
-    ? [
-        `Smash ${Math.round(careerAthlete.development.smash)} (${developmentDeltaText(careerAthlete.development.smash - args.player.ratings.technical.smash)})`,
-        `Stamina ${Math.round(careerAthlete.development.stamina)} (${developmentDeltaText(careerAthlete.development.stamina - args.player.ratings.physical.stamina)})`,
-        `Composure ${Math.round(careerAthlete.development.composure)} (${developmentDeltaText(careerAthlete.development.composure - args.player.ratings.mental.composure)})`,
-        `Recovery ${Math.round(careerAthlete.development.recovery)}`
-      ]
-    : ["Career development tracking unlocks when this athlete is in the managed program."];
+  const history = retainedDevelopmentHistory(args.career, args.player.id);
+  const currentPlan = scheduledBlock
+    ? `${scheduledBlock.planSnapshot.label} / ${scheduledBlock.scheduledDate}`
+    : "No scheduled preparation block";
+  const recentTrainingGains = persistedPreparationHistory(history);
+  const cumulativeDevelopment = cumulativeDevelopmentSummary({
+    player: args.player,
+    careerAthlete,
+    history
+  });
 
   return {
     currentPlan,
@@ -1735,6 +1855,7 @@ function deriveDevelopmentSummary(args: {
           ? "Prime-age gains should be targeted, not scattered."
           : "Veteran profile: prioritize recovery and role preservation.",
     recentTrainingGains,
+    cumulativeDevelopment,
     coachNotes: [
       `${args.tacticFits[0].label} remains the tactical north star.`,
       args.training.risk,

@@ -7,9 +7,11 @@ import {
   CareerHomePage,
   CareerRankingsPage,
   CareerTimelinePage,
+  CareerTrainingPage,
   CareerTournamentHomePage
 } from "../../components/CareerWorkbench";
 import { addDays } from "../../game/career/calendar";
+import { buildAdvanceDayForecast } from "../../game/career/dayResolution";
 import {
   appendCompletedTournamentMatchRecords,
   eventEndDate,
@@ -18,7 +20,9 @@ import {
   tournamentMatchArchiveScorelines
 } from "../../game/career/events";
 import { appendRankingResultsAndRebuild, createRankingResult } from "../../game/career/rankings";
+import { previewPreparationPlan, schedulePreparationBlock } from "../../game/career/preparation";
 import { createInitialCareerState } from "../../game/career/state";
+import { trainingPlans } from "../../game/career/training";
 import { simulateUniverseThroughDate } from "../../game/career/universe";
 import { playerMap, seededPlayers } from "../../game/content/players";
 import type { MatchResult, Side } from "../../game/core/models";
@@ -308,6 +312,69 @@ function renderHomePage(overrides: Partial<Parameters<typeof CareerHomePage>[0]>
   );
 }
 
+function renderTrainingPage(overrides: Partial<Parameters<typeof CareerTrainingPage>[0]> = {}) {
+  const career = overrides.career ?? createInitialCareerState(seededPlayers[0].player.id, 9921);
+  const advanceDayForecast = overrides.advanceDayForecast ?? buildAdvanceDayForecast({
+    career,
+    tournament: overrides.tournament ?? null,
+    phase: "overview",
+    liveMatchActive: false
+  });
+
+  return render(
+    <CareerTrainingPage
+      career={career}
+      tournament={null}
+      saveRecovery={null}
+      activeSavePresent={true}
+      corruptSavePresent={false}
+      onStartCareer={vi.fn()}
+      onOpenTraining={vi.fn()}
+      onOpenCalendar={vi.fn()}
+      onOpenTournamentHome={vi.fn()}
+      onOpenHome={vi.fn()}
+      onOpenLiveMatch={vi.fn()}
+      onOpenPostMatch={vi.fn()}
+      onOpenProgram={vi.fn()}
+      onOpenRivals={vi.fn()}
+      onOpenMatchPlanning={vi.fn()}
+      onOpenSaveManager={vi.fn()}
+      onRequestNewSession={vi.fn()}
+      onOpenFacilities={vi.fn()}
+      onOpenMedia={vi.fn()}
+      onOpenScouting={vi.fn()}
+      onOpenRecruitment={vi.fn()}
+      onOpenYouth={vi.fn()}
+      onOpenStaff={vi.fn()}
+      onOpenPromises={vi.fn()}
+      onOpenPlayerProfile={vi.fn()}
+      onApplyTraining={vi.fn()}
+      onEnterEvent={vi.fn()}
+      onOpenScheduledCareerMatch={vi.fn()}
+      onStartManagedMatch={vi.fn()}
+      onContinueAfterPostMatch={vi.fn()}
+      onCommissionScoutReport={vi.fn()}
+      onMakeRecruitmentOffer={vi.fn()}
+      onTrainRosterAthlete={vi.fn()}
+      onEnterRosterAthleteLowerEvent={vi.fn()}
+      onDevelopYouthProspect={vi.fn()}
+      onEnterYouthLowerEvent={vi.fn()}
+      onHireStaffMember={vi.fn()}
+      onSetManagedAthletePromise={vi.fn()}
+      onWithdrawPromise={vi.fn()}
+      onAdvanceRivalCircuit={vi.fn()}
+      onUpgradeFacility={vi.fn()}
+      onResolveMediaObjectives={vi.fn()}
+      onUpdateAdvancedTacticPlan={vi.fn()}
+      onRefreshAssistantAdvice={vi.fn()}
+      onApplyAssistantAdvice={vi.fn()}
+      onOverrideAssistantAdvice={vi.fn()}
+      {...overrides}
+      advanceDayForecast={advanceDayForecast}
+    />
+  );
+}
+
 function renderRankingsPage(overrides: Partial<Parameters<typeof CareerRankingsPage>[0]> = {}) {
   const career = createInitialCareerState(seededPlayers[0].player.id, 9913);
 
@@ -520,6 +587,7 @@ describe("career shell daily action", () => {
 
     expect(panelHeadings).toEqual([
       "Next Decision",
+      "Advance Day Forecast",
       "Player Condition",
       "Urgent Tasks",
       "Calendar Snapshot",
@@ -555,6 +623,130 @@ describe("career shell daily action", () => {
     fireEvent.click(within(decision).getByRole("button", { name: "Enter Event" }));
 
     expect(onEnterEvent).toHaveBeenCalledWith("metro-open-300");
+  });
+
+  it("schedules or clears one current-day block and renders the exact preparation preview", () => {
+    const baseCareer = createInitialCareerState(seededPlayers[0].player.id, 9922);
+    const plan = trainingPlans.find((entry) => entry.id === "rear-court-power")!;
+    const career = schedulePreparationBlock({ state: baseCareer, plan });
+    const forecast = buildAdvanceDayForecast({
+      career,
+      tournament: null,
+      phase: "overview",
+      liveMatchActive: false
+    });
+    const preview = previewPreparationPlan({ state: career, plan });
+    const onApplyTraining = vi.fn();
+    const format = (value: number) => new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 }).format(value);
+
+    renderTrainingPage({ career, advanceDayForecast: forecast, onApplyTraining });
+
+    const status = screen.getByLabelText("Training status");
+    expect(status).toHaveTextContent(plan.label);
+    expect(status).toHaveTextContent(career.date);
+    expect(status).toHaveTextContent(`$${plan.cost.toLocaleString()}`);
+    expect(status).toHaveTextContent(forecast.targetDate);
+
+    const scheduledCard = screen.getByRole("button", { name: new RegExp(plan.label) });
+    expect(scheduledCard).toHaveAttribute("aria-pressed", "true");
+    expect(scheduledCard).toHaveTextContent(`Scheduled for ${career.date}`);
+
+    const smashProjection = screen.getByLabelText("Smash projection");
+    expect(smashProjection).toHaveTextContent(
+      `${format(preview.before.development.smash)} → ${format(preview.after.development.smash)}`
+    );
+    expect(screen.getByLabelText("Preparation block preview")).toHaveTextContent(`Exact cost$${plan.cost.toLocaleString()}`);
+
+    fireEvent.click(screen.getByRole("button", { name: /Rally Base/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Clear Block" }));
+
+    expect(onApplyTraining).toHaveBeenNthCalledWith(1, "rally-base");
+    expect(onApplyTraining).toHaveBeenNthCalledWith(2, null);
+  });
+
+  it("disables preparation scheduling and explains the required action when advance is unavailable", () => {
+    const baseCareer = createInitialCareerState(seededPlayers[0].player.id, 9923);
+    const career = { ...baseCareer, stage: "post_match" as const };
+    const forecast = buildAdvanceDayForecast({
+      career,
+      tournament: null,
+      phase: "overview",
+      liveMatchActive: false
+    });
+
+    renderTrainingPage({ career, advanceDayForecast: forecast });
+
+    expect(screen.getByLabelText("Training scheduling blocked")).toHaveTextContent(
+      "The latest managed match needs post-match review."
+    );
+    expect(screen.getByRole("button", { name: /Rear-Court Power/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Mobility Recovery/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Clear Block" })).toBeDisabled();
+  });
+
+  it("renders the exact advance-day forecast and next due item on Portal", () => {
+    const baseCareer = createInitialCareerState(seededPlayers[0].player.id, 9924);
+    const targetDate = addDays(baseCareer.date, 1);
+    const facility = baseCareer.facilities[0]!;
+    const careerWithBuild = {
+      ...baseCareer,
+      facilities: baseCareer.facilities.map((entry, index) =>
+        index === 0
+          ? { ...entry, level: 1, status: "building" as const, buildCompleteDate: targetDate }
+          : entry
+      )
+    };
+    const plan = trainingPlans.find((entry) => entry.id === "pressure-patterns")!;
+    const career = schedulePreparationBlock({ state: careerWithBuild, plan });
+    const forecast = buildAdvanceDayForecast({
+      career,
+      tournament: null,
+      phase: "overview",
+      liveMatchActive: false
+    });
+    const signed = (value: number, suffix = "") => {
+      const normalized = Math.abs(value) < 0.000_1 ? 0 : value;
+      const label = new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 }).format(normalized);
+      return `${normalized > 0 ? "+" : ""}${label}${suffix}`;
+    };
+
+    renderHomePage({ career, advanceDayForecast: forecast });
+
+    const panel = screen.getByLabelText("Advance Day Forecast");
+    expect(panel).toHaveTextContent(forecast.targetDate);
+    expect(panel).toHaveTextContent(plan.label);
+    expect(panel).toHaveTextContent(
+      `${forecast.cashDelta >= 0 ? "+" : "-"}$${Math.abs(forecast.cashDelta).toLocaleString()}`
+    );
+    const deltas = within(panel).getByLabelText("Forecast condition and development deltas");
+    expect(deltas).toHaveTextContent(`Readiness${signed(forecast.readinessDelta)}`);
+    expect(deltas).toHaveTextContent(`Fatigue${signed(forecast.fatigueDelta)}`);
+    expect(deltas).toHaveTextContent(`Injury Risk${signed(forecast.injuryRiskDelta * 100, " pts")}`);
+    expect(deltas).toHaveTextContent(`Smash${signed(forecast.developmentDelta.smash)}`);
+    expect(deltas).toHaveTextContent(`Stamina${signed(forecast.developmentDelta.stamina)}`);
+    expect(deltas).toHaveTextContent(`Composure${signed(forecast.developmentDelta.composure)}`);
+    expect(deltas).toHaveTextContent(`Recovery${signed(forecast.developmentDelta.recovery)}`);
+    expect(within(panel).getByLabelText("Next due item")).toHaveTextContent(
+      `${facility.label} construction completes`
+    );
+  });
+
+  it("renders the blocking action instead of fabricated Portal deltas", () => {
+    const baseCareer = createInitialCareerState(seededPlayers[0].player.id, 9925);
+    const career = { ...baseCareer, stage: "post_match" as const };
+    const forecast = buildAdvanceDayForecast({
+      career,
+      tournament: null,
+      phase: "overview",
+      liveMatchActive: false
+    });
+
+    renderHomePage({ career, advanceDayForecast: forecast });
+
+    const panel = screen.getByLabelText("Advance Day Forecast");
+    expect(panel).toHaveTextContent("Review Match");
+    expect(panel).toHaveTextContent("The latest managed match needs post-match review.");
+    expect(within(panel).queryByLabelText("Forecast condition and development deltas")).not.toBeInTheDocument();
   });
 
   it("labels the Portal calendar by decision pressure instead of defaulting every open day to training", () => {

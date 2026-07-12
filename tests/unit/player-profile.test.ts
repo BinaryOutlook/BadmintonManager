@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { seededPlayers } from "../../game/content/players";
 import { addDays } from "../../game/career/calendar";
+import { developmentSnapshotFromAthlete } from "../../game/career/development";
 import { eventEndDate, getCareerEvent } from "../../game/career/events";
 import { createInitialCareerState } from "../../game/career/state";
 import { simulateUniverseThroughDate } from "../../game/career/universe";
@@ -93,6 +94,140 @@ describe("player profile view model", () => {
     expect(smash?.context).toContain("Field rank #");
     expect(smash?.context).toContain("this career");
     expect(smash?.context).toContain("Rear-Court Power");
+  });
+
+  it("reports dated completed preparation outcomes from persisted development history", () => {
+    const player = seededPlayers[0].player;
+    const initial = createInitialCareerState(player.id, 7002);
+    const athlete = initial.athletes[0]!;
+    const trainedAthlete = {
+      ...athlete,
+      development: {
+        ...athlete.development,
+        smash: athlete.development.smash + 1.8,
+        stamina: athlete.development.stamina + 0.2
+      }
+    };
+    const career = {
+      ...initial,
+      athletes: [trainedAthlete],
+      developmentHistory: [
+        ...initial.developmentHistory,
+        {
+          kind: "preparation" as const,
+          id: "development:preparation:completed",
+          athleteId: player.id,
+          date: "2026-06-02",
+          blockId: "preparation:2026:2026-06-02:managed",
+          outcome: "completed" as const,
+          planId: "rear-court-power",
+          planLabel: "Rear-Court Power",
+          focus: "smash" as const,
+          intensity: "heavy" as const,
+          rulesVersion: 1 as const,
+          cost: 2_400,
+          modifierSourceIds: ["staff:assistant-1"],
+          snapshot: developmentSnapshotFromAthlete(trainedAthlete),
+          reason: "Rear-Court Power completed with staff:assistant-1."
+        }
+      ]
+    };
+
+    const profile = createPlayerProfileViewModel({
+      playerId: player.id,
+      selectedPlayerId: player.id,
+      tournament: null,
+      career
+    });
+
+    expect(profile?.development.recentTrainingGains).toHaveLength(1);
+    expect(profile?.development.recentTrainingGains[0]).toContain("2026-06-02 · Rear-Court Power completed");
+    expect(profile?.development.recentTrainingGains[0]).toContain("Smash +1.8");
+    expect(profile?.development.recentTrainingGains[0]).toContain("Stamina +0.2");
+    expect(profile?.development.recentTrainingGains[0]).toContain("staff:assistant-1");
+    expect(profile?.development.cumulativeDevelopment[0]).toContain("Smash");
+    expect(profile?.development.cumulativeDevelopment[0]).toContain("+1.8 since the 2026-06-01 career baseline");
+  });
+
+  it("reports blocked preparation without claiming an attribute gain", () => {
+    const player = seededPlayers[0].player;
+    const initial = createInitialCareerState(player.id, 7003);
+    const athlete = initial.athletes[0]!;
+    const career = {
+      ...initial,
+      developmentHistory: [
+        ...initial.developmentHistory,
+        {
+          kind: "preparation" as const,
+          id: "development:preparation:blocked",
+          athleteId: player.id,
+          date: "2026-06-02",
+          blockId: "preparation:2026:2026-06-02:managed",
+          outcome: "blocked" as const,
+          planId: "rear-court-power",
+          planLabel: "Rear-Court Power",
+          focus: "smash" as const,
+          intensity: "heavy" as const,
+          rulesVersion: 1 as const,
+          cost: 0,
+          modifierSourceIds: [],
+          snapshot: developmentSnapshotFromAthlete(athlete),
+          reason: "Insufficient cash for Rear-Court Power."
+        }
+      ]
+    };
+
+    const profile = createPlayerProfileViewModel({
+      playerId: player.id,
+      selectedPlayerId: player.id,
+      tournament: null,
+      career
+    });
+
+    expect(profile?.development.recentTrainingGains).toEqual([
+      "2026-06-02 · Rear-Court Power blocked · Insufficient cash for Rear-Court Power."
+    ]);
+    expect(profile?.development.recentTrainingGains[0]).not.toMatch(/Smash [+-]/);
+  });
+
+  it("labels a migrated legacy snapshot without inventing earlier training detail", () => {
+    const player = seededPlayers[0].player;
+    const initial = createInitialCareerState(player.id, 7004);
+    const athlete = {
+      ...initial.athletes[0]!,
+      development: {
+        ...initial.athletes[0]!.development,
+        smash: initial.athletes[0]!.development.smash + 4
+      }
+    };
+    const career = {
+      ...initial,
+      date: "2026-07-01",
+      athletes: [athlete],
+      developmentHistory: [
+        {
+          kind: "snapshot" as const,
+          id: "development:legacy",
+          athleteId: player.id,
+          date: "2026-07-01",
+          source: "legacy_snapshot" as const,
+          snapshot: developmentSnapshotFromAthlete(athlete),
+          note: "Current values preserved; prior development events are unavailable."
+        }
+      ]
+    };
+
+    const profile = createPlayerProfileViewModel({
+      playerId: player.id,
+      selectedPlayerId: player.id,
+      tournament: null,
+      career
+    });
+
+    expect(profile?.development.recentTrainingGains).toEqual([
+      "2026-07-01 · Legacy development snapshot · Earlier training detail unavailable. Current values preserved; prior development events are unavailable."
+    ]);
+    expect(profile?.development.cumulativeDevelopment[0]).toContain("no change since the 2026-07-01 legacy snapshot");
   });
 
   it("summarizes managed performance telemetry when current-run evidence exists", () => {

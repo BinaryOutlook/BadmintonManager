@@ -313,7 +313,7 @@ Migration safety works in two layers:
 - Zod defaults let old ranking/event rows parse.
 - `migratePersistedSave` hydrates saved event rows from the fictional catalog so deadlines, locations, draw dates, and eligibility metadata are present after load/import.
 - legacy top-level versions `3` through `8` migrate into the current top-level save version `12` and career schema version `10`; gaps that lack trustworthy event facts remain empty or honest legacy-unavailable records.
-- top-level versions `9` and `10` preserve `universeEvents` when present and gain rolling `rankingResults` plus `rankingSettings`; version `11` then gains an empty preparation schedule and honest current-value development baselines.
+- top-level versions `9` and `10` preserve `universeEvents` when present and gain rolling `rankingResults` plus `rankingSettings`; version `11` then migrates to version `12` with an empty preparation schedule and honest current-value development baselines.
 - current version `12` saves run `simulateUniverseThroughDate` safely on load/import for the saved career date so overdue universe records and rolling ranking snapshots are current.
 - legacy ranking aggregates become dated `archive_import` rows when event-history dates exist, or explicit `legacy_snapshot` bridge rows when only aggregate points are available.
 - legacy quick-tournament saves that contain the previous real event name are normalized to the fictional `Harborline Open` name during load/import.
