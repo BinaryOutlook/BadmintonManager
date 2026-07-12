@@ -20,6 +20,7 @@ $$
 | Fast agent entry | [`../AGENTS.md`](../AGENTS.md) | Compact mission, rules, commands, and documentation discipline |
 | Documentation routing | [`docs/README.md`](README.md) | The map you are reading now |
 | Current project state | [`plans/active/project-status.md`](plans/active/project-status.md) | Current phase, completed work, next work, blockers |
+| Version Two execution plan | [`plans/active/version-two-update.md`](plans/active/version-two-update.md) | Workstreams, dependency order, save invariants, and UX verification matrix |
 | Stable product truth | [`product/PRD.md`](product/PRD.md) | Product identity, goals, non-goals, and player fantasy |
 | Active release packet | [`product/versions/v0.3/v0.3.md`](product/versions/v0.3/v0.3.md) | Stable career-system release context |
 | Architecture map | [`architecture/overview.md`](architecture/overview.md) | Runtime layers, module ownership, and test strategy |
