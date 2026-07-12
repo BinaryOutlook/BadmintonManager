@@ -33,6 +33,61 @@ const expectedPrimaryCommandLabels = [
   "Settings"
 ];
 
+const ACTIVE_SAVE_SLOT_KEY = "badminton-manager-saves:active";
+const SAVE_SLOT_PREFIX = "badminton-manager-saves:slot:";
+const LEGACY_SAVE_KEY = "badminton-manager-save";
+const E2E_SAVE_SLOT_ID = "playwright-active";
+
+async function readActiveSave(page: Page): Promise<PersistedSave | null> {
+  return page.evaluate(({ activeKey, slotPrefix, legacyKey }) => {
+    const activeSlotId = window.localStorage.getItem(activeKey);
+    const slotRaw = activeSlotId
+      ? window.localStorage.getItem(`${slotPrefix}${activeSlotId}`)
+      : null;
+
+    if (slotRaw) {
+      return JSON.parse(slotRaw).save ?? null;
+    }
+
+    const legacyRaw = window.localStorage.getItem(legacyKey);
+    return legacyRaw ? JSON.parse(legacyRaw) : null;
+  }, {
+    activeKey: ACTIVE_SAVE_SLOT_KEY,
+    slotPrefix: SAVE_SLOT_PREFIX,
+    legacyKey: LEGACY_SAVE_KEY
+  });
+}
+
+async function writeActiveSave(page: Page, save: PersistedSave) {
+  await page.evaluate(({ activeKey, slotPrefix, slotId, payload }) => {
+    const activeSlotId = window.localStorage.getItem(activeKey) ?? slotId;
+    const key = `${slotPrefix}${activeSlotId}`;
+    const existingRaw = window.localStorage.getItem(key);
+    const existing = existingRaw ? JSON.parse(existingRaw) : null;
+    const timestamp = "2026-07-13T00:00:00.000Z";
+    const envelope = {
+      storageVersion: 1,
+      slotId: activeSlotId,
+      name: existing?.name ?? "Playwright Career",
+      createdAt: existing?.createdAt ?? timestamp,
+      updatedAt: timestamp,
+      lastPlayedAt: timestamp,
+      archivedAt: null,
+      revision: existing?.revision ?? 1,
+      save: payload
+    };
+
+    window.localStorage.setItem(key, JSON.stringify(envelope));
+    window.localStorage.setItem(activeKey, activeSlotId);
+    window.localStorage.removeItem("badminton-manager-save");
+  }, {
+    activeKey: ACTIVE_SAVE_SLOT_KEY,
+    slotPrefix: SAVE_SLOT_PREFIX,
+    slotId: E2E_SAVE_SLOT_ID,
+    payload: save
+  });
+}
+
 function forcedStraightGamesResult(winner: Side): MatchResult {
   return {
     winner,
@@ -80,7 +135,7 @@ function forcedStraightGamesResult(winner: Side): MatchResult {
 }
 
 async function fillImportSaveJson(page: Page, value: string) {
-  await page.getByLabel("Import Save JSON", { exact: true }).evaluate((element, text) => {
+  await page.getByLabel("Import save JSON", { exact: true }).evaluate((element, text) => {
     const textarea = element as HTMLTextAreaElement;
     const valueSetter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
     valueSetter?.call(textarea, text);
@@ -329,6 +384,7 @@ function createCompletedNonManagedArchiveSave() {
       ...withRankingResults,
       eventHistory: [
         {
+          seasonId: career.seasonId,
           eventId: event.id,
           eventName: event.name,
           tier: event.tier,
@@ -418,6 +474,7 @@ function createTix030ProfileVisualSave() {
   ];
   const playerAchievements: CareerState["playerAchievements"] = [
     {
+      seasonId: career.seasonId,
       playerId: managedPlayerId,
       eventId: event.id,
       eventName: event.name,
@@ -425,6 +482,7 @@ function createTix030ProfileVisualSave() {
       result: "champion"
     },
     {
+      seasonId: career.seasonId,
       playerId: managedPlayerId,
       eventId: "harbor-masters-500",
       eventName: "Harbor Masters",
@@ -487,11 +545,11 @@ async function captureFocusedScreenshot(page: { screenshot: (options: { path: st
 }
 
 async function loadPersistedSave(page: Page, save: PersistedSave) {
-  await page.evaluate((payload) => {
-    window.localStorage.setItem("badminton-manager-save", JSON.stringify(payload));
+  await writeActiveSave(page, save);
+  await page.evaluate(() => {
     window.sessionStorage.clear();
     window.location.reload();
-  }, save);
+  });
 }
 
 async function expectCalendarViewportBounded(page: Page) {
@@ -510,6 +568,14 @@ async function expectCalendarViewportBounded(page: Page) {
     );
 
     for (const element of checkedElements) {
+      if (element.classList.contains("schedule-calendar-month") && element.scrollWidth > element.clientWidth + 1) {
+        const overflowX = window.getComputedStyle(element).overflowX;
+        if (overflowX !== "auto" && overflowX !== "scroll") {
+          throw new Error(`Expected overflowing calendar month to remain horizontally scrollable, received ${overflowX}.`);
+        }
+        continue;
+      }
+
       if (element.scrollWidth > element.clientWidth + 1) {
         const label = element.className || element.tagName;
         throw new Error(`Unexpected calendar/timeline element overflow for ${label}: ${element.scrollWidth} > ${element.clientWidth}`);
@@ -589,10 +655,17 @@ async function expectPortalViewportBounded(page: Page, expectOnePage: boolean) {
     );
 
     for (const element of checkedElements) {
-      const mobileTimelineOverflow =
-        viewportWidth <= 780 && element.classList.contains("career-week-strip-compact");
+      const intentionalTimelineScroller = element.classList.contains("career-week-strip-compact");
 
-      if (!mobileTimelineOverflow && element.scrollWidth > element.clientWidth + 1) {
+      if (intentionalTimelineScroller && element.scrollWidth > element.clientWidth + 1) {
+        const overflowX = window.getComputedStyle(element).overflowX;
+        if (overflowX !== "auto" && overflowX !== "scroll") {
+          throw new Error(`Expected overflowing Portal timeline to remain horizontally scrollable, received ${overflowX}.`);
+        }
+        continue;
+      }
+
+      if (element.scrollWidth > element.clientWidth + 1) {
         const label = element.className || element.tagName;
         throw new Error(`Unexpected Portal element overflow for ${label}: ${element.scrollWidth} > ${element.clientWidth}`);
       }
@@ -678,6 +751,7 @@ async function expectTopbarHierarchyAndBounded(page: Page) {
 
     const brand = topbar.querySelector<HTMLElement>(".brand-mark");
     const brandLockup = topbar.querySelector<HTMLElement>(".brand-lockup");
+    const navigationToggle = topbar.querySelector<HTMLButtonElement>(".mobile-navigation-toggle");
     const athlete = topbar.querySelector<HTMLElement>(".topbar-athlete-chip");
     const search = topbar.querySelector<HTMLElement>(".command-search");
     const commandZone = topbar.querySelector<HTMLElement>(".topbar-command-zone");
@@ -688,12 +762,17 @@ async function expectTopbarHierarchyAndBounded(page: Page) {
     const saveControl = topbar.querySelector<HTMLButtonElement>(".topbar-save-button");
     const settings = utilityCluster?.querySelector<HTMLButtonElement>("button:not(.topbar-save-button)") ?? null;
 
-    if (!brand || !brandLockup || !athlete || !search || !commandZone || !dailyCluster || !utilityCluster || !date || !dailyAction || !saveControl || !settings) {
+    if (!brand || !brandLockup || !navigationToggle || !athlete || !search || !commandZone || !dailyCluster || !utilityCluster || !date || !dailyAction || !saveControl || !settings) {
       throw new Error("Expected complete topbar identity, utility controls, clock, save, and settings controls.");
     }
 
-    if (brand.nextElementSibling !== brandLockup || brandLockup.nextElementSibling !== athlete || athlete.nextElementSibling !== search) {
-      throw new Error("Expected brand lockup and managed athlete directly between BM and command search.");
+    if (
+      brand.nextElementSibling !== brandLockup ||
+      brandLockup.nextElementSibling !== navigationToggle ||
+      navigationToggle.nextElementSibling !== athlete ||
+      athlete.nextElementSibling !== search
+    ) {
+      throw new Error("Expected brand, navigation toggle, managed athlete, and command search in topbar identity order.");
     }
 
     if (saveControl.textContent?.trim() !== "Career Save") {
@@ -838,14 +917,23 @@ async function openSettings(page: Page) {
 
 async function openSaveManager(page: Page) {
   if (await page.getByRole("navigation", { name: "Primary commands" }).count()) {
-    await page
-      .getByRole("navigation", { name: "Primary commands" })
-      .getByRole("button", { name: /Save Manager/ })
-      .click();
+    await openPrimaryCommand(page, /Save Manager/);
     return;
   }
 
   await page.getByRole("button", { name: "Save Tools" }).click();
+}
+
+async function openPrimaryCommand(page: Page, name: string | RegExp) {
+  const navigationToggle = page.getByRole("banner").getByRole("button", { name: "Open navigation menu" });
+  if (await navigationToggle.isVisible().catch(() => false)) {
+    await navigationToggle.click();
+  }
+
+  await page
+    .getByRole("navigation", { name: "Primary commands" })
+    .getByRole("button", { name })
+    .click();
 }
 
 async function requestNewSession(page: Page) {
@@ -1005,17 +1093,8 @@ test("starts from a direct screen and locks a confirmed career athlete", async (
   await careerDialog.getByRole("button", { name: "Confirm Career Athlete" }).click();
   await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
 
-  await page.evaluate(() => {
-    const raw = window.localStorage.getItem("badminton-manager-save");
-    if (!raw) {
-      throw new Error("Expected career save.");
-    }
-
-    const save = JSON.parse(raw);
-    if (save.career.program.managedPlayerId !== "player-17") {
-      throw new Error(`Expected locked player-17, received ${save.career.program.managedPlayerId}`);
-    }
-  });
+  const confirmedCareerSave = await readActiveSave(page);
+  expect(confirmedCareerSave?.career?.program.managedPlayerId).toBe("player-17");
 
   await page.reload();
   await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
@@ -1052,16 +1131,20 @@ test("starts from a direct screen and locks a confirmed career athlete", async (
   await expect(page.getByRole("heading", { name: "Next Opponent" })).toBeVisible();
 
   await openSaveManager(page);
-  await expect(page.getByRole("heading", { name: "Local Save Control" })).toBeVisible();
-  await page.getByRole("button", { name: "Start New Career" }).click();
+  await expect(page.getByRole("heading", { name: "Local Career Library" })).toBeVisible();
+  await page.getByRole("textbox", { name: "Career name (optional)", exact: true }).fill("Fresh Career Slot");
+  await page.getByRole("button", { name: "Create Empty Career" }).click();
+  await expect(page.locator(".save-career-card-active")).toContainText("Fresh Career Slot");
+  await page.locator(".save-career-card-active").getByRole("button", { name: "Continue" }).click();
   await expect(page.getByRole("heading", { name: "Badminton Manager" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Continue Tournament" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Continue Tournament" })).toBeVisible();
-  await expect(page.getByLabel("Saved game summary")).toContainText("Saved Tournament");
-  await expect(page.getByRole("heading", { name: "Resume Career" })).toHaveCount(0);
-  await expect(page.getByText("Grand-Slam Southpaw").first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Start Career" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Continue Tournament" })).toHaveCount(0);
   await expectLaunchViewportBounded(page);
-  await captureFocusedScreenshot(page, "start-quick-save-desktop");
+  await captureFocusedScreenshot(page, "start-new-slot-desktop");
+  await openSaveManager(page);
+  await expect(page.getByRole("heading", { name: "Local Career Library" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Fresh Career Slot" })).toBeVisible();
+  await expect(page.getByLabel("Local save library status")).toContainText("Live careers2");
 });
 
 test("uses an active-career quick tournament draft only after replacement confirmation", async ({ page }) => {
@@ -1085,24 +1168,9 @@ test("uses an active-career quick tournament draft only after replacement confir
   await quickDialog.getByRole("button", { name: "Start Tournament" }).click();
   await expect(page.getByRole("heading", { name: "Start tournament and replace career?" })).toBeVisible();
 
-  await page.evaluate((expectedCareerPlayerId) => {
-    const raw = window.localStorage.getItem("badminton-manager-save");
-    if (!raw) {
-      throw new Error("Expected active career save before replacement.");
-    }
-
-    const save = JSON.parse(raw);
-    if (save.career?.program.managedPlayerId !== expectedCareerPlayerId) {
-      throw new Error(
-        `Expected career save to remain ${expectedCareerPlayerId}, received ${save.career?.program.managedPlayerId}`
-      );
-    }
-    if (save.selectedPlayerId !== expectedCareerPlayerId) {
-      throw new Error(
-        `Expected selected player in career save to remain ${expectedCareerPlayerId}, received ${save.selectedPlayerId}`
-      );
-    }
-  }, careerPlayer.id);
+  const careerBeforeReplacement = await readActiveSave(page);
+  expect(careerBeforeReplacement?.career?.program.managedPlayerId).toBe(careerPlayer.id);
+  expect(careerBeforeReplacement?.selectedPlayerId).toBe(careerPlayer.id);
 
   await page
     .getByRole("dialog", { name: "Start tournament and replace career?" })
@@ -1110,27 +1178,10 @@ test("uses an active-career quick tournament draft only after replacement confir
     .click();
   await expect(page.getByRole("heading", { name: "Next Opponent" })).toBeVisible();
 
-  await page.evaluate((expectedQuickDraftPlayerId) => {
-    const raw = window.localStorage.getItem("badminton-manager-save");
-    if (!raw) {
-      throw new Error("Expected replacement quick tournament save.");
-    }
-
-    const save = JSON.parse(raw);
-    if (save.career !== null) {
-      throw new Error("Expected quick tournament replacement to clear the career save.");
-    }
-    if (save.selectedPlayerId !== expectedQuickDraftPlayerId) {
-      throw new Error(
-        `Expected quick draft selected player ${expectedQuickDraftPlayerId}, received ${save.selectedPlayerId}`
-      );
-    }
-    if (save.tournament?.managedPlayerId !== expectedQuickDraftPlayerId) {
-      throw new Error(
-        `Expected tournament managed player ${expectedQuickDraftPlayerId}, received ${save.tournament?.managedPlayerId}`
-      );
-    }
-  }, quickDraftPlayer.id);
+  const quickSaveAfterReplacement = await readActiveSave(page);
+  expect(quickSaveAfterReplacement?.career).toBeNull();
+  expect(quickSaveAfterReplacement?.selectedPlayerId).toBe(quickDraftPlayer.id);
+  expect(quickSaveAfterReplacement?.tournament?.managedPlayerId).toBe(quickDraftPlayer.id);
 });
 
 test("can complete and reload the career core slice with tactical viewer proof", async ({ page }) => {
@@ -1192,17 +1243,8 @@ test("can complete and reload the career core slice with tactical viewer proof",
   await expect(page.getByRole("heading", { name: "Rally Pattern Map" })).toBeVisible();
   await expect(page.locator("[data-zone]")).toHaveCount(9);
   await expect(page.getByTestId("tactical-momentum-timeline")).toBeVisible();
-  await page.evaluate(() => {
-    const raw = window.localStorage.getItem("badminton-manager-save");
-    if (!raw) {
-      throw new Error("Expected a persisted career save.");
-    }
-
-    const save = JSON.parse(raw);
-    if (!save.career.lastMatchReport?.tacticalViewer || save.career.lastMatchReport.tacticalViewer.sequence < 1) {
-      throw new Error("Expected persisted tactical viewer evidence.");
-    }
-  });
+  const tacticalViewerSave = await readActiveSave(page);
+  expect(tacticalViewerSave?.career?.lastMatchReport?.tacticalViewer?.sequence).toBeGreaterThanOrEqual(1);
   await expect(page.getByRole("heading", { name: "Training Recommendations" })).toBeVisible();
 
   await page.reload();
@@ -1217,9 +1259,7 @@ test("continues a deterministic career event from post-match into the next round
 
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto("/");
-  await page.evaluate((payload) => {
-    window.localStorage.setItem("badminton-manager-save", JSON.stringify(payload.save));
-  }, betweenRounds);
+  await writeActiveSave(page, betweenRounds.save as PersistedSave);
   await page.reload();
 
   await expect(page.getByRole("heading", { name: "Match Evidence Review" })).toBeVisible();
@@ -1254,29 +1294,11 @@ test("continues a deterministic career event from post-match into the next round
   await expect(page.getByRole("heading", { name: "How To Beat Them" })).toBeVisible();
   await page.getByRole("button", { name: "Back" }).click();
   await expect(page.getByRole("heading", { name: "Opponent Briefing" })).toBeVisible();
-  await page.evaluate((payload) => {
-    const raw = window.localStorage.getItem("badminton-manager-save");
-    if (!raw) {
-      throw new Error("Expected active save.");
-    }
-
-    const save = JSON.parse(raw);
-    if (!save.tournament || save.tournament.currentRoundIndex !== 1) {
-      throw new Error("Expected next-round tournament to remain active.");
-    }
-
-    if (save.career.activeEventId !== payload.eventId) {
-      throw new Error("Expected active event to survive non-final continue.");
-    }
-
-    if (save.career.completedEventIds.includes(payload.eventId)) {
-      throw new Error("Expected non-final win to avoid event completion.");
-    }
-
-    if (save.career.lastPreMatchBrief?.opponentId !== payload.nextOpponentId) {
-      throw new Error("Expected next managed opponent briefing after continue.");
-    }
-  }, betweenRounds);
+  const nextRoundSave = await readActiveSave(page);
+  expect(nextRoundSave?.tournament?.currentRoundIndex).toBe(1);
+  expect(nextRoundSave?.career?.activeEventId).toBe(betweenRounds.eventId);
+  expect(nextRoundSave?.career?.completedEventIds).not.toContain(betweenRounds.eventId);
+  expect(nextRoundSave?.career?.lastPreMatchBrief?.opponentId).toBe(betweenRounds.nextOpponentId);
 
   await page.reload();
   await expect(page.getByRole("heading", { name: "Opponent Briefing" })).toBeVisible();
@@ -1289,9 +1311,7 @@ test("closes deterministic loss and title post-match CTA branches after reload",
 
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto("/");
-    await page.evaluate((payload) => {
-      window.localStorage.setItem("badminton-manager-save", JSON.stringify(payload.save));
-    }, closeout);
+    await writeActiveSave(page, closeout.save as PersistedSave);
     await page.reload();
 
     await expect(page.getByRole("heading", { name: "Match Evidence Review" })).toBeVisible();
@@ -1300,27 +1320,11 @@ test("closes deterministic loss and title post-match CTA branches after reload",
 
     await page.getByRole("button", { name: closeout.expectedButton }).click();
     await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
-    await page.evaluate((payload) => {
-      const raw = window.localStorage.getItem("badminton-manager-save");
-      if (!raw) {
-        throw new Error("Expected active save after closeout.");
-      }
-
-      const save = JSON.parse(raw);
-      const completedCount = save.career.completedEventIds.filter((eventId: string) => eventId === payload.eventId).length;
-
-      if (save.tournament !== null) {
-        throw new Error("Expected closeout continue to clear active tournament.");
-      }
-
-      if (save.career.activeEventId !== null || save.career.stage !== "event_complete") {
-        throw new Error("Expected closeout continue to clear active event.");
-      }
-
-      if (completedCount !== 1) {
-        throw new Error("Expected closeout continue to preserve exactly one event completion.");
-      }
-    }, closeout);
+    const closedSave = await readActiveSave(page);
+    expect(closedSave?.tournament).toBeNull();
+    expect(closedSave?.career?.activeEventId).toBeNull();
+    expect(closedSave?.career?.stage).toBe("event_complete");
+    expect(closedSave?.career?.completedEventIds.filter((eventId) => eventId === closeout.eventId)).toHaveLength(1);
   }
 });
 
@@ -1329,9 +1333,7 @@ test("surfaces completed tournament archive outcomes from complete match records
 
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto("/");
-  await page.evaluate((payload) => {
-    window.localStorage.setItem("badminton-manager-save", JSON.stringify(payload.save));
-  }, archive);
+  await writeActiveSave(page, archive.save as PersistedSave);
   await page.reload();
 
   await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
@@ -1372,22 +1374,18 @@ test("surfaces corrupt save recovery and blocks unaffordable event entry", async
   await expectLaunchViewportBounded(page);
   await captureFocusedScreenshot(page, "start-recovery-warning-desktop");
   await openSaveManager(page);
-  await expect(page.getByRole("heading", { name: "Local Save Control" })).toBeVisible();
-  await expect(page.getByText(/Quarantine present|Recovery available/).first()).toBeVisible();
-  await expect(page.getByRole("alert")).toContainText("Save quarantined safely");
+  await expect(page.getByRole("heading", { name: "Local Career Library" })).toBeVisible();
+  await expect(page.getByRole("alert")).toContainText("Legacy save quarantined safely");
 
-  await page.getByRole("button", { name: "Start New Career" }).click();
+  await page.getByRole("button", { name: "Create Empty Career" }).click();
+  await page.locator(".save-career-card-active").getByRole("button", { name: "Continue" }).click();
   await startNewCareer(page);
-  await page.evaluate(() => {
-    const raw = window.localStorage.getItem("badminton-manager-save");
-    if (!raw) {
-      throw new Error("Expected a career save after creation.");
-    }
-
-    const save = JSON.parse(raw);
-    save.career.economy.cash = 100;
-    window.localStorage.setItem("badminton-manager-save", JSON.stringify(save));
-  });
+  const cashConstrainedSave = await readActiveSave(page);
+  if (!cashConstrainedSave?.career) {
+    throw new Error("Expected a career save after creation.");
+  }
+  cashConstrainedSave.career.economy.cash = 100;
+  await writeActiveSave(page, cashConstrainedSave);
   await page.reload();
 
   await page.getByRole("main").getByRole("button", { name: "Timeline" }).click();
@@ -1442,15 +1440,15 @@ test("keeps first-launch save trust surfaces bounded on mobile", async ({ page }
   await expect(commandRail.getByRole("button", { name: /Portal/ })).toHaveAttribute("aria-current", "page");
 
   await openSaveManager(page);
-  await expect(page.getByRole("heading", { name: "Local Save Control" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Local Career Library" })).toBeVisible();
   await expect(commandRail.getByRole("button", { name: /Save Manager/ })).toHaveAttribute("aria-current", "page");
   await expectPrimaryCommandLabels(commandRail);
 
-  await page.getByRole("button", { name: "Start Tournament" }).click();
-  await expect(page.getByRole("heading", { name: "Start tournament and replace career?" })).toBeVisible();
-  const overwriteCancel = page.getByRole("button", { name: "Cancel" });
-  await expect(overwriteCancel).toBeVisible();
-  await expect(overwriteCancel).toHaveJSProperty("scrollWidth", await overwriteCancel.evaluate((button) => button.clientWidth));
+  await page.locator(".save-career-card-active").getByRole("button", { name: "Archive" }).click();
+  await expect(page.getByRole("alertdialog")).toContainText(/Archive Career 1\?/);
+  const archiveCancel = page.getByRole("alertdialog").getByRole("button", { name: "Cancel" });
+  await expect(archiveCancel).toBeVisible();
+  await expect(archiveCancel).toHaveJSProperty("scrollWidth", await archiveCancel.evaluate((button) => button.clientWidth));
 });
 
 test("exposes the grouped management shell as the primary command surface", async ({ page }) => {
@@ -1500,7 +1498,7 @@ test("exposes the grouped management shell as the primary command surface", asyn
   await expect(commandRail.getByRole("button", { name: /Tactics/ })).toHaveAttribute("aria-current", "page");
 
   await openSaveManager(page);
-  await expect(page.getByRole("heading", { name: "Local Save Control" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Local Career Library" })).toBeVisible();
   await expect(commandRail.getByRole("button", { name: /Save Manager/ })).toHaveAttribute("aria-current", "page");
 
   await requestNewSession(page);
@@ -1533,7 +1531,7 @@ test("routes the Live Match command through career and quick match paths", async
   await page.getByRole("button", { name: "Enter Match" }).click();
   await expect(page.getByRole("button", { name: "Next Point", exact: true })).toBeVisible();
   await commandRail.getByRole("button", { name: /Squad/ }).click();
-  await expect(page.getByRole("heading", { name: "Athlete Directory" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "My Program" })).toBeVisible();
   await commandRail.getByRole("button", { name: /Live Match/ }).click();
   await expect(page.getByRole("button", { name: "Next Point", exact: true })).toBeVisible();
 
@@ -1633,7 +1631,7 @@ test("player profile renders decision-first managed and scouting dossiers", asyn
 
   const visualCommandRail = page.getByRole("navigation", { name: "Primary commands" });
   await visualCommandRail.getByRole("button", { name: /Squad/ }).click();
-  await expect(page.getByRole("heading", { name: "Athlete Directory" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "My Program" })).toBeVisible();
   await page.getByRole("main").getByRole("button", { name: visualProfile.managedName, exact: true }).click();
   await expect(page.getByRole("heading", { name: visualProfile.managedName })).toBeVisible();
 
@@ -1651,7 +1649,7 @@ test("player profile renders decision-first managed and scouting dossiers", asyn
   await captureFocusedScreenshot(page, "player-profile-career-h2h-desktop");
 
   await page.getByRole("button", { name: "Back" }).click();
-  await expect(page.getByRole("heading", { name: "Athlete Directory" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "My Program" })).toBeVisible();
   await expect(visualCommandRail.getByRole("button", { name: /Squad/ })).toHaveAttribute("aria-current", "page");
 });
 
@@ -1663,7 +1661,7 @@ test("surfaces dense page contracts and Save Manager metadata", async ({ page })
   await expect(page.getByLabel("Portal Home")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Urgent Tasks" })).toBeVisible();
   await expect(page.getByLabel("Portal tasks inbox")).not.toContainText("Save state");
-  await expect(page.getByLabel("Portal tasks inbox")).toContainText("Entry deadline");
+  await expect(page.getByLabel("Portal tasks inbox")).toContainText("Metro Open entry decision");
   await expect(page.getByRole("heading", { name: "Player Condition" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Calendar Snapshot" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Recent Match Evidence" })).toBeVisible();
@@ -1696,8 +1694,8 @@ test("surfaces dense page contracts and Save Manager metadata", async ({ page })
 
   await commandRail.getByRole("button", { name: /Training/ }).click();
   await expect(page.getByRole("heading", { name: "Load Management" })).toBeVisible();
-  await expect(page.getByLabel("Training status")).toContainText("Selected block");
-  await expect(page.getByLabel("Training status")).toContainText("Next action");
+  await expect(page.getByLabel("Training status")).toContainText("Scheduled block");
+  await expect(page.getByLabel("Training status")).toContainText("Advance target");
 
   await commandRail.getByRole("button", { name: /Calendar/ }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Calendar" })).toBeVisible();
@@ -1710,17 +1708,16 @@ test("surfaces dense page contracts and Save Manager metadata", async ({ page })
   await expect(page.getByLabel("Match planning status")).toContainText("Next action");
 
   await openSaveManager(page);
-  await expect(page.getByRole("heading", { name: "Local Save Control" })).toBeVisible();
-  await expect(page.getByLabel("Active save slot metadata")).toContainText("Active local slot");
-  await expect(page.getByLabel("Active save slot metadata")).toContainText("Managed athlete");
-  await expect(page.getByLabel("Active save slot metadata")).toContainText("Save version");
-  await expect(page.getByLabel("Active save slot metadata")).toContainText(`v${CURRENT_SAVE_VERSION}`);
-  await expect(page.getByRole("heading", { name: "Danger Zone" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Local Career Library" })).toBeVisible();
+  const activeCareerCard = page.locator(".save-career-card-active");
+  await expect(activeCareerCard).toContainText("Active");
+  await expect(activeCareerCard).toContainText("Career");
+  await expect(activeCareerCard).toContainText(`Save v${CURRENT_SAVE_VERSION}`);
+  await expect(activeCareerCard).toContainText("Verified backups");
+  await expect(page.getByRole("heading", { name: "Import as New Career" })).toBeVisible();
 
   const betweenRounds = createBetweenRoundsCareerSave();
-  await page.evaluate((payload) => {
-    window.localStorage.setItem("badminton-manager-save", JSON.stringify(payload.save));
-  }, betweenRounds);
+  await writeActiveSave(page, betweenRounds.save as PersistedSave);
   await page.reload();
   await expect(page.getByRole("heading", { name: "Match Evidence Review" })).toBeVisible();
   await expect(page.getByLabel("Post-match review status")).toContainText("Continue To Next Round");
@@ -1757,7 +1754,7 @@ test("integrates fictional calendar ranking stakes into career home and Timeline
   await expect(page.getByRole("tab", { name: "Upcoming" })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("tab", { name: "Past Events" })).toHaveAttribute("aria-selected", "false");
   await expect(page.getByRole("heading", { name: "Upcoming Event Schedule" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Confirmed Match Days" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Manager Commitments" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Event Brief" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Week Strip" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Milestones & Seeding" })).toHaveCount(0);
@@ -1790,24 +1787,15 @@ test("integrates fictional calendar ranking stakes into career home and Timeline
   await expect(page.getByRole("heading", { name: "Rewards And Stakes" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Field And Scouting" })).toBeVisible();
   await page.getByRole("button", { name: "Enter Event" }).click();
-  await page.evaluate(() => {
-    const raw = window.localStorage.getItem("badminton-manager-save");
-    if (!raw) {
-      throw new Error("Expected a persisted career save.");
-    }
-
-    const save = JSON.parse(raw);
-    if (!save.career.enteredEventIds.includes("metro-open-300")) {
-      throw new Error("Expected Metro Open entry to persist.");
-    }
-  });
+  const enteredEventSave = await readActiveSave(page);
+  expect(enteredEventSave?.career?.enteredEventIds).toContain("metro-open-300");
 });
 
 test("keeps the compact Career Portal bounded across target viewports", async ({ page }) => {
   for (const viewport of [
     { width: 2048, height: 1152, name: "portal-2048x1152", onePage: true },
-    { width: 1440, height: 900, name: "portal-1440x900", onePage: true },
-    { width: 1366, height: 768, name: "portal-1366x768", onePage: true },
+    { width: 1440, height: 900, name: "portal-1440x900", onePage: false },
+    { width: 1366, height: 768, name: "portal-1366x768", onePage: false },
     { width: 390, height: 844, name: "portal-mobile", onePage: false }
   ]) {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
@@ -1850,7 +1838,7 @@ test("opens the full career Rankings table with managed highlight and bounded mo
 
     await startNewCareer(page);
     const commandRail = page.getByRole("navigation", { name: "Primary commands" });
-    await commandRail.getByRole("button", { name: "Rankings: Circuit table" }).click();
+    await openPrimaryCommand(page, "Rankings: Circuit table");
 
     await expect(page.getByRole("heading", { name: "Circuit Rankings" })).toBeVisible();
     await expect(page.getByRole("table", { name: "Circuit rankings table" })).toBeVisible();
@@ -1858,22 +1846,16 @@ test("opens the full career Rankings table with managed highlight and bounded mo
     await expect(page.getByText(`1-8 of ${seededPlayers.length}`, { exact: true })).toBeVisible();
     await expect(page.getByLabel("Rankings pagination").getByRole("button", { name: "Prev" })).toBeDisabled();
     await expect(page.getByLabel("Rankings pagination").getByRole("button", { name: "Next" })).toBeEnabled();
-    const rankingSnapshot = await page.evaluate(() => {
-      const raw = window.localStorage.getItem("badminton-manager-save");
-      if (!raw) {
-        throw new Error("Expected active career save.");
-      }
-
-      const save = JSON.parse(raw);
-      const rankings = [...save.career.rankings].sort(
-        (left, right) => left.rank - right.rank || left.playerId.localeCompare(right.playerId)
-      );
-
-      return {
-        managedPlayerId: save.career.program.managedPlayerId,
-        rankings: rankings.map((entry) => ({ playerId: entry.playerId, rank: entry.rank }))
-      };
-    });
+    const activeRankingSave = await readActiveSave(page);
+    if (!activeRankingSave?.career) {
+      throw new Error("Expected active career save.");
+    }
+    const rankingSnapshot = {
+      managedPlayerId: activeRankingSave.career.program.managedPlayerId,
+      rankings: [...activeRankingSave.career.rankings]
+        .sort((left, right) => left.rank - right.rank || left.playerId.localeCompare(right.playerId))
+        .map((entry) => ({ playerId: entry.playerId, rank: entry.rank }))
+    };
     const firstRanking = rankingSnapshot.rankings[0]!;
     const ninthRanking = rankingSnapshot.rankings[8]!;
     const managedRanking = rankingSnapshot.rankings.find(
@@ -1897,7 +1879,7 @@ test("opens the full career Rankings table with managed highlight and bounded mo
     await expect(managedRow).toContainText("pts");
     await managedRow.getByRole("button", { name: managedPlayer.name }).click();
     await expect(page.getByRole("heading", { name: managedPlayer.name })).toBeVisible();
-    await commandRail.getByRole("button", { name: "Rankings: Circuit table" }).click();
+    await openPrimaryCommand(page, "Rankings: Circuit table");
     await expect(page.getByRole("heading", { name: "Circuit Rankings" })).toBeVisible();
     for (let pageAdvance = 0; pageAdvance < 6; pageAdvance += 1) {
       const prevButton = pagination.getByRole("button", { name: "Prev" });
@@ -1952,10 +1934,10 @@ test("keeps the Timeline and Calendar layouts bounded across target viewports", 
     await captureFocusedScreenshot(page, `${viewport.name}-past-events`);
 
     await page.getByRole("tab", { name: "Upcoming" }).click();
-    await expect(page.getByRole("heading", { name: "Confirmed Match Days" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Manager Commitments" })).toBeVisible();
     await expectCalendarViewportBounded(page);
 
-    await page.getByRole("navigation", { name: "Primary commands" }).getByRole("button", { name: /Calendar/ }).click();
+    await openPrimaryCommand(page, /Calendar/);
     await expect(page.getByRole("heading", { level: 1, name: "Calendar" })).toBeVisible();
     await expect(page.locator(".schedule-calendar-grid").first()).toBeVisible();
     await expect(page.locator(".schedule-calendar-month")).toHaveCount(1);
@@ -1965,7 +1947,7 @@ test("keeps the Timeline and Calendar layouts bounded across target viewports", 
   }
 });
 
-test("manages export import delete and overwrite warnings from the visible Save Manager", async ({ page }) => {
+test("manages export, import-as-new, archive, and deletion from the visible Save Manager", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.addInitScript(() => {
     window.localStorage.setItem("badminton-manager-save-corrupt", "old-corrupt-backup");
@@ -1977,28 +1959,13 @@ test("manages export import delete and overwrite warnings from the visible Save 
   await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
 
   await openSaveManager(page);
-  await expect(page.getByRole("heading", { name: "Local Save Control" })).toBeVisible();
-  await expect(page.getByRole("main").getByRole("button", { name: "Continue Career" })).toBeEnabled();
-  await expect(page.getByRole("heading", { name: "Import Save" })).toBeVisible();
-  await expect(page.getByText(/Quarantine present/).first()).toBeVisible();
-
-  await page.getByRole("button", { name: "Start Tournament" }).click();
-  await expect(page.getByRole("heading", { name: "Start tournament and replace career?" })).toBeVisible();
-  await page.getByRole("button", { name: "Cancel" }).click();
-  await page.getByRole("button", { name: "Start New Career" }).click();
-  await expect(page.getByRole("heading", { name: "Badminton Manager" })).toBeVisible();
-  await page.getByRole("button", { name: "Start Career" }).click();
-  const replacementDialog = page.getByRole("dialog", { name: "Pick Your Playstyle" });
-  await expect(replacementDialog).toBeVisible();
-  await selectAthleteInSelectionModal(page, seededPlayers[0].player.name);
-  await replacementDialog.getByRole("button", { name: "Confirm Career Athlete" }).click();
-  await expect(page.getByRole("heading", { name: "Start a new career?" })).toBeVisible();
-  await page.getByRole("button", { name: "Cancel" }).click();
-  await openSaveManager(page);
-  await expect(page.getByRole("heading", { name: "Local Save Control" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Local Career Library" })).toBeVisible();
+  await expect(page.locator(".save-career-card-active").getByRole("button", { name: "Continue" })).toBeEnabled();
+  await expect(page.getByRole("heading", { name: "Import as New Career" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Legacy Recovery" })).toBeVisible();
 
   const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Export JSON" }).click();
+  await page.getByRole("button", { name: "Export Active JSON" }).click();
   const download = await downloadPromise;
   const downloadPath = await download.path();
   if (!downloadPath) {
@@ -2006,49 +1973,67 @@ test("manages export import delete and overwrite warnings from the visible Save 
   }
   const exportedSave = readFileSync(downloadPath, "utf8");
 
-  const beforeInvalid = await page.evaluate(() => ({
-    active: window.localStorage.getItem("badminton-manager-save"),
-    corrupt: window.localStorage.getItem("badminton-manager-save-corrupt")
-  }));
-  await page.getByLabel("Import Save JSON", { exact: true }).fill("{not-json");
+  const beforeInvalid = await page.evaluate(({ activeKey, slotPrefix }) => {
+    const activeSlotId = window.localStorage.getItem(activeKey);
+    return {
+      activeSlotId,
+      active: activeSlotId ? window.localStorage.getItem(`${slotPrefix}${activeSlotId}`) : null,
+      corrupt: window.localStorage.getItem("badminton-manager-save-corrupt")
+    };
+  }, {
+    activeKey: ACTIVE_SAVE_SLOT_KEY,
+    slotPrefix: SAVE_SLOT_PREFIX
+  });
+  await page.getByLabel("Import save JSON", { exact: true }).fill("{not-json");
   await page.getByRole("button", { name: "Preview Import" }).click();
   await expect(page.getByRole("alert")).toContainText("Malformed JSON");
-  const afterInvalid = await page.evaluate(() => ({
-    active: window.localStorage.getItem("badminton-manager-save"),
-    corrupt: window.localStorage.getItem("badminton-manager-save-corrupt")
-  }));
+  const afterInvalid = await page.evaluate(({ activeKey, slotPrefix }) => {
+    const activeSlotId = window.localStorage.getItem(activeKey);
+    return {
+      activeSlotId,
+      active: activeSlotId ? window.localStorage.getItem(`${slotPrefix}${activeSlotId}`) : null,
+      corrupt: window.localStorage.getItem("badminton-manager-save-corrupt")
+    };
+  }, {
+    activeKey: ACTIVE_SAVE_SLOT_KEY,
+    slotPrefix: SAVE_SLOT_PREFIX
+  });
   expect(afterInvalid).toEqual(beforeInvalid);
 
-  await page.getByRole("button", { name: "Delete Active Local Save" }).click();
-  await page.getByRole("button", { name: "Confirm", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Badminton Manager" })).toBeVisible();
-  await page.evaluate(() => {
-    if (window.localStorage.getItem("badminton-manager-save") !== null) {
-      throw new Error("Expected active save to be deleted.");
-    }
-  });
-
-  await openSaveManager(page);
   await fillImportSaveJson(page, exportedSave);
+  await page.getByLabel("New career name").fill("Imported Proof Career");
   await page.getByRole("button", { name: "Preview Import" }).click();
-  await expect(page.getByText(/Import parsed, validated, and migrated/)).toBeVisible();
-  await page.getByRole("button", { name: "Confirm Import" }).click();
-  await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
-  await page.evaluate(() => {
-    const raw = window.localStorage.getItem("badminton-manager-save");
-    if (!raw || !JSON.parse(raw).career) {
-      throw new Error("Expected imported career save.");
-    }
-  });
+  await expect(page.getByText(/Validated and migrated/)).toBeVisible();
+  await page.getByRole("button", { name: "Import as New Slot" }).click();
+  await expect(page.getByText(/Imported save created as a new active career slot/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Imported Proof Career" })).toBeVisible();
+  await expect(page.getByLabel("Local save library status")).toContainText("Live careers2");
+  await expect(page.locator(".save-career-card-active")).toContainText("Imported Proof Career");
 
-  await openSaveManager(page);
-  await page.getByRole("button", { name: "Delete Quarantined Save" }).click();
-  await page.getByRole("button", { name: "Confirm", exact: true }).click();
-  await page.evaluate(() => {
-    if (window.localStorage.getItem("badminton-manager-save-corrupt") !== null) {
-      throw new Error("Expected corrupt backup to be deleted.");
-    }
-  });
+  const importedActiveSlotId = await page.evaluate((activeKey) => window.localStorage.getItem(activeKey), ACTIVE_SAVE_SLOT_KEY);
+  expect(importedActiveSlotId).not.toBe(beforeInvalid.activeSlotId);
+  expect(await readActiveSave(page)).not.toBeNull();
+
+  await page.locator(".save-career-card-active").getByRole("button", { name: "Archive" }).click();
+  await expect(page.getByRole("alertdialog")).toContainText("Archive Imported Proof Career?");
+  await page.getByRole("alertdialog").getByRole("button", { name: "Archive Career" }).click();
+  await expect(page.getByRole("heading", { name: "Archived careers" })).toBeVisible();
+  const archivedCard = page.locator(".save-career-card").filter({ hasText: "Imported Proof Career" });
+  await expect(archivedCard).toContainText("Archived");
+  await expect(archivedCard.getByRole("button", { name: "Restore Career" })).toBeVisible();
+
+  await archivedCard.getByRole("button", { name: "Permanently Delete" }).click();
+  await expect(page.getByRole("alertdialog")).toContainText("Permanently delete Imported Proof Career?");
+  await page.getByRole("alertdialog").getByRole("button", { name: "Permanently Delete" }).click();
+  await expect(page.getByRole("heading", { name: "Imported Proof Career" })).toHaveCount(0);
+  if (importedActiveSlotId) {
+    expect(await page.evaluate((key) => window.localStorage.getItem(key), `${SAVE_SLOT_PREFIX}${importedActiveSlotId}`)).toBeNull();
+  }
+
+  await page.getByRole("button", { name: "Delete Legacy Quarantine Backup" }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Delete Legacy Backup" }).click();
+  const corruptBackup = await page.evaluate(() => window.localStorage.getItem("badminton-manager-save-corrupt"));
+  expect(corruptBackup).toBeNull();
 });
 
 test("can run the Phase 2 program ecosystem flow and persist it after reload", async ({ page }) => {
@@ -2095,13 +2080,12 @@ test("can run the Phase 2 program ecosystem flow and persist it after reload", a
   await page.getByRole("button", { name: "Recruitment Desk" }).click();
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
 
-  const beforeScheduling = await page.evaluate(() => {
-    const raw = window.localStorage.getItem("badminton-manager-save");
-    if (!raw) {
-      throw new Error("Expected the recruited program to be persisted.");
-    }
-
-    const career = JSON.parse(raw).career;
+  const recruitedProgramSave = await readActiveSave(page);
+  if (!recruitedProgramSave?.career) {
+    throw new Error("Expected the recruited program to be persisted.");
+  }
+  const beforeScheduling = (() => {
+    const career = recruitedProgramSave.career;
     const rosterSlot = career.ecosystem.recruitment.roster.find(
       (slot: { athleteId: string }) => slot.athleteId !== career.program.managedPlayerId
     );
@@ -2121,26 +2105,25 @@ test("can run the Phase 2 program ecosystem flow and persist it after reload", a
       development: athlete.development as Record<string, number>,
       historyLength: career.developmentHistory.length as number
     };
-  });
+  })();
 
   await page.getByRole("button", { name: "Schedule Rally Base" }).click();
   await expect(page.getByText(/Rally Base is scheduled .* resolves once on Advance Day/)).toBeVisible();
   await captureFocusedScreenshot(page, "version-two-recruitment-scheduled");
-  await page.waitForFunction(
-    (athleteId) => {
-      const raw = window.localStorage.getItem("badminton-manager-save");
-      const career = raw ? JSON.parse(raw).career : null;
-      return career?.preparationSchedule.some(
-        (block: { athleteId: string; planSnapshot: { id: string } }) =>
-          block.athleteId === athleteId && block.planSnapshot.id === "rally-base"
-      );
-    },
-    beforeScheduling.athleteId
-  );
+  await expect.poll(async () => {
+    const save = await readActiveSave(page);
+    return save?.career?.preparationSchedule.some(
+      (block) => block.athleteId === beforeScheduling.athleteId && block.planSnapshot.id === "rally-base"
+    ) ?? false;
+  }).toBe(true);
 
-  const afterScheduling = await page.evaluate((athleteId) => {
-    const career = JSON.parse(window.localStorage.getItem("badminton-manager-save")!).career;
-    const athlete = career.athletes.find((entry: { playerId: string }) => entry.playerId === athleteId);
+  const afterSchedulingSave = await readActiveSave(page);
+  if (!afterSchedulingSave?.career) {
+    throw new Error("Expected the scheduled preparation to persist.");
+  }
+  const afterScheduling = (() => {
+    const career = afterSchedulingSave.career;
+    const athlete = career.athletes.find((entry) => entry.playerId === beforeScheduling.athleteId)!;
 
     return {
       cash: career.economy.cash as number,
@@ -2149,7 +2132,7 @@ test("can run the Phase 2 program ecosystem flow and persist it after reload", a
       development: athlete.development as Record<string, number>,
       historyLength: career.developmentHistory.length as number
     };
-  }, beforeScheduling.athleteId);
+  })();
   expect(afterScheduling).toEqual({
     cash: beforeScheduling.cash,
     readiness: beforeScheduling.readiness,
@@ -2167,52 +2150,48 @@ test("can run the Phase 2 program ecosystem flow and persist it after reload", a
   await page.reload();
   await expect(page.getByRole("heading", { name: "Career Command Center" })).toBeVisible();
   await expect(page.getByLabel("Portal tasks inbox")).toContainText("Rally Base resolves on Advance Day");
-  await page.evaluate((athleteId) => {
-    const raw = window.localStorage.getItem("badminton-manager-save");
-    const career = raw ? JSON.parse(raw).career : null;
-    if (!career?.preparationSchedule.some((block: { athleteId: string }) => block.athleteId === athleteId)) {
-      throw new Error("Expected the pending rotation preparation to survive reload.");
-    }
-  }, beforeScheduling.athleteId);
+  const reloadedPreparationSave = await readActiveSave(page);
+  expect(reloadedPreparationSave?.career?.preparationSchedule.some(
+    (block) => block.athleteId === beforeScheduling.athleteId
+  )).toBe(true);
 
   await page.getByRole("button", { name: "Advance Day" }).click();
   await expect(page.getByRole("heading", { name: "Timeline" })).toBeVisible();
-  await page.waitForFunction(
-    (athleteId) => {
-      const raw = window.localStorage.getItem("badminton-manager-save");
-      const career = raw ? JSON.parse(raw).career : null;
-      return Boolean(
-        career &&
-          !career.preparationSchedule.some((block: { athleteId: string }) => block.athleteId === athleteId) &&
-          career.developmentHistory.some(
-            (entry: { athleteId: string; kind: string; planId?: string; outcome?: string }) =>
-              entry.athleteId === athleteId &&
-              entry.kind === "preparation" &&
-              entry.planId === "rally-base" &&
-              entry.outcome === "completed"
-          )
-      );
-    },
-    beforeScheduling.athleteId
-  );
-  const afterResolution = await page.evaluate((athleteId) => {
-    const career = JSON.parse(window.localStorage.getItem("badminton-manager-save")!).career;
-    const athlete = career.athletes.find((entry: { playerId: string }) => entry.playerId === athleteId);
+  await expect.poll(async () => {
+    const save = await readActiveSave(page);
+    const career = save?.career;
+    return Boolean(
+      career &&
+        !career.preparationSchedule.some((block) => block.athleteId === beforeScheduling.athleteId) &&
+        career.developmentHistory.some(
+          (entry) => entry.athleteId === beforeScheduling.athleteId &&
+            entry.kind === "preparation" &&
+            entry.planId === "rally-base" &&
+            entry.outcome === "completed"
+        )
+    );
+  }).toBe(true);
+  const resolvedPreparationSave = await readActiveSave(page);
+  if (!resolvedPreparationSave?.career) {
+    throw new Error("Expected the resolved preparation to persist.");
+  }
+  const afterResolution = (() => {
+    const career = resolvedPreparationSave.career;
+    const athlete = career.athletes.find((entry) => entry.playerId === beforeScheduling.athleteId)!;
     const history = career.developmentHistory.find(
-      (entry: { athleteId: string; kind: string; planId?: string }) =>
-        entry.athleteId === athleteId && entry.kind === "preparation" && entry.planId === "rally-base"
+      (entry) => entry.athleteId === beforeScheduling.athleteId && entry.kind === "preparation" && entry.planId === "rally-base"
     );
 
     return {
       cash: career.economy.cash as number,
       stamina: athlete.development.stamina as number,
       pending: career.preparationSchedule.some(
-        (block: { athleteId: string }) => block.athleteId === athleteId
+        (block) => block.athleteId === beforeScheduling.athleteId
       ) as boolean,
       historyOutcome: history?.outcome as string | undefined,
       historyCost: history?.cost as number | undefined
     };
-  }, beforeScheduling.athleteId);
+  })();
   expect(afterResolution.pending).toBe(false);
   expect(afterResolution.cash).toBeLessThan(beforeScheduling.cash);
   expect(afterResolution.stamina).toBeGreaterThan(beforeScheduling.development.stamina);
@@ -2256,16 +2235,12 @@ test("can run the Phase 2 program ecosystem flow and persist it after reload", a
   await expect(page.getByRole("heading", { name: "Psychology Desk" })).toBeVisible();
   await expect(page.getByText(/withdrawn/).first()).toBeVisible();
   await page.getByRole("button", { name: "Program Hub" }).click();
-  await page.evaluate(() => {
-    const raw = window.localStorage.getItem("badminton-manager-save");
-    if (!raw) {
-      throw new Error("Expected a persisted career save.");
-    }
-
-    const save = JSON.parse(raw);
-    save.career.date = "2026-06-25";
-    window.localStorage.setItem("badminton-manager-save", JSON.stringify(save));
-  });
+  const expiringAssignmentSave = await readActiveSave(page);
+  if (!expiringAssignmentSave?.career) {
+    throw new Error("Expected a persisted career save.");
+  }
+  expiringAssignmentSave.career.date = "2026-06-25";
+  await writeActiveSave(page, expiringAssignmentSave);
   await page.reload();
   await page.getByRole("button", { name: "Program Hub" }).click();
   await page.getByRole("button", { name: "Scouting Network" }).click();
@@ -2282,7 +2257,7 @@ test("routes the state-backed Inbox and keeps Reports read-only", async ({ page 
   await startNewCareer(page);
 
   const sidebar = page.locator(".sidenav");
-  const savedBefore = await page.evaluate(() => window.localStorage.getItem("badminton-manager-save"));
+  const savedBefore = JSON.stringify(await readActiveSave(page));
 
   await sidebar.getByRole("button", { name: /^Inbox:/ }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Actionable Career Desk" })).toBeVisible();
@@ -2298,7 +2273,7 @@ test("routes the state-backed Inbox and keeps Reports read-only", async ({ page 
   await expect(page.getByRole("button", { name: /Continue|Close Event/ })).toHaveCount(0);
   await captureFocusedScreenshot(page, "version-two-reports-archive");
 
-  const savedAfter = await page.evaluate(() => window.localStorage.getItem("badminton-manager-save"));
+  const savedAfter = JSON.stringify(await readActiveSave(page));
   expect(savedAfter).toBe(savedBefore);
 });
 
@@ -2411,28 +2386,25 @@ test("can upgrade facilities and resolve sponsor media pressure", async ({ page 
   await page.getByRole("button", { name: "Scouting Network" }).click();
   await expect(page.getByText("Cost $3,200 / 1 day(s).").first()).toBeVisible();
 
-  await page.evaluate(() => {
-    const raw = window.localStorage.getItem("badminton-manager-save");
-    if (!raw) {
-      throw new Error("Expected a career save.");
-    }
-
-    const save = JSON.parse(raw);
-    save.career.media.sponsors = save.career.media.sponsors.map((objective: any) => ({
+  const mediaPressureSave = await readActiveSave(page);
+  if (!mediaPressureSave?.career) {
+    throw new Error("Expected a career save.");
+  }
+  mediaPressureSave.career.media.sponsors = mediaPressureSave.career.media.sponsors.map((objective) => ({
       ...objective,
       deadline: "2026-06-20",
       progress: 35,
       status: "active",
       resolutionLog: []
     }));
-    save.career.media.federationObjectives = save.career.media.federationObjectives.map((objective: any) => ({
+  mediaPressureSave.career.media.federationObjectives = mediaPressureSave.career.media.federationObjectives.map((objective) => ({
       ...objective,
       deadline: "2026-06-20",
       progress: 50,
       status: "active",
       resolutionLog: []
     }));
-    save.career.lastMatchReport = {
+  mediaPressureSave.career.lastMatchReport = {
       eventId: "metro-open-300",
       matchId: "managed-r16",
       opponentId: "opponent",
@@ -2445,8 +2417,7 @@ test("can upgrade facilities and resolve sponsor media pressure", async ({ page 
       evidence: [],
       recommendations: []
     };
-    window.localStorage.setItem("badminton-manager-save", JSON.stringify(save));
-  });
+  await writeActiveSave(page, mediaPressureSave);
   await page.reload();
   await page.getByRole("button", { name: "Program Hub" }).click();
   await page.getByRole("button", { name: "Media Desk" }).click();
