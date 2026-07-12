@@ -3146,7 +3146,7 @@ textarea:focus-visible {
 .intel-drawer-header h2 {
   margin: 0;
   font-size: 1.55rem;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
 }
 
 .roster-grid {
@@ -3995,7 +3995,7 @@ textarea:focus-visible {
 .opponent-identity h3 {
   margin: 0;
   font-size: 1.8rem;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
 }
 
 .dossier-metrics {
@@ -4053,7 +4053,7 @@ textarea:focus-visible {
   margin: 0.15rem 0 0.2rem;
   color: var(--text);
   font-size: 1.45rem;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
   overflow-wrap: anywhere;
 }
 
@@ -4639,7 +4639,7 @@ textarea:focus-visible {
 .score-value {
   font-size: clamp(3.3rem, 8vw, 5.4rem);
   font-weight: 800;
-  letter-spacing: -0.06em;
+  letter-spacing: 0;
 }
 
 .score-value-home {
@@ -4930,7 +4930,7 @@ textarea:focus-visible {
   color: var(--text);
   font-size: clamp(1.55rem, 2.5vw, 2.7rem);
   line-height: 0.95;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
   text-transform: uppercase;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -5666,7 +5666,7 @@ textarea:focus-visible {
   margin: 0.1rem 0 0;
   color: var(--text);
   font-size: 1.7rem;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
 }
 
 .modal-close-button {
@@ -6839,7 +6839,7 @@ textarea:focus-visible {
   color: var(--text);
   font-size: clamp(1.08rem, 1.45vw, 1.45rem);
   line-height: 1.08;
-  letter-spacing: -0.03em;
+  letter-spacing: 0;
 }
 
 .primary-match-action p {
@@ -6927,7 +6927,7 @@ textarea:focus-visible {
 .telemetry-card .panel-header h2,
 .tactical-options-panel > .panel-header h2 {
   font-size: 1rem;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
@@ -9740,7 +9740,7 @@ textarea:focus-visible {
   color: var(--text);
   font-size: clamp(1.65rem, 3vw, 2.55rem);
   line-height: 0.98;
-  letter-spacing: -0.05em;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
@@ -10111,7 +10111,7 @@ textarea:focus-visible {
 .profile-plan-card-large strong {
   font-size: clamp(1.45rem, 2.5vw, 2.2rem);
   line-height: 1;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
 }
 
 .profile-scouting-panel .command-button {
@@ -10341,5 +10341,803 @@ textarea:focus-visible {
 
   .profile-attribute-row-head strong {
     font-size: 0.98rem;
+  }
+}
+
+/* Imagegen redesign pass: compact court-console visual system. */
+:root {
+  color-scheme: dark;
+  --bg: #080b0d;
+  --bg-alt: #0c1013;
+  --panel: #12171a;
+  --panel-2: #171d21;
+  --panel-3: #20272c;
+  --border: #2e383b;
+  --border-strong: #4f5e61;
+  --text: #eef3ed;
+  --muted: #aab4ad;
+  --muted-soft: #75817c;
+  --lime: #7ee787;
+  --lime-soft: #b7f7bb;
+  --cyan: #65d7ef;
+  --rose: #ff8d8d;
+  --slate: #d4ddd7;
+  --amber: #f2c14e;
+  --court: #1fbf89;
+  --court-line: rgba(238, 243, 237, 0.075);
+  --surface: rgba(18, 23, 26, 0.92);
+  --surface-strong: rgba(23, 29, 33, 0.96);
+  --shadow: 0 16px 34px rgba(0, 0, 0, 0.28);
+  background: var(--bg);
+  color: var(--text);
+}
+
+body {
+  background:
+    linear-gradient(90deg, transparent calc(50% - 1px), var(--court-line) 50%, transparent calc(50% + 1px)),
+    linear-gradient(180deg, transparent 6.5rem, rgba(31, 191, 137, 0.055) 6.55rem, transparent 6.62rem),
+    linear-gradient(90deg, rgba(238, 243, 237, 0.035) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(238, 243, 237, 0.028) 1px, transparent 1px),
+    linear-gradient(180deg, #101417 0%, #080b0d 58%, #06080a 100%);
+  background-size: auto, auto, 5.5rem 5.5rem, 5.5rem 5.5rem, auto;
+}
+
+.command-shell {
+  position: relative;
+  isolation: isolate;
+  background:
+    linear-gradient(90deg, rgba(31, 191, 137, 0.05) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(238, 243, 237, 0.035) 1px, transparent 1px);
+  background-size: 9rem 9rem;
+}
+
+.command-shell::before {
+  position: fixed;
+  inset: 3.8rem 0 0;
+  z-index: -1;
+  content: "";
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent calc(50% - 1px), rgba(31, 191, 137, 0.08) 50%, transparent calc(50% + 1px)),
+    linear-gradient(180deg, transparent 18%, rgba(238, 243, 237, 0.045) 18%, transparent calc(18% + 1px)),
+    linear-gradient(180deg, transparent 82%, rgba(238, 243, 237, 0.045) 82%, transparent calc(82% + 1px));
+  opacity: 0.9;
+}
+
+.command-shell[data-accent="cyan"] {
+  --lime: #65d7ef;
+  --lime-soft: #b5effa;
+  --court: #65d7ef;
+}
+
+.command-shell[data-accent="rose"] {
+  --lime: #ff9d9d;
+  --lime-soft: #ffd7d7;
+  --court: #ff9d9d;
+}
+
+.command-shell[data-accent="slate"] {
+  --lime: #d4ddd7;
+  --lime-soft: #f3f7f4;
+  --court: #aebbb5;
+}
+
+.topbar {
+  grid-template-columns: minmax(30rem, 1fr) auto;
+  min-height: 3.8rem;
+  border-bottom-color: rgba(79, 94, 97, 0.48);
+  background:
+    linear-gradient(90deg, rgba(31, 191, 137, 0.08), transparent 38%),
+    rgba(8, 11, 13, 0.92);
+  box-shadow: 0 1px 0 rgba(238, 243, 237, 0.04);
+}
+
+.launch-topbar {
+  grid-template-columns: minmax(26rem, 1fr) auto auto;
+}
+
+.brand-mark {
+  width: 2.55rem;
+  height: 2.55rem;
+  border-color: rgba(126, 231, 135, 0.36);
+  border-radius: 0.18rem;
+  background:
+    linear-gradient(90deg, transparent calc(50% - 1px), rgba(238, 243, 237, 0.16) 50%, transparent calc(50% + 1px)),
+    linear-gradient(180deg, rgba(31, 191, 137, 0.18), rgba(8, 11, 13, 0.28));
+  color: var(--lime-soft);
+}
+
+.brand-lockup {
+  display: grid;
+  gap: 0.02rem;
+  min-width: 8rem;
+  color: var(--text);
+  line-height: 1.05;
+}
+
+.brand-lockup strong,
+.brand-lockup span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.brand-lockup strong {
+  font-size: 0.86rem;
+  font-weight: 900;
+}
+
+.brand-lockup span {
+  color: var(--muted-soft);
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.command-search {
+  border-color: rgba(79, 94, 97, 0.62);
+  border-radius: 0.2rem;
+  background: rgba(8, 11, 13, 0.58);
+  box-shadow: inset 0 0 0 1px rgba(238, 243, 237, 0.025);
+}
+
+.topbar-athlete-chip,
+.topbar-date,
+.topbar-status span {
+  border-radius: 0.2rem;
+  background: rgba(8, 11, 13, 0.62);
+}
+
+.topbar-athlete-chip {
+  border-color: rgba(126, 231, 135, 0.28);
+  box-shadow: inset 0.2rem 0 0 rgba(126, 231, 135, 0.26);
+}
+
+.topbar-date {
+  border-color: rgba(242, 193, 78, 0.42);
+  color: var(--amber);
+}
+
+.workspace-shell {
+  min-height: calc(100vh - 3.8rem);
+}
+
+.sidebar {
+  border-right-color: rgba(79, 94, 97, 0.48);
+  background:
+    linear-gradient(180deg, rgba(15, 19, 22, 0.96), rgba(8, 11, 13, 0.98)),
+    linear-gradient(90deg, rgba(31, 191, 137, 0.045), transparent);
+}
+
+.command-group {
+  position: relative;
+  padding-top: 0.2rem;
+}
+
+.command-group h3 {
+  color: #8b9891;
+}
+
+.sidenav-item {
+  position: relative;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  min-height: 2.6rem;
+  border: 1px solid transparent;
+  border-left: 0;
+  border-radius: 0.22rem;
+  padding: 0.52rem 0.6rem;
+  color: var(--muted);
+}
+
+.command-shell:not(.command-shell-sidebar-collapsed) .sidenav-item::before {
+  display: inline-grid;
+  width: 2.1rem;
+  height: 1.55rem;
+  place-items: center;
+  border: 1px solid rgba(79, 94, 97, 0.6);
+  border-radius: 0.18rem;
+  background: rgba(8, 11, 13, 0.62);
+  color: var(--muted-soft);
+  content: attr(data-short);
+  font-size: 0.58rem;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+}
+
+.command-shell:not(.command-shell-sidebar-collapsed) .sidenav-item > span,
+.command-shell:not(.command-shell-sidebar-collapsed) .sidenav-item > small {
+  grid-column: 2;
+}
+
+.sidenav-item:hover {
+  border-color: rgba(79, 94, 97, 0.72);
+  background: rgba(238, 243, 237, 0.035);
+}
+
+.sidenav-item-active {
+  border-color: rgba(126, 231, 135, 0.34);
+  background:
+    linear-gradient(90deg, rgba(126, 231, 135, 0.14), rgba(18, 23, 26, 0.82) 64%),
+    rgba(18, 23, 26, 0.92);
+  color: var(--text);
+  box-shadow: inset 0.22rem 0 0 var(--lime);
+}
+
+.sidenav-item-active::before {
+  border-color: rgba(126, 231, 135, 0.48);
+  color: var(--lime-soft);
+}
+
+.sidenav-item:disabled {
+  opacity: 0.38;
+}
+
+.sidebar-collapse-button,
+.icon-command-button,
+.sidebar-mini-button,
+.command-button,
+.calendar-subnav-tab,
+.profile-tab,
+.modal-close-button {
+  border-radius: 0.2rem;
+}
+
+.main-canvas {
+  padding: clamp(0.75rem, 1.1vw, 1.1rem);
+}
+
+.screen-shell,
+.player-profile-page,
+.match-screen {
+  gap: 0.95rem;
+}
+
+.screen-header {
+  align-items: center;
+  border: 1px solid rgba(79, 94, 97, 0.5);
+  border-radius: 0.34rem;
+  padding: 0.86rem 1rem;
+  background:
+    linear-gradient(90deg, rgba(31, 191, 137, 0.085), transparent 36%),
+    rgba(12, 16, 19, 0.82);
+}
+
+.screen-title,
+.player-profile-heading h1,
+.dossier-identity h3,
+.opponent-identity h3,
+.matchup-competitor h3,
+.panel-header h2,
+.intel-drawer-header h2,
+.modal-header h2,
+.primary-match-action h2 {
+  letter-spacing: 0;
+}
+
+.screen-title {
+  margin: 0.08rem 0 0.24rem;
+  font-size: clamp(1.45rem, 2.6vw, 2.35rem);
+  text-transform: none;
+}
+
+.screen-copy {
+  max-width: 68rem;
+  color: var(--muted);
+}
+
+.screen-meta span,
+.chip,
+.launch-decision-meta span,
+.primary-action-meta span,
+.recommendation-pick-tags span,
+.active-filter-list span,
+.profile-career-facts span {
+  border-radius: 0.18rem;
+  background: rgba(8, 11, 13, 0.64);
+}
+
+.command-panel,
+.scoreboard-panel,
+.athlete-selection-modal,
+.roster-modal,
+.settings-modal,
+.confirm-modal {
+  border-color: rgba(79, 94, 97, 0.5);
+  border-radius: 0.36rem;
+  background:
+    linear-gradient(180deg, rgba(238, 243, 237, 0.025), transparent 4.5rem),
+    var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.command-panel {
+  padding: clamp(0.9rem, 1.35vw, 1.25rem);
+}
+
+.panel-header,
+.intel-drawer-header,
+.modal-header,
+.scoreboard-topline {
+  border-bottom-color: rgba(79, 94, 97, 0.46);
+}
+
+.panel-header h2,
+.intel-drawer-header h2 {
+  font-size: clamp(1.02rem, 1.45vw, 1.42rem);
+}
+
+.command-button,
+.icon-command-button,
+.sidebar-mini-button {
+  border-color: rgba(79, 94, 97, 0.66);
+  background: rgba(23, 29, 33, 0.92);
+  color: var(--text);
+  box-shadow: none;
+}
+
+.command-button:hover,
+.icon-command-button:hover,
+.sidebar-mini-button:hover,
+.calendar-subnav-tab:hover,
+.profile-tab:hover {
+  border-color: rgba(126, 231, 135, 0.42);
+  background: rgba(31, 191, 137, 0.09);
+}
+
+.command-button-primary,
+.topbar-continue-ready {
+  border-color: rgba(126, 231, 135, 0.48);
+  background: linear-gradient(180deg, var(--lime-soft), var(--lime));
+  color: #071108;
+  box-shadow: 0 0 0 1px rgba(126, 231, 135, 0.14), 0 10px 22px rgba(126, 231, 135, 0.12);
+}
+
+.command-button-required,
+.topbar-continue-required {
+  border-color: rgba(255, 141, 141, 0.55);
+  background: linear-gradient(180deg, #ffb2b2, var(--rose));
+  color: #160606;
+}
+
+.command-button-secondary,
+.topbar-continue-disabled {
+  background: rgba(18, 23, 26, 0.92);
+}
+
+.career-status-strip div,
+.management-status-strip div,
+.management-table-row,
+.career-quick-stakes div,
+.career-event-brief div,
+.career-event-stakes-grid div,
+.career-stat-grid div,
+.career-brief-grid div,
+.career-day,
+.career-ledger-row,
+.career-event-card,
+.career-plan-card,
+.tactical-metric-grid > div,
+.tactical-summary-block,
+.career-system-tile,
+.program-decision-card,
+.program-log-row,
+.tactic-slider-row,
+.tactic-module-button,
+.save-metadata-grid div,
+.import-preview-box,
+.import-error-box,
+.danger-confirm-strip,
+.recommendation-mode-button,
+.recommendation-group,
+.recommendation-mode-stage,
+.recommendation-featured-card,
+.recommendation-pick,
+.featured-stat,
+.athlete-lock-choice,
+.athlete-lock-preview,
+.browse-results-bar,
+.roster-empty-state,
+.athlete-card,
+.tactic-option-card,
+.directive-card,
+.matchup-competitor,
+.matchup-metrics,
+.matchup-key-card,
+.dossier-note,
+.bracket-card,
+.bracket-detail-panel,
+.bracket-detail-player,
+.bracket-detail-grid > div,
+.bracket-detail-events > div,
+.tournament-note-block,
+.scoreboard-athlete,
+.set-result-chip,
+.telemetry-mini-card,
+.feed-card,
+.path-card,
+.profile-radar-values div,
+.profile-readiness-grid div,
+.profile-report-columns div,
+.profile-decision-box,
+.profile-form-strip,
+.profile-career-milestones,
+.profile-dossier-grid div,
+.profile-tactic-card,
+.profile-attribute-group,
+.profile-career-archive-block,
+.profile-empty-state,
+.theme-choice {
+  border-color: rgba(79, 94, 97, 0.48);
+  border-radius: 0.28rem;
+  background: rgba(10, 14, 16, 0.68);
+  box-shadow: inset 0 1px 0 rgba(238, 243, 237, 0.035);
+}
+
+.calendar-event-row,
+.rankings-row,
+.calendar-commitment-date,
+.calendar-commitment-card,
+.schedule-calendar-grid {
+  border-color: rgba(79, 94, 97, 0.5);
+  border-radius: 0.28rem;
+  background: rgba(10, 14, 16, 0.7);
+}
+
+.calendar-event-row:not(.calendar-event-row-head):hover,
+.rankings-row:not(.rankings-row-head):hover,
+.calendar-commitment-card:hover {
+  border-color: rgba(126, 231, 135, 0.32);
+  background: rgba(18, 23, 26, 0.9);
+}
+
+.career-priority-panel,
+.start-resume-panel,
+.primary-match-action,
+.rankings-row-managed,
+.recommendation-featured-card,
+.player-profile-hero-managed {
+  border-color: rgba(126, 231, 135, 0.34);
+  background:
+    linear-gradient(135deg, rgba(126, 231, 135, 0.105), transparent 42%),
+    var(--surface-strong);
+}
+
+.chip-primary,
+.managed-ranking-label,
+.selection-chip,
+.sidebar-mini-button-active,
+.calendar-subnav-tab-active,
+.profile-tab-active {
+  border-color: rgba(126, 231, 135, 0.42);
+  background: rgba(31, 191, 137, 0.12);
+  color: var(--lime-soft);
+}
+
+.metric-track {
+  height: 0.46rem;
+  background: rgba(46, 56, 59, 0.72);
+}
+
+.metric-track-fill {
+  background: linear-gradient(90deg, var(--court), var(--lime-soft));
+}
+
+.metric-track-fill-cyan {
+  background: linear-gradient(90deg, #2fb6c9, var(--cyan));
+}
+
+.metric-track-fill-danger {
+  background: linear-gradient(90deg, var(--rose), var(--amber));
+}
+
+.command-shell-launch {
+  background:
+    linear-gradient(90deg, transparent calc(50% - 1px), rgba(31, 191, 137, 0.11) 50%, transparent calc(50% + 1px)),
+    linear-gradient(180deg, rgba(12, 16, 19, 0.86), rgba(6, 8, 10, 0.98));
+}
+
+.command-shell-launch .main-canvas {
+  width: min(100%, 82rem);
+  padding-block: clamp(1rem, 2.3vw, 1.75rem);
+}
+
+.start-screen-redesign::before,
+.start-hero::after,
+.start-resume-panel::after {
+  content: none;
+}
+
+.start-hero {
+  min-height: 13rem;
+  align-items: stretch;
+  border-color: rgba(79, 94, 97, 0.56);
+  border-radius: 0.34rem;
+  background:
+    linear-gradient(90deg, transparent calc(50% - 1px), rgba(238, 243, 237, 0.1) 50%, transparent calc(50% + 1px)),
+    linear-gradient(180deg, rgba(31, 191, 137, 0.12), rgba(8, 11, 13, 0.2)),
+    rgba(15, 19, 22, 0.94);
+}
+
+.start-hero-copy {
+  align-self: end;
+}
+
+.start-hero .screen-title {
+  font-size: clamp(2rem, 5.8vw, 4.4rem);
+  line-height: 0.98;
+}
+
+.start-hero-status {
+  align-content: end;
+}
+
+.start-resume-panel {
+  min-height: 20rem;
+}
+
+.start-mode-card,
+.start-utility-card,
+.start-save-trust-strip div {
+  background: rgba(10, 14, 16, 0.72);
+}
+
+.start-mode-card-career {
+  border-color: rgba(126, 231, 135, 0.3);
+}
+
+.start-mode-card-quick,
+.player-profile-hero-live,
+.scoreboard-set-cell-active,
+.current-score-cell {
+  border-color: rgba(101, 215, 239, 0.34);
+}
+
+.calendar-subnav {
+  border-radius: 0.28rem;
+  background: rgba(8, 11, 13, 0.64);
+}
+
+.calendar-event-row-blocked,
+.career-event-card-blocked,
+.career-recovery-panel,
+.start-recovery-strip {
+  border-color: rgba(242, 193, 78, 0.44);
+  background: rgba(71, 48, 13, 0.22);
+}
+
+.schedule-calendar-grid {
+  background:
+    linear-gradient(90deg, transparent calc(50% - 1px), rgba(31, 191, 137, 0.07) 50%, transparent calc(50% + 1px)),
+    rgba(8, 11, 13, 0.66);
+}
+
+.schedule-calendar-cell {
+  border-color: rgba(79, 94, 97, 0.34);
+}
+
+.schedule-calendar-cell-today {
+  box-shadow: inset 0 0 0 2px rgba(126, 231, 135, 0.5);
+}
+
+.schedule-calendar-badge {
+  border-color: rgba(126, 231, 135, 0.32);
+  border-radius: 0.2rem;
+  background: rgba(31, 191, 137, 0.12);
+}
+
+.schedule-calendar-badge-deadline {
+  border-color: rgba(242, 193, 78, 0.38);
+  background: rgba(242, 193, 78, 0.12);
+}
+
+.rankings-row-managed {
+  box-shadow: inset 0.28rem 0 0 var(--lime);
+}
+
+.tactical-court {
+  border-color: rgba(31, 191, 137, 0.62);
+  border-radius: 0.28rem;
+  background:
+    linear-gradient(90deg, transparent calc(50% - 1px), rgba(238, 243, 237, 0.26) 50%, transparent calc(50% + 1px)),
+    linear-gradient(180deg, rgba(31, 191, 137, 0.18), rgba(8, 11, 13, 0.86));
+}
+
+.tactical-court::after {
+  background: rgba(238, 243, 237, 0.22);
+  box-shadow: 0 calc(33.333% + 0.16rem) 0 rgba(238, 243, 237, 0.22);
+}
+
+.tactical-court-zone {
+  border-radius: 0.18rem;
+}
+
+.bracket-card-tree:hover,
+.bracket-card-tree:focus-visible,
+.bracket-card-selected {
+  border-color: rgba(126, 231, 135, 0.42);
+  box-shadow: inset 0 0 0 1px rgba(126, 231, 135, 0.12);
+}
+
+.bracket-card-managed,
+.bracket-detail-player-winner,
+.bracket-card-champion {
+  border-color: rgba(126, 231, 135, 0.36);
+  background: rgba(31, 191, 137, 0.11);
+}
+
+.broadcast-scoreboard-row > span,
+.broadcast-scoreboard-row > strong,
+.scoreboard-name-button {
+  border-radius: 0.18rem;
+  background: rgba(8, 11, 13, 0.68);
+}
+
+.scoreboard-player-cell .scoreboard-name-button {
+  background: transparent;
+}
+
+.scoreboard-server-marker-active {
+  color: var(--amber);
+}
+
+.match-command-layout-v2 {
+  gap: 0.85rem;
+}
+
+.match-scoreboard-panel,
+.primary-match-action,
+.match-feed-panel,
+.match-command-viewer,
+.telemetry-card,
+.tactical-options-panel {
+  min-height: 0;
+}
+
+.feed-card {
+  border-left-width: 0.22rem;
+  background: rgba(10, 14, 16, 0.76);
+}
+
+.feed-card-positive {
+  border-left-color: var(--lime);
+}
+
+.feed-card-info {
+  border-left-color: var(--cyan);
+}
+
+.feed-card-danger {
+  border-left-color: var(--rose);
+}
+
+.player-profile-hero {
+  border-radius: 0.34rem;
+  background:
+    linear-gradient(90deg, rgba(31, 191, 137, 0.08), transparent 42%),
+    var(--surface-strong);
+}
+
+.player-profile-avatar,
+.athlete-avatar,
+.dossier-avatar {
+  border: 1px solid rgba(126, 231, 135, 0.28);
+  border-radius: 0.18rem;
+  background: linear-gradient(180deg, rgba(126, 231, 135, 0.16), rgba(8, 11, 13, 0.24));
+  color: var(--lime-soft);
+}
+
+.player-profile-heading h1 {
+  text-transform: none;
+}
+
+.player-profile-score {
+  border-radius: 0.24rem;
+  background: rgba(31, 191, 137, 0.12);
+}
+
+.profile-radar-shape {
+  fill: rgba(126, 231, 135, 0.18);
+  stroke: var(--lime);
+}
+
+.profile-report-columns h3,
+.profile-attribute-group h3,
+.profile-career-archive-block h3,
+.profile-career-milestones h3,
+.settings-section h3,
+.intel-section h3 {
+  color: var(--lime-soft);
+}
+
+.save-manager-page .command-panel:first-of-type {
+  border-color: rgba(126, 231, 135, 0.28);
+}
+
+.danger-zone,
+.import-error-box,
+.schedule-calendar-badge-result-l {
+  border-color: rgba(255, 141, 141, 0.34);
+  background: rgba(88, 22, 22, 0.22);
+}
+
+.modal-backdrop {
+  background: rgba(2, 4, 5, 0.72);
+}
+
+.settings-modal,
+.confirm-modal,
+.athlete-selection-modal,
+.roster-modal {
+  background:
+    linear-gradient(90deg, transparent calc(50% - 1px), rgba(31, 191, 137, 0.06) 50%, transparent calc(50% + 1px)),
+    rgba(12, 16, 19, 0.98);
+}
+
+@media (max-width: 1365px), (max-height: 800px) and (min-width: 1101px) {
+  .command-shell:not(.command-shell-sidebar-collapsed) .sidenav-item::before {
+    display: none;
+  }
+}
+
+.workspace-shell-profile .sidenav-item::before,
+.workspace-shell:has(.player-profile-page) .sidenav-item::before {
+  display: none;
+}
+
+@media (max-width: 980px) {
+  .topbar {
+    grid-template-columns: 1fr;
+  }
+
+  .brand-lockup {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 780px) {
+  .command-shell::before {
+    inset: 6rem 0 0;
+  }
+
+  .screen-header {
+    align-items: flex-start;
+  }
+
+  .brand-lockup {
+    flex: 1 1 9rem;
+  }
+
+  .command-shell:not(.command-shell-sidebar-collapsed) .sidenav-item::before {
+    display: none;
+  }
+
+  .start-hero {
+    min-height: 0;
+  }
+}
+
+@media (max-height: 800px) and (min-width: 1101px) {
+  .match-screen {
+    height: calc(100vh - 5.25rem);
+    min-height: 0;
+    gap: 0.42rem;
+  }
+
+  .match-screen-header {
+    padding-block: 0.38rem;
+  }
+
+  .match-command-layout-v2 {
+    gap: 0.45rem;
+  }
+
+  .match-scoreboard-panel,
+  .primary-match-action,
+  .match-feed-panel,
+  .match-command-viewer,
+  .match-side-column > .command-panel {
+    padding: 0.52rem;
   }
 }

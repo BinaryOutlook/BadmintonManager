@@ -677,6 +677,7 @@ async function expectTopbarHierarchyAndBounded(page: Page) {
     }
 
     const brand = topbar.querySelector<HTMLElement>(".brand-mark");
+    const brandLockup = topbar.querySelector<HTMLElement>(".brand-lockup");
     const athlete = topbar.querySelector<HTMLElement>(".topbar-athlete-chip");
     const search = topbar.querySelector<HTMLElement>(".command-search");
     const commandZone = topbar.querySelector<HTMLElement>(".topbar-command-zone");
@@ -687,12 +688,12 @@ async function expectTopbarHierarchyAndBounded(page: Page) {
     const saveControl = topbar.querySelector<HTMLButtonElement>(".topbar-save-button");
     const settings = utilityCluster?.querySelector<HTMLButtonElement>("button:not(.topbar-save-button)") ?? null;
 
-    if (!brand || !athlete || !search || !commandZone || !dailyCluster || !utilityCluster || !date || !dailyAction || !saveControl || !settings) {
+    if (!brand || !brandLockup || !athlete || !search || !commandZone || !dailyCluster || !utilityCluster || !date || !dailyAction || !saveControl || !settings) {
       throw new Error("Expected complete topbar identity, utility controls, clock, save, and settings controls.");
     }
 
-    if (brand.nextElementSibling !== athlete || athlete.nextElementSibling !== search) {
-      throw new Error("Expected managed athlete directly between BM and command search.");
+    if (brand.nextElementSibling !== brandLockup || brandLockup.nextElementSibling !== athlete || athlete.nextElementSibling !== search) {
+      throw new Error("Expected brand lockup and managed athlete directly between BM and command search.");
     }
 
     if (saveControl.textContent?.trim() !== "Career Save") {

@@ -631,15 +631,20 @@ describe("career shell daily action", () => {
     const careerSave = within(utilityControls).getByRole("button", { name: "Career Save" });
     const settings = within(utilityControls).getByRole("button", { name: "Settings" });
     const brandMark = banner.querySelector(".brand-mark");
+    const brandLockup = banner.querySelector(".brand-lockup");
     const commandSearch = banner.querySelector(".command-search");
     const date = banner.querySelector(".topbar-date");
     const dailyAction = within(dailyCluster).getByRole("button", { name: "Advance Day" });
 
     expect(brandMark).not.toBeNull();
+    expect(brandLockup).not.toBeNull();
     expect(commandSearch).not.toBeNull();
     expect(date).not.toBeNull();
+    expect(brandLockup).toHaveTextContent("Badminton Manager");
+    expect(brandLockup).toHaveTextContent("Coach OS");
     expect(managedAthlete).toHaveTextContent(seededPlayers[0].player.name);
-    expect(managedAthlete.previousElementSibling).toBe(brandMark);
+    expect(brandMark?.nextElementSibling).toBe(brandLockup);
+    expect(managedAthlete.previousElementSibling).toBe(brandLockup);
     expect(managedAthlete.nextElementSibling).toBe(commandSearch);
     expect(careerSave.nextElementSibling).toBe(settings);
     expect(date?.nextElementSibling).toBe(dailyAction);

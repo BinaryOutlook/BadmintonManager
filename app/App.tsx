@@ -1332,6 +1332,10 @@ function LaunchTopBar(props: {
     <header className="topbar launch-topbar">
       <div className="topbar-brand-block">
         <span className="brand-mark">BM</span>
+        <span className="brand-lockup" aria-label="Badminton Manager">
+          <strong>Badminton Manager</strong>
+          <span>Coach OS</span>
+        </span>
         <label className="command-search">
           <span>Command</span>
           <input aria-label="Search or go to command" placeholder="Search or go to..." readOnly />
@@ -1377,6 +1381,10 @@ function TopStatusBar(props: {
     <header className="topbar">
       <div className="topbar-brand-block">
         <span className="brand-mark">BM</span>
+        <span className="brand-lockup" aria-label="Badminton Manager">
+          <strong>Badminton Manager</strong>
+          <span>Coach OS</span>
+        </span>
         <span className="topbar-athlete-chip" aria-label="Managed athlete">
           <span>Managed</span>
           <strong>{props.activeAthleteName}</strong>
@@ -1426,7 +1434,7 @@ function CommandSidebar(props: {
     <aside className="sidebar command-sidebar" aria-label="Primary command sidebar">
       <nav className="sidenav command-groups" aria-label="Primary commands">
         {commandGroupOrder.map((group) => (
-          <section className="command-group" key={group} aria-labelledby={`command-group-${group}`}>
+          <section className="command-group" key={group} data-group={group} aria-labelledby={`command-group-${group}`}>
             <h3 id={`command-group-${group}`}>{group}</h3>
             <div className="command-group-list">
               {props.commands
@@ -1439,6 +1447,7 @@ function CommandSidebar(props: {
                       key={command.id}
                       type="button"
                       className={active ? "sidenav-item sidenav-item-active" : "sidenav-item"}
+                      data-command={command.id}
                       data-short={command.short}
                       disabled={command.disabled}
                       aria-current={active ? "page" : undefined}
@@ -1477,7 +1486,7 @@ function CommandSidebar(props: {
 }
 
 function PageCanvas(props: { children: ReactNode }) {
-  return <main className="main-canvas">{props.children}</main>;
+  return <main className="main-canvas page-canvas">{props.children}</main>;
 }
 
 function OverlayHost(props: { children: ReactNode }) {
