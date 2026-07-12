@@ -1018,6 +1018,7 @@ export function App() {
           activeSavePresent={activeSavePresent}
           careerPresent={Boolean(career)}
           corruptSavePresent={corruptSavePresent}
+          saveRecoveryPresent={Boolean(saveRecovery)}
           launchSaveSummary={launchSaveSummary}
         />
       );
@@ -1028,6 +1029,7 @@ export function App() {
         <SaveManagerView
           activeSavePresent={activeSavePresent}
           corruptSavePresent={corruptSavePresent}
+          saveRecovery={saveRecovery}
           phase={phase}
           selectedPlayerId={selectedPlayerId}
           plannedTacticKey={plannedTacticKey}
@@ -1165,6 +1167,7 @@ export function App() {
           activeSavePresent={activeSavePresent}
           careerPresent={Boolean(career)}
           corruptSavePresent={corruptSavePresent}
+          saveRecoveryPresent={Boolean(saveRecovery)}
           launchSaveSummary={launchSaveSummary}
         />
       );

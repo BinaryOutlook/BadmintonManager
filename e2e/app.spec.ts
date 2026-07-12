@@ -1369,6 +1369,7 @@ test("surfaces corrupt save recovery and blocks unaffordable event entry", async
   await openSaveManager(page);
   await expect(page.getByRole("heading", { name: "Local Save Control" })).toBeVisible();
   await expect(page.getByText(/Quarantine present|Recovery available/).first()).toBeVisible();
+  await expect(page.getByRole("alert")).toContainText("Save quarantined safely");
 
   await page.getByRole("button", { name: "Start New Career" }).click();
   await startNewCareer(page);
@@ -1704,6 +1705,7 @@ test("surfaces dense page contracts and Save Manager metadata", async ({ page })
   await expect(page.getByLabel("Active save slot metadata")).toContainText("Active local slot");
   await expect(page.getByLabel("Active save slot metadata")).toContainText("Managed athlete");
   await expect(page.getByLabel("Active save slot metadata")).toContainText("Save version");
+  await expect(page.getByLabel("Active save slot metadata")).toContainText("v11");
   await expect(page.getByRole("heading", { name: "Danger Zone" })).toBeVisible();
 
   const betweenRounds = createBetweenRoundsCareerSave();

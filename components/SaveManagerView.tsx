@@ -2,16 +2,21 @@ import { useMemo, useState } from "react";
 import { playerMap } from "../game/content/players";
 import { getCareerEvent } from "../game/career/events";
 import type { CareerState } from "../game/career/models";
-import type { AppPhase, TacticKey } from "../game/store/store";
+import type { AppPhase, SaveRecoveryNotice, TacticKey } from "../game/store/store";
 import { CORRUPT_STORAGE_KEY, STORAGE_KEY } from "../game/store/store";
-import type { PersistedSave } from "../game/store/save";
-import { validateImportedSaveText, type SaveImportValidationResult } from "../game/store/save";
+import {
+  CURRENT_SAVE_VERSION,
+  validateImportedSaveText,
+  type PersistedSave,
+  type SaveImportValidationResult
+} from "../game/store/save";
 import type { TournamentState } from "../game/tournament/tournament";
 import { TournamentLink } from "./TournamentLink";
 
 interface SaveManagerViewProps {
   activeSavePresent: boolean;
   corruptSavePresent: boolean;
+  saveRecovery: SaveRecoveryNotice | null;
   phase: AppPhase;
   selectedPlayerId: string;
   plannedTacticKey: TacticKey;
@@ -126,7 +131,7 @@ function summarizeRuntime(props: SaveManagerViewProps): SaveSummary {
       headline: "Match in progress",
       detail: `${props.phase} phase loaded from the active slot.`,
       rows: [
-        { label: "Top version", value: "10" },
+        { label: "Top version", value: String(CURRENT_SAVE_VERSION) },
         ...(props.career
           ? [
               { label: "Career version", value: String(props.career.version) },
@@ -142,7 +147,7 @@ function summarizeRuntime(props: SaveManagerViewProps): SaveSummary {
   }
 
   return summarizeSave({
-    version: 11,
+    version: CURRENT_SAVE_VERSION,
     selectedPlayerId: props.selectedPlayerId,
     plannedTacticKey: props.plannedTacticKey,
     seed: props.seed,
@@ -256,7 +261,7 @@ export function SaveManagerView(props: SaveManagerViewProps) {
         </div>
         <div className="screen-meta">
           <span>{props.activeSavePresent ? "Active slot present" : "Active slot empty"}</span>
-          <span>{props.corruptSavePresent ? "Quarantine present" : "No quarantine"}</span>
+          <span>{props.saveRecovery?.disposition === "source_preserved" ? "Recovery attention" : props.corruptSavePresent ? "Quarantine present" : "No quarantine"}</span>
         </div>
       </div>
 
@@ -283,9 +288,19 @@ export function SaveManagerView(props: SaveManagerViewProps) {
         </div>
         <div>
           <span>Quarantine</span>
-          <strong>{props.corruptSavePresent ? "Present" : "Clear"}</strong>
+          <strong>{props.saveRecovery?.disposition === "source_preserved" ? "Source preserved" : props.corruptSavePresent ? "Present" : "Clear"}</strong>
         </div>
       </section>
+
+      {props.saveRecovery && (
+        <section className="start-recovery-strip save-recovery-strip" role="alert" aria-live="assertive">
+          <div>
+            <strong>{props.saveRecovery.disposition === "quarantined" ? "Save quarantined safely." : "Original save preserved."}</strong>
+            <span>{props.saveRecovery.message}</span>
+          </div>
+          <span className="chip">Stored at {props.saveRecovery.backupKey}</span>
+        </section>
+      )}
 
       <div className="save-manager-grid">
         <section className="command-panel save-slot-panel">
@@ -360,7 +375,7 @@ export function SaveManagerView(props: SaveManagerViewProps) {
                 setImportText(event.target.value);
                 setImportResult(null);
               }}
-              placeholder='{"version": 8, ... }'
+              placeholder={`{"version": ${CURRENT_SAVE_VERSION}, ... }`}
             />
           </label>
 

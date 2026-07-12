@@ -1,4 +1,6 @@
 import { z } from "zod";
+
+export const CURRENT_SAVE_VERSION = 11 as const;
 import {
   liveDirectiveSchema,
   matchTacticSchema,
@@ -255,7 +257,7 @@ export const phase6UniverseRecordsPersistedSaveSchema = legacyPersistedSaveSchem
 });
 
 export const persistedSaveSchema = legacyPersistedSaveSchema.extend({
-  version: z.literal(11),
+  version: z.literal(CURRENT_SAVE_VERSION),
   career: careerStateSchema.nullable()
 });
 

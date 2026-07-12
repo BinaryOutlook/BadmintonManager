@@ -72,7 +72,12 @@ import {
   type ManagedMatchContext,
   type TournamentState
 } from "../tournament/tournament";
-import { migratePersistedSave, persistedSavePayloadSchema, type PersistedSave } from "./save";
+import {
+  CURRENT_SAVE_VERSION,
+  migratePersistedSave,
+  persistedSavePayloadSchema,
+  type PersistedSave
+} from "./save";
 
 export const STORAGE_KEY = "badminton-manager-save";
 export const CORRUPT_STORAGE_KEY = "badminton-manager-save-corrupt";
@@ -83,6 +88,7 @@ export type AppPhase = "setup" | "overview" | "match" | "complete";
 export interface SaveRecoveryNotice {
   reason: "malformed_json" | "invalid_schema";
   backupKey: string;
+  disposition: "quarantined" | "source_preserved";
   message: string;
 }
 
@@ -199,7 +205,7 @@ function createPersistedSavePayload(
   >
 ): PersistedSave {
   return {
-    version: 11,
+    version: CURRENT_SAVE_VERSION,
     selectedPlayerId: state.selectedPlayerId,
     plannedTacticKey: state.plannedTacticKey,
     seed: state.seed,
@@ -239,17 +245,58 @@ function isStorageAdapter(storage: unknown): storage is StorageAdapter {
 }
 
 function quarantineCorruptSave(storage: StorageAdapter, raw: string) {
+  let backupVerified = false;
+
   try {
     storage.setItem(CORRUPT_STORAGE_KEY, raw);
+    backupVerified = storage.getItem(CORRUPT_STORAGE_KEY) === raw;
   } catch {
-    // If backup storage is unavailable, still clear the active slot so boot remains safe.
+    backupVerified = false;
+  }
+
+  if (!backupVerified) {
+    return { backupVerified: false, sourceRemoved: false };
   }
 
   try {
     storage.removeItem(STORAGE_KEY);
   } catch {
-    // Ignore storage teardown failures; recovery state still tells the user what happened.
+    // The verified quarantine copy remains available even when source cleanup fails.
   }
+
+  return {
+    backupVerified: true,
+    sourceRemoved: storage.getItem(STORAGE_KEY) === null
+  };
+}
+
+function recoveryStateFor(args: {
+  defaultState: PersistedRuntimeState;
+  reason: SaveRecoveryNotice["reason"];
+  quarantine: ReturnType<typeof quarantineCorruptSave>;
+}) {
+  const quarantined = args.quarantine.backupVerified;
+  const sourcePreserved = !args.quarantine.sourceRemoved;
+  const problem = args.reason === "malformed_json"
+    ? "could not be read as JSON"
+    : "did not match the supported save schema";
+  const message = quarantined
+    ? sourcePreserved
+      ? `The local save ${problem}. A verified quarantine copy was created, but the original storage entry could not be removed.`
+      : `The local save ${problem}, so a verified quarantine copy was created before a fresh safe slot was opened.`
+    : `The local save ${problem}. Backup storage was unavailable, so the original entry was preserved in place and was not deleted.`;
+
+  return {
+    ...args.defaultState,
+    saveRecovery: {
+      reason: args.reason,
+      backupKey: quarantined ? CORRUPT_STORAGE_KEY : STORAGE_KEY,
+      disposition: quarantined ? "quarantined" as const : "source_preserved" as const,
+      message
+    },
+    activeSavePresent: sourcePreserved,
+    corruptSavePresent: args.defaultState.corruptSavePresent || quarantined
+  };
 }
 
 export function loadPersistedFromStorage(
@@ -271,35 +318,21 @@ export function loadPersistedFromStorage(
   try {
     json = JSON.parse(raw);
   } catch {
-    quarantineCorruptSave(storage, raw);
-
-    return {
-      ...defaultState,
-      saveRecovery: {
-        reason: "malformed_json",
-        backupKey: CORRUPT_STORAGE_KEY,
-        message: "The local save file could not be read as JSON, so it was quarantined before a fresh safe slot was opened."
-      },
-      activeSavePresent: false,
-      corruptSavePresent: true
-    };
+    return recoveryStateFor({
+      defaultState,
+      reason: "malformed_json",
+      quarantine: quarantineCorruptSave(storage, raw)
+    });
   }
 
   const parsed = persistedSavePayloadSchema.safeParse(json);
 
   if (!parsed.success) {
-    quarantineCorruptSave(storage, raw);
-
-    return {
-      ...defaultState,
-      saveRecovery: {
-        reason: "invalid_schema",
-        backupKey: CORRUPT_STORAGE_KEY,
-        message: "The local save file did not match the supported save schema, so it was quarantined before a fresh safe slot was opened."
-      },
-      activeSavePresent: false,
-      corruptSavePresent: true
-    };
+    return recoveryStateFor({
+      defaultState,
+      reason: "invalid_schema",
+      quarantine: quarantineCorruptSave(storage, raw)
+    });
   }
 
   const migrated = migratePersistedSave(parsed.data);

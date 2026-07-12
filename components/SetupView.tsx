@@ -31,6 +31,7 @@ interface SetupViewProps {
   activeSavePresent: boolean;
   careerPresent: boolean;
   corruptSavePresent: boolean;
+  saveRecoveryPresent?: boolean;
   launchSaveSummary: LaunchSaveSummary | null;
 }
 
@@ -983,7 +984,7 @@ export function SetupView(props: SetupViewProps) {
         </div>
       </div>
 
-      {props.corruptSavePresent && (
+      {(props.corruptSavePresent || props.saveRecoveryPresent) && (
         <section className="start-recovery-strip" role="status" aria-label="Save recovery notice">
           <div>
             <strong>Recovery available.</strong>

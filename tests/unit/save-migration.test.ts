@@ -29,6 +29,16 @@ class MemoryStorage {
   }
 }
 
+class BackupWriteFailureStorage extends MemoryStorage {
+  override setItem(key: string, value: string) {
+    if (key === CORRUPT_STORAGE_KEY) {
+      throw new Error("backup storage unavailable");
+    }
+
+    super.setItem(key, value);
+  }
+}
+
 describe("career save migration", () => {
   function straightGamesResult(winner: Side): MatchResult {
     return {
@@ -666,6 +676,25 @@ describe("career save migration", () => {
     expect(loaded.saveRecovery?.backupKey).toBe(CORRUPT_STORAGE_KEY);
     expect(storage.getItem(STORAGE_KEY)).toBeNull();
     expect(storage.getItem(CORRUPT_STORAGE_KEY)).toBe(raw);
+  });
+
+  it("preserves the original malformed save when quarantine storage is unavailable", () => {
+    const raw = "{not-json";
+    const storage = new BackupWriteFailureStorage();
+    storage.setItem(STORAGE_KEY, raw);
+
+    const loaded = loadPersistedFromStorage(storage, () => 9106);
+
+    expect(loaded.saveRecovery).toMatchObject({
+      reason: "malformed_json",
+      disposition: "source_preserved",
+      backupKey: STORAGE_KEY
+    });
+    expect(loaded.saveRecovery?.message).toContain("was not deleted");
+    expect(loaded.activeSavePresent).toBe(true);
+    expect(loaded.corruptSavePresent).toBe(false);
+    expect(storage.getItem(STORAGE_KEY)).toBe(raw);
+    expect(storage.getItem(CORRUPT_STORAGE_KEY)).toBeNull();
   });
 
   it("quarantines schema-invalid saves and exposes a recovery notice", () => {

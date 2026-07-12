@@ -50,12 +50,13 @@ Flow:
 ```text
 read badminton-manager-save
   -> no value: clean default state
-  -> malformed JSON: quarantine raw payload, clear active key, open safe default state
-  -> schema invalid: quarantine raw payload, clear active key, open safe default state
+  -> malformed JSON: verify quarantine write, then clear active key and open safe state
+  -> schema invalid: verify quarantine write, then clear active key and open safe state
+  -> quarantine unavailable: preserve the original active key and expose recovery attention
   -> schema valid: migrate payload, infer phase, hydrate runtime state
 ```
 
-Quarantine writes the raw invalid active save to `badminton-manager-save-corrupt` and removes `badminton-manager-save` so the app can boot safely.
+Quarantine writes the raw invalid active save to `badminton-manager-save-corrupt`, reads it back, and only then attempts to remove `badminton-manager-save`. If the backup write fails or cannot be verified, the original active entry is preserved in place. The runtime does not hydrate the invalid payload, but Save Manager names the preserved source and leaves it available for explicit deletion or future recovery tooling.
 
 ## Migration Responsibilities
 
@@ -139,7 +140,7 @@ Malformed or schema-invalid imports must never:
 - mutate the live Zustand state
 - move the app into a migrated preview as if it had been confirmed
 
-Boot-time corrupted active saves are different: the app quarantines the raw active payload, clears the active key, and opens safely because the active slot itself cannot be trusted.
+Boot-time corrupted active saves are different: the app hydrates a safe runtime state because the payload cannot be trusted. It may clear the active key only after a byte-for-byte quarantine copy has been verified. If backup storage is unavailable, preserving the original entry takes precedence over clearing the broken slot.
 
 ## Test Expectations
 
@@ -150,6 +151,7 @@ When save shape, migration, import, or persistence behavior changes, tests shoul
 - migration defaults for newly added required fields
 - local boot quarantine for malformed JSON
 - local boot quarantine for schema-invalid active saves
+- quarantine-write failure preserving the original active payload
 - import preview of valid current and legacy saves
 - malformed import rejection without active/corrupt key mutation
 - schema-invalid import rejection without active/corrupt key mutation
