@@ -1,6 +1,14 @@
 import { seededPlayers, type SeededPlayer } from "../content/players";
 import type { Player } from "../core/models";
-import { clamp, type CareerState, type RankingEntry, type RivalCircuitState, type WorldPlayerRecord, type WorldRegistryState } from "./models";
+import {
+  clamp,
+  type AthleteCareerState,
+  type CareerState,
+  type RankingEntry,
+  type RivalCircuitState,
+  type WorldPlayerRecord,
+  type WorldRegistryState
+} from "./models";
 
 const minimumActiveWorldSize = 32;
 const annualIntakeSize = 2;
@@ -240,6 +248,46 @@ export function protectedWorldPlayerIds(state: Pick<CareerState, "program" | "at
     ...state.athletes.map((athlete) => athlete.playerId),
     ...state.ecosystem.recruitment.roster.map((slot) => slot.athleteId)
   ]);
+}
+
+export function applyWorldProgressionToCareerAthletes(args: {
+  athletes: AthleteCareerState[];
+  previousWorld: WorldRegistryState;
+  nextWorld: WorldRegistryState;
+}) {
+  const previousById = new Map(args.previousWorld.players.map((record) => [record.player.id, record.player]));
+  const nextById = new Map(args.nextWorld.players.map((record) => [record.player.id, record.player]));
+
+  return args.athletes.map((athlete) => {
+    const previous = previousById.get(athlete.playerId);
+    const next = nextById.get(athlete.playerId);
+
+    if (!previous || !next) {
+      return athlete;
+    }
+
+    return {
+      ...athlete,
+      development: {
+        ...athlete.development,
+        smash: clamp(
+          athlete.development.smash + next.ratings.technical.smash - previous.ratings.technical.smash,
+          1,
+          100
+        ),
+        stamina: clamp(
+          athlete.development.stamina + next.ratings.physical.stamina - previous.ratings.physical.stamina,
+          1,
+          100
+        ),
+        composure: clamp(
+          athlete.development.composure + next.ratings.mental.composure - previous.ratings.mental.composure,
+          1,
+          100
+        )
+      }
+    };
+  });
 }
 
 export function advanceWorldRegistry(args: {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { seededPlayers } from "../../game/content/players";
+import { careerPlayerForMatch } from "../../game/career/development";
 import { startNextSeason } from "../../game/career/lifecycle";
 import { createInitialCareerState } from "../../game/career/state";
 import {
@@ -161,6 +162,60 @@ describe("deterministic career world", () => {
     expect(new Set(activeWorldSeededPlayers(season2028).map((entry) => entry.player.id))).toEqual(
       new Set(season2028.rankings.map((entry) => entry.playerId))
     );
+  });
+
+  it("applies world progression deltas without erasing managed training gains", () => {
+    const initial = createInitialCareerState(seededPlayers[0].player.id, 77_007);
+    const managedId = initial.program.managedPlayerId;
+    const trained = {
+      ...initial,
+      athletes: initial.athletes.map((athlete) => ({
+        ...athlete,
+        development: {
+          ...athlete.development,
+          smash: athlete.development.smash + 4,
+          stamina: athlete.development.stamina + 3,
+          composure: athlete.development.composure + 2
+        }
+      }))
+    };
+    const review = {
+      id: "season-review:2026",
+      seasonId: "2026",
+      createdAt: "2026-12-31",
+      startDate: trained.seasonStartedAt,
+      endDate: "2026-12-31",
+      managedPlayerId: managedId,
+      events: trained.events,
+      finalRankings: trained.rankings.map((entry) => ({
+        playerId: entry.playerId,
+        rank: entry.rank,
+        points: entry.points,
+        seasonPoints: entry.seasonPoints
+      })),
+      record: { played: 0, wins: 0, losses: 0, titles: 0, runnerUps: 0, enteredEvents: 0, completedEvents: 0 },
+      economy: { openingCash: trained.economy.cash, closingCash: trained.economy.cash, netCash: 0 },
+      source: "resolved" as const
+    };
+    const previousPlayer = trained.world.players.find((record) => record.player.id === managedId)!.player;
+    const previousAthlete = trained.athletes[0]!;
+    const next = startNextSeason({ ...trained, seasonReviews: [review] });
+    const nextPlayer = next.world.players.find((record) => record.player.id === managedId)!.player;
+    const nextAthlete = next.athletes[0]!;
+    const projected = careerPlayerForMatch(nextPlayer, nextAthlete);
+
+    expect(nextAthlete.development.smash).toBe(
+      previousAthlete.development.smash + nextPlayer.ratings.technical.smash - previousPlayer.ratings.technical.smash
+    );
+    expect(nextAthlete.development.stamina).toBe(
+      previousAthlete.development.stamina + nextPlayer.ratings.physical.stamina - previousPlayer.ratings.physical.stamina
+    );
+    expect(nextAthlete.development.composure).toBe(
+      previousAthlete.development.composure + nextPlayer.ratings.mental.composure - previousPlayer.ratings.mental.composure
+    );
+    expect(projected.ratings.technical.smash).toBe(nextAthlete.development.smash);
+    expect(projected.ratings.physical.stamina).toBe(nextAthlete.development.stamina);
+    expect(projected.ratings.mental.composure).toBe(nextAthlete.development.composure);
   });
 
   it("round-trips current saves and hydrates pre-world v13 saves", () => {

@@ -30,6 +30,7 @@ import {
   rankingsByCurrentRank
 } from "../../game/career/rankings";
 import { createInitialCareerState, managedAthlete } from "../../game/career/state";
+import { advanceWorldRegistry, protectedWorldPlayerIds } from "../../game/career/world";
 import {
   createEventFieldSnapshot,
   deterministicUniverseEntrants,
@@ -732,6 +733,54 @@ describe("fictional career calendar and ranking model", () => {
       opponentLabel: seededPlayers.find((entry) => entry.player.id === nextOpponentId)!.player.name,
       result: null
     });
+  });
+
+  it("uses the career-world identity for a generated confirmed opponent", () => {
+    const initial = createInitialCareerState(seededPlayers[0].player.id, 6_819);
+    const event = getCareerEvent(initial.events, "metro-open-300")!;
+    const world = advanceWorldRegistry({
+      registry: initial.world,
+      careerSeed: initial.seed,
+      seasonId: "2027",
+      date: "2027-01-01",
+      protectedPlayerIds: protectedWorldPlayerIds(initial)
+    });
+    const generated = world.players.find((record) => record.origin === "generated_intake")!;
+    const tournament = {
+      ...createTournament(seededPlayers, initial.program.managedPlayerId, 6_819),
+      id: event.id,
+      name: event.name,
+      tier: event.tier
+    };
+    const managedMatch = tournament.rounds[0]!.matches.find((match) => match.managed)!;
+    const careerTournament = {
+      ...tournament,
+      rounds: tournament.rounds.map((round) => ({
+        ...round,
+        matches: round.matches.map((match) => match.id === managedMatch.id
+          ? {
+              ...match,
+              sideAId: match.sideAId === initial.program.managedPlayerId ? match.sideAId : generated.player.id,
+              sideBId: match.sideBId === initial.program.managedPlayerId ? match.sideBId : generated.player.id
+            }
+          : match)
+      }))
+    };
+    const career = {
+      ...initial,
+      world,
+      date: event.startDate,
+      activeEventId: event.id,
+      enteredEventIds: [event.id],
+      stage: "pre_match" as const
+    };
+
+    expect(calendarCommitmentsForCareer({ career, tournament: careerTournament }))
+      .toContainEqual(expect.objectContaining({
+        eventId: event.id,
+        opponentId: generated.player.id,
+        opponentLabel: generated.player.name
+      }));
   });
 
   it("builds a single visible calendar month view without speculative future rounds", () => {

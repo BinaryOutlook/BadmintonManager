@@ -16,6 +16,7 @@ import {
   managerScheduleMonthForCareer
 } from "../../game/career/schedule";
 import { createInitialCareerState } from "../../game/career/state";
+import { advanceWorldRegistry, protectedWorldPlayerIds } from "../../game/career/world";
 import { trainingPlans } from "../../game/career/training";
 import {
   createTournament,
@@ -138,6 +139,47 @@ function reverseScheduleSources(career: CareerState): CareerState {
 }
 
 describe("unified manager schedule", () => {
+  it("uses career-world names for generated scouting commitments", () => {
+    const initial = createInitialCareerState(seededPlayers[0].player.id, 9_900);
+    const world = advanceWorldRegistry({
+      registry: initial.world,
+      careerSeed: initial.seed,
+      seasonId: "2027",
+      date: "2027-01-01",
+      protectedPlayerIds: protectedWorldPlayerIds(initial)
+    });
+    const generated = world.players.find((record) => record.origin === "generated_intake")!;
+    const assignment: ScoutAssignment = {
+      id: "assignment-generated-world-player",
+      subjectId: generated.player.id,
+      subjectType: "opponent",
+      assignedScoutId: "baseline-network",
+      cost: 1_200,
+      startedAt: "2027-01-01",
+      dueAt: "2027-01-03",
+      status: "pending",
+      scope: "profile"
+    };
+    const career: CareerState = {
+      ...initial,
+      seasonId: "2027",
+      date: "2027-01-01",
+      world,
+      ecosystem: {
+        ...initial.ecosystem,
+        scouting: { ...initial.ecosystem.scouting, assignments: [assignment] }
+      }
+    };
+
+    const entry = managerScheduleEntriesForCareer({ career, tournament: null })
+      .find((candidate) => candidate.id === `scouting:${assignment.id}:due`);
+
+    expect(entry).toMatchObject({
+      title: `Scout report · ${generated.player.name}`,
+      subjectLabel: generated.player.name
+    });
+  });
+
   it("aggregates every manager-facing category with semantic destinations and honest travel copy", () => {
     const { career, tournament } = compositeScheduleState();
     const entries = managerScheduleEntriesForCareer({ career, tournament });

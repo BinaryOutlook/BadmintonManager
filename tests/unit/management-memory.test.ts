@@ -15,6 +15,7 @@ import {
 import type { CareerState, PostMatchReport } from "../../game/career/models";
 import { scheduleRosterPreparation } from "../../game/career/program";
 import { createInitialCareerState } from "../../game/career/state";
+import { advanceWorldRegistry, protectedWorldPlayerIds } from "../../game/career/world";
 
 const RECRUIT_ID = "cand-arya-prakash";
 
@@ -258,6 +259,33 @@ describe("management memory read models", () => {
       destination: { kind: "scouting" }
     });
     expect(archived?.evidence).toContain(`Expires ${liveReport.expiresAt}`);
+  });
+
+  it("keeps generated world-player names in Inbox and scouting Reports", () => {
+    const initial = createInitialCareerState(seededPlayers[0].player.id, 9_968);
+    const world = advanceWorldRegistry({
+      registry: initial.world,
+      careerSeed: initial.seed,
+      seasonId: "2027",
+      date: "2027-01-01",
+      protectedPlayerIds: protectedWorldPlayerIds(initial)
+    });
+    const generated = world.players.find((record) => record.origin === "generated_intake")!;
+    const advanced = { ...initial, world, seasonId: "2027", date: "2027-01-01" };
+    const assigned = commissionScoutReport(advanced, generated.player.id, "opponent");
+    const assignment = assigned.ecosystem.scouting.assignments.find(
+      (entry) => entry.subjectId === generated.player.id
+    )!;
+    const inboxItem = careerInboxItems(assigned).find(
+      (item) => item.id === `inbox:scouting:${assignment.id}`
+    );
+    const reported = resolveDueScoutReports({ ...assigned, date: assignment.dueAt });
+    const archiveItem = careerArchiveReports(reported).find(
+      (report) => report.category === "scouting" && report.title.includes(generated.player.name)
+    );
+
+    expect(inboxItem?.detail).toContain(generated.player.name);
+    expect(archiveItem?.title).toContain(generated.player.name);
   });
 
   it("builds Reports from durable match history without a lastMatchReport", () => {

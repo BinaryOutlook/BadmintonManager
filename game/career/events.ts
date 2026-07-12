@@ -10,7 +10,7 @@ import {
 } from "./calendar";
 import { managedMatchScheduleForEvent, scheduledDateForRound } from "./matchSchedule";
 import { normalizeCareerTierLabel } from "./models";
-import { playerMap } from "../content/players";
+import { careerWorldPlayerMap } from "./world";
 import type {
   CareerEventBracketSnapshot,
   CareerEventDefinition,
@@ -868,12 +868,12 @@ const calendarRoundOrder = Object.fromEntries(
   calendarCommitmentRounds.map((round, index) => [round, index])
 ) as Record<RoundName, number>;
 
-function playerLabel(playerId: string | null) {
+function playerLabel(career: CareerState, playerId: string | null) {
   if (!playerId) {
     return "TBD";
   }
 
-  return playerMap[playerId]?.name ?? playerId;
+  return careerWorldPlayerMap(career)[playerId]?.name ?? playerId;
 }
 
 function isManagedCareerMatchRecord(career: CareerState, record: CareerState["matchHistory"][number]) {
@@ -896,12 +896,13 @@ function completedCommitmentForRecord(career: CareerState, record: CareerState["
     eventName: record.eventName,
     round: record.round,
     opponentId,
-    opponentLabel: playerLabel(opponentId),
+    opponentLabel: playerLabel(career, opponentId),
     result: record.winnerId === managedPlayerId ? "W" : "L"
   };
 }
 
 function scheduledCommitmentForRound(args: {
+  career: CareerState;
   event: CareerEventDefinition;
   round: RoundName;
   opponentId: string | null;
@@ -912,7 +913,7 @@ function scheduledCommitmentForRound(args: {
     eventName: args.event.name,
     round: args.round,
     opponentId: args.opponentId,
-    opponentLabel: playerLabel(args.opponentId),
+    opponentLabel: playerLabel(args.career, args.opponentId),
     result: null
   };
 }
@@ -991,7 +992,7 @@ export function timelineCommitmentsForCareer(args: {
         tournament: args.tournament
       });
 
-      return [scheduledCommitmentForRound({ event, round, opponentId })];
+      return [scheduledCommitmentForRound({ career: args.career, event, round, opponentId })];
     });
   });
 
@@ -1042,7 +1043,7 @@ export function calendarCommitmentsForCareer(args: {
       tournament: args.tournament
     });
 
-    return [scheduledCommitmentForRound({ event, round: confirmedRound, opponentId })];
+    return [scheduledCommitmentForRound({ career: args.career, event, round: confirmedRound, opponentId })];
   });
 
   return sortCalendarCommitments([...completedCommitments, ...scheduledCommitments]);

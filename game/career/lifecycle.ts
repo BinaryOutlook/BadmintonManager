@@ -7,6 +7,7 @@ import { syncManagedAthleteFromRankings } from "./state";
 import { refreshAssistantAdvice } from "./tactics";
 import {
   advanceWorldRegistry,
+  applyWorldProgressionToCareerAthletes,
   ensureWorldRegistry,
   protectedWorldPlayerIds,
   syncRivalCircuitWithWorld
@@ -212,13 +213,14 @@ export function startNextSeason(state: CareerState): CareerState {
   const events = generateCareerSeasonEvents(seasonId);
   const openingEventId = events[0]?.id ?? `${seasonId}:opening-event`;
   const protectedPlayerIds = protectedWorldPlayerIds(state);
+  const previousWorld = ensureWorldRegistry({
+    registry: state.world,
+    seed: state.seed,
+    seasonId: state.seasonId,
+    date: state.seasonStartedAt
+  });
   const world = advanceWorldRegistry({
-    registry: ensureWorldRegistry({
-      registry: state.world,
-      seed: state.seed,
-      seasonId: state.seasonId,
-      date: state.seasonStartedAt
-    }),
+    registry: previousWorld,
     careerSeed: state.seed,
     seasonId,
     date: seasonStartedAt,
@@ -241,6 +243,11 @@ export function startNextSeason(state: CareerState): CareerState {
     preparationSchedule: [],
     selectedTrainingPlanId: null,
     lastPreMatchBrief: null,
+    athletes: applyWorldProgressionToCareerAthletes({
+      athletes: state.athletes,
+      previousWorld,
+      nextWorld: world
+    }),
     world,
     rivals: {
       ...state.rivals,

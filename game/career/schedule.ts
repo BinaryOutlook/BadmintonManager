@@ -1,4 +1,3 @@
-import { playerMap } from "../content/players";
 import type { RoundName, TournamentState } from "../tournament/tournament";
 import {
   addCalendarMonths,
@@ -17,6 +16,7 @@ import type {
   ScoutAssignment,
   ScheduledPreparationBlock
 } from "./models";
+import { careerWorldPlayerMap } from "./world";
 
 export type ManagerScheduleStatus =
   | "scheduled"
@@ -256,7 +256,7 @@ function normalizeManagerScheduleEntries(entries: ManagerScheduleEntry[]): Manag
 }
 
 function athleteLabel(career: CareerState, athleteId: string) {
-  return playerMap[athleteId]?.name ??
+  return careerWorldPlayerMap(career)[athleteId]?.name ??
     career.ecosystem.recruitment.roster.find((entry) => entry.athleteId === athleteId)?.name ??
     career.ecosystem.recruitment.candidates.find((entry) => entry.id === athleteId)?.name ??
     career.ecosystem.academy.prospects.find((entry) => entry.id === athleteId)?.name ??
@@ -266,7 +266,7 @@ function athleteLabel(career: CareerState, athleteId: string) {
 function scoutingSubjectLabel(career: CareerState, subjectId: string) {
   return career.ecosystem.recruitment.candidates.find((entry) => entry.id === subjectId)?.name ??
     career.ecosystem.academy.prospects.find((entry) => entry.id === subjectId)?.name ??
-    playerMap[subjectId]?.name ??
+    careerWorldPlayerMap(career)[subjectId]?.name ??
     career.ecosystem.recruitment.roster.find((entry) => entry.athleteId === subjectId)?.name ??
     subjectId;
 }

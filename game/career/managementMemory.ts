@@ -1,8 +1,8 @@
-import { playerMap } from "../content/players";
 import { addDays, daysBetween } from "./calendar";
 import { eventEligibilityFor } from "./events";
 import type { CareerState, TournamentAddress } from "./models";
 import { programTasksForCareer } from "./program";
+import { careerWorldPlayerMap } from "./world";
 
 export type ManagementDestination =
   | { kind: "review" }
@@ -65,7 +65,7 @@ function compareText(left: string, right: string) {
 }
 
 function rosterName(state: CareerState, athleteId: string) {
-  return playerMap[athleteId]?.name ??
+  return careerWorldPlayerMap(state)[athleteId]?.name ??
     state.ecosystem.recruitment.roster.find((slot) => slot.athleteId === athleteId)?.name ??
     athleteId;
 }
