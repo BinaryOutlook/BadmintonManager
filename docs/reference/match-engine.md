@@ -32,6 +32,20 @@ Current implementation has two fidelity paths:
 - `detailed`: the point-by-point rally simulator used by managed live matches
 - `quick`: a calibrated point simulator used by non-managed tournament matches
 
+Career-managed matches may carry an optional versioned `MatchTactic.advancedIntent` snapshot. `game/core/tactics.ts` resolves its exact sliders, rally intent, and modules into bounded modifiers shared by detailed and quick simulation. Tactics without that field retain the legacy categorical path. The resolver changes weights and scores without adding RNG draws, so identical match inputs remain deterministic.
+
+The exact snapshot affects:
+
+- shot-family weights
+- target-zone weights
+- target difficulty and error exposure
+- placement pressure and attack bonus
+- rally continuation stress and expected rally length
+- stamina expenditure
+- quick-simulation point edge and match-shape summaries
+
+Between-set tempo talks update the live snapshot rather than rereading career planning state. Saved matches therefore resume from the same tactical facts and deterministic RNG state.
+
 `simulateMatch()` remains detailed for compatibility. New code should use an explicit fidelity
 dispatcher when choosing between active and background match resolution.
 

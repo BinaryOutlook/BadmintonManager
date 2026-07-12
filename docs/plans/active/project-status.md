@@ -95,6 +95,7 @@ What is now stable:
 - TIX-022 now turns documentation into maintenance infrastructure with a true `docs/README.md` map, durable mechanics/code/save/workflow references, refreshed architecture overview, compact `AGENTS.md` documentation discipline, and ADR-003
 - TIX-023 replaces static ranking points with deterministic bootstrap ranking results, rolling 52-week/best-10 snapshots, version `11` / career `9` migration, and rank-seeded event fields with non-entry and alternates.
 - the frontend now has an imagegen-guided court-console redesign layer across launch, athlete selection, career shell, Portal, Calendar, Rankings, Squad, Player Profile, Live Match, and Save Manager surfaces, with a compact brand lockup, calmer court-line atmosphere, tighter management cards/tables, and updated bounded-viewport proof
+- Version Two tactical fidelity now snapshots exact career sliders, rally intent, and modules into live/save match input; a shared bounded resolver drives detailed and quick match shape, live plan/module evidence, and state-derived projections while legacy tactics retain a neutral compatibility path
 
 ## Completed
 
@@ -197,6 +198,7 @@ What is now stable:
 - [x] established the TIX-022 documentation system and maintainer harness with linked subsystem references, save/persistence invariants, source-structure guidance, maintainer workflow rules, and ADR-003
 - [x] implemented TIX-027 Tournament Page Optimization with draw-first Tournament Home ordering, collapsed event notes, compact two-row bracket score cells, deterministic abbreviation/collision handling, selected-match detail, and 32-ready bracket layout coverage
 - [x] implemented the imagegen-guided frontend rework as a shared court-console visual system, including shell/topbar markup, global styling, responsive dense-page constraints, updated unit/e2e expectations, and desktop/mobile screenshot proof
+- [x] implemented the first Version Two tactical-fidelity slice with exact intent snapshots, module-specific court/shot evidence, same-category slider effects, team-talk compatibility, mid-match save round trips, calibration proof, and live Match Command Center plan markers
 
 ## In Progress
 

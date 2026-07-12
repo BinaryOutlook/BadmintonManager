@@ -41,6 +41,8 @@ PersistedSave = {
 };
 ```
 
+`MatchTactic` may contain an optional version-1 `advancedIntent` snapshot for career matches. The field carries exact tactic sliders, rally intent, and modules through active-match saves. It remains optional so old version-11 mid-match saves and compact quick/autoplay tactics load without a top-level save-version bump. JSON round-trip tests verify that a resumed exact-intent session produces the same next deterministic point.
+
 ## Boot Load Behavior
 
 `loadPersistedFromStorage()` in `game/store/store.ts` is the boot-time local-storage gate.

@@ -116,6 +116,34 @@ describe("advanced tactic runtime profile", () => {
     expect(safeLift.riskDifficulty).toBeLessThan(neutral.riskDifficulty);
   });
 
+  it("maps every exact slider and rally intent to a bounded runtime direction", () => {
+    const neutral = deriveTacticRuntimeProfile(advancedTactic({
+      tempo: 50,
+      rearCourtPressure: 50,
+      netPriority: 50,
+      riskTolerance: 50,
+      rallyLengthIntent: "balanced"
+    }));
+    const faster = deriveTacticRuntimeProfile(advancedTactic({ tempo: 80 }));
+    const deeper = deriveTacticRuntimeProfile(advancedTactic({ rearCourtPressure: 80 }));
+    const tighterNet = deriveTacticRuntimeProfile(advancedTactic({ netPriority: 80 }));
+    const riskier = deriveTacticRuntimeProfile(advancedTactic({ riskTolerance: 80 }));
+    const extended = deriveTacticRuntimeProfile(advancedTactic({ rallyLengthIntent: "extend" }));
+    const shortened = deriveTacticRuntimeProfile(advancedTactic({ rallyLengthIntent: "shorten" }));
+
+    expect(faster.attackBonus).toBeGreaterThan(neutral.attackBonus);
+    expect(faster.staminaBurnMultiplier).toBeGreaterThan(neutral.staminaBurnMultiplier);
+    expect(deeper.backZoneWeight).toBeGreaterThan(neutral.backZoneWeight);
+    expect(deeper.shotWeightDeltas.smash).toBeGreaterThan(neutral.shotWeightDeltas.smash);
+    expect(tighterNet.frontZoneWeight).toBeGreaterThan(neutral.frontZoneWeight);
+    expect(tighterNet.shotWeightDeltas.net).toBeGreaterThan(neutral.shotWeightDeltas.net);
+    expect(riskier.riskDifficulty).toBeGreaterThan(neutral.riskDifficulty);
+    expect(extended.expectedRallyDelta).toBeGreaterThan(neutral.expectedRallyDelta);
+    expect(extended.rallyStressMultiplier).toBeLessThan(neutral.rallyStressMultiplier);
+    expect(shortened.expectedRallyDelta).toBeLessThan(neutral.expectedRallyDelta);
+    expect(shortened.rallyStressMultiplier).toBeGreaterThan(neutral.rallyStressMultiplier);
+  });
+
   it("produces module-specific court and shot evidence across a fixed seed band", () => {
     const aggregate = (tactic: MatchTactic) => {
       let actorShots = 0;
