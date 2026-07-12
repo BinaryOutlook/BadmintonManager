@@ -172,7 +172,8 @@ Calendar -> one-month manager diary
 
 - `Timeline` is the event ledger. It exposes exactly the primary tabs `Upcoming` and `Past Events`, with `Upcoming`
   first and selected by default.
-- `Upcoming` preserves the compact paged event schedule and adds a chronological manager-commitment ledger.
+- `Upcoming` preserves the compact paged event schedule and adds a chronological manager-commitment ledger for the
+  next 30 days; the month Calendar remains the longer-range diary.
 - `Past Events` is a selectable Timeline tab, not a lower passive section, and contains completed or archived event rows.
 - `Calendar` is a standalone month grid of confirmed manager commitments only.
 - `Calendar` must not render as a Timeline or Schedule tab. It renders exactly one visible month at a time with
@@ -199,6 +200,9 @@ Every entry carries a stable semantic id, date, category, status, readable title
 Destinations route to tournament, scheduled match, training, scouting, or facilities surfaces; the read model never
 mutates career state. Duplicate source facts are resolved deterministically, with terminal outcomes taking precedence
 over stale pending rows. Dates use inclusive starts and exclusive ends for range and month queries.
+
+A confirmed match becomes a `scheduled_match` destination only when it is due or overdue and actually playable.
+Future confirmed rounds route to tournament context, so the UI never presents a match action that the store must reject.
 
 Past entry/draw deadlines are not reconstructed after their source stops emitting them. The current save schema does
 not preserve enough historical eligibility evidence to distinguish a relevant missed deadline from an event that was

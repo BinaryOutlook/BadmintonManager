@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from "react";
+import { type KeyboardEvent, type ReactNode, useState } from "react";
 import { playerMap } from "../game/content/players";
 import { addCalendarMonths, addDays, buildWeek, calendarMonthCursorForDate, daysBetween } from "../game/career/calendar";
 import type { AdvanceDayForecast } from "../game/career/dayResolution";
@@ -13,14 +13,12 @@ import {
   eventStatusFor,
   getCareerEvent,
   getNextEvent,
-  groupCalendarCommitmentsByDate,
   paginateCalendarItems,
   pastCalendarRecords,
   scheduleCalendarMonthForCareer,
-  timelineCommitmentsForCareer,
   upcomingCalendarEvents
 } from "../game/career/events";
-import type { CalendarMonthCursor, CalendarMonthViewModel, ScheduleCalendarEntry } from "../game/career/events";
+import type { CalendarMonthCursor, CalendarMonthViewModel } from "../game/career/events";
 import { canCompeteWithInjury, canTrainWithInjury } from "../game/career/health";
 import { rankingsByCurrentRank } from "../game/career/rankings";
 import type {
@@ -39,6 +37,14 @@ import type {
 import { managedMatchScheduleForEvent } from "../game/career/matchSchedule";
 import { effectiveEventEntryCosts, facilityModifiers } from "../game/career/facilitiesMedia";
 import { previewPreparationPlan, scheduledPreparationForAthlete } from "../game/career/preparation";
+import {
+  groupManagerScheduleEntriesByDate,
+  managerScheduleEntriesBetween,
+  managerScheduleMonthForCareer,
+  type ManagerScheduleDateGroup,
+  type ManagerScheduleDestination,
+  type ManagerScheduleEntry
+} from "../game/career/schedule";
 import { managedAthlete } from "../game/career/state";
 import { activeAdvancedTacticPlan, buildPreMatchPlanningBridge, calculateTacticEffectProfile, tacticPlanToMatchTactic } from "../game/career/tactics";
 import { trainingPlans } from "../game/career/training";
@@ -64,6 +70,7 @@ interface CareerPageProps {
   onStartCareer: () => void;
   onOpenTraining: () => void;
   onOpenCalendar: () => void;
+  onOpenTimeline: () => void;
   onOpenTournamentHome: (address: TournamentAddress) => void;
   onOpenHome: () => void;
   onOpenLiveMatch: () => void;
@@ -443,47 +450,88 @@ function CalendarPager(props: {
 
 const scheduleCalendarWeekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 
-function scheduleCalendarEntryTitle(entry: ScheduleCalendarEntry) {
-  if (entry.kind === "deadline") {
-    return `${entry.label}: ${entry.eventName}`;
-  }
+type ManagerScheduleNavigationProps = Pick<
+  CareerPageProps,
+  | "onOpenTournamentHome"
+  | "onOpenScheduledCareerMatch"
+  | "onOpenTraining"
+  | "onOpenScouting"
+  | "onOpenFacilities"
+>;
 
-  return `${entry.eventName}: ${calendarRoundLabel(entry.round)}${entry.result ? ` (${entry.result})` : ""}`;
+function readableScheduleToken(value: string) {
+  return value
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
-function scheduleCalendarEntryDetail(entry: ScheduleCalendarEntry) {
-  if (entry.kind === "deadline") {
-    return entry.deadlineType === "entry" ? "Entry decision" : "Draw timing";
-  }
-
-  if (entry.result) {
-    return `${entry.result} vs ${entry.opponentLabel}`;
-  }
-
-  return `vs ${entry.opponentLabel}`;
+function managerScheduleCategoryClass(entry: ManagerScheduleEntry) {
+  return `manager-schedule-category-${entry.category}`;
 }
 
-function scheduleCalendarBadgeClass(entry: ScheduleCalendarEntry) {
-  if (entry.kind === "deadline") {
-    return "schedule-calendar-badge schedule-calendar-badge-deadline";
-  }
+function managerScheduleStatusClass(entry: ManagerScheduleEntry) {
+  return `manager-schedule-status-${entry.status}`;
+}
 
-  if (entry.state === "completed") {
-    return `schedule-calendar-badge schedule-calendar-badge-completed schedule-calendar-badge-result-${entry.result?.toLowerCase() ?? "unknown"}`;
+function managerScheduleActionLabel(destination: ManagerScheduleDestination) {
+  switch (destination?.kind) {
+    case "tournament":
+      return "Open event";
+    case "scheduled_match":
+      return "Open match";
+    case "training":
+      return "Open training";
+    case "scouting":
+      return "Open scouting";
+    case "facilities":
+      return "Open facilities";
+    case undefined:
+      return null;
   }
+}
 
-  return "schedule-calendar-badge schedule-calendar-badge-confirmed";
+function openManagerScheduleDestination(
+  props: ManagerScheduleNavigationProps,
+  destination: ManagerScheduleDestination
+) {
+  switch (destination?.kind) {
+    case "tournament":
+      props.onOpenTournamentHome({ seasonId: destination.seasonId, eventId: destination.eventId });
+      return;
+    case "scheduled_match":
+      props.onOpenScheduledCareerMatch(destination.eventId);
+      return;
+    case "training":
+      props.onOpenTraining();
+      return;
+    case "scouting":
+      props.onOpenScouting();
+      return;
+    case "facilities":
+      props.onOpenFacilities();
+      return;
+    case undefined:
+      return;
+  }
+}
+
+function managerScheduleAccessibleAction(entry: ManagerScheduleEntry) {
+  const action = managerScheduleActionLabel(entry.destination);
+  return action
+    ? `${action}: ${entry.title}, ${readableScheduleToken(entry.category)}, ${readableScheduleToken(entry.status)}, ${entry.date}`
+    : null;
 }
 
 function ScheduleCalendarGrid(props: {
   career: CareerState;
   month: CalendarMonthViewModel;
+  managerGroups: ManagerScheduleDateGroup[];
   monthControls?: ReactNode;
-  onOpenScheduledCareerMatch: (eventId?: string) => void;
-  onOpenTournamentHome: (address: TournamentAddress) => void;
-}) {
+} & ManagerScheduleNavigationProps) {
+  const entriesByDate = new Map(props.managerGroups.map((group) => [group.date, group.entries]));
+
   return (
-    <div className="schedule-calendar-months" aria-label="Confirmed schedule calendar month">
+    <div className="schedule-calendar-months" aria-label="Manager schedule calendar month">
       <section className="schedule-calendar-month" aria-label={`Calendar for ${props.month.label}`}>
         <header className="schedule-calendar-month-header">
           <h2>{props.month.label}</h2>
@@ -495,54 +543,67 @@ function ScheduleCalendarGrid(props: {
           ))}
         </div>
         <div className="schedule-calendar-grid" role="grid" aria-label={`Calendar for ${props.month.label}`}>
-          {props.month.weeks.flatMap((week) => week.days).map((cell) => {
-            const className = [
-              "schedule-calendar-cell",
-              cell.inVisibleMonth ? "" : "schedule-calendar-cell-muted",
-              cell.isCareerToday ? "schedule-calendar-cell-today" : ""
-            ].filter(Boolean).join(" ");
+          {props.month.weeks.map((week, weekIndex) => (
+            <div className="schedule-calendar-week" role="row" key={`${props.month.cursor}-week-${weekIndex}`}>
+              {week.days.map((cell) => {
+                const entries = cell.inVisibleMonth ? entriesByDate.get(cell.date) ?? [] : [];
+                const className = [
+                  "schedule-calendar-cell",
+                  cell.inVisibleMonth ? "" : "schedule-calendar-cell-muted",
+                  cell.isCareerToday ? "schedule-calendar-cell-today" : ""
+                ].filter(Boolean).join(" ");
 
-            return (
-              <div
-                key={cell.date}
-                className={className}
-                role="gridcell"
-                aria-label={`${cell.date}, ${cell.entries.length} calendar item(s)${cell.isCareerToday ? ", career today" : ""}`}
-              >
-                <span className="schedule-calendar-day-number">{cell.dayNumber}</span>
-                {cell.entries.length > 0 ? (
-                  <div className="schedule-calendar-entry-stack">
-                    {cell.entries.map((entry) => {
-                      const title = scheduleCalendarEntryTitle(entry);
-                      const opensMatch =
-                        entry.kind === "match" && !entry.result && entry.date <= props.career.date;
+                return (
+                  <div
+                    key={cell.date}
+                    className={className}
+                    role="gridcell"
+                    aria-current={cell.isCareerToday ? "date" : undefined}
+                    aria-label={`${cell.date}, ${entries.length} manager schedule item(s)${cell.isCareerToday ? ", career today" : ""}`}
+                  >
+                    <span className="schedule-calendar-day-number">{cell.dayNumber}</span>
+                    {entries.length > 0 ? (
+                      <div className="schedule-calendar-entry-stack">
+                        {entries.map((entry) => {
+                          const badgeClassName = [
+                            "schedule-calendar-badge",
+                            managerScheduleCategoryClass(entry),
+                            managerScheduleStatusClass(entry)
+                          ].join(" ");
+                          const content = (
+                            <>
+                              <span className="schedule-calendar-badge-meta">
+                                {readableScheduleToken(entry.category)} · {readableScheduleToken(entry.status)}
+                              </span>
+                              <strong>{entry.title}</strong>
+                              <small>{entry.detail}</small>
+                            </>
+                          );
+                          const actionLabel = managerScheduleAccessibleAction(entry);
 
-                      return (
-                        <button
-                          key={entry.id}
-                          className={scheduleCalendarBadgeClass(entry)}
-                          type="button"
-                          aria-label={`${opensMatch ? "Open match detail" : "Open tournament home"} for ${title}`}
-                          onClick={() => {
-                            if (opensMatch) {
-                              props.onOpenScheduledCareerMatch(entry.eventId);
-                              return;
-                            }
-
-                            props.onOpenTournamentHome({ seasonId: props.career.seasonId, eventId: entry.eventId });
-                          }}
-                        >
-                          <span>{entry.kind === "match" ? entry.result ?? calendarRoundLabel(entry.round) : entry.label}</span>
-                          <strong>{entry.eventName}</strong>
-                          <small>{scheduleCalendarEntryDetail(entry)}</small>
-                        </button>
-                      );
-                    })}
+                          return actionLabel ? (
+                            <button
+                              key={entry.id}
+                              className={badgeClassName}
+                              type="button"
+                              aria-label={actionLabel}
+                              onClick={() => openManagerScheduleDestination(props, entry.destination)}
+                            >
+                              {content}
+                            </button>
+                          ) : (
+                            <div key={entry.id} className={badgeClassName} aria-label={`${entry.title}, ${entry.status}`}>
+                              {content}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : null}
                   </div>
-                ) : null}
-              </div>
-            );
-          })}
+                );
+              })}
+            </div>
+          ))}
         </div>
       </section>
     </div>
@@ -1006,7 +1067,7 @@ function CareerEmpty(props: Pick<CareerPageProps, "onStartCareer" | "saveRecover
 
 type HomeDecisionButtonKind =
   | "enter_event"
-  | "open_calendar"
+  | "open_timeline"
   | "open_training"
   | "open_program"
   | "open_rivals"
@@ -1049,9 +1110,8 @@ type HomeTaskRow = {
 
 type HomeCalendarDay = {
   date: string;
-  label: "Today" | "Entry closes" | "Travel" | "Match" | "Recovery" | "Training" | "Risk" | "Open";
-  detail: string;
-  eventId: string | null;
+  primaryEntry: ManagerScheduleEntry | null;
+  additionalCount: number;
   active: boolean;
 };
 
@@ -1281,7 +1341,7 @@ function buildHomeDecisionModel(args: {
             tone: schedule?.playable ? "required" : "primary",
             eventId: event.id
           },
-          { label: "Timeline", kind: "open_calendar", tone: "secondary" },
+          { label: "Timeline", kind: "open_timeline", tone: "secondary" },
           { label: "Match Planning", kind: "open_match_planning", tone: "secondary" },
           { label: "Training Desk", kind: "open_training", tone: "secondary" },
           { label: "Program Hub", kind: "open_program", tone: "secondary" },
@@ -1344,7 +1404,7 @@ function buildHomeDecisionModel(args: {
           eventId: event.id,
           disabled: false
         },
-        { label: "Timeline", kind: "open_calendar", tone: "secondary" },
+        { label: "Timeline", kind: "open_timeline", tone: "secondary" },
         { label: athlete.fatigue >= 60 ? "Recovery Desk" : "Training Desk", kind: "open_training", tone: "secondary" },
         { label: "Match Planning", kind: "open_match_planning", tone: "secondary" },
         { label: "Program Hub", kind: "open_program", tone: "secondary" },
@@ -1387,7 +1447,7 @@ function buildHomeDecisionModel(args: {
     ],
     recommendation: "Choose a training or scouting block, then advance when the topbar says the day is safe.",
     buttons: [
-      { label: "Timeline", kind: "open_calendar", tone: "primary" },
+      { label: "Timeline", kind: "open_timeline", tone: "primary" },
       { label: "Training Desk", kind: "open_training", tone: "secondary" },
       { label: "Program Hub", kind: "open_program", tone: "secondary" },
       { label: "Circuit Room", kind: "open_rivals", tone: "secondary" },
@@ -1468,104 +1528,26 @@ function homeTaskRowsFor(args: {
 function homeCalendarDaysFor(args: {
   career: CareerState;
   tournament: TournamentState | null;
-  athlete: ReturnType<typeof managedAthlete>;
 }): HomeCalendarDay[] {
   const week = buildWeek(args.career.date);
-  const plan = selectedTrainingPlan(args.career);
-  const commitmentsByDate = groupCalendarCommitmentsByDate(
-    timelineCommitmentsForCareer({
+  const groups = groupManagerScheduleEntriesByDate(
+    managerScheduleEntriesBetween({
       career: args.career,
-      tournament: args.tournament
+      tournament: args.tournament,
+      startDate: week[0],
+      endDateExclusive: addDays(week.at(-1) ?? week[0], 1)
     })
   );
+  const entriesByDate = new Map(groups.map((group) => [group.date, group.entries]));
 
   return week.map((date) => {
-    const commitments = commitmentsByDate.find((group) => group.date === date)?.commitments ?? [];
-    const firstCommitment = commitments.find((commitment) => !commitment.result) ?? commitments[0] ?? null;
-    const entryDeadline = args.career.events.find((event) => {
-      if (args.career.completedEventIds.includes(event.id) || args.career.enteredEventIds.includes(event.id)) {
-        return false;
-      }
-
-      return event.entryDeadline === date && args.career.date <= event.entryDeadline;
-    });
-    const travelEvent = args.career.events.find(
-      (event) =>
-        args.career.enteredEventIds.includes(event.id) &&
-        !args.career.completedEventIds.includes(event.id) &&
-        addDays(event.startDate, -1) === date
-    );
-    const riskDay = args.athlete.recoveryStatus === "red_zone" || args.athlete.recoveryStatus === "injured";
-    const trainingLabel =
-      plan?.intensity === "recovery" || riskDay
-        ? "Recovery"
-        : plan
-          ? "Training"
-          : "Open";
-    const trainingDetail =
-      plan?.intensity === "recovery"
-        ? plan.label
-        : plan
-          ? `${plan.label} block`
-          : riskDay
-            ? "Protect athlete load"
-            : "No fixed obligation";
-
-    if (date === args.career.date) {
-      const detail =
-        firstCommitment
-          ? `${calendarRoundLabel(firstCommitment.round)} vs ${firstCommitment.opponentLabel}`
-          : entryDeadline
-            ? `${entryDeadline.name} entry deadline`
-            : travelEvent
-              ? `${travelEvent.name} travel`
-              : trainingDetail;
-
-      return {
-        date,
-        label: "Today",
-        detail,
-        eventId: firstCommitment?.eventId ?? entryDeadline?.id ?? travelEvent?.id ?? null,
-        active: true
-      };
-    }
-
-    if (firstCommitment) {
-      return {
-        date,
-        label: "Match",
-        detail: `${calendarRoundLabel(firstCommitment.round)}${firstCommitment.opponentLabel ? ` vs ${firstCommitment.opponentLabel}` : ""}`,
-        eventId: firstCommitment.eventId,
-        active: false
-      };
-    }
-
-    if (entryDeadline) {
-      return {
-        date,
-        label: "Entry closes",
-        detail: entryDeadline.name,
-        eventId: entryDeadline.id,
-        active: false
-      };
-    }
-
-    if (travelEvent) {
-      return {
-        date,
-        label: "Travel",
-        detail: travelEvent.name,
-        eventId: travelEvent.id,
-        active: false
-      };
-    }
+    const entries = entriesByDate.get(date) ?? [];
 
     return {
       date,
-      label: trainingLabel,
-      detail: trainingDetail,
-      eventId: null,
-      active: false
+      primaryEntry: entries[0] ?? null,
+      additionalCount: Math.max(0, entries.length - 1),
+      active: date === args.career.date
     };
   });
 }
@@ -1651,8 +1633,7 @@ export function CareerHomePage(props: CareerPageProps) {
   const urgentTaskCount = taskRows.filter((task) => task.urgent).length;
   const calendarDays = homeCalendarDaysFor({
     career,
-    tournament: props.tournament,
-    athlete
+    tournament: props.tournament
   });
   const evidenceRows = homeEvidenceRows(career, athlete);
   const psychology = managedPsychology(career);
@@ -1674,8 +1655,8 @@ export function CareerHomePage(props: CareerPageProps) {
           props.onEnterEvent(button.eventId);
         }
         return;
-      case "open_calendar":
-        props.onOpenCalendar();
+      case "open_timeline":
+        props.onOpenTimeline();
         return;
       case "open_training":
         props.onOpenTraining();
@@ -1930,28 +1911,73 @@ export function CareerHomePage(props: CareerPageProps) {
             <section className="command-panel career-dashboard-card career-dashboard-card-calendar">
               <div className="panel-header">
                 <h2>Calendar Snapshot</h2>
-                <span>{career.date}</span>
+                <button
+                  className="command-button command-button-secondary calendar-snapshot-open"
+                  type="button"
+                  onClick={props.onOpenCalendar}
+                >
+                  Full Calendar
+                </button>
               </div>
               <div className="career-week-strip career-week-strip-compact" aria-label="Portal calendar snapshot">
-                {calendarDays.map((day) => (
-                  <div key={day.date} className={day.active ? "career-day career-day-active" : "career-day"}>
-                    <span>{day.date.slice(5)}</span>
-                    <strong>
-                      {day.eventId ? (
-                        <CareerTournamentLink
-                          career={career}
-                          eventId={day.eventId}
-                          className="tournament-link-button tournament-link-compact"
+                {calendarDays.map((day) => {
+                  const entry = day.primaryEntry;
+                  const actionLabel = entry ? managerScheduleAccessibleAction(entry) : null;
+                  const primaryClassName = entry
+                    ? [
+                        "career-day-primary",
+                        managerScheduleCategoryClass(entry),
+                        managerScheduleStatusClass(entry)
+                      ].join(" ")
+                    : "career-day-empty";
+                  const primaryContent = entry ? (
+                    <>
+                      <span>{readableScheduleToken(entry.category)} · {readableScheduleToken(entry.status)}</span>
+                      <strong>{entry.title}</strong>
+                    </>
+                  ) : (
+                    <>
+                      <strong>Open</strong>
+                      <small>No fixed obligation</small>
+                    </>
+                  );
+
+                  return (
+                    <div
+                      key={day.date}
+                      className={day.active ? "career-day career-day-active" : "career-day"}
+                      data-schedule-count={day.additionalCount + (entry ? 1 : 0)}
+                    >
+                      <span className="career-day-date">
+                        {day.date.slice(5)}
+                        {day.active ? <em>Today</em> : null}
+                      </span>
+                      {entry && actionLabel ? (
+                        <button
+                          className={primaryClassName}
+                          type="button"
+                          aria-label={actionLabel}
+                          onClick={() => openManagerScheduleDestination(props, entry.destination)}
                         >
-                          {day.label}
-                        </CareerTournamentLink>
+                          {primaryContent}
+                        </button>
                       ) : (
-                        day.label
+                        <div className={primaryClassName}>{primaryContent}</div>
                       )}
-                    </strong>
-                    <small>{day.detail}</small>
-                  </div>
-                ))}
+                      {entry ? <small className="career-day-detail">{entry.detail}</small> : null}
+                      {day.additionalCount > 0 ? (
+                        <button
+                          className="career-day-more"
+                          type="button"
+                          aria-label={`+${day.additionalCount} more on ${day.date}; open Calendar`}
+                          onClick={props.onOpenCalendar}
+                        >
+                          +{day.additionalCount} more
+                        </button>
+                      ) : null}
+                    </div>
+                  );
+                })}
               </div>
             </section>
 
@@ -2151,7 +2177,7 @@ export function CareerRankingsPage(props: CareerPageProps) {
           <button className="command-button command-button-secondary" type="button" onClick={props.onOpenHome}>
             Career Home
           </button>
-          <button className="command-button command-button-secondary" type="button" onClick={props.onOpenCalendar}>
+          <button className="command-button command-button-secondary" type="button" onClick={props.onOpenTimeline}>
             Timeline
           </button>
         </div>
@@ -4036,17 +4062,35 @@ export function CareerTimelinePage(props: CareerPageProps) {
   const medicalGate = canCompeteWithInjury(athlete);
   const upcomingEvents = upcomingCalendarEvents(career);
   const pastRecords = pastCalendarRecords(career);
-  const timelineCommitments = timelineCommitmentsForCareer({
+  const managerCommitments = managerScheduleEntriesBetween({
     career,
-    tournament: props.tournament
+    tournament: props.tournament,
+    startDate: career.date,
+    endDateExclusive: addDays(career.date, 31)
   });
-  const upcomingCommitments = timelineCommitments.filter((commitment) => commitment.result === null);
-  const upcomingCommitmentGroups = groupCalendarCommitmentsByDate(upcomingCommitments);
+  const managerCommitmentGroups = groupManagerScheduleEntriesByDate(managerCommitments);
   const upcomingPage = paginateCalendarItems(upcomingEvents, upcomingPageIndex);
   const pastPage = paginateCalendarItems(pastRecords, pastPageIndex);
   const activeResolvedEvent = career.activeEventId ? getCareerEvent(career.events, career.activeEventId) ?? null : null;
   const nextEvent = career.activeEventId ? activeResolvedEvent ?? upcomingEvents[0] : upcomingEvents[0];
   const activeEventLabel = activeResolvedEvent?.name ?? career.activeEventId ?? "No active entry";
+  const handleTimelineTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    let nextTab: "upcoming" | "pastEvents" | null = null;
+
+    if (event.key === "ArrowRight" || event.key === "End") {
+      nextTab = "pastEvents";
+    } else if (event.key === "ArrowLeft" || event.key === "Home") {
+      nextTab = "upcoming";
+    }
+
+    if (!nextTab) {
+      return;
+    }
+
+    event.preventDefault();
+    setActiveTab(nextTab);
+    document.getElementById(nextTab === "upcoming" ? "timeline-tab-upcoming" : "timeline-tab-past-events")?.focus();
+  };
 
   return (
     <section className="screen-shell career-page timeline-page" data-page-contract="timeline">
@@ -4104,7 +4148,9 @@ export function CareerTimelinePage(props: CareerPageProps) {
           role="tab"
           aria-selected={activeTab === "upcoming"}
           aria-controls="timeline-panel-upcoming"
+          tabIndex={activeTab === "upcoming" ? 0 : -1}
           onClick={() => setActiveTab("upcoming")}
+          onKeyDown={handleTimelineTabKeyDown}
         >
           Upcoming
         </button>
@@ -4115,7 +4161,9 @@ export function CareerTimelinePage(props: CareerPageProps) {
           role="tab"
           aria-selected={activeTab === "pastEvents"}
           aria-controls="timeline-panel-past-events"
+          tabIndex={activeTab === "pastEvents" ? 0 : -1}
           onClick={() => setActiveTab("pastEvents")}
+          onKeyDown={handleTimelineTabKeyDown}
         >
           Past Events
         </button>
@@ -4256,56 +4304,72 @@ export function CareerTimelinePage(props: CareerPageProps) {
             />
           </section>
 
-          <section className="command-panel command-panel-full calendar-commitments-panel">
+          <section
+            className="command-panel command-panel-full calendar-commitments-panel"
+            aria-label="Manager commitments"
+          >
             <div className="panel-header">
-              <h2>Confirmed Match Days</h2>
-              <span>{upcomingCommitments.length} upcoming commitment(s)</span>
+              <h2 id="manager-commitments-heading">Manager Commitments</h2>
+              <span>{managerCommitments.length} item(s) in the next 30 days</span>
             </div>
-            {upcomingCommitmentGroups.length > 0 ? (
-              <div className="calendar-commitment-list" aria-label="Upcoming match commitments">
-                {upcomingCommitmentGroups.map((group) => (
-                  <section key={group.date} className="calendar-commitment-day" aria-label={`Upcoming commitments on ${group.date}`}>
+            {managerCommitmentGroups.length > 0 ? (
+              <div className="calendar-commitment-list" aria-label="Manager commitment list">
+                {managerCommitmentGroups.map((group) => (
+                  <section key={group.date} className="calendar-commitment-day" aria-label={`Manager commitments on ${group.date}`}>
                     <div className="calendar-commitment-date">
                       <span>Date</span>
                       <strong>{group.date}</strong>
                     </div>
                     <div className="calendar-commitment-stack">
-                      {group.commitments.map((commitment) => {
-                        const title = `${commitment.eventName}: ${calendarRoundLabel(commitment.round)}`;
-
+                      {group.entries.map((entry) => {
+                        const actionLabel = managerScheduleAccessibleAction(entry);
                         return (
                           <article
-                            key={`${commitment.eventId}-${commitment.round}-scheduled`}
-                            className="calendar-commitment-card"
+                            key={entry.id}
+                            className={[
+                              "calendar-commitment-card",
+                              "manager-schedule-card",
+                              managerScheduleCategoryClass(entry),
+                              managerScheduleStatusClass(entry)
+                            ].join(" ")}
+                            data-schedule-category={entry.category}
+                            data-schedule-status={entry.status}
                           >
-                            <div className="calendar-commitment-copy">
-                              <TournamentLink
-                                seasonId={career.seasonId}
-                                eventId={commitment.eventId}
-                                className="calendar-commitment-title"
-                                ariaLabel={`Open tournament home for ${title}`}
-                              >
-                                <strong>{title}</strong>
-                              </TournamentLink>
-                              <div className="calendar-commitment-opponent">
-                                <span>Opponent</span>
-                                <ProfileNameButton
-                                  playerId={commitment.opponentId}
-                                  fallback={<strong>{commitment.opponentLabel}</strong>}
-                                  onOpenPlayerProfile={props.onOpenPlayerProfile}
-                                  className="profile-name-button calendar-opponent-link"
-                                >
-                                  {commitment.opponentLabel}
-                                </ProfileNameButton>
+                            <div className="calendar-commitment-copy manager-schedule-copy">
+                              <div className="manager-schedule-meta" aria-label="Commitment category and status">
+                                <span className="manager-schedule-category">
+                                  {readableScheduleToken(entry.category)}
+                                </span>
+                                <span className="manager-schedule-status">
+                                  {readableScheduleToken(entry.status)}
+                                </span>
                               </div>
+                              <strong className="calendar-commitment-title">{entry.title}</strong>
+                              <p>{entry.detail}</p>
+                              {entry.category === "event" && entry.eventKind === "match" ? (
+                                <div className="calendar-commitment-opponent">
+                                  <span>Opponent</span>
+                                  <ProfileNameButton
+                                    playerId={entry.opponentId}
+                                    fallback={<strong>{entry.opponentLabel}</strong>}
+                                    onOpenPlayerProfile={props.onOpenPlayerProfile}
+                                    className="profile-name-button calendar-opponent-link"
+                                  >
+                                    {entry.opponentLabel}
+                                  </ProfileNameButton>
+                                </div>
+                              ) : null}
                             </div>
-                            <button
-                              className="command-button command-button-secondary calendar-commitment-action"
-                              type="button"
-                              onClick={() => openTournamentHome(props, career, commitment.eventId)}
-                            >
-                              Open Event
-                            </button>
+                            {actionLabel ? (
+                              <button
+                                className="command-button command-button-secondary calendar-commitment-action manager-schedule-action"
+                                type="button"
+                                aria-label={actionLabel}
+                                onClick={() => openManagerScheduleDestination(props, entry.destination)}
+                              >
+                                {managerScheduleActionLabel(entry.destination)}
+                              </button>
+                            ) : null}
                           </article>
                         );
                       })}
@@ -4315,8 +4379,8 @@ export function CareerTimelinePage(props: CareerPageProps) {
               </div>
             ) : (
               <p className="panel-summary">
-                No confirmed match days are on the ledger yet. Enter an event or advance to a published draw to create
-                manager-relevant commitments.
+                No manager commitments are due in the next 30 days. Schedule preparation, enter an event,
+                commission scouting, or start facility work to create one.
               </p>
             )}
           </section>
@@ -4424,6 +4488,11 @@ export function CareerCalendarPage(props: CareerCalendarPageProps) {
     tournament: props.tournament,
     monthCursor
   });
+  const managerMonth = managerScheduleMonthForCareer({
+    career,
+    tournament: props.tournament,
+    monthCursor
+  });
 
   return (
     <section className="screen-shell career-page calendar-month-page" data-page-contract="calendar-month">
@@ -4432,7 +4501,7 @@ export function CareerCalendarPage(props: CareerCalendarPageProps) {
           <p className="screen-kicker">Career Calendar</p>
           <h1 className="screen-title">Calendar</h1>
           <p className="screen-copy">
-            A one-month manager diary for played matches, confirmed scheduled commitments, and manager-relevant deadlines.
+            One trusted month view for events, preparation, medical returns, travel, scouting, and facility work.
           </p>
         </div>
       </div>
@@ -4441,6 +4510,7 @@ export function CareerCalendarPage(props: CareerCalendarPageProps) {
         <ScheduleCalendarGrid
           career={career}
           month={month}
+          managerGroups={managerMonth.groups}
           monthControls={
             <div className="calendar-month-controls" aria-label="Calendar month controls">
               <button
@@ -4470,6 +4540,9 @@ export function CareerCalendarPage(props: CareerCalendarPageProps) {
           }
           onOpenScheduledCareerMatch={props.onOpenScheduledCareerMatch}
           onOpenTournamentHome={props.onOpenTournamentHome}
+          onOpenTraining={props.onOpenTraining}
+          onOpenScouting={props.onOpenScouting}
+          onOpenFacilities={props.onOpenFacilities}
         />
       </section>
     </section>
@@ -4500,7 +4573,7 @@ export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddr
             </p>
           </div>
           <div className="career-action-row">
-            <button className="command-button command-button-secondary" type="button" onClick={props.onOpenCalendar}>
+            <button className="command-button command-button-secondary" type="button" onClick={props.onOpenTimeline}>
               Timeline
             </button>
           </div>
@@ -4667,7 +4740,7 @@ export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddr
           </p>
         </div>
         <div className="career-action-row">
-          <button className="command-button command-button-secondary" type="button" onClick={props.onOpenCalendar}>
+          <button className="command-button command-button-secondary" type="button" onClick={props.onOpenTimeline}>
             Timeline
           </button>
           <button

@@ -19,6 +19,7 @@ import {
   tournamentMatchArchiveIds,
   tournamentMatchArchiveScorelines
 } from "../../game/career/events";
+import type { CareerState, ScoutAssignment } from "../../game/career/models";
 import { appendRankingResultsAndRebuild, createRankingResult } from "../../game/career/rankings";
 import { previewPreparationPlan, schedulePreparationBlock } from "../../game/career/preparation";
 import { createInitialCareerState } from "../../game/career/state";
@@ -89,6 +90,73 @@ function careerEnteredOnMetroStart() {
   };
 }
 
+function unifiedScheduleUiFixture(seed = 9930) {
+  const initial = createInitialCareerState(seededPlayers[0].player.id, seed);
+  const event = getCareerEvent(initial.events, "metro-open-300")!;
+  const date = addDays(event.startDate, -1);
+  const plan = trainingPlans.find((entry) => entry.id === "pressure-patterns")!;
+  const assignment: ScoutAssignment = {
+    id: "assignment-ui-schedule",
+    subjectId: initial.ecosystem.recruitment.candidates[0]!.id,
+    subjectType: "candidate",
+    assignedScoutId: "baseline-network",
+    cost: 3_200,
+    startedAt: initial.date,
+    dueAt: date,
+    status: "pending",
+    scope: "fit"
+  };
+  const staged: CareerState = {
+    ...initial,
+    date,
+    activeEventId: event.id,
+    enteredEventIds: [event.id],
+    stage: "event_entered",
+    athletes: initial.athletes.map((athlete) =>
+      athlete.playerId === initial.program.managedPlayerId
+        ? {
+            ...athlete,
+            recoveryStatus: "injured",
+            injury: {
+              status: "managed",
+              label: "Shoulder load",
+              daysRemaining: 0,
+              triggeredAt: initial.date,
+              returnDate: date,
+              notes: ["Medical team monitoring the return."]
+            }
+          }
+        : athlete
+    ),
+    ecosystem: {
+      ...initial.ecosystem,
+      scouting: {
+        ...initial.ecosystem.scouting,
+        assignments: [assignment]
+      }
+    },
+    facilities: initial.facilities.map((facility, index) =>
+      index === 0
+        ? {
+            ...facility,
+            level: 1,
+            status: "building",
+            buildCompleteDate: date
+          }
+        : facility
+    )
+  };
+  const career = schedulePreparationBlock({ state: staged, plan });
+  const tournament = {
+    ...createTournament(seededPlayers, career.program.managedPlayerId, seed),
+    id: event.id,
+    name: event.name,
+    tier: event.tier
+  };
+
+  return { assignment, career, date, event, plan, tournament };
+}
+
 function forcedUiResult(winner: Side): MatchResult {
   return {
     winner,
@@ -150,6 +218,7 @@ function renderCalendarPage(overrides: Partial<Parameters<typeof CareerCalendarP
         onStartCareer={vi.fn()}
         onOpenTraining={vi.fn()}
         onOpenCalendar={vi.fn()}
+        onOpenTimeline={vi.fn()}
         onOpenHome={vi.fn()}
         onOpenLiveMatch={vi.fn()}
         onOpenPostMatch={vi.fn()}
@@ -209,6 +278,7 @@ function renderTimelinePage(overrides: Partial<Parameters<typeof CareerTimelineP
         onStartCareer={vi.fn()}
         onOpenTraining={vi.fn()}
         onOpenCalendar={vi.fn()}
+        onOpenTimeline={vi.fn()}
         onOpenHome={vi.fn()}
         onOpenLiveMatch={vi.fn()}
         onOpenPostMatch={vi.fn()}
@@ -268,6 +338,7 @@ function renderHomePage(overrides: Partial<Parameters<typeof CareerHomePage>[0]>
         onStartCareer={vi.fn()}
         onOpenTraining={vi.fn()}
         onOpenCalendar={vi.fn()}
+        onOpenTimeline={vi.fn()}
         onOpenHome={vi.fn()}
         onOpenLiveMatch={vi.fn()}
         onOpenPostMatch={vi.fn()}
@@ -331,6 +402,7 @@ function renderTrainingPage(overrides: Partial<Parameters<typeof CareerTrainingP
       onStartCareer={vi.fn()}
       onOpenTraining={vi.fn()}
       onOpenCalendar={vi.fn()}
+      onOpenTimeline={vi.fn()}
       onOpenTournamentHome={vi.fn()}
       onOpenHome={vi.fn()}
       onOpenLiveMatch={vi.fn()}
@@ -388,6 +460,7 @@ function renderRankingsPage(overrides: Partial<Parameters<typeof CareerRankingsP
       onStartCareer={vi.fn()}
       onOpenTraining={vi.fn()}
       onOpenCalendar={vi.fn()}
+      onOpenTimeline={vi.fn()}
       onOpenTournamentHome={vi.fn()}
       onOpenHome={vi.fn()}
       onOpenLiveMatch={vi.fn()}
@@ -451,6 +524,7 @@ function renderTournamentHomePage(
       onStartCareer={vi.fn()}
       onOpenTraining={vi.fn()}
       onOpenCalendar={vi.fn()}
+      onOpenTimeline={vi.fn()}
       onOpenTournamentHome={vi.fn()}
       onOpenHome={vi.fn()}
       onOpenLiveMatch={vi.fn()}
@@ -749,32 +823,79 @@ describe("career shell daily action", () => {
     expect(within(panel).queryByLabelText("Forecast condition and development deltas")).not.toBeInTheDocument();
   });
 
-  it("labels the Portal calendar by decision pressure instead of defaulting every open day to training", () => {
-    const baseCareer = createInitialCareerState(seededPlayers[0].player.id, 9920);
-    const openCalendar = renderHomePage({ career: baseCareer });
-    const openSnapshot = screen.getByLabelText("Portal calendar snapshot");
-
-    expect(openSnapshot).toHaveTextContent("Today");
-    expect(openSnapshot).toHaveTextContent("Entry closes");
-    expect(openSnapshot).toHaveTextContent("Open");
-
-    openCalendar.unmount();
-
-    const metro = getCareerEvent(baseCareer.events, "metro-open-300")!;
-    const enteredCareer = {
-      ...baseCareer,
-      activeEventId: metro.id,
-      enteredEventIds: [metro.id],
-      selectedTrainingPlanId: "physio-recovery",
-      stage: "event_entered" as const
+  it("shows preparation only on its persisted date and ignores a legacy selected-plan hint", () => {
+    const baseCareer = {
+      ...createInitialCareerState(seededPlayers[0].player.id, 9920),
+      date: "2026-06-05",
+      selectedTrainingPlanId: "physio-recovery"
     };
+    const legacyView = renderHomePage({ career: baseCareer });
+    const legacySnapshot = screen.getByLabelText("Portal calendar snapshot");
 
-    renderHomePage({ career: enteredCareer });
+    expect(within(legacySnapshot).queryByText("Training")).not.toBeInTheDocument();
+    expect(within(legacySnapshot).queryByText("Mobility Recovery")).not.toBeInTheDocument();
+    expect(within(legacySnapshot).getAllByText("Open").length).toBeGreaterThan(0);
 
-    const enteredSnapshot = screen.getByLabelText("Portal calendar snapshot");
-    expect(enteredSnapshot).toHaveTextContent("Travel");
-    expect(enteredSnapshot).toHaveTextContent("Match");
-    expect(enteredSnapshot).toHaveTextContent("Recovery");
+    legacyView.unmount();
+
+    const plan = trainingPlans.find((entry) => entry.id === "pressure-patterns")!;
+    const career = schedulePreparationBlock({ state: baseCareer, plan });
+    const onOpenTraining = vi.fn();
+
+    renderHomePage({ career, onOpenTraining });
+
+    const snapshot = screen.getByLabelText("Portal calendar snapshot");
+    const planLabel = within(snapshot).getByText(plan.label);
+    const scheduledDay = planLabel.closest(".career-day") as HTMLElement;
+
+    expect(within(snapshot).getAllByText(plan.label)).toHaveLength(1);
+    expect(scheduledDay).toHaveTextContent("06-05");
+    expect(scheduledDay).toHaveTextContent("Training");
+    expect(scheduledDay).toHaveTextContent("Due");
+
+    fireEvent.click(within(scheduledDay).getByRole("button", {
+      name: `Open training: ${plan.label}, Training, Due, ${career.date}`
+    }));
+
+    expect(onOpenTraining).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows a deterministic primary Portal commitment and opens Calendar for same-day overflow", () => {
+    const { career, date } = unifiedScheduleUiFixture(9931);
+    const onOpenCalendar = vi.fn();
+
+    renderHomePage({ career, onOpenCalendar });
+
+    const snapshot = screen.getByLabelText("Portal calendar snapshot");
+    const overflow = within(snapshot).getByRole("button", {
+      name: `+5 more on ${date}; open Calendar`
+    });
+    const scheduledDay = overflow.closest(".career-day") as HTMLElement;
+
+    expect(scheduledDay).toHaveTextContent(date.slice(5));
+    expect(scheduledDay).toHaveTextContent("Metro Open · Draw published");
+    expect(scheduledDay).toHaveTextContent("Event");
+    expect(scheduledDay).toHaveTextContent("Due");
+    expect(overflow).toHaveTextContent("+5 more");
+
+    fireEvent.click(overflow);
+
+    expect(onOpenCalendar).toHaveBeenCalledTimes(1);
+  });
+
+  it("opens the standalone Calendar from the real Portal overflow route", () => {
+    const baseCareer = createInitialCareerState(seededPlayers[0].player.id, 9932);
+    const plan = trainingPlans.find((entry) => entry.id === "rally-base")!;
+    const career = schedulePreparationBlock({ state: baseCareer, plan });
+    resetStoreForCareer(career);
+
+    render(<App />);
+
+    const snapshot = screen.getByLabelText("Portal calendar snapshot");
+    fireEvent.click(within(snapshot).getByRole("button", { name: /\+1 more .* open Calendar/i }));
+
+    expect(screen.getByRole("heading", { level: 1, name: "Calendar" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 1, name: "Timeline" })).not.toBeInTheDocument();
   });
 
   it("surfaces save state in the Portal inbox only when the local slot needs attention", () => {
@@ -817,6 +938,21 @@ describe("career shell daily action", () => {
     expect(screen.queryByRole("tab", { name: "Timeline" })).not.toBeInTheDocument();
     expect(screen.getByRole("grid", { name: "Calendar for June 2026" })).toBeInTheDocument();
     expect(calendarCommand).toHaveAttribute("aria-current", "page");
+  });
+
+  it("keeps Timeline-labelled page actions separate from Calendar navigation", () => {
+    resetStoreForCareer();
+
+    render(<App />);
+
+    const commandRail = screen.getByRole("navigation", { name: "Primary commands" });
+    fireEvent.click(within(commandRail).getByRole("button", { name: /Rankings/ }));
+
+    expect(screen.getByRole("heading", { level: 1, name: "Circuit Rankings" })).toBeInTheDocument();
+    fireEvent.click(within(screen.getByRole("main")).getByRole("button", { name: "Timeline" }));
+
+    expect(screen.getByRole("heading", { level: 1, name: "Timeline" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 1, name: "Calendar" })).not.toBeInTheDocument();
   });
 
   it("renders the career topbar as identity, utility controls, and the right-edge career clock", () => {
@@ -1170,81 +1306,113 @@ describe("career calendar event actions", () => {
     expect(within(screen.getByLabelText("Past event records")).getByText(metro.name)).toBeInTheDocument();
   });
 
-  it("renders Upcoming commitments with TBD, event actions, and profile links", () => {
-    const baseCareer = createInitialCareerState(seededPlayers[0].player.id, 9916);
-    const metro = getCareerEvent(baseCareer.events, "metro-open-300")!;
-    const tournament = {
-      ...createTournament(seededPlayers, baseCareer.program.managedPlayerId, 9916),
-      id: metro.id,
-      name: metro.name,
-      tier: metro.tier
-    };
-    const context = getManagedMatchContext(tournament)!;
-    const activeOpponentId =
-      context.playerAId === baseCareer.program.managedPlayerId ? context.playerBId : context.playerAId;
-    const activeOpponentName = seededPlayers.find((entry) => entry.player.id === activeOpponentId)!.player.name;
-    const onOpenTournamentHome = vi.fn();
-    const onOpenPlayerProfile = vi.fn();
-    const career = {
-      ...baseCareer,
-      date: metro.startDate,
-      activeEventId: metro.id,
-      enteredEventIds: [metro.id],
-      stage: "pre_match" as const
-    };
+  it("supports roving keyboard navigation across the Timeline tabs", () => {
+    const career = createInitialCareerState(seededPlayers[0].player.id, 99170);
 
-    renderTimelinePage({ career, tournament, onOpenTournamentHome, onOpenPlayerProfile });
+    renderTimelinePage({ career });
 
-    expect(screen.getByRole("heading", { level: 1, name: "Timeline" })).toBeInTheDocument();
-    expect(screen.queryByRole("tab", { name: "Calendar" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("grid", { name: /Calendar for/ })).not.toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Upcoming" })).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByRole("heading", { name: "Confirmed Match Days" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Open tournament home for Metro Open: Round of 16" })).toBeInTheDocument();
-    expect(screen.getAllByText("TBD").length).toBeGreaterThan(0);
+    const upcoming = screen.getByRole("tab", { name: "Upcoming" });
+    const pastEvents = screen.getByRole("tab", { name: "Past Events" });
 
-    const activeCard = screen.getByRole("button", { name: "Open tournament home for Metro Open: Round of 16" }).closest(".calendar-commitment-card") as HTMLElement;
-    fireEvent.click(within(activeCard).getByRole("button", { name: "Open tournament home for Metro Open: Round of 16" }));
-    expect(onOpenTournamentHome).toHaveBeenCalledWith({ seasonId: career.seasonId, eventId: metro.id });
+    upcoming.focus();
+    fireEvent.keyDown(upcoming, { key: "ArrowRight" });
 
-    fireEvent.click(within(activeCard).getByRole("button", { name: activeOpponentName }));
-    expect(onOpenPlayerProfile).toHaveBeenCalledWith(activeOpponentId);
-    expect(onOpenTournamentHome).toHaveBeenCalledTimes(1);
+    expect(pastEvents).toHaveFocus();
+    expect(pastEvents).toHaveAttribute("aria-selected", "true");
+    expect(pastEvents).toHaveAttribute("tabindex", "0");
+    expect(upcoming).toHaveAttribute("tabindex", "-1");
+
+    fireEvent.keyDown(pastEvents, { key: "Home" });
+
+    expect(upcoming).toHaveFocus();
+    expect(upcoming).toHaveAttribute("aria-selected", "true");
   });
 
-  it("renders a month-grid Calendar with confirmed commitments and gated future rounds", () => {
-    const baseCareer = createInitialCareerState(seededPlayers[0].player.id, 9919);
-    const metro = getCareerEvent(baseCareer.events, "metro-open-300")!;
-    const tournament = {
-      ...createTournament(seededPlayers, baseCareer.program.managedPlayerId, 9919),
-      id: metro.id,
-      name: metro.name,
-      tier: metro.tier
-    };
-    const pastOpponent = seededPlayers[4].player;
+  it("renders generic Timeline commitments and routes every semantic destination", () => {
+    const { assignment, career, event, plan, tournament } = unifiedScheduleUiFixture(9916);
+    const matchContext = getManagedMatchContext(tournament)!;
+    const opponentId = matchContext.playerAId === career.program.managedPlayerId
+      ? matchContext.playerBId
+      : matchContext.playerAId;
+    const opponentName = playerMap[opponentId]!.name;
+    const candidate = career.ecosystem.recruitment.candidates.find(
+      (entry) => entry.id === assignment.subjectId
+    )!;
+    const facility = career.facilities[0]!;
+    const athleteName = playerMap[career.program.managedPlayerId]!.name;
     const onOpenTournamentHome = vi.fn();
-    const career = {
-      ...baseCareer,
-      date: metro.startDate,
-      activeEventId: metro.id,
-      enteredEventIds: [metro.id],
-      stage: "pre_match" as const,
-      matchHistory: [
-        {
-          id: "harbor-masters-500:R16-1",
-          eventId: "harbor-masters-500",
-          eventName: "Harbor Masters",
-          date: "2026-06-12",
-          round: "R16" as const,
-          playerAId: baseCareer.program.managedPlayerId,
-          playerBId: pastOpponent.id,
-          winnerId: baseCareer.program.managedPlayerId,
-          scoreline: "21-14, 21-18",
-          source: "played" as const
-        }
-      ]
-    };
-    const { container } = renderCalendarPage({ career, tournament, onOpenTournamentHome });
+    const onOpenScheduledCareerMatch = vi.fn();
+    const onOpenTraining = vi.fn();
+    const onOpenScouting = vi.fn();
+    const onOpenFacilities = vi.fn();
+    const onOpenPlayerProfile = vi.fn();
+
+    renderTimelinePage({
+      career,
+      tournament,
+      onOpenTournamentHome,
+      onOpenScheduledCareerMatch,
+      onOpenTraining,
+      onOpenScouting,
+      onOpenFacilities,
+      onOpenPlayerProfile
+    });
+
+    expect(screen.getByRole("heading", { level: 1, name: "Timeline" })).toBeInTheDocument();
+    expect(screen.queryByRole("grid", { name: /Calendar for/ })).not.toBeInTheDocument();
+    const commitments = screen.getByLabelText("Manager commitments");
+    expect(screen.getByRole("heading", { name: "Manager Commitments" })).toBeInTheDocument();
+
+    for (const category of ["Event", "Medical", "Travel", "Training", "Scouting", "Facility"]) {
+      expect(within(commitments).getAllByText(category).length).toBeGreaterThan(0);
+    }
+    expect(within(commitments).getAllByText("Due").length).toBeGreaterThanOrEqual(6);
+    expect(within(commitments).getAllByText("Scheduled").length).toBeGreaterThan(0);
+    expect(within(commitments).getByText(plan.label)).toBeInTheDocument();
+    expect(within(commitments).getByText(`${athleteName} medical return`)).toBeInTheDocument();
+    expect(within(commitments).getByText(`Scout report · ${candidate.name}`)).toBeInTheDocument();
+    expect(within(commitments).getByText(`${facility.label} level ${facility.level} completion`)).toBeInTheDocument();
+
+    fireEvent.click(within(commitments).getByRole("button", { name: new RegExp(`^Open event: ${event.name} R16,`) }));
+    fireEvent.click(within(commitments).getByRole("button", { name: new RegExp(`^Open training: ${plan.label},`) }));
+    fireEvent.click(within(commitments).getByRole("button", { name: new RegExp(`^Open scouting: Scout report · ${candidate.name},`) }));
+    fireEvent.click(within(commitments).getByRole("button", {
+      name: new RegExp(`^Open facilities: ${facility.label} level ${facility.level} completion,`)
+    }));
+    fireEvent.click(within(commitments).getByRole("button", { name: new RegExp(`^Open event: ${event.name} travel,`) }));
+    fireEvent.click(within(commitments).getByRole("button", { name: opponentName }));
+
+    expect(onOpenScheduledCareerMatch).not.toHaveBeenCalled();
+    expect(onOpenTraining).toHaveBeenCalledTimes(1);
+    expect(onOpenScouting).toHaveBeenCalledTimes(1);
+    expect(onOpenFacilities).toHaveBeenCalledTimes(1);
+    expect(onOpenTournamentHome).toHaveBeenCalledWith({ seasonId: career.seasonId, eventId: event.id });
+    expect(onOpenPlayerProfile).toHaveBeenCalledWith(opponentId);
+    expect(within(commitments).queryByText(`${event.name} QF`)).not.toBeInTheDocument();
+    expect(within(commitments).queryByText(`${event.name} SF`)).not.toBeInTheDocument();
+    expect(within(commitments).queryByText(`${event.name} F`)).not.toBeInTheDocument();
+  });
+
+  it("renders unified Calendar categories and statuses with semantic navigation and no speculative rounds", () => {
+    const { assignment, career, event, plan, tournament } = unifiedScheduleUiFixture(9919);
+    const candidate = career.ecosystem.recruitment.candidates.find(
+      (entry) => entry.id === assignment.subjectId
+    )!;
+    const facility = career.facilities[0]!;
+    const onOpenTournamentHome = vi.fn();
+    const onOpenScheduledCareerMatch = vi.fn();
+    const onOpenTraining = vi.fn();
+    const onOpenScouting = vi.fn();
+    const onOpenFacilities = vi.fn();
+    const { container } = renderCalendarPage({
+      career,
+      tournament,
+      onOpenTournamentHome,
+      onOpenScheduledCareerMatch,
+      onOpenTraining,
+      onOpenScouting,
+      onOpenFacilities
+    });
 
     expect(screen.getByRole("heading", { name: "Calendar" })).toBeInTheDocument();
     expect(screen.queryByRole("tab", { name: "Timeline" })).not.toBeInTheDocument();
@@ -1268,12 +1436,30 @@ describe("career calendar event actions", () => {
     expect(monthHeader.nextElementSibling).toHaveClass("schedule-calendar-weekdays");
     expect(screen.getByRole("grid", { name: "Calendar for June 2026" })).toBeInTheDocument();
     expect(container.querySelector(".schedule-calendar-weekdays")?.querySelectorAll("span")).toHaveLength(7);
-    expect(screen.getByRole("button", { name: "Open match detail for Metro Open: Round of 16" })).toBeInTheDocument();
-    expect(screen.getByText("W")).toBeInTheDocument();
-    expect(screen.queryByText("Quarter-Final")).not.toBeInTheDocument();
+    const grid = screen.getByRole("grid", { name: "Calendar for June 2026" });
+    for (const category of ["Event", "Medical", "Travel", "Training", "Scouting", "Facility"]) {
+      expect(within(grid).getAllByText(new RegExp(`^${category} ·`)).length).toBeGreaterThan(0);
+    }
+    expect(within(grid).getAllByText(/· Due$/).length).toBeGreaterThanOrEqual(6);
+    expect(within(grid).getAllByText(/· Scheduled$/).length).toBeGreaterThan(0);
+    expect(within(grid).getByText(plan.label)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Open tournament home for Harbor Masters: Round of 16 (W)" }));
-    expect(onOpenTournamentHome).toHaveBeenCalledWith({ seasonId: career.seasonId, eventId: "harbor-masters-500" });
+    fireEvent.click(within(grid).getByRole("button", { name: new RegExp(`^Open event: ${event.name} R16,`) }));
+    fireEvent.click(within(grid).getByRole("button", { name: new RegExp(`^Open training: ${plan.label},`) }));
+    fireEvent.click(within(grid).getByRole("button", { name: new RegExp(`^Open scouting: Scout report · ${candidate.name},`) }));
+    fireEvent.click(within(grid).getByRole("button", {
+      name: new RegExp(`^Open facilities: ${facility.label} level ${facility.level} completion,`)
+    }));
+    fireEvent.click(within(grid).getByRole("button", { name: new RegExp(`^Open event: ${event.name} travel,`) }));
+
+    expect(onOpenScheduledCareerMatch).not.toHaveBeenCalled();
+    expect(onOpenTraining).toHaveBeenCalledTimes(1);
+    expect(onOpenScouting).toHaveBeenCalledTimes(1);
+    expect(onOpenFacilities).toHaveBeenCalledTimes(1);
+    expect(onOpenTournamentHome).toHaveBeenCalledWith({ seasonId: career.seasonId, eventId: event.id });
+    expect(within(grid).queryByText(`${event.name} QF`)).not.toBeInTheDocument();
+    expect(within(grid).queryByText(`${event.name} SF`)).not.toBeInTheDocument();
+    expect(within(grid).queryByText(`${event.name} F`)).not.toBeInTheDocument();
   });
 
   it("moves the visible Calendar month locally and resets Today to the career date month", () => {
@@ -1306,7 +1492,9 @@ describe("career calendar event actions", () => {
 
     renderCalendarPage({ career, onOpenScheduledCareerMatch });
 
-    const playButton = screen.getByRole("button", { name: `Open match detail for ${event.name}: Round of 16` });
+    const playButton = screen.getByRole("button", {
+      name: `Open match: ${event.name} R16, Event, Due, ${career.date}`
+    });
     expect(playButton).toBeEnabled();
 
     fireEvent.click(playButton);

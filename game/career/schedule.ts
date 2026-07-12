@@ -289,9 +289,10 @@ function eventScheduleEntry(career: CareerState, entry: ScheduleCalendarEntry): 
       detail: entry.result
         ? `${entry.opponentLabel} · ${entry.result === "W" ? "Win" : "Loss"}`
         : `${entry.opponentLabel} · Confirmed managed match`,
-      destination: entry.state === "completed"
-        ? { kind: "tournament", seasonId: career.seasonId, eventId: entry.eventId }
-        : { kind: "scheduled_match", eventId: entry.eventId },
+      destination:
+        entry.state !== "completed" && (status === "due" || status === "overdue")
+          ? { kind: "scheduled_match", eventId: entry.eventId }
+          : { kind: "tournament", seasonId: career.seasonId, eventId: entry.eventId },
       seasonId: career.seasonId,
       eventId: entry.eventId,
       eventName: entry.eventName,

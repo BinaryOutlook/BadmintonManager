@@ -156,7 +156,7 @@ describe("unified manager schedule", () => {
     ]);
     expect(today.every((entry) => entry.status === "due")).toBe(true);
     expect(entries.find((entry) => entry.category === "event" && entry.eventKind === "match")?.destination)
-      .toEqual({ kind: "scheduled_match", eventId: "metro-open-300" });
+      .toEqual({ kind: "tournament", seasonId: career.seasonId, eventId: "metro-open-300" });
     expect(entries.find((entry) => entry.category === "medical")?.destination)
       .toMatchObject({ kind: "training", athleteId: career.program.managedPlayerId });
     expect(entries.find((entry) => entry.category === "travel")).toMatchObject({
@@ -206,6 +206,27 @@ describe("unified manager schedule", () => {
     expect(confirmedRounds.some((round) => ["QF", "SF", "F"].includes(round))).toBe(false);
     expect(completedMatch).toMatchObject({ status: "completed", result: "W" });
     expect(completedMatch?.id).toBe(confirmedMatches[0]?.id);
+  });
+
+  it("opens only due or overdue confirmed matches as playable match actions", () => {
+    const { career, event, tournament } = compositeScheduleState(9908);
+    const dueCareer: CareerState = { ...career, date: event.startDate };
+    const overdueCareer: CareerState = { ...career, date: addDays(event.startDate, 1) };
+    const dueMatch = managerScheduleEntriesForCareer({ career: dueCareer, tournament }).find(
+      (entry) => entry.category === "event" && entry.eventKind === "match" && entry.eventId === event.id
+    );
+    const overdueMatch = managerScheduleEntriesForCareer({ career: overdueCareer, tournament }).find(
+      (entry) => entry.category === "event" && entry.eventKind === "match" && entry.eventId === event.id
+    );
+
+    expect(dueMatch).toMatchObject({
+      status: "due",
+      destination: { kind: "scheduled_match", eventId: event.id }
+    });
+    expect(overdueMatch).toMatchObject({
+      status: "overdue",
+      destination: { kind: "scheduled_match", eventId: event.id }
+    });
   });
 
   it("reports the persisted discounted travel charge instead of the catalog price", () => {

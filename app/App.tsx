@@ -443,6 +443,16 @@ export function App() {
   }, [career?.stage, phase]);
 
   useEffect(() => {
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    const scrollingElement = document.scrollingElement ?? document.documentElement;
+    scrollingElement.scrollTop = 0;
+    scrollingElement.scrollLeft = 0;
+  }, [activePage]);
+
+  useEffect(() => {
     if (typeof window !== "undefined") {
       window.localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, String(sidebarWidth));
     }
@@ -1087,7 +1097,8 @@ export function App() {
       corruptSavePresent,
       onStartCareer: requestStartCareer,
       onOpenTraining: () => setActivePage({ id: "season" }),
-      onOpenCalendar: () => setActivePage({ id: "timeline" }),
+      onOpenCalendar: () => setActivePage({ id: "calendar" }),
+      onOpenTimeline: () => setActivePage({ id: "timeline" }),
       onOpenTournamentHome: openTournamentHome,
       onOpenHome: () => setActivePage({ id: "home" }),
       onOpenLiveMatch: openLiveMatchRoute,
