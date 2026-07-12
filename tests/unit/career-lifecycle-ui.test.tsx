@@ -8,6 +8,7 @@ import { finalizeSeasonReview, generateCareerSeasonEvents, startNextSeason } fro
 import { careerInboxItems } from "../../game/career/managementMemory";
 import type { CareerState } from "../../game/career/models";
 import { createInitialCareerState } from "../../game/career/state";
+import { advanceWorldRegistry, protectedWorldPlayerIds } from "../../game/career/world";
 import { simulateUniverseThroughDate } from "../../game/career/universe";
 import { seededPlayers } from "../../game/content/players";
 import { useTournamentStore } from "../../game/store/store";
@@ -135,5 +136,37 @@ describe("career lifecycle management UI", () => {
     expect(within(archiveTabs).getByRole("tab", { name: "2026" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByText(/2026 finalized/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Start 2027 Season" })).not.toBeInTheDocument();
+  });
+
+  it("exposes persisted world intake and progression records in Reports", () => {
+    const initial = createInitialCareerState(seededPlayers[0].player.id, 52_003);
+    const career: CareerState = {
+      ...initial,
+      seasonId: "2027",
+      date: "2027-01-01",
+      world: advanceWorldRegistry({
+        registry: initial.world,
+        careerSeed: initial.seed,
+        seasonId: "2027",
+        date: "2027-01-01",
+        protectedPlayerIds: protectedWorldPlayerIds(initial)
+      })
+    };
+    const generated = career.world.players.find((record) => record.origin === "generated_intake");
+
+    if (!generated) {
+      throw new Error("Expected the 2027 world intake.");
+    }
+
+    installCareer(career);
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: /^Reports/ }));
+
+    const movement = screen.getByLabelText("Circuit movement 2027");
+    expect(within(movement).getByRole("heading", { name: "Circuit Movement" })).toBeInTheDocument();
+    expect(within(movement).getByText(generated.player.name)).toBeInTheDocument();
+    expect(within(movement).getByText("Progression").parentElement).toHaveTextContent(
+      String(career.world.lifecycleLog.filter((event) => event.seasonId === "2027" && event.type === "progression").length)
+    );
   });
 });

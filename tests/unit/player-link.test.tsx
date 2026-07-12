@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { PlayerNavigationProvider } from "../../app/playerNavigation";
 import { PlayerLink, SmartPlayerText } from "../../components/PlayerLink";
 import { playerMap } from "../../game/content/players";
+import type { Player } from "../../game/core/models";
 
 describe("PlayerLink", () => {
   it("opens a known player through the navigation provider with the stable id", () => {
@@ -54,5 +55,24 @@ describe("SmartPlayerText", () => {
 
     expect(screen.getByText("Opponent pending. TBD after the previous round.")).toBeInTheDocument();
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("links generated career-world names from the navigation directory", () => {
+    const openPlayerProfile = vi.fn();
+    const generated: Player = {
+      ...playerMap["player-1"]!,
+      id: "world-2027-01",
+      name: "Ari Qureshi"
+    };
+    const playersById = { ...playerMap, [generated.id]: generated };
+
+    render(
+      <PlayerNavigationProvider onOpenPlayerProfile={openPlayerProfile} playersById={playersById}>
+        <SmartPlayerText text={`${generated.name} entered the active circuit.`} />
+      </PlayerNavigationProvider>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: generated.name }));
+    expect(openPlayerProfile).toHaveBeenCalledWith(generated.id);
   });
 });

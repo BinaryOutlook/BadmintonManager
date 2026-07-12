@@ -1,9 +1,11 @@
 import { useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
-import { seededPlayers } from "../../game/content/players";
+import { seededPlayers, type SeededPlayer } from "../../game/content/players";
 import type { LiveMatchSession } from "../../game/core/models";
+import type { Player } from "../../game/core/models";
 import type { CareerState, ProgramRosterSlot } from "../../game/career/models";
 import { programRoleLabel } from "../../game/career/program";
 import { scheduledPreparationForAthlete } from "../../game/career/preparation";
+import { activeWorldSeededPlayers, careerWorldPlayerMap } from "../../game/career/world";
 import { createPlayerProfileViewModel } from "../../game/selectors/player";
 import type { AppPhase } from "../../game/store/store";
 import type { TournamentState } from "../../game/tournament/tournament";
@@ -14,6 +16,8 @@ interface SquadPageProps {
   career: CareerState | null;
   tournament: TournamentState | null;
   liveMatchSession?: LiveMatchSession | null;
+  players?: readonly SeededPlayer[];
+  playersById?: Readonly<Record<string, Player>>;
   onOpenPlayerProfile: (playerId: string) => void;
   onSelectPlayer: (playerId: string) => void;
 }
@@ -41,13 +45,19 @@ export function SquadPage(props: SquadPageProps) {
   const [careerView, setCareerView] = useState<CareerSquadView>("program");
   const activeView = props.career ? careerView : "world";
   const careerTabs: CareerSquadView[] = ["program", "world"];
-  const roster = seededPlayers
+  const players = props.players ?? (props.career ? activeWorldSeededPlayers(props.career) : seededPlayers);
+  const playersById = props.playersById ?? (props.career
+    ? careerWorldPlayerMap(props.career)
+    : Object.fromEntries(players.map((entry) => [entry.player.id, entry.player])));
+  const roster = players
     .map((entry) => {
       const profile = createPlayerProfileViewModel({
         playerId: entry.player.id,
         selectedPlayerId: props.selectedPlayerId,
         tournament: props.tournament,
-        liveMatch: props.liveMatchSession
+        liveMatch: props.liveMatchSession,
+        career: props.career,
+        playersById
       });
 
       return profile ? { entry, profile } : null;
@@ -158,7 +168,7 @@ export function SquadPage(props: SquadPageProps) {
                   ? scheduledPreparationForAthlete(props.career, slot.athleteId, props.career.date)
                   : null;
                 const isManagedLead = slot.athleteId === props.career?.program.managedPlayerId;
-                const sourcePlayer = seededPlayers.find((entry) => entry.player.id === slot.athleteId)?.player;
+                const sourcePlayer = playersById[slot.athleteId];
                 const candidate = props.career?.ecosystem.recruitment.candidates.find(
                   (entry) => entry.id === slot.athleteId
                 );

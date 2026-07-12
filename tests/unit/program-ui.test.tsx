@@ -12,9 +12,29 @@ import {
 import { scheduleRosterPreparation } from "../../game/career/program";
 import { scheduledPreparationForAthlete } from "../../game/career/preparation";
 import { createInitialCareerState } from "../../game/career/state";
+import { advanceWorldRegistry, protectedWorldPlayerIds } from "../../game/career/world";
 import { seededPlayers } from "../../game/content/players";
 
 const RECRUIT_ID = "cand-arya-prakash";
+
+function careerWithWorldIntake() {
+  const career = createInitialCareerState(seededPlayers[0].player.id, 9_952);
+  const seasonId = "2027";
+  const date = "2027-01-01";
+
+  return {
+    ...career,
+    seasonId,
+    date,
+    world: advanceWorldRegistry({
+      registry: career.world,
+      careerSeed: career.seed,
+      seasonId,
+      date,
+      protectedPlayerIds: protectedWorldPlayerIds(career)
+    })
+  };
+}
 
 function careerWithSignedArya() {
   const managedPlayerId = seededPlayers[0].player.id;
@@ -143,6 +163,38 @@ describe("program squad UI", () => {
     expect(onSelectPlayer).not.toHaveBeenCalled();
     expect(scheduledCareer.program.managedPlayerId).toBe(managedLeadId);
   });
+
+  it("lists active generated intake players in the World Directory and excludes retired records", () => {
+    const advanced = careerWithWorldIntake();
+    const generated = advanced.world.players.find((record) => record.origin === "generated_intake");
+    const retiredRecord = advanced.world.players.find(
+      (record) => record.status === "active" && record.player.id !== advanced.program.managedPlayerId
+    );
+
+    if (!generated || !retiredRecord) {
+      throw new Error("Expected generated and retireable world records.");
+    }
+
+    const career = {
+      ...advanced,
+      world: {
+        ...advanced.world,
+        players: advanced.world.players.map((record) => record.player.id === retiredRecord.player.id
+          ? { ...record, status: "retired" as const, retiredSeason: advanced.seasonId }
+          : record)
+      }
+    };
+    const onOpenPlayerProfile = vi.fn();
+
+    renderSquad({ career, onOpenPlayerProfile });
+    fireEvent.click(screen.getByRole("tab", { name: "World Directory" }));
+
+    expect(screen.getByRole("button", { name: generated.player.name })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: retiredRecord.player.name })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: generated.player.name }));
+    expect(onOpenPlayerProfile).toHaveBeenCalledWith(generated.player.id);
+  });
 });
 
 describe("career-generated program athlete profile", () => {
@@ -200,5 +252,37 @@ describe("career-generated program athlete profile", () => {
     expect(onBack).toHaveBeenCalledOnce();
     expect(onSelectPlayer).not.toHaveBeenCalled();
     expect(career.program.managedPlayerId).toBe(managedLeadId);
+  });
+
+  it("renders a generated circuit intake as a complete scouting profile", () => {
+    const career = careerWithWorldIntake();
+    const generated = career.world.players.find((record) => record.origin === "generated_intake");
+
+    if (!generated) {
+      throw new Error("Expected a generated world intake player.");
+    }
+
+    render(
+      <PlayerNavigationProvider onOpenPlayerProfile={vi.fn()}>
+        <TournamentNavigationProvider onOpenTournamentHome={vi.fn()}>
+          <PlayerProfilePage
+            playerId={generated.player.id}
+            selectedPlayerId={career.program.managedPlayerId}
+            phase="setup"
+            careerPresent={true}
+            career={career}
+            tournament={null}
+            liveMatchSession={null}
+            onBack={vi.fn()}
+            onSelectPlayer={vi.fn()}
+          />
+        </TournamentNavigationProvider>
+      </PlayerNavigationProvider>
+    );
+
+    expect(screen.getByRole("heading", { level: 1, name: generated.player.name })).toBeInTheDocument();
+    expect(screen.getByText(generated.player.styleLabel)).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Scouting" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Player Not Found" })).not.toBeInTheDocument();
   });
 });

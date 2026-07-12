@@ -26,6 +26,8 @@ import {
 import type { CalendarMonthCursor, CalendarMonthViewModel } from "../game/career/events";
 import { canCompeteWithInjury, canTrainWithInjury } from "../game/career/health";
 import { rankingsByCurrentRank } from "../game/career/rankings";
+import { careerWorldPlayerMap } from "../game/career/world";
+import type { Player } from "../game/core/models";
 import type {
   AdvancedTacticPlan,
   CareerEventBracketSnapshot,
@@ -198,10 +200,11 @@ function ProfileNameButton(props: {
   onOpenPlayerProfile: (playerId: string) => void;
   className?: string;
   children?: ReactNode;
+  playersById?: Readonly<Record<string, Player>>;
 }) {
-  const player = props.playerId ? playerMap[props.playerId] : null;
+  const player = props.playerId ? props.playersById?.[props.playerId] ?? playerMap[props.playerId] : null;
 
-  if (!player) {
+  if (!props.playerId) {
     return <>{props.fallback}</>;
   }
 
@@ -209,9 +212,9 @@ function ProfileNameButton(props: {
     <button
       className={props.className ?? "profile-name-button"}
       type="button"
-      onClick={() => props.onOpenPlayerProfile(player.id)}
+      onClick={() => props.onOpenPlayerProfile(props.playerId!)}
     >
-      {props.children ?? player.name}
+      {props.children ?? player?.name ?? props.fallback}
     </button>
   );
 }
@@ -1017,14 +1020,18 @@ function rankingLedgerLine(args: {
   return "No ranking ledger entry in this save.";
 }
 
-function playerDisplayName(playerId: string | null | undefined) {
-  return playerId ? playerMap[playerId]?.name ?? playerId : "Unknown";
+function playerDisplayName(
+  playerId: string | null | undefined,
+  playersById: Readonly<Record<string, Player>> = playerMap
+) {
+  return playerId ? playersById[playerId]?.name ?? playerId : "Unknown";
 }
 
 function managedOutcomeSummary(args: {
   career: CareerState;
   record: CareerEventHistoryRecord | undefined;
   matchRecords: CareerMatchHistoryRecord[];
+  playersById: Readonly<Record<string, Player>>;
 }) {
   const managedPlayerId = args.career.program.managedPlayerId;
   const managedRecords = args.matchRecords.filter(
@@ -1047,7 +1054,7 @@ function managedOutcomeSummary(args: {
 
   return {
     label: `${result} / ${latestManagedRecord.round}`,
-    detail: `${latestManagedRecord.scoreline} vs ${playerDisplayName(opponentId)} (${sourceLabelForRecord(latestManagedRecord.source)}).`
+    detail: `${latestManagedRecord.scoreline} vs ${playerDisplayName(opponentId, args.playersById)} (${sourceLabelForRecord(latestManagedRecord.source)}).`
   };
 }
 
@@ -1638,7 +1645,8 @@ export function CareerHomePage(props: CareerPageProps) {
 
   const career = props.career;
   const athlete = managedAthlete(career);
-  const player = playerMap[career.program.managedPlayerId];
+  const playersById = careerWorldPlayerMap(career);
+  const player = playersById[career.program.managedPlayerId];
   const event = activeEvent(career);
   const ranking = career.rankings.find((entry) => entry.playerId === career.program.managedPlayerId);
   const decision = buildHomeDecisionModel({
@@ -2255,6 +2263,8 @@ export function CareerReportsArchivePage(props: CareerPageProps) {
     return <CareerEmpty onStartCareer={props.onStartCareer} saveRecovery={props.saveRecovery} />;
   }
 
+  const playersById = careerWorldPlayerMap(props.career);
+
   const latest = latestDetailedMatchMemory(props.career);
   const archive = careerArchiveReports(props.career);
   const seasonReviews = [...props.career.seasonReviews]
@@ -2265,6 +2275,13 @@ export function CareerReportsArchivePage(props: CareerPageProps) {
   const currentSeasonReview = props.career.seasonReviews.find(
     (review) => review.seasonId === props.career?.seasonId
   ) ?? null;
+  const movementSeasonId = selectedSeasonId ?? props.career.seasonId;
+  const circuitMovement = props.career.world.lifecycleLog
+    .filter((event) => event.seasonId === movementSeasonId)
+    .sort((left, right) => right.date.localeCompare(left.date) || left.id.localeCompare(right.id));
+  const intakeEvents = circuitMovement.filter((event) => event.type === "intake");
+  const retirementEvents = circuitMovement.filter((event) => event.type === "retirement");
+  const progressionEvents = circuitMovement.filter((event) => event.type === "progression");
   const filtered = filter === "all" ? archive : archive.filter((report) => report.category === filter);
   const filters: Array<{ id: ReportFilter; label: string }> = [
     { id: "all", label: "All" },
@@ -2356,6 +2373,64 @@ export function CareerReportsArchivePage(props: CareerPageProps) {
         )}
       </section>
 
+      <section className="command-panel command-panel-full reports-latest-panel" aria-label={`Circuit movement ${movementSeasonId}`}>
+        <div className="panel-header">
+          <h2>Circuit Movement</h2>
+          <span>{movementSeasonId} persisted world lifecycle</span>
+        </div>
+        <div className="reports-latest-grid">
+          <div>
+            <span>Intake</span>
+            <strong>{intakeEvents.length}</strong>
+            <p>New active-circuit records stored for this season.</p>
+          </div>
+          <div>
+            <span>Retirements</span>
+            <strong>{retirementEvents.length}</strong>
+            <p>Players explicitly removed from the active world registry.</p>
+          </div>
+          <div>
+            <span>Progression</span>
+            <strong>{progressionEvents.length}</strong>
+            <p>Age and rating transitions resolved by the world lifecycle.</p>
+          </div>
+        </div>
+        {intakeEvents.length + retirementEvents.length > 0 ? (
+          <div className="calendar-commitment-list reports-archive-list" aria-label={`${movementSeasonId} intake and retirement records`}>
+            {[...intakeEvents, ...retirementEvents]
+              .sort((left, right) => right.date.localeCompare(left.date) || left.id.localeCompare(right.id))
+              .map((event) => (
+                <article key={event.id} className="calendar-commitment-card reports-archive-row">
+                  <div className="calendar-commitment-copy">
+                    <div className="manager-schedule-meta">
+                      <span className="manager-schedule-category">{event.type}</span>
+                      <span className="manager-schedule-status">{event.date}</span>
+                    </div>
+                    <strong className="calendar-commitment-title">
+                      <ProfileNameButton
+                        playerId={event.playerId}
+                        fallback={playersById[event.playerId]?.name ?? event.playerId}
+                        playersById={playersById}
+                        onOpenPlayerProfile={props.onOpenPlayerProfile}
+                      />
+                    </strong>
+                    <p>{event.summary}</p>
+                  </div>
+                </article>
+              ))}
+          </div>
+        ) : circuitMovement.length === 0 ? (
+          <div className="profile-empty-state" role="status">
+            <strong>No circuit movement recorded for {movementSeasonId}</strong>
+            <p>Legacy seasons remain empty unless a persisted lifecycle transition exists in the save.</p>
+          </div>
+        ) : (
+          <p className="panel-summary">
+            {progressionEvents.length} progression record{progressionEvents.length === 1 ? "" : "s"} retained; no intake or retirement occurred.
+          </p>
+        )}
+      </section>
+
       <section className="command-panel command-panel-full reports-latest-panel">
         <div className="panel-header">
           <h2>Latest Detailed Match</h2>
@@ -2367,7 +2442,7 @@ export function CareerReportsArchivePage(props: CareerPageProps) {
               <span>{latest.report.result} · {latest.report.round}</span>
               <strong>{latest.report.scoreline}</strong>
               <p>
-                Opponent {playerMap[latest.report.opponentId]?.name ?? latest.report.opponentId}. Detailed evidence is
+                Opponent {playersById[latest.report.opponentId]?.name ?? latest.report.opponentId}. Detailed evidence is
                 attached only to this exact saved report.
               </p>
             </div>
@@ -2453,6 +2528,7 @@ export function CareerRankingsPage(props: CareerPageProps) {
   }
 
   const career = props.career;
+  const playersById = careerWorldPlayerMap(career);
   const managedPlayerId = career.program.managedPlayerId;
   const orderedRankings = rankingsByCurrentRank(career.rankings);
   const rankingsPageCount = Math.max(1, Math.ceil(orderedRankings.length / RANKINGS_PAGE_SIZE));
@@ -2468,7 +2544,7 @@ export function CareerRankingsPage(props: CareerPageProps) {
   const leader = orderedRankings[0];
   const playerAhead = managedIndex > 0 ? orderedRankings[managedIndex - 1] : undefined;
   const playerBehind = managedIndex >= 0 ? orderedRankings[managedIndex + 1] : undefined;
-  const leaderPlayer = leader ? playerMap[leader.playerId] : undefined;
+  const leaderPlayer = leader ? playersById[leader.playerId] : undefined;
   const gapToLeader = leader && managedRanking ? Math.max(0, leader.points - managedRanking.points) : 0;
   const gapAhead = playerAhead && managedRanking ? Math.max(0, playerAhead.points - managedRanking.points) : 0;
 
@@ -2545,7 +2621,7 @@ export function CareerRankingsPage(props: CareerPageProps) {
                   {playerAhead.rank}.{" "}
                   <ProfileNameButton
                     playerId={playerAhead.playerId}
-                    fallback={playerMap[playerAhead.playerId]?.name ?? playerAhead.playerId}
+                    fallback={playersById[playerAhead.playerId]?.name ?? playerAhead.playerId}
                     onOpenPlayerProfile={props.onOpenPlayerProfile}
                   />
                 </>
@@ -2563,7 +2639,7 @@ export function CareerRankingsPage(props: CareerPageProps) {
                   #{managedRanking.rank}{" "}
                   <ProfileNameButton
                     playerId={managedPlayerId}
-                    fallback={playerMap[managedPlayerId]?.name ?? managedPlayerId}
+                    fallback={playersById[managedPlayerId]?.name ?? managedPlayerId}
                     onOpenPlayerProfile={props.onOpenPlayerProfile}
                   />
                 </>
@@ -2585,7 +2661,7 @@ export function CareerRankingsPage(props: CareerPageProps) {
                   {playerBehind.rank}.{" "}
                   <ProfileNameButton
                     playerId={playerBehind.playerId}
-                    fallback={playerMap[playerBehind.playerId]?.name ?? playerBehind.playerId}
+                    fallback={playersById[playerBehind.playerId]?.name ?? playerBehind.playerId}
                     onOpenPlayerProfile={props.onOpenPlayerProfile}
                   />
                 </>
@@ -2615,7 +2691,7 @@ export function CareerRankingsPage(props: CareerPageProps) {
             <span role="columnheader">Status</span>
           </div>
           {visibleRankings.map((entry) => {
-            const player = playerMap[entry.playerId];
+            const player = playersById[entry.playerId];
             const isManaged = entry.playerId === managedPlayerId;
             const rowClassName = isManaged
               ? "rankings-row rankings-row-managed"
@@ -3288,11 +3364,13 @@ export function CareerScoutingNetworkPage(props: CareerPageProps) {
     return <CareerEmpty onStartCareer={props.onStartCareer} saveRecovery={props.saveRecovery} />;
   }
 
+  const playersById = careerWorldPlayerMap(props.career);
+
   const modifiers = staffModifiers(props.career.ecosystem);
   const facilities = facilityModifiers(props.career.facilities);
   const scoutDurationDays = modifiers.scouting >= 0.18 || facilities.scoutingAccuracy >= 5 ? 1 : 2;
   const nextOpponent = props.career.lastPreMatchBrief
-    ? playerMap[props.career.lastPreMatchBrief.opponentId]
+    ? playersById[props.career.lastPreMatchBrief.opponentId]
     : undefined;
   const scoutSubjects = [
     ...(nextOpponent
@@ -3326,7 +3404,7 @@ export function CareerScoutingNetworkPage(props: CareerPageProps) {
     }))
   ];
   const scoutingSubjectName = (subjectId: string) =>
-    playerMap[subjectId]?.name ??
+    playersById[subjectId]?.name ??
     props.career?.ecosystem.recruitment.candidates.find((candidate) => candidate.id === subjectId)?.name ??
     props.career?.ecosystem.academy.prospects.find((prospect) => prospect.id === subjectId)?.name ??
     subjectId;
@@ -3794,6 +3872,8 @@ export function CareerAthletePromisesPage(props: CareerPageProps) {
     return <CareerEmpty onStartCareer={props.onStartCareer} saveRecovery={props.saveRecovery} />;
   }
 
+  const playersById = careerWorldPlayerMap(props.career);
+
   const psychology = props.career.ecosystem.psychology.find(
     (entry) => entry.athleteId === props.career?.program.managedPlayerId
   );
@@ -3833,7 +3913,7 @@ export function CareerAthletePromisesPage(props: CareerPageProps) {
                     playerId={entry.athleteId}
                     fallback={
                       props.career?.ecosystem.recruitment.roster.find((slot) => slot.athleteId === entry.athleteId)?.name ??
-                      playerMap[entry.athleteId]?.name ??
+                      playersById[entry.athleteId]?.name ??
                       entry.athleteId
                     }
                     onOpenPlayerProfile={props.onOpenPlayerProfile}
@@ -3872,7 +3952,7 @@ export function CareerAthletePromisesPage(props: CareerPageProps) {
                     playerId={promise.athleteId}
                     fallback={
                       props.career?.ecosystem.recruitment.roster.find((slot) => slot.athleteId === promise.athleteId)?.name ??
-                      playerMap[promise.athleteId]?.name ??
+                      playersById[promise.athleteId]?.name ??
                       promise.athleteId
                     }
                     onOpenPlayerProfile={props.onOpenPlayerProfile}
@@ -4897,6 +4977,7 @@ export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddr
   }
 
   const career = props.career;
+  const playersById = careerWorldPlayerMap(career);
   const historicalSeason = props.seasonId !== career.seasonId;
   const seasonReview = historicalSeason
     ? career.seasonReviews.find((review) => review.seasonId === props.seasonId) ?? null
@@ -5029,7 +5110,7 @@ export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddr
       : displayTournament
         ? evidenceFromTournament(displayTournament)
         : [];
-  const managedOutcome = managedOutcomeSummary({ career, record: historyRecord, matchRecords });
+  const managedOutcome = managedOutcomeSummary({ career, record: historyRecord, matchRecords, playersById });
   const archiveStatus = activeTournament
     ? {
         title: activeTournament.championId ? "Live complete bracket" : "Active draw",
@@ -5078,8 +5159,8 @@ export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddr
   const fieldSummary = historicalSeason && !fieldSnapshot
     ? "No event-time field snapshot was retained for this edition."
     : fieldChangeSummary(universeRecord);
-  const championName = eventOutcome?.championId ? playerDisplayName(eventOutcome.championId) : null;
-  const runnerUpName = eventOutcome?.runnerUpId ? playerDisplayName(eventOutcome.runnerUpId) : null;
+  const championName = eventOutcome?.championId ? playerDisplayName(eventOutcome.championId, playersById) : null;
+  const runnerUpName = eventOutcome?.runnerUpId ? playerDisplayName(eventOutcome.runnerUpId, playersById) : null;
   const mainActionLabel =
     historicalSeason
       ? "Historical"
@@ -5208,6 +5289,7 @@ export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddr
             title={historicalSeason || historyRecord ? "Archived Knockout Draw" : "Current Knockout Draw"}
             subtitle={historicalSeason || historyRecord ? archiveStatus.detail : "Live event path and background results"}
             onOpenPlayerProfile={props.onOpenPlayerProfile}
+            playersById={playersById}
           />
         ) : (
           <section className="command-panel command-panel-full tournament-draw-placeholder">
@@ -5254,7 +5336,7 @@ export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddr
               <div className="career-deadline-row" aria-label={`${event.name} deterministic universe field`}>
                 {universeRecord.entrants.map((playerId) => (
                   <span key={playerId} className="deadline-chip">
-                    {playerDisplayName(playerId)}
+                    {playerDisplayName(playerId, playersById)}
                   </span>
                 ))}
               </div>
@@ -5275,7 +5357,7 @@ export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddr
                   {eventOutcome?.championId ? (
                     <ProfileNameButton
                       playerId={eventOutcome.championId}
-                      fallback={playerDisplayName(eventOutcome.championId)}
+                      fallback={playerDisplayName(eventOutcome.championId, playersById)}
                       onOpenPlayerProfile={props.onOpenPlayerProfile}
                     />
                   ) : (
@@ -5299,7 +5381,7 @@ export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddr
                   {eventOutcome?.runnerUpId ? (
                     <ProfileNameButton
                       playerId={eventOutcome.runnerUpId}
-                      fallback={playerDisplayName(eventOutcome.runnerUpId)}
+                      fallback={playerDisplayName(eventOutcome.runnerUpId, playersById)}
                       onOpenPlayerProfile={props.onOpenPlayerProfile}
                     />
                   ) : (
@@ -5387,13 +5469,13 @@ export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddr
                         <strong>
                           <ProfileNameButton
                             playerId={row.winnerId}
-                            fallback={playerDisplayName(row.winnerId)}
+                            fallback={playerDisplayName(row.winnerId, playersById)}
                             onOpenPlayerProfile={props.onOpenPlayerProfile}
                           />{" "}
                           def.{" "}
                           <ProfileNameButton
                             playerId={row.loserId}
-                            fallback={playerDisplayName(row.loserId)}
+                            fallback={playerDisplayName(row.loserId, playersById)}
                             onOpenPlayerProfile={props.onOpenPlayerProfile}
                           />
                         </strong>
@@ -5460,7 +5542,7 @@ export function CareerTournamentHomePage(props: CareerPageProps & TournamentAddr
                   <div>
                     <span>Alternates</span>
                     <strong>{fieldSnapshot.alternateEntries.length}</strong>
-                    <small>{fieldSnapshot.alternateEntries.slice(0, 3).map((entry) => playerDisplayName(entry.playerId)).join(", ") || "No alternates needed."}</small>
+                    <small>{fieldSnapshot.alternateEntries.slice(0, 3).map((entry) => playerDisplayName(entry.playerId, playersById)).join(", ") || "No alternates needed."}</small>
                   </div>
                   <div>
                     <span>Final seeding</span>
@@ -5604,9 +5686,10 @@ export function CareerPreMatchHubPage(props: CareerPageProps) {
     return <CareerEmpty onStartCareer={props.onStartCareer} saveRecovery={props.saveRecovery} />;
   }
 
+  const playersById = careerWorldPlayerMap(props.career);
   const brief = props.career.lastPreMatchBrief;
   const event = activeEvent(props.career);
-  const opponent = brief ? playerMap[brief.opponentId] : null;
+  const opponent = brief ? playersById[brief.opponentId] : null;
   const planningBridge = buildPreMatchPlanningBridge(props.career);
   const athlete = managedAthlete(props.career);
 
@@ -5643,7 +5726,7 @@ export function CareerPreMatchHubPage(props: CareerPageProps) {
           <strong>
             <ProfileNameButton
               playerId={opponent?.id}
-              fallback="Pending"
+              fallback={opponent?.name ?? "Pending"}
               onOpenPlayerProfile={props.onOpenPlayerProfile}
             />
           </strong>
@@ -5668,7 +5751,7 @@ export function CareerPreMatchHubPage(props: CareerPageProps) {
             <h2>
               <ProfileNameButton
                 playerId={opponent?.id}
-                fallback="Opponent pending"
+                fallback={opponent?.name ?? "Opponent pending"}
                 onOpenPlayerProfile={props.onOpenPlayerProfile}
               />
             </h2>
@@ -5773,6 +5856,7 @@ export function CareerPreMatchHubPage(props: CareerPageProps) {
             title="Current Event Bracket"
             subtitle="Managed path, pending match, and background results"
             onOpenPlayerProfile={props.onOpenPlayerProfile}
+            playersById={playersById}
           />
         ) : null}
       </div>
@@ -5785,8 +5869,9 @@ export function CareerPostMatchHubPage(props: CareerPageProps) {
     return <CareerEmpty onStartCareer={props.onStartCareer} saveRecovery={props.saveRecovery} />;
   }
 
+  const playersById = careerWorldPlayerMap(props.career);
   const report = props.career.lastMatchReport;
-  const opponent = report ? playerMap[report.opponentId] : null;
+  const opponent = report ? playersById[report.opponentId] : null;
   const eventStillActive =
     props.career.activeEventId !== null &&
     !props.career.completedEventIds.includes(props.career.activeEventId) &&
@@ -5856,6 +5941,7 @@ export function CareerPostMatchHubPage(props: CareerPageProps) {
             title="Current Event Bracket"
             subtitle="Latest result, live path, and background match summaries"
             onOpenPlayerProfile={props.onOpenPlayerProfile}
+            playersById={playersById}
           />
         ) : null}
 
@@ -5867,7 +5953,7 @@ export function CareerPostMatchHubPage(props: CareerPageProps) {
                   {report.result.toUpperCase()} vs{" "}
                   <ProfileNameButton
                     playerId={opponent?.id}
-                    fallback={report.opponentId}
+                    fallback={opponent?.name ?? report.opponentId}
                     onOpenPlayerProfile={props.onOpenPlayerProfile}
                   />
                 </>

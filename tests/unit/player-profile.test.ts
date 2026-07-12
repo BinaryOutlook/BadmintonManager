@@ -5,6 +5,7 @@ import { developmentSnapshotFromAthlete } from "../../game/career/development";
 import { eventEndDate, getCareerEvent } from "../../game/career/events";
 import { createInitialCareerState } from "../../game/career/state";
 import { simulateUniverseThroughDate } from "../../game/career/universe";
+import { activeWorldSeededPlayers, advanceWorldRegistry, careerWorldPlayerMap, protectedWorldPlayerIds } from "../../game/career/world";
 import { createPlayerProfileViewModel } from "../../game/selectors/player";
 import { createTournament } from "../../game/tournament/tournament";
 
@@ -94,6 +95,33 @@ describe("player profile view model", () => {
     expect(smash?.context).toContain("Field rank #");
     expect(smash?.context).toContain("this career");
     expect(smash?.context).toContain("Rear-Court Power");
+  });
+
+  it("benchmarks generated profiles against the current active career world", () => {
+    const initial = createInitialCareerState(seededPlayers[0].player.id, 7_011);
+    const career = {
+      ...initial,
+      seasonId: "2027",
+      date: "2027-01-01",
+      world: advanceWorldRegistry({
+        registry: initial.world,
+        careerSeed: initial.seed,
+        seasonId: "2027",
+        date: "2027-01-01",
+        protectedPlayerIds: protectedWorldPlayerIds(initial)
+      })
+    };
+    const generated = career.world.players.find((record) => record.origin === "generated_intake")!;
+    const activeFieldSize = activeWorldSeededPlayers(career).length;
+    const profile = createPlayerProfileViewModel({
+      playerId: generated.player.id,
+      selectedPlayerId: career.program.managedPlayerId,
+      tournament: null,
+      career,
+      playersById: careerWorldPlayerMap(career)
+    });
+
+    expect(profile?.attributeGroups[0]?.rows[0]?.context).toContain(`of ${activeFieldSize}`);
   });
 
   it("reports dated completed preparation outcomes from persisted development history", () => {

@@ -14,7 +14,8 @@ import type { AppPhase } from "../../game/store/store";
 import type { CareerState } from "../../game/career/models";
 import { programRoleLabel } from "../../game/career/program";
 import { scheduledPreparationForAthlete } from "../../game/career/preparation";
-import type { LiveMatchSession } from "../../game/core/models";
+import { careerWorldPlayerMap } from "../../game/career/world";
+import type { LiveMatchSession, Player } from "../../game/core/models";
 import type { TournamentState } from "../../game/tournament/tournament";
 
 type ProfileTab = "overview" | "attributes" | "performance" | "career" | "future";
@@ -27,6 +28,7 @@ interface PlayerProfilePageProps {
   career: CareerState | null;
   tournament: TournamentState | null;
   liveMatchSession?: LiveMatchSession | null;
+  playersById?: Readonly<Record<string, Player>>;
   onBack: () => void;
   onSelectPlayer: (playerId: string) => void;
 }
@@ -277,13 +279,15 @@ function TextList(props: { items: string[]; empty: string }) {
 export function PlayerProfilePage(props: PlayerProfilePageProps) {
   const [activeTab, setActiveTab] = useState<ProfileTab>("overview");
   const canSelect = !props.careerPresent && props.phase === "setup" && props.playerId !== props.selectedPlayerId;
+  const playersById = props.playersById ?? (props.career ? careerWorldPlayerMap(props.career) : undefined);
   const model = createPlayerProfileViewModel({
     playerId: props.playerId,
     selectedPlayerId: props.selectedPlayerId,
     tournament: props.tournament,
     liveMatch: props.liveMatchSession,
     career: props.career,
-    canSelect
+    canSelect,
+    playersById
   });
   const programSlot = props.career?.ecosystem.recruitment.roster.find(
     (slot) => slot.athleteId === props.playerId

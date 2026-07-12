@@ -9,6 +9,7 @@ export interface KnockoutTreeProps {
   title?: string;
   subtitle?: string;
   onOpenPlayerProfile: (playerId: string) => void;
+  playersById?: Readonly<Record<string, Player>>;
 }
 
 type BracketRoundName = "R32" | RoundName;
@@ -77,7 +78,8 @@ export function placeholderLabel(
   tournament: TournamentState,
   roundName: BracketRoundName,
   matchIndex: number,
-  side: "A" | "B"
+  side: "A" | "B",
+  playersById: Readonly<Record<string, Player>> = playerMap
 ) {
   const previousRound = previousRoundForTournament(tournament, roundName);
 
@@ -90,7 +92,7 @@ export function placeholderLabel(
   const winnerId = sourceRound?.matches[sourceMatchIndex]?.winnerId;
 
   if (winnerId) {
-    return playerMap[winnerId]?.name ?? winnerId;
+    return playersById[winnerId]?.name ?? winnerId;
   }
 
   return `Winner ${previousRound}-${sourceMatchIndex + 1}`;
@@ -101,7 +103,8 @@ function placeholderAddress(
   roundName: BracketRoundName,
   matchIndex: number,
   side: "A" | "B",
-  displayNames: Record<string, string>
+  displayNames: Record<string, string>,
+  playersById: Readonly<Record<string, Player>>
 ) {
   const previousRound = previousRoundForTournament(tournament, roundName);
 
@@ -116,7 +119,7 @@ function placeholderAddress(
   const sourceMatchIndex = matchIndex * 2 + (side === "A" ? 0 : 1);
   const sourceRound = findRound(tournament, previousRound);
   const winnerId = sourceRound?.matches[sourceMatchIndex]?.winnerId;
-  const winner = winnerId ? playerMap[winnerId] : undefined;
+  const winner = winnerId ? playersById[winnerId] : undefined;
 
   if (winner) {
     return {
@@ -199,7 +202,7 @@ export function compactBracketNamesForDraw(players: ReadonlyArray<Pick<Player, "
   return resolvedNames;
 }
 
-function drawPlayers(tournament: TournamentState) {
+function drawPlayers(tournament: TournamentState, playersById: Readonly<Record<string, Player>>) {
   const playerIds = new Set<string>();
 
   for (const round of tournament.rounds) {
@@ -209,7 +212,7 @@ function drawPlayers(tournament: TournamentState) {
     }
   }
 
-  return [...playerIds].map((playerId) => playerMap[playerId]).filter((player): player is Player => Boolean(player));
+  return [...playerIds].map((playerId) => playersById[playerId]).filter((player): player is Player => Boolean(player));
 }
 
 export function parseScorelineGames(scoreline: string | undefined): ScoreGame[] {
@@ -337,8 +340,8 @@ function managedStateForMatch(match: TournamentMatch, selectedPlayerId: string) 
   return match.winnerId === selectedPlayerId ? "Managed athlete advanced" : "Managed athlete eliminated";
 }
 
-function fullNameForPlayer(playerId: string) {
-  return playerMap[playerId]?.name ?? playerId;
+function fullNameForPlayer(playerId: string, playersById: Readonly<Record<string, Player>>) {
+  return playersById[playerId]?.name ?? playerId;
 }
 
 function defaultSelectedMatchId(tournament: TournamentState, selectedPlayerId: string) {
@@ -403,6 +406,7 @@ function SelectedMatchDetail(props: {
   match: TournamentMatch | null;
   selectedPlayerId: string;
   onOpenPlayerProfile: (playerId: string) => void;
+  playersById: Readonly<Record<string, Player>>;
 }) {
   if (!props.match) {
     return (
@@ -416,9 +420,9 @@ function SelectedMatchDetail(props: {
     );
   }
 
-  const sideA = playerMap[props.match.sideAId];
-  const sideB = playerMap[props.match.sideBId];
-  const winnerName = props.match.winnerId ? fullNameForPlayer(props.match.winnerId) : null;
+  const sideA = props.playersById[props.match.sideAId];
+  const sideB = props.playersById[props.match.sideBId];
+  const winnerName = props.match.winnerId ? fullNameForPlayer(props.match.winnerId, props.playersById) : null;
   const summaryEvents = props.match.summaryEvents?.slice(0, 2) ?? [];
 
   return (
@@ -481,6 +485,7 @@ function SelectedMatchDetail(props: {
 }
 
 export function KnockoutTree(props: KnockoutTreeProps) {
+  const playersById = props.playersById ?? playerMap;
   const roundSlots = bracketRoundsForTournament(props.tournament);
   const openingMatchCount = roundSlots[0]?.matchCount ?? 8;
   const bracketMinWidthRem = roundSlots.length * 11.25 + Math.max(0, roundSlots.length - 1) * 1;
@@ -493,8 +498,8 @@ export function KnockoutTree(props: KnockoutTreeProps) {
     gridTemplateRows: `repeat(${openingMatchCount * 2}, var(--bracket-row))`
   };
   const displayNames = useMemo(
-    () => compactBracketNamesForDraw(drawPlayers(props.tournament)),
-    [props.tournament]
+    () => compactBracketNamesForDraw(drawPlayers(props.tournament, playersById)),
+    [playersById, props.tournament]
   );
   const [selectedMatchId, setSelectedMatchId] = useState(() => defaultSelectedMatchId(props.tournament, props.selectedPlayerId));
   const selectedMatch = matchById(props.tournament, selectedMatchId) ?? matchById(props.tournament, defaultSelectedMatchId(props.tournament, props.selectedPlayerId));
@@ -539,8 +544,8 @@ export function KnockoutTree(props: KnockoutTreeProps) {
                 };
 
                 if (!match) {
-                  const sideAPlaceholder = placeholderAddress(props.tournament, roundSlot.name, matchIndex, "A", displayNames);
-                  const sideBPlaceholder = placeholderAddress(props.tournament, roundSlot.name, matchIndex, "B", displayNames);
+                  const sideAPlaceholder = placeholderAddress(props.tournament, roundSlot.name, matchIndex, "A", displayNames, playersById);
+                  const sideBPlaceholder = placeholderAddress(props.tournament, roundSlot.name, matchIndex, "B", displayNames, playersById);
 
                   return (
                     <div
@@ -568,8 +573,8 @@ export function KnockoutTree(props: KnockoutTreeProps) {
                   );
                 }
 
-                const sideA = playerMap[match.sideAId];
-                const sideB = playerMap[match.sideBId];
+                const sideA = playersById[match.sideAId];
+                const sideB = playersById[match.sideBId];
                 const finalChampion = roundSlot.name === "F" && match.completed;
                 const selected = selectedMatch?.id === match.id;
                 const sideAAddress = {
@@ -624,6 +629,7 @@ export function KnockoutTree(props: KnockoutTreeProps) {
           match={selectedMatch}
           selectedPlayerId={props.selectedPlayerId}
           onOpenPlayerProfile={props.onOpenPlayerProfile}
+          playersById={playersById}
         />
       </div>
     </section>

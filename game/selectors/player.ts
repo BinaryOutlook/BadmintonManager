@@ -1,4 +1,4 @@
-import { seededPlayers, playerMap } from "../content/players";
+import { playerMap } from "../content/players";
 import { tacticOptions } from "../content/tactics";
 import { trainingPlans } from "../career/training";
 import { deriveAthleteDossier, type AthleteDossier } from "../core/intel";
@@ -340,6 +340,7 @@ function deriveContext(args: {
   liveMatch?: LiveMatchSession | null;
   career?: CareerState | null;
   canSelect?: boolean;
+  playersById: Readonly<Record<string, Player>>;
 }): PlayerContextSummary {
   const { playerId, selectedPlayerId, tournament, liveMatch, career } = args;
   const match = activeManagedMatch(tournament);
@@ -390,7 +391,7 @@ function deriveContext(args: {
   if (tournament?.championId === playerId) {
     return {
       label: "Tournament champion",
-      detail: `${playerMap[playerId].name} closed the active event as champion.`,
+      detail: `${args.playersById[playerId]?.name ?? playerId} closed the active event as champion.`,
       tone: "complete",
       mode: "complete",
       isManaged: false,
@@ -847,8 +848,8 @@ function findCareerAthlete(career: CareerState | null | undefined, playerId: str
   return career?.athletes.find((athlete) => athlete.playerId === playerId) ?? null;
 }
 
-function fieldRankFor(accessor: (player: Player) => number, value: number) {
-  const values = seededPlayers.map((entry) => Math.round(accessor(entry.player)));
+function fieldRankFor(accessor: (player: Player) => number, value: number, fieldPlayers: readonly Player[]) {
+  const values = fieldPlayers.map((player) => Math.round(accessor(player)));
   const higher = values.filter((candidate) => candidate > Math.round(value)).length;
   const rank = higher + 1;
   const percentile = Math.max(1, Math.round(((values.length - rank + 1) / values.length) * 100));
@@ -890,8 +891,9 @@ function contextForAttribute(args: {
   baseValue?: number;
   trainingPlanLabel?: string;
   scoutingConfidence: number;
+  fieldPlayers: readonly Player[];
 }) {
-  const rank = fieldRankFor(args.accessor, args.currentValue);
+  const rank = fieldRankFor(args.accessor, args.currentValue, args.fieldPlayers);
   const parts = [`${args.benchmark}`, `Field rank #${rank.rank} of ${rank.fieldSize}`, `${rank.percentile}th percentile`];
 
   if (args.context.isManaged) {
@@ -914,9 +916,13 @@ function deriveAttributeGroups(args: {
   context: PlayerContextSummary;
   career: CareerState | null | undefined;
   scoutingConfidence: number;
+  playersById: Readonly<Record<string, Player>>;
 }): PlayerAttributeGroup[] {
   const { player, derived, context, career, scoutingConfidence } = args;
   const careerAthlete = findCareerAthlete(career, player.id);
+  const fieldPlayers = career
+    ? career.world.players.filter((record) => record.status === "active").map((record) => record.player)
+    : Object.values(args.playersById);
   const technicalRows = [
     {
       label: "Smash",
@@ -1051,7 +1057,8 @@ function deriveAttributeGroups(args: {
           careerAthlete,
           baseValue: row.baseValue,
           trainingPlanLabel: row.trainingPlanLabel,
-          scoutingConfidence
+          scoutingConfidence,
+          fieldPlayers
         }),
         tone: attributeTone(row.value)
       };
@@ -1073,9 +1080,14 @@ function matchOpponentId(match: TournamentMatch | CareerMatchRecord, playerId: s
   return match.playerAId === playerId ? match.playerBId : match.playerAId;
 }
 
-function tournamentMatchToRecent(match: TournamentMatch, eventName: string, playerId: string): PlayerRecentMatchSummary {
+function tournamentMatchToRecent(
+  match: TournamentMatch,
+  eventName: string,
+  playerId: string,
+  playersById: Readonly<Record<string, Player>>
+): PlayerRecentMatchSummary {
   const opponentId = matchOpponentId(match, playerId);
-  const opponent = playerMap[opponentId];
+  const opponent = playersById[opponentId];
 
   return {
     id: `tournament:${match.id}`,
@@ -1092,9 +1104,13 @@ function tournamentMatchToRecent(match: TournamentMatch, eventName: string, play
   };
 }
 
-function careerMatchToRecent(match: CareerMatchRecord, playerId: string): PlayerRecentMatchSummary {
+function careerMatchToRecent(
+  match: CareerMatchRecord,
+  playerId: string,
+  playersById: Readonly<Record<string, Player>>
+): PlayerRecentMatchSummary {
   const opponentId = matchOpponentId(match, playerId);
-  const opponent = playerMap[opponentId];
+  const opponent = playersById[opponentId];
 
   return {
     id: `career:${match.id}`,
@@ -1115,6 +1131,7 @@ function collectPerformance(args: {
   tournament: TournamentState | null;
   liveMatch?: LiveMatchSession | null;
   career?: CareerState | null;
+  playersById: Readonly<Record<string, Player>>;
 }): PlayerPerformanceSummary {
   const { playerId, selectedPlayerId, tournament, liveMatch, career } = args;
   const entries: PlayerPerformanceEntry[] = [];
@@ -1157,7 +1174,7 @@ function collectPerformance(args: {
           continue;
         }
 
-        const recent = tournamentMatchToRecent(match, tournament.name, playerId);
+        const recent = tournamentMatchToRecent(match, tournament.name, playerId, args.playersById);
         recentMatches.push(recent);
 
         if (!match.completed) {
@@ -1189,7 +1206,7 @@ function collectPerformance(args: {
 
   const careerRecentMatches = uniqueCareerMatchRecords(career?.matchHistory ?? [])
     .filter(isMatchForPlayer(playerId))
-    .map((match) => careerMatchToRecent(match, playerId));
+    .map((match) => careerMatchToRecent(match, playerId, args.playersById));
   const existingRecentIds = new Set(recentMatches.map((match) => `${match.eventName}:${match.round}:${match.opponentId}:${match.scoreline}`));
 
   for (const recent of careerRecentMatches) {
@@ -1616,9 +1633,10 @@ function threatSummary(args: {
   overall: number;
   context: PlayerContextSummary;
   selectedPlayerId: string;
+  playersById: Readonly<Record<string, Player>>;
 }) {
   const bestFit = args.tacticFits[0];
-  const managedPlayer = playerMap[args.selectedPlayerId];
+  const managedPlayer = args.playersById[args.selectedPlayerId];
   const managedOverall = managedPlayer ? overallFromDossier(deriveAthleteDossier(managedPlayer)) : args.overall;
   const overallGap = args.overall - managedOverall;
 
@@ -1875,10 +1893,11 @@ function deriveScoutingSummary(args: {
   coachReport: CoachReport;
   context: PlayerContextSummary;
   performance: PlayerPerformanceSummary;
+  playersById: Readonly<Record<string, Player>>;
 }) {
   const bestFit = args.tacticFits[0];
   const counter = counterForTactic(bestFit.key);
-  const managedPlayer = playerMap[args.selectedPlayerId];
+  const managedPlayer = args.playersById[args.selectedPlayerId];
   const managedOverall = managedPlayer ? overallFromDossier(deriveAthleteDossier(managedPlayer)) : 0;
   const playerOverall = overallFromDossier(deriveAthleteDossier(args.player));
   const comparison = managedPlayer
@@ -1928,6 +1947,7 @@ function deriveOverview(args: {
   scouting: ScoutingSummary;
   careerAthlete: AthleteCareerState | null;
   radar: PlayerRadarMetric[];
+  playersById: Readonly<Record<string, Player>>;
 }): PlayerOverviewSummary {
   const readinessStrip = deriveReadinessStrip({
     player: args.player,
@@ -1985,7 +2005,8 @@ function deriveOverview(args: {
     tacticFits: args.tacticFits,
     overall: args.overall,
     context: args.context,
-    selectedPlayerId: args.selectedPlayerId
+    selectedPlayerId: args.selectedPlayerId,
+    playersById: args.playersById
   });
   const scoutingVerdict = {
     action:
@@ -2040,6 +2061,7 @@ function deriveCareerSummary(args: {
   performance: PlayerPerformanceSummary;
   career?: CareerState | null;
   selectedPlayerId: string;
+  playersById: Readonly<Record<string, Player>>;
 }): CareerSummary {
   const { player, overall, career } = args;
   const stage =
@@ -2068,7 +2090,7 @@ function deriveCareerSummary(args: {
   const losses = recordedMatches.length - wins;
   const played = wins + losses;
   const hasRecordedHistory = played > 0 || achievements.length > 0;
-  const headToHead = deriveHeadToHead(player.id, recordedMatches);
+  const headToHead = deriveHeadToHead(player.id, recordedMatches, args.playersById);
   const rivalries = headToHead.map(interpretRivalry);
   const winPercentage = formatWinPercentage(wins, played);
   const managedPlayerId = career?.program.managedPlayerId ?? args.selectedPlayerId;
@@ -2120,9 +2142,9 @@ function deriveCareerSummary(args: {
     rivalries,
     managedPlayerSpotlight,
     hasRecordedHistory,
-    timeline: deriveCareerTimeline(player.id, recordedMatches, achievements),
-    biggestWins: notableResults(player.id, recordedMatches, "win"),
-    worstLosses: notableResults(player.id, recordedMatches, "loss")
+    timeline: deriveCareerTimeline(player.id, recordedMatches, achievements, args.playersById),
+    biggestWins: notableResults(player.id, recordedMatches, "win", args.playersById),
+    worstLosses: notableResults(player.id, recordedMatches, "loss", args.playersById)
   };
 }
 
@@ -2246,7 +2268,8 @@ function formatWinPercentage(wins: number, played: number) {
 
 function deriveHeadToHead(
   playerId: string,
-  matches: CareerState["matchHistory"]
+  matches: CareerState["matchHistory"],
+  playersById: Readonly<Record<string, Player>> = playerMap
 ): PlayerHeadToHeadSummary[] {
   const groups = new Map<string, { opponentId: string; played: number; wins: number; losses: number }>();
 
@@ -2269,7 +2292,7 @@ function deriveHeadToHead(
 
       return {
         opponentId: group.opponentId,
-        opponentName: playerMap[group.opponentId]?.name ?? group.opponentId,
+        opponentName: playersById[group.opponentId]?.name ?? group.opponentId,
         played: group.played,
         wins: group.wins,
         losses: group.losses,
@@ -2329,11 +2352,12 @@ function interpretRivalry(entry: PlayerHeadToHeadSummary): PlayerRivalrySummary 
 function deriveCareerTimeline(
   playerId: string,
   matches: CareerMatchRecord[],
-  achievements: PlayerAchievementSummary[]
+  achievements: PlayerAchievementSummary[],
+  playersById: Readonly<Record<string, Player>>
 ): PlayerCareerTimelineEntry[] {
   const matchEntries = matches.map((match) => {
     const opponentId = match.playerAId === playerId ? match.playerBId : match.playerAId;
-    const opponentName = playerMap[opponentId]?.name ?? opponentId;
+    const opponentName = playersById[opponentId]?.name ?? opponentId;
     const won = match.winnerId === playerId;
 
     return {
@@ -2359,9 +2383,13 @@ function deriveCareerTimeline(
   );
 }
 
-function toCareerResultSummary(playerId: string, match: CareerMatchRecord): PlayerCareerResultSummary {
+function toCareerResultSummary(
+  playerId: string,
+  match: CareerMatchRecord,
+  playersById: Readonly<Record<string, Player>>
+): PlayerCareerResultSummary {
   const opponentId = match.playerAId === playerId ? match.playerBId : match.playerAId;
-  const opponent = playerMap[opponentId];
+  const opponent = playersById[opponentId];
   const opponentOverall = opponent ? overallFromDossier(deriveAthleteDossier(opponent)) : 0;
 
   return {
@@ -2377,11 +2405,16 @@ function toCareerResultSummary(playerId: string, match: CareerMatchRecord): Play
   };
 }
 
-function notableResults(playerId: string, matches: CareerMatchRecord[], result: "win" | "loss") {
+function notableResults(
+  playerId: string,
+  matches: CareerMatchRecord[],
+  result: "win" | "loss",
+  playersById: Readonly<Record<string, Player>>
+) {
   const filtered = matches.filter((match) => (result === "win" ? match.winnerId === playerId : match.winnerId !== playerId));
 
   return filtered
-    .map((match) => toCareerResultSummary(playerId, match))
+    .map((match) => toCareerResultSummary(playerId, match, playersById))
     .sort((left, right) =>
       result === "win"
         ? right.opponentOverall - left.opponentOverall || right.date.localeCompare(left.date)
@@ -2397,11 +2430,12 @@ function deriveHeaderStatus(args: {
   tournament: TournamentState | null;
   performance: PlayerPerformanceSummary;
   careerAthlete: AthleteCareerState | null;
+  playersById: Readonly<Record<string, Player>>;
 }) {
   const ranking = args.career?.rankings.find((entry) => entry.playerId === args.player.id);
   const activeMatch = activeManagedMatch(args.tournament);
   const nextMatch = activeMatch && (activeMatch.sideAId === args.player.id || activeMatch.sideBId === args.player.id)
-    ? `${activeMatch.round} vs ${playerMap[matchOpponentId(activeMatch, args.player.id)]?.name ?? "TBD"}`
+    ? `${activeMatch.round} vs ${args.playersById[matchOpponentId(activeMatch, args.player.id)]?.name ?? "TBD"}`
     : null;
 
   return {
@@ -2424,8 +2458,10 @@ export function createPlayerProfileViewModel(args: {
   liveMatch?: LiveMatchSession | null;
   career?: CareerState | null;
   canSelect?: boolean;
+  playersById?: Readonly<Record<string, Player>>;
 }): PlayerProfileViewModel | null {
-  const player = playerMap[args.playerId];
+  const playersById = args.playersById ?? playerMap;
+  const player = playersById[args.playerId];
 
   if (!player) {
     return null;
@@ -2435,15 +2471,16 @@ export function createPlayerProfileViewModel(args: {
   const derived = deriveProfile(player);
   const tacticFits = deriveTacticFits(player, derived);
   const radar = deriveRadar(player, derived);
-  const performance = collectPerformance(args);
+  const performance = collectPerformance({ ...args, playersById });
   const overall = overallFromDossier(dossier);
-  const context = deriveContext(args);
+  const context = deriveContext({ ...args, playersById });
   const career = deriveCareerSummary({
     player,
     overall,
     performance,
     career: args.career,
-    selectedPlayerId: args.selectedPlayerId
+    selectedPlayerId: args.selectedPlayerId,
+    playersById
   });
   const confidence = scoutingConfidence({ context, performance, career });
   const coachReport = deriveCoachReport({
@@ -2467,7 +2504,8 @@ export function createPlayerProfileViewModel(args: {
     tacticFits,
     coachReport,
     context,
-    performance
+    performance,
+    playersById
   });
 
   return {
@@ -2483,7 +2521,8 @@ export function createPlayerProfileViewModel(args: {
       career: args.career,
       tournament: args.tournament,
       performance,
-      careerAthlete
+      careerAthlete,
+      playersById
     }),
     tacticFits,
     strengths: deriveStrengths(player, derived),
@@ -2494,7 +2533,8 @@ export function createPlayerProfileViewModel(args: {
       derived,
       context,
       career: args.career,
-      scoutingConfidence: confidence
+      scoutingConfidence: confidence,
+      playersById
     }),
     overview: deriveOverview({
       player,
@@ -2507,7 +2547,8 @@ export function createPlayerProfileViewModel(args: {
       training,
       scouting,
       careerAthlete,
-      radar
+      radar,
+      playersById
     }),
     development: deriveDevelopmentSummary({
       player,

@@ -238,6 +238,58 @@ describe("KnockoutTree", () => {
     expect(onOpenPlayerProfile).toHaveBeenCalledWith(managedMatch.sideAId);
   });
 
+  it("renders generated career entrants with names, compact labels, details, and profile links", () => {
+    const managedPlayerId = seededPlayers[0].player.id;
+    const tournament = createTournament(seededPlayers, managedPlayerId, 7_813);
+    const managedMatch = tournament.rounds[0]!.matches.find((match) => match.managed)!;
+    const replacedPlayerId = managedMatch.sideAId === managedPlayerId ? managedMatch.sideBId : managedMatch.sideAId;
+    const generated = {
+      ...playerMap[replacedPlayerId]!,
+      id: "world-2027-01",
+      name: "Ari Qureshi",
+      styleLabel: "Attacking prospect"
+    };
+    const playersById = { ...playerMap, [generated.id]: generated };
+    const generatedTournament: TournamentState = {
+      ...tournament,
+      rounds: tournament.rounds.map((round) => ({
+        ...round,
+        matches: round.matches.map((match) => match.id === managedMatch.id
+          ? {
+              ...match,
+              sideAId: match.sideAId === replacedPlayerId ? generated.id : match.sideAId,
+              sideBId: match.sideBId === replacedPlayerId ? generated.id : match.sideBId
+            }
+          : match)
+      }))
+    };
+    const rewrittenManagedMatch = generatedTournament.rounds[0]!.matches.find((match) => match.id === managedMatch.id)!;
+    const onOpenPlayerProfile = vi.fn();
+
+    render(
+      <KnockoutTree
+        tournament={generatedTournament}
+        selectedPlayerId={managedPlayerId}
+        playersById={playersById}
+        onOpenPlayerProfile={onOpenPlayerProfile}
+      />
+    );
+
+    const managedCard = screen.getByRole("button", {
+      name: `Inspect Round of 16 match ${Number(rewrittenManagedMatch.id.split("-").at(-1))}: ${playersById[rewrittenManagedMatch.sideAId]!.name} vs ${playersById[rewrittenManagedMatch.sideBId]!.name}`
+    });
+    expect(within(managedCard).getByRole("button", { name: "A. Qureshi" })).toHaveAttribute("title", generated.name);
+    expect(screen.queryByText(generated.id)).not.toBeInTheDocument();
+
+    const detail = screen.getByLabelText("Selected match details");
+    expect(within(detail).getByRole("button", { name: generated.name })).toBeInTheDocument();
+
+    fireEvent.click(within(managedCard).getByRole("button", { name: "A. Qureshi" }));
+    fireEvent.click(within(detail).getByRole("button", { name: generated.name }));
+    expect(onOpenPlayerProfile).toHaveBeenNthCalledWith(1, generated.id);
+    expect(onOpenPlayerProfile).toHaveBeenNthCalledWith(2, generated.id);
+  });
+
   it("preserves champion styling after the final is decided", () => {
     const managedPlayerId = seededPlayers[0].player.id;
     const championTournament = advanceManagedPlayerToTitle(

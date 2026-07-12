@@ -1,6 +1,6 @@
 import { Fragment } from "react/jsx-runtime";
 import { playerMap } from "../game/content/players";
-import { useOptionalPlayerNavigation } from "../app/playerNavigation";
+import { useOptionalPlayerDirectory, useOptionalPlayerNavigation } from "../app/playerNavigation";
 
 interface PlayerLinkProps {
   playerId: string;
@@ -14,29 +14,33 @@ interface SmartPlayerTextProps {
   onOpenPlayerProfile?: (playerId: string) => void;
 }
 
-const playerNameGroups = Object.values(playerMap).reduce((groups, player) => {
-  const players = groups.get(player.name) ?? [];
-  groups.set(player.name, [...players, player]);
-  return groups;
-}, new Map<string, Array<(typeof playerMap)[string]>>());
-const uniquePlayersByName = new Map(
-  [...playerNameGroups.entries()]
-    .filter(([, players]) => players.length === 1)
-    .map(([name, players]) => [name, players[0]!])
-);
-const uniquePlayerNames = [...uniquePlayersByName.keys()].sort((left, right) => right.length - left.length);
-const playerNamePattern = new RegExp(
-  `(${uniquePlayerNames.map((name) => escapeRegExp(name)).join("|")})`,
-  "g"
-);
-
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+function buildPlayerNameIndex(playersById: Readonly<typeof playerMap>) {
+  const playerNameGroups = Object.values(playersById).reduce((groups, player) => {
+    const players = groups.get(player.name) ?? [];
+    groups.set(player.name, [...players, player]);
+    return groups;
+  }, new Map<string, Array<(typeof playerMap)[string]>>());
+  const uniquePlayersByName = new Map(
+    [...playerNameGroups.entries()]
+      .filter(([, players]) => players.length === 1)
+      .map(([name, players]) => [name, players[0]!])
+  );
+  const uniquePlayerNames = [...uniquePlayersByName.keys()].sort((left, right) => right.length - left.length);
+  const playerNamePattern = uniquePlayerNames.length > 0
+    ? new RegExp(`(${uniquePlayerNames.map((name) => escapeRegExp(name)).join("|")})`, "g")
+    : null;
+
+  return { uniquePlayersByName, playerNamePattern };
+}
+
 export function PlayerLink(props: PlayerLinkProps) {
   const openPlayerProfile = useOptionalPlayerNavigation();
-  const player = playerMap[props.playerId];
+  const playersById = useOptionalPlayerDirectory() ?? playerMap;
+  const player = playersById[props.playerId];
 
   if (!player) {
     return <>{props.children ?? props.playerId}</>;
@@ -58,7 +62,9 @@ export function PlayerLink(props: PlayerLinkProps) {
 }
 
 export function SmartPlayerText(props: SmartPlayerTextProps) {
-  const parts = props.text.split(playerNamePattern);
+  const playersById = useOptionalPlayerDirectory() ?? playerMap;
+  const { uniquePlayersByName, playerNamePattern } = buildPlayerNameIndex(playersById);
+  const parts = playerNamePattern ? props.text.split(playerNamePattern) : [props.text];
 
   if (parts.length === 1) {
     return <>{props.text}</>;

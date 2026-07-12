@@ -1,28 +1,42 @@
 import { createContext, type ReactNode, useContext } from "react";
+import type { Player } from "../game/core/models";
 
-const PlayerNavigationContext = createContext<((playerId: string) => void) | null>(null);
+interface PlayerNavigationContextValue {
+  onOpenPlayerProfile: (playerId: string) => void;
+  playersById?: Readonly<Record<string, Player>>;
+}
+
+const PlayerNavigationContext = createContext<PlayerNavigationContextValue | null>(null);
 
 export function PlayerNavigationProvider(props: {
   onOpenPlayerProfile: (playerId: string) => void;
+  playersById?: Readonly<Record<string, Player>>;
   children: ReactNode;
 }) {
   return (
-    <PlayerNavigationContext.Provider value={props.onOpenPlayerProfile}>
+    <PlayerNavigationContext.Provider value={{
+      onOpenPlayerProfile: props.onOpenPlayerProfile,
+      playersById: props.playersById
+    }}>
       {props.children}
     </PlayerNavigationContext.Provider>
   );
 }
 
 export function usePlayerNavigation() {
-  const openPlayerProfile = useContext(PlayerNavigationContext);
+  const context = useContext(PlayerNavigationContext);
 
-  if (!openPlayerProfile) {
+  if (!context) {
     throw new Error("usePlayerNavigation must be used inside PlayerNavigationProvider.");
   }
 
-  return openPlayerProfile;
+  return context.onOpenPlayerProfile;
 }
 
 export function useOptionalPlayerNavigation() {
-  return useContext(PlayerNavigationContext);
+  return useContext(PlayerNavigationContext)?.onOpenPlayerProfile ?? null;
+}
+
+export function useOptionalPlayerDirectory() {
+  return useContext(PlayerNavigationContext)?.playersById;
 }

@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useMemo,
   useRef,
   useState,
   type CSSProperties,
@@ -37,6 +38,7 @@ import { SaveManagerView } from "../components/SaveManagerView";
 import { SettingsOverlay, type ThemeAccent } from "../components/SettingsOverlay";
 import { SetupView, type LaunchSaveSummary } from "../components/SetupView";
 import { playerMap } from "../game/content/players";
+import { activeWorldSeededPlayers, careerWorldPlayerMap } from "../game/career/world";
 import { getCareerDailyAction, type CareerDailyActionTone } from "../game/career/dailyAction";
 import { buildAdvanceDayForecast } from "../game/career/dayResolution";
 import { getCareerEvent } from "../game/career/events";
@@ -156,7 +158,8 @@ function buildLaunchSaveSummary(args: {
 
   if (args.career) {
     const managedPlayerId = args.career.program.managedPlayerId;
-    const managedName = playerName(managedPlayerId);
+    const careerPlayersById = careerWorldPlayerMap(args.career);
+    const managedName = careerPlayersById[managedPlayerId]?.name ?? managedPlayerId;
     const athlete = args.career.athletes.find((entry) => entry.playerId === managedPlayerId);
     const activeEvent = args.career.activeEventId
       ? getCareerEvent(args.career.events, args.career.activeEventId)
@@ -186,7 +189,7 @@ function buildLaunchSaveSummary(args: {
 
     if (matchContext) {
       const opponentId = matchContext.playerAId === managedPlayerId ? matchContext.playerBId : matchContext.playerAId;
-      details.push({ label: "Opponent", value: playerName(opponentId), playerId: opponentId });
+      details.push({ label: "Opponent", value: careerPlayersById[opponentId]?.name ?? opponentId, playerId: opponentId });
     }
 
     if (athlete) {
@@ -427,8 +430,10 @@ export function App() {
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
   const mobileNavigationToggleRef = useRef<HTMLButtonElement>(null);
   const mobileNavigationPanelRef = useRef<HTMLElement>(null);
+  const careerPlayers = useMemo(() => career ? activeWorldSeededPlayers(career) : null, [career]);
+  const careerPlayersById = useMemo(() => career ? careerWorldPlayerMap(career) : playerMap, [career]);
   const selectedPlayer = playerMap[selectedPlayerId];
-  const activeAthlete = career ? playerMap[career.program.managedPlayerId] : selectedPlayer;
+  const activeAthlete = career ? careerPlayersById[career.program.managedPlayerId] : selectedPlayer;
   const setupSelectedPlayerId = career
     ? quickTournamentDraftPlayerId ?? selectedPlayerId
     : selectedPlayerId;
@@ -1335,6 +1340,7 @@ export function App() {
           career={career}
           tournament={tournament}
           liveMatchSession={liveMatch?.session}
+          playersById={career ? careerPlayersById : playerMap}
           onBack={closePlayerProfile}
           onSelectPlayer={selectPlayer}
         />
@@ -1349,6 +1355,8 @@ export function App() {
           career={career}
           tournament={tournament}
           liveMatchSession={liveMatch?.session}
+          players={careerPlayers ?? undefined}
+          playersById={career ? careerPlayersById : playerMap}
           onOpenPlayerProfile={openPlayerProfile}
           onSelectPlayer={selectPlayer}
         />
@@ -1509,7 +1517,7 @@ export function App() {
 
   if (shouldRenderLaunchShell) {
     return (
-      <PlayerNavigationProvider onOpenPlayerProfile={openPlayerProfile}>
+      <PlayerNavigationProvider onOpenPlayerProfile={openPlayerProfile} playersById={career ? careerPlayersById : playerMap}>
         <TournamentNavigationProvider onOpenTournamentHome={openTournamentHome}>
           <div className="command-shell command-shell-launch" data-accent={themeAccent}>
             <LaunchTopBar saveStatus={launchSaveStatus} onOpenSettings={() => setSettingsOpen(true)} />
@@ -1522,7 +1530,7 @@ export function App() {
   }
 
   return (
-    <PlayerNavigationProvider onOpenPlayerProfile={openPlayerProfile}>
+    <PlayerNavigationProvider onOpenPlayerProfile={openPlayerProfile} playersById={career ? careerPlayersById : playerMap}>
       <TournamentNavigationProvider onOpenTournamentHome={openTournamentHome}>
         <div
           className={sidebarCollapsed ? "command-shell command-shell-sidebar-collapsed" : "command-shell"}
