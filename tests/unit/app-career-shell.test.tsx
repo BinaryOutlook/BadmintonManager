@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { App, commandIdForPage } from "../../app/App";
+import { App, commandIdForPage, pageForRuntime } from "../../app/App";
 import { TournamentNavigationProvider } from "../../app/tournamentNavigation";
 import {
   CareerCalendarPage,
@@ -499,6 +499,15 @@ describe("career shell daily action", () => {
     expect(commandIdForPage({ id: "timeline" })).toBe("timeline");
     expect(commandIdForPage({ id: "calendar" })).toBe("calendar");
     expect(within(commandRail).getByRole("button", { name: /Inbox Preview preview-only/ })).toBeDisabled();
+  });
+
+  it("derives a career-safe fallback page without trusting the setup phase", () => {
+    const planning = createInitialCareerState(seededPlayers[0].player.id, 9001);
+
+    expect(pageForRuntime(planning, "setup")).toEqual({ id: "home" });
+    expect(pageForRuntime({ ...planning, stage: "pre_match" }, "setup")).toEqual({ id: "bracket" });
+    expect(pageForRuntime({ ...planning, stage: "post_match" }, "setup")).toEqual({ id: "review" });
+    expect(pageForRuntime(null, "overview")).toEqual({ id: "bracket" });
   });
 
   it("orders the Portal Home as a decision center and demotes healthy save and ledger noise", () => {

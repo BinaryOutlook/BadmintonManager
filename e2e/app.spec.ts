@@ -1647,6 +1647,10 @@ test("player profile renders decision-first managed and scouting dossiers", asyn
   await expect(page.getByRole("button", { name: visualProfile.opponentName, exact: true }).first()).toBeVisible();
   await expectProfileViewportBounded(page);
   await captureFocusedScreenshot(page, "player-profile-career-h2h-desktop");
+
+  await page.getByRole("button", { name: "Back" }).click();
+  await expect(page.getByRole("heading", { name: "Athlete Directory" })).toBeVisible();
+  await expect(visualCommandRail.getByRole("button", { name: /Squad/ })).toHaveAttribute("aria-current", "page");
 });
 
 test("surfaces dense page contracts and Save Manager metadata", async ({ page }) => {

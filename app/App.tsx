@@ -90,6 +90,22 @@ export function canAdvanceCareerDate(career: CareerState | null, phase: AppPhase
   return Boolean(career && phase !== "match" && advanceableCareerStages.has(career.stage));
 }
 
+export function pageForRuntime(career: CareerState | null, phase: AppPhase): AppPage {
+  if (!career) {
+    return pageForPhase(phase);
+  }
+
+  if (career.stage === "post_match") {
+    return { id: "review" };
+  }
+
+  if (career.stage === "pre_match") {
+    return { id: "bracket" };
+  }
+
+  return { id: "home" };
+}
+
 function formatCareerStage(stage: CareerStage) {
   switch (stage) {
     case "planning":
@@ -361,15 +377,8 @@ export function App() {
     deleteActiveSave,
     deleteCorruptSave
   } = useTournamentStore();
-  const [activePage, setActivePage] = useState<AppPage>(() =>
-    career
-      ? career.stage === "post_match"
-        ? { id: "review" }
-        : career.stage === "pre_match"
-          ? { id: "bracket" }
-          : { id: "home" }
-      : pageForPhase(phase)
-  );
+  const [activePage, setActivePage] = useState<AppPage>(() => pageForRuntime(career, phase));
+  const [playerProfileReturnPage, setPlayerProfileReturnPage] = useState<AppPage | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
   const [pendingCareerPlayerId, setPendingCareerPlayerId] = useState<string | null>(null);
@@ -435,7 +444,16 @@ export function App() {
   }
 
   function openPlayerProfile(playerId: string) {
+    if (activePage.id !== "playerProfile") {
+      setPlayerProfileReturnPage(activePage);
+    }
+
     setActivePage({ id: "playerProfile", playerId });
+  }
+
+  function closePlayerProfile() {
+    setActivePage(playerProfileReturnPage ?? pageForRuntime(career, phase));
+    setPlayerProfileReturnPage(null);
   }
 
   function openTournamentHome(address: TournamentAddress) {
@@ -1103,7 +1121,7 @@ export function App() {
           career={career}
           tournament={tournament}
           liveMatchSession={liveMatch?.session}
-          onBack={() => setActivePage(pageForPhase(phase))}
+          onBack={closePlayerProfile}
           onSelectPlayer={selectPlayer}
         />
       );
