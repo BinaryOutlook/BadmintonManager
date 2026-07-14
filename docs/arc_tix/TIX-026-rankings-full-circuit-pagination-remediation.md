@@ -17,14 +17,7 @@ Paginate the Rankings page `Full Circuit Table` so it shows eight players at a t
 
 The table should remain the full circuit ranking surface, but it should become easier to scan:
 
-$$
-\text{Full Circuit Table} =
-\text{ranked source data}
-\rightarrow
-\text{8-row pages}
-\rightarrow
-\text{Prev/Next navigation}
-$$
+**Full Circuit Table = ranked source data → 8-row pages → Prev/Next navigation**
 
 This intentionally updates the old `TIX-011` rule that lower-ranked players should not be hidden unless pagination is added intentionally. Pagination is now intentional.
 
@@ -44,15 +37,11 @@ This ticket keeps the full table available while improving density and visual co
 
 Use a fixed page size:
 
-$$
-\text{pageSize} = 8
-$$
+**pageSize = 8**
 
 Default state:
 
-$$
-\text{Rankings open} \Rightarrow \text{page} = 1
-$$
+**Rankings open ⇒ page = 1**
 
 Page windows:
 
@@ -78,13 +67,7 @@ The Rankings page must continue to use the canonical ranking snapshot.
 
 Required rule:
 
-$$
-\text{visibleRows} =
-\operatorname{paginate}(
-\operatorname{sortByRank}(\texttt{career.rankings}),
-8
-)
-$$
+**visibleRows = paginate( sortByRank(`career.rankings`), 8 )**
 
 Do not recalculate points differently in the UI. `TIX-023` may later change how ranking snapshots are derived, but this table should consume the resulting ranking data rather than creating a competing ranking formula.
 
@@ -158,10 +141,6 @@ Add or update tests for:
 
 Rankings remain complete, but become easier to read:
 
-$$
-\text{complete circuit data}
-\ne
-\text{all rows visible at once}
-$$
+**complete circuit data ≠ all rows visible at once**
 
 The manager can scan the top eight immediately, then page through the rest with the same rhythm already used elsewhere in the career UI.

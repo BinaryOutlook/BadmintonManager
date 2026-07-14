@@ -14,9 +14,7 @@ Every visible player name should be a stable address into that player profile un
 
 The rule is:
 
-$$
-\text{Player Name On Screen} \Rightarrow \text{Open Player Profile}
-$$
+**Player Name On Screen ⇒ Open Player Profile**
 
 The app already has `PlayerLink`, `SmartPlayerText`, and `PlayerNavigationProvider`. This ticket makes that addressing system universal instead of partial.
 
@@ -92,10 +90,5 @@ npm run build
 
 Player identity becomes a system, not a styling accident:
 
-$$
-\text{known player id}
-+ \text{visible name}
-=
-\text{profile address}
-$$
+**known player id + visible name = profile address**
 

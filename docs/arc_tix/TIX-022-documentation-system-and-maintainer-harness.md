@@ -16,11 +16,7 @@ Build a durable documentation system for **Badminton Manager** so future maintai
 
 The desired shift is:
 
-$$
-\text{documentation as scattered notes}
-\rightarrow
-\text{documentation as system infrastructure}
-$$
+**documentation as scattered notes → documentation as system infrastructure**
 
 The final result should make the project easier to enter, modify, review, and extend without requiring old chat transcripts or archaeological code reading.
 
@@ -46,10 +42,7 @@ There are useful docs already, but the knowledge is distributed across product n
 
 That creates a maintenance risk:
 
-$$
-\text{new contributor} + \text{large system} - \text{clear map}
-= \text{blind-box development}
-$$
+**new contributor + large system - clear map = blind-box development**
 
 As the system gets bigger, the documentation must become a first-class maintenance surface. Future agents should know when code changes require documentation updates, and future humans should be able to understand the game without mentally rebuilding it from scattered implementation details.
 
@@ -69,17 +62,7 @@ After this ticket is complete, a new agent or maintainer should be able to answe
 
 The documentation should make this core boundary obvious:
 
-$$
-\text{React UI}
-\rightarrow
-\text{player intent}
-\rightarrow
-\text{game state}
-\rightarrow
-\text{simulation engine}
-\rightarrow
-\text{events, records, saves, presentation}
-$$
+**React UI → player intent → game state → simulation engine → events, records, saves, presentation**
 
 ## 4. Required Documentation Deliverables
 
@@ -158,12 +141,7 @@ Minimum required sections:
 
 Make the central product equation explicit:
 
-$$
-\text{meaningful management}
-= \text{clear choices}
-+ \text{trustworthy simulation}
-+ \text{inspectable consequences}
-$$
+**meaningful management = clear choices + trustworthy simulation + inspectable consequences**
 
 ### 4.4 Create Or Update A Code Structure Reference
 
@@ -187,11 +165,7 @@ Minimum required coverage:
 
 Required boundary statement:
 
-$$
-\text{React components should render state and dispatch intent;}
-\quad
-\text{game modules should decide outcomes.}
-$$
+**React components should render state and dispatch intent; game modules should decide outcomes.**
 
 The document should identify files or folders that are dangerous to change casually, especially save migration, match simulation, tournament progression, and career date advancement.
 
@@ -214,9 +188,7 @@ Minimum required coverage:
 
 The safety invariant should be explicit:
 
-$$
-\text{invalid import} \Rightarrow \text{no active-save mutation}
-$$
+**invalid import ⇒ no active-save mutation**
 
 ### 4.6 Create Or Update A Maintainer Workflow Reference
 
@@ -235,9 +207,7 @@ It should explain:
 
 The rule of thumb:
 
-$$
-\text{If the next agent would need your chat transcript, document it.}
-$$
+**If the next agent would need your chat transcript, document it.**
 
 ## 5. Architecture Overview Requirements
 
@@ -358,10 +328,4 @@ Do not create a massive documentation portal. This pass should establish durable
 
 The goal is maintainable system memory:
 
-$$
-\text{good docs}
-= \text{orientation}
-+ \text{contracts}
-+ \text{decision history}
-+ \text{update discipline}
-$$
+**good docs = orientation + contracts + decision history + update discipline**

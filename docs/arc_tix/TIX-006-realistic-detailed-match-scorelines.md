@@ -22,20 +22,11 @@ Managed live matches can produce legal but implausible badminton scorelines such
 
 The engine is obeying the laws of the current product scoring model:
 
-\[
-\text{best of three games},\quad
-\text{rally scoring to }21,\quad
-\text{win by }2,\quad
-\text{cap at }30
-\]
+**Best of three games; rally scoring to 21; win by 2; cap at 30**
 
 The problem is not illegal scoring. The problem is match-shape realism.
 
-\[
-\text{Believable Badminton}
-\neq
-\text{legal endpoint only}
-\]
+**Believable Badminton ≠ legal endpoint only**
 
 A simulated match can follow scoring rules and still feel wrong if the point distribution allows normal roster matchups to collapse into repeated \(21\text{-}0\) or \(21\text{-}2\) games. This is especially damaging in the managed match flow because the player watches and reacts to the detailed engine point by point.
 
@@ -66,13 +57,7 @@ But routine or semi-routine outcomes should not look like:
 
 The target is:
 
-\[
-\text{Favorites still win}
-+
-\text{underdogs still score points}
-+
-\text{close matchups breathe}
-\]
+**Favorites still win + underdogs still score points + close matchups breathe**
 
 ## 3. Investigation Summary
 
@@ -101,11 +86,7 @@ The current calibration documentation already shows that detailed mode is too lo
 
 That means quick and detailed may agree on winner probability, but they do not agree on match shape.
 
-\[
-\text{Winner parity}
-\ne
-\text{scoreline parity}
-\]
+**Winner parity ≠ scoreline parity**
 
 ### 3.2 Temporary Score-Shape Trace
 
@@ -127,13 +108,9 @@ For large \(10+\) OVR gaps:
 
 This is the smoking gun:
 
-\[
-\text{quick mode} \approx \text{plausible scorelines}
-\]
+**quick mode ≈ plausible scorelines**
 
-\[
-\text{detailed mode} \approx \text{too many collapses}
-\]
+**detailed mode ≈ too many collapses**
 
 ### 3.3 Traced Blowout Example
 
@@ -216,15 +193,7 @@ Momentum is updated in `applyMomentumShift()`, but the current rally resolver do
 
 So the issue is not:
 
-\[
-\text{momentum boost}
-\rightarrow
-\text{more wins}
-\rightarrow
-\text{more momentum}
-\rightarrow
-\text{runaway match}
-\]
+**momentum boost → more wins → more momentum → runaway match**
 
 That loop mostly does not exist yet.
 
@@ -364,15 +333,7 @@ When a player trails by a large margin, they should become safer, not more doome
 
 Suggested behavior:
 
-\[
-\text{large deficit}
-\rightarrow
-\text{lower risk}
-+
-\text{fewer cheap errors}
--
-\text{less attacking threat}
-\]
+**large deficit → lower risk + fewer cheap errors - less attacking threat**
 
 Example trigger:
 
@@ -406,15 +367,7 @@ When leading heavily, a player should often stop overpressing.
 
 Suggested behavior:
 
-\[
-\text{leader up big}
-\rightarrow
-\text{lower aggression}
-+
-\text{less attack pressure}
-+
-\text{fewer cheap errors}
-\]
+**leader up big → lower aggression + less attack pressure + fewer cheap errors**
 
 This creates realistic late-game states:
 
@@ -764,25 +717,10 @@ The final handoff should include:
 
 This ticket is done when managed live matches feel like competitive badminton:
 
-\[
-\text{legal scoring}
-+
-\text{credible point distribution}
-+
-\text{bounded momentum}
-+
-\text{coach-readable causes}
-\]
+**legal scoring + credible point distribution + bounded momentum + coach-readable causes**
 
 not:
 
-\[
-\text{legal scoring}
-+
-\text{error spiral}
-+
-\text{implausible bagel games}
-\]
+**legal scoring + error spiral + implausible bagel games**
 
 The player should be able to lose badly and still believe the sport being simulated.
-

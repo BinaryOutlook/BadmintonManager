@@ -27,11 +27,7 @@ The scan covered:
 
 The goal is not to collect fashionable dependencies. The useful question is:
 
-$$
-\text{library value} =
-\frac{\text{feature acceleration} + \text{correctness gain} + \text{maintenance gain}}
-{\text{adaptation cost} + \text{architectural risk}}
-$$
+**library value = (feature acceleration + correctness gain + maintenance gain) / (adaptation cost + architectural risk)**
 
 ## 2. Current Stack Snapshot
 

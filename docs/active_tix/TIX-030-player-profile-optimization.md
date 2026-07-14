@@ -15,29 +15,17 @@ Rework the Player Profile from a strong-looking stat dossier into a decision-fir
 
 The profile should answer:
 
-$$
-\text{What does this athlete mean, what changed, and what should I do next?}
-$$
+**What does this athlete mean, what changed, and what should I do next?**
 
 before it answers:
 
-$$
-\text{Which ratings and records can I inspect?}
-$$
+**Which ratings and records can I inspect?**
 
 The current profile already has a credible management-sim tone: dark shell, compact tabs, badminton-specific attributes, radar profile, tactical fit cards, current-run evidence, and career records. The next step is to sharpen the information architecture so each profile state supports the manager's actual job.
 
 The key optimization is relationship-aware content:
 
-$$
-\text{Player Profile}
-=
-\text{shared athlete identity}
-+
-\text{contextual manager decision}
-+
-\text{deep evidence tabs}
-$$
+**Player Profile = shared athlete identity + contextual manager decision + deep evidence tabs**
 
 For a managed player, the profile should help the user select, train, rest, and tactically deploy the athlete. For an unmanaged player, the profile should help the user scout, compare, shortlist, or prepare against the athlete.
 
@@ -56,9 +44,7 @@ Career
 
 That set is close, but it misses one important axis:
 
-$$
-\text{future action}
-$$
+**future action**
 
 Attributes explain what the player can do. Performance explains what they have recently done. Career explains what they have achieved. The profile still needs an explicit place for what comes next: development if the athlete is under management, scouting if they are not.
 
@@ -78,13 +64,7 @@ Do not create two separate Overview tabs.
 
 Create one `Overview` tab whose contents change based on player relationship:
 
-$$
-\text{Overview} =
-\begin{cases}
-\text{Management Dashboard}, & \text{if player is managed} \\
-\text{Scouting / Opposition Dashboard}, & \text{if player is not managed}
-\end{cases}
-$$
+**Overview = Management Dashboard, if player is managed; Scouting / Opposition Dashboard, if player is not managed**
 
 The tab name remains stable, while the page becomes intelligent.
 
@@ -98,9 +78,7 @@ A player is managed when they are the active selected/locked athlete for the cur
 
 Managed-profile UX should answer:
 
-$$
-\text{Should I play them, how should I use them, and what should I do next?}
-$$
+**Should I play them, how should I use them, and what should I do next?**
 
 ### 4.2 Unmanaged Profile
 
@@ -108,9 +86,7 @@ A player is unmanaged when they are a selectable athlete, opponent, event entran
 
 Unmanaged-profile UX should answer:
 
-$$
-\text{Should I scout, select, sign, avoid, or prepare against them?}
-$$
+**Should I scout, select, sign, avoid, or prepare against them?**
 
 If the player is the next opponent, the unmanaged profile should lean toward opposition preparation. If the player is in setup selection, it should lean toward recruitment/selection fit. If the player is merely an available roster entry, it should lean toward scouting and comparison.
 
@@ -128,17 +104,7 @@ Development / Scouting
 
 The mental model should be:
 
-$$
-\text{Who are they?}
-\rightarrow
-\text{What can they do?}
-\rightarrow
-\text{How are they playing?}
-\rightarrow
-\text{What have they done?}
-\rightarrow
-\text{What comes next?}
-$$
+**Who are they? → What can they do? → How are they playing? → What have they done? → What comes next?**
 
 ## 6. Overview Tab Contract
 
@@ -167,17 +133,7 @@ Reason: Elite attack profile, stable morale, excellent fitness.
 
 The managed Overview should have this shape:
 
-$$
-\text{Managed Overview}
-=
-\text{Selection}
-+
-\text{Tactic}
-+
-\text{Training}
-+
-\text{Risk}
-$$
+**Managed Overview = Selection + Tactic + Training + Risk**
 
 The `Tactical Plan` section can reuse current `Tactical Fit` data, but it should identify the recommended tactic first instead of presenting every tactic as equal. Each tactic card should include:
 
@@ -214,17 +170,7 @@ Scouting confidence: 72%
 
 The unmanaged Overview should have this shape:
 
-$$
-\text{Unmanaged Overview}
-=
-\text{Recruitment Value}
-+
-\text{Threat Report}
-+
-\text{Uncertainty}
-+
-\text{Next Scout Action}
-$$
+**Unmanaged Overview = Recruitment Value + Threat Report + Uncertainty + Next Scout Action**
 
 When the profile is opened from setup and the athlete can be selected, `Select Athlete` remains available, but the page should still explain why the selection makes sense rather than treating selection as the only story.
 
@@ -261,9 +207,7 @@ Required attribute signals where data exists or can be safely derived:
 
 The Attributes tab should answer:
 
-$$
-\text{What tools does this athlete possess, and which tools are changing?}
-$$
+**What tools does this athlete possess, and which tools are changing?**
 
 ## 8. Performance Tab Contract
 
@@ -284,9 +228,7 @@ Required sections:
 
 The Performance tab should answer:
 
-$$
-\text{Are the ratings becoming results?}
-$$
+**Are the ratings becoming results?**
 
 For players without enough evidence, avoid a large blank panel. Show a meaningful empty state that tells the user what will unlock the evidence.
 
@@ -318,9 +260,7 @@ Oscar Nyman: 3-0
 
 The Career tab should answer:
 
-$$
-\text{What has this athlete's career become over time?}
-$$
+**What has this athlete's career become over time?**
 
 Do not fabricate historical achievements. Continue deriving records from persisted universe facts.
 
@@ -351,9 +291,7 @@ Risk: Medium fatigue if tournament load continues
 
 The Development tab should answer:
 
-$$
-\text{How should I improve this athlete next?}
-$$
+**How should I improve this athlete next?**
 
 ### 10.2 Unmanaged Label: `Scouting`
 
@@ -378,9 +316,7 @@ Recommendation: Watch one more match before selection decision
 
 The Scouting tab should answer:
 
-$$
-\text{What do I know, what do I not know, and what should I learn next?}
-$$
+**What do I know, what do I not know, and what should I learn next?**
 
 ## 11. Header And Identity Contract
 
@@ -424,9 +360,7 @@ Required visual outcomes:
 
 The design target is:
 
-$$
-\text{dense} \ne \text{flat}
-$$
+**dense ≠ flat**
 
 Dense means many decisions are available. Flat means the interface refuses to prioritize them.
 
@@ -495,15 +429,7 @@ Do not move simulation logic into React. If derived values become nontrivial, ke
 
 The boundary remains:
 
-$$
-\text{React UI}
-\rightarrow
-\text{intent}
-\rightarrow
-\text{career/tournament/player state}
-\rightarrow
-\text{derived display model}
-$$
+**React UI → intent → career/tournament/player state → derived display model**
 
 ## 15. Absolute Rules
 
@@ -570,15 +496,11 @@ Capture visual QA screenshots for at least:
 
 The Player Profile should feel less like:
 
-$$
-\text{Stat Archive}
-$$
+**Stat Archive**
 
 and more like:
 
-$$
-\text{Badminton Management Dossier}
-$$
+**Badminton Management Dossier**
 
 The user should be able to open any athlete and immediately understand the player's identity, the relevant managerial decision, the evidence behind that decision, and the next sensible path.
 

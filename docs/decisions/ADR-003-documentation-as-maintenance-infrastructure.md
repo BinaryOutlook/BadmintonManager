@@ -23,10 +23,7 @@ The current system includes:
 
 Earlier documentation captured useful context, but too much knowledge lived across release packets, ticket specs, old plans, and source-code archaeology. That creates a re-entry problem for both humans and agents:
 
-$$
-\text{large system} - \text{clear documentation ownership}
-= \text{blind-box development}
-$$
+**large system - clear documentation ownership = blind-box development**
 
 The project needs documentation that describes current contracts, not only past delivery history.
 

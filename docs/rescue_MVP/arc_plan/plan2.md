@@ -9,9 +9,7 @@ Prepared on: 2026-05-16
 
 The global `Advance Day` button is now in the right place, but it still needs to behave like the central career guide in Football Manager. The user should not need to know which page contains the next required action. The game should answer one question every time:
 
-$$
-\text{What is the most important unresolved action for the current career day?}
-$$
+**What is the most important unresolved action for the current career day?**
 
 If the answer is "nothing remains today", the topbar button should be green and advance the date. If the answer is "a match or event action remains today", the topbar button should be red and take the user directly to that required match or event flow. This turns `Advance Day` from a passive date button into the career's daily command surface.
 
@@ -451,9 +449,7 @@ Rules:
 
 The critical change is:
 
-$$
-\text{entered} \not\Rightarrow \text{disabled}
-$$
+**entered does not imply disabled**
 
 ### Calendar Click Handling
 
@@ -532,10 +528,7 @@ R16 match day
 
 For a 16-player event:
 
-$$
-\text{scheduledDate}(\text{round}) =
-\text{event.startDate} + \text{roundOffset}
-$$
+**scheduledDate(round) = event.startDate + roundOffset**
 
 where:
 
@@ -808,15 +801,11 @@ The following scenario should pass end-to-end:
 
 This scenario directly proves the requested mechanism:
 
-$$
-\text{red button} = \text{unfinished required event work}
-$$
+**red button = unfinished required event work**
 
 and:
 
-$$
-\text{green button} = \text{safe to advance the calendar}
-$$
+**green button = safe to advance the calendar**
 
 ## 12. Testing Matrix
 

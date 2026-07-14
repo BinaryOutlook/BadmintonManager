@@ -16,9 +16,7 @@ subsystem contract. This document explains how to evolve that contract into:
 
 The guiding product rule still applies:
 
-$$
-\text{player agency} = \text{coach decisions} \ne \text{manual racket control}
-$$
+**player agency = coach decisions ≠ manual racket control**
 
 ## 1. Problem Statement
 
@@ -120,10 +118,7 @@ interface MatchSimulationEnvelope {
 
 The invariant:
 
-$$
-\text{same seed} + \text{same input} + \text{same fidelity}
-\rightarrow \text{same output}
-$$
+**same seed + same input + same fidelity → same output**
 
 Detailed and quick modes do not need identical outputs for the same seed. They need calibrated
 macro behavior.
@@ -152,15 +147,7 @@ It should avoid pretending to know details it does not model:
 
 The fidelity target is:
 
-$$
-\text{IRL match feel}
-\approx
-\text{shot patterns}
-+ \text{movement stress}
-+ \text{mental pressure}
-+ \text{fatigue}
-+ \text{tactical adaptation}
-$$
+**IRL match feel ≈ shot patterns + movement stress + mental pressure + fatigue + tactical adaptation**
 
 That gives the engine a clear test: if the UI says a player won because they pinned the opponent's
 backhand, the event log should show repeated backhand-lane pressure, weaker replies, and a scoring
@@ -552,9 +539,7 @@ Then apply small counters:
 
 The principle:
 
-$$
-\text{adaptation} < \text{ratings} + \text{tactics}
-$$
+**adaptation < ratings + tactics**
 
 Adaptation should color the match. It should not erase scouting.
 
@@ -904,10 +889,7 @@ The target is not perfect physical reproduction.
 
 The target is:
 
-$$
-\text{believable badminton} =
-\text{ratings} + \text{tactics} + \text{pressure} + \text{fatigue} + \text{bounded variance}
-$$
+**believable badminton = ratings + tactics + pressure + fatigue + bounded variance**
 
 The player should feel that the match was earned, legible, and coachable.
 

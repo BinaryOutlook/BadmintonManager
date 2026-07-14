@@ -21,9 +21,7 @@ Career Save | Settings | Date | Advance Day
 
 The rightmost corner should belong to:
 
-$$
-\text{Career Clock} = \text{Date} + \text{Advance Day}
-$$
+**Career Clock = Date + Advance Day**
 
 with `Advance Day` as the far-right anchor and strongest action.
 
@@ -39,15 +37,11 @@ That weakens the hierarchy. `Date` and `Advance Day` are not just utility contro
 
 The better mental model is:
 
-$$
-\text{System Utilities} \rightarrow \text{Career Clock}
-$$
+**System Utilities → Career Clock**
 
 not:
 
-$$
-\text{Career Clock} \rightarrow \text{System Utilities}
-$$
+**Career Clock → System Utilities**
 
 ## 3. Layout Contract
 
@@ -153,10 +147,6 @@ Add or update tests for:
 
 The top bar should feel crisp and deliberate:
 
-$$
-\text{Career Save} + \text{Settings} + \text{Date} + \text{Advance Day}
-=
-\text{clear utility path} + \text{clear progression path}
-$$
+**Career Save + Settings + Date + Advance Day = clear utility path + clear progression path**
 
 The player should be able to glance right and immediately understand both the current career date and the next action that moves time forward.

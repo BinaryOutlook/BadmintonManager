@@ -19,22 +19,11 @@ The Calendar should show one authoritative visible month label, one compact mont
 
 The desired shape is:
 
-$$
-\text{Calendar} =
-\text{Month label}
-+ \texttt{<< Today >>}
-+ \text{month grid}
-$$
+**Calendar = Month label + `<< Today >>` + month grid**
 
 not:
 
-$$
-\text{Calendar} =
-\text{repeated month labels}
-+ \text{career diagnostics}
-+ \text{distant header controls}
-+ \text{month grid}
-$$
+**Calendar = repeated month labels + career diagnostics + distant header controls + month grid**
 
 ## 2. Why This Remediation Exists
 
@@ -62,9 +51,7 @@ If the current page has three visible occurrences, remove the first two and keep
 
 The invariant is:
 
-$$
-\operatorname{count}(\text{visible month-year label}) = 1
-$$
+**count(visible month-year label) = 1**
 
 Do not replace the duplicate labels with synonyms that create the same visual repetition.
 
@@ -95,15 +82,11 @@ This information may remain in tests, dev tools, fixtures, or debug-only helpers
 
 The user-facing Calendar should answer:
 
-$$
-\text{What is on my diary this month?}
-$$
+**What is on my diary this month?**
 
 not:
 
-$$
-\text{What view-model fields did the component compute?}
-$$
+**What view-model fields did the component compute?**
 
 ## 5. Month Control Contract
 
@@ -131,9 +114,7 @@ Month navigation is view state only. It must not advance the career clock, mutat
 
 The rule remains:
 
-$$
-\text{month cursor change} \ne \text{career date change}
-$$
+**month cursor change ≠ career date change**
 
 `Today` refers to the current in-game career date, not the real operating-system date.
 
@@ -190,14 +171,6 @@ Add or update tests for:
 
 The Calendar becomes a clean diary surface:
 
-$$
-\text{Calendar page}
-\rightarrow
-\text{one month}
-\rightarrow
-\text{local controls}
-\rightarrow
-\text{confirmed commitments}
-$$
+**Calendar page → one month → local controls → confirmed commitments**
 
 No duplicate headings. No debug readout. No navigation controls drifting away from the grid they control.

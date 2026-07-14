@@ -4,11 +4,7 @@ This document maps the current source tree in practical maintainer language. Use
 
 Required boundary:
 
-$$
-\text{React components should render state and dispatch intent;}
-\quad
-\text{game modules should decide outcomes.}
-$$
+**React components should render state and dispatch intent; game modules should decide outcomes.**
 
 ## Top-Level Runtime
 

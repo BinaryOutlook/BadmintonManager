@@ -6,13 +6,7 @@
 
 The core runtime boundary is:
 
-$$
-\text{React UI}
-\rightarrow \text{player intent}
-\rightarrow \text{Zustand actions}
-\rightarrow \text{game modules}
-\rightarrow \text{state, events, records, saves, presentation}
-$$
+**React UI → player intent → Zustand actions → game modules → state, events, records, saves, presentation**
 
 React renders decisions and evidence. Game modules decide outcomes.
 

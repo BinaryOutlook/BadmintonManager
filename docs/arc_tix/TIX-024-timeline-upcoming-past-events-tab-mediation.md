@@ -23,21 +23,11 @@ Upcoming | Past Events
 
 The desired product shape is:
 
-$$
-\text{Timeline} = \text{Upcoming Event Schedule} + \text{Past Events}
-$$
+**Timeline = Upcoming Event Schedule + Past Events**
 
 not:
 
-$$
-\text{Timeline} =
-\text{Event Brief}
-+ \text{Week Strip}
-+ \text{Milestones}
-+ \text{Seeding}
-+ \text{Eligibility}
-+ \text{Costs}
-$$
+**Timeline = Event Brief + Week Strip + Milestones + Seeding + Eligibility + Costs**
 
 The Timeline should feel like the manager's event ledger: what is coming next, and what has already happened.
 
@@ -64,9 +54,7 @@ Upcoming | Past Events
 
 Required default:
 
-$$
-\text{Timeline open} \Rightarrow \text{active tab} = \text{Upcoming}
-$$
+**Timeline open ⇒ active tab = Upcoming**
 
 The tab control should live near the top of the Timeline content, with `Past Events` selectable to the right of `Upcoming` in normal left-to-right layout.
 
@@ -80,9 +68,7 @@ It should show future manager-relevant events and commitments in a compact, navi
 
 The tab should answer:
 
-$$
-\text{What should I care about next?}
-$$
+**What should I care about next?**
 
 Minimum expected content:
 
@@ -97,9 +83,7 @@ The `Past Events` tab should hold completed or archived event rows.
 
 It should answer:
 
-$$
-\text{What already happened in my career world?}
-$$
+**What already happened in my career world?**
 
 Minimum expected content:
 
@@ -176,13 +160,6 @@ Add or update tests for:
 
 Timeline becomes a sharp event ledger:
 
-$$
-\text{Timeline}
-\rightarrow
-\begin{cases}
-\text{Upcoming: what is next} \\
-\text{Past Events: what already happened}
-\end{cases}
-$$
+**Timeline → Upcoming: what is next; Past Events: what already happened**
 
 Everything else moves to the surface that actually owns it.

@@ -15,21 +15,15 @@ Make `Calendar` a standalone sidebar destination, not a tab nested inside `Sched
 
 The desired mental model is:
 
-$$
-\text{Sidebar command} \rightarrow \text{single-purpose page}
-$$
+**Sidebar command → single-purpose page**
 
 Specifically:
 
-$$
-\text{Timeline} \ne \text{Calendar container}
-$$
+**Timeline ≠ Calendar container**
 
 and:
 
-$$
-\text{Calendar} \ne \text{Timeline subtab}
-$$
+**Calendar ≠ Timeline subtab**
 
 The Calendar page must show one month at a time, with compact navigation controls in the top-right:
 
@@ -49,11 +43,7 @@ The Calendar page must show one month at a time, with compact navigation control
 
 That creates a contradictory product contract:
 
-$$
-\text{Calendar is standalone}
-\quad \text{and} \quad
-\text{Calendar is nested}
-$$
+**Calendar is standalone; and; Calendar is nested**
 
 This ticket removes that contradiction. If the sidebar has a `Calendar` command, clicking it must open the Calendar itself.
 
@@ -106,15 +96,11 @@ It must not contain:
 
 The operating rule is:
 
-$$
-\text{Timeline} = \text{what happened, what is coming, and when}
-$$
+**Timeline = what happened, what is coming, and when**
 
 not:
 
-$$
-\text{Timeline} = \text{all schedule features}
-$$
+**Timeline = all schedule features**
 
 ## 5. Calendar Page Contract
 
@@ -142,9 +128,7 @@ It must not show:
 
 The Calendar page answers one question:
 
-$$
-\text{What is actually on my diary this month?}
-$$
+**What is actually on my diary this month?**
 
 ## 6. Month Navigation Contract
 
@@ -152,9 +136,7 @@ Month navigation must be UI-local. It must not advance the career date or mutate
 
 Default month:
 
-$$
-\text{default month} = \operatorname{month}(\texttt{career.date})
-$$
+**default month = month(`career.date`)**
 
 Control behavior:
 
@@ -199,15 +181,11 @@ Reuse the confirmed-commitment rule from `TIX-016`, but render only entries insi
 
 The rule remains:
 
-$$
-\text{Calendar entry} \iff \text{played match} \lor \text{confirmed scheduled commitment} \lor \text{manager-relevant deadline}
-$$
+**Calendar entry if and only if played match or confirmed scheduled commitment or manager-relevant deadline**
 
 For knockout rounds:
 
-$$
-\text{future round visible} \iff \text{managed player has qualified for that round}
-$$
+**future round visible if and only if managed player has qualified for that round**
 
 Implementation guidance:
 
@@ -323,12 +301,8 @@ Add or update focused tests for:
 
 The navigation reads plainly:
 
-$$
-\text{Timeline} \rightarrow \text{chronological event context}
-$$
+**Timeline → chronological event context**
 
-$$
-\text{Calendar} \rightarrow \text{one-month manager diary}
-$$
+**Calendar → one-month manager diary**
 
 There is no nested Calendar ambiguity left for the user, and the Calendar page no longer feels like a printed report.

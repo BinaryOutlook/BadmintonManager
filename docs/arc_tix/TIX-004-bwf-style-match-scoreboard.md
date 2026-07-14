@@ -20,15 +20,11 @@ Nordic Tower                 -    -       0
 
 The issue is not just the word `Current`. The whole table is still exposing an internal implementation idea:
 
-\[
-\text{Completed set columns} + \text{separate live-score column}
-\]
+**Completed set columns + separate live-score column**
 
 A badminton viewer expects:
 
-\[
-\text{Set 1 score} + \text{Set 2 score} + \text{Set 3 score if needed}
-\]
+**Set 1 score + Set 2 score + Set 3 score if needed**
 
 The live game score should live inside the active set column. Future sets should not be visually advertised before the match reaches them.
 
@@ -73,27 +69,15 @@ Replace the current `S1 / S2 / Current` scoreboard with a true best-of-three set
 
 The target model is:
 
-\[
-\text{Broadcast Scoreline}
-=
-\text{Nationality + Name + Server}
-+ \text{Visible Set Columns}
-\]
+**Broadcast Scoreline = Nationality + Name + Server + Visible Set Columns**
 
 Where:
 
-\[
-\text{Visible Set Columns}
-=
-\text{played sets}
-+ \text{active set}
-\]
+**Visible Set Columns = played sets + active set**
 
 and:
 
-\[
-\text{future unplayed sets} = \text{not visibly labeled}
-\]
+**future unplayed sets = not visibly labeled**
 
 This is a presentation and UX semantics ticket. It should not change scoring rules, match engine probability, rally resolution, set completion logic, or career/tournament progression.
 
@@ -125,12 +109,7 @@ This is a presentation and UX semantics ticket. It should not change scoring rul
 
 The scoreboard should read like a sports broadcast, not like a data table.
 
-\[
-\text{Good Match Scoreboard}
-=
-\frac{\text{instant score comprehension} + \text{player identity}}
-{\text{implementation labels} + \text{unused columns}}
-\]
+**Good Match Scoreboard = (instant score comprehension + player identity) / (implementation labels + unused columns)**
 
 That means:
 
@@ -524,22 +503,11 @@ Then run the full verification before handoff.
 
 This ticket is done when the match scoreline reads like:
 
-\[
-\text{Nation + Player + Serve Marker}
-+ \text{S1}
-+ \text{S2 if relevant}
-+ \text{S3 if relevant}
-\]
+**Nation + Player + Serve Marker + S1 + S2 if relevant + S3 if relevant**
 
 not like:
 
-\[
-\text{Player}
-+ \text{Srv}
-+ \text{S1}
-+ \text{S2}
-+ \text{Current}
-\]
+**Player + Srv + S1 + S2 + Current**
 
 The screenshot should immediately communicate a badminton match state without asking the player to interpret internal UI vocabulary.
 

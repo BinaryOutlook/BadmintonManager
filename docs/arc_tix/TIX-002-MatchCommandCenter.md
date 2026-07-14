@@ -8,20 +8,11 @@ The current **2D Tactical Viewer** is useful as raw simulation evidence, but it 
 
 In soccer, a pressure map can naturally mean:
 
-$$
-\text{Team Control} = \text{territory} + \text{pressure} + \text{momentum}
-$$
+**Team Control = territory + pressure + momentum**
 
 In badminton, that mental model is weaker. Badminton tactics are not mainly about owning territory. They are about **rally construction**:
 
-$$
-\text{Rally Pattern} =
-\text{shot placement}
-\rightarrow
-\text{forced reply}
-\rightarrow
-\text{attack chance or error}
-$$
+**Rally Pattern = shot placement → forced reply → attack chance or error**
 
 So the court map should not ask the player to decode abstract pressure numbers. It should answer a coach's natural questions:
 
@@ -108,17 +99,7 @@ Recommended label:
 
 Possible calculation meaning:
 
-$$
-\text{Attack Value}
-=
-\text{winner threat}
-+
-\text{forced errors}
-+
-\text{weak replies}
-+
-\text{shot quality}
-$$
+**Attack Value = winner threat + forced errors + weak replies + shot quality**
 
 ### Strain
 
@@ -130,17 +111,7 @@ This immediately communicates that wide and deep shots are making somebody move.
 
 Possible calculation meaning:
 
-$$
-\text{Movement Load}
-=
-\text{width load}
-+
-\text{depth load}
-+
-\text{rally length load}
-+
-\text{late execution load}
-$$
+**Movement Load = width load + depth load + rally length load + late execution load**
 
 ### Momentum
 
@@ -175,21 +146,11 @@ A zone with \(148\) neutral shots may matter less than a zone with \(30\) shots 
 
 Current implied priority:
 
-$$
-\text{Important Zone} \approx \text{Most Shots}
-$$
+**Important Zone ≈ Most Shots**
 
 Better tactical priority:
 
-$$
-\text{Important Zone}
-=
-\text{Attack Value}
-+
-\text{Movement Load}
-+
-\text{Momentum Swing}
-$$
+**Important Zone = Attack Value + Movement Load + Momentum Swing**
 
 Recommendation:
 
@@ -260,15 +221,11 @@ Lift safer after net pressure, then attack rear center/backhand.
 
 This changes the viewer from:
 
-$$
-\text{Where did shots go?}
-$$
+**Where did shots go?**
 
 to:
 
-$$
-\text{What rally pattern is actually working?}
-$$
+**What rally pattern is actually working?**
 
 That is much closer to real badminton planning.
 
@@ -319,17 +276,7 @@ The current screen has the right pieces, but the space composition is inefficien
 
 The screen should obey this simpler composition rule:
 
-$$
-\text{Useful Match Screen}
-=
-\text{Score State}
-+
-\text{Advance Control}
-+
-\text{Rally Evidence}
-+
-\text{Tactical Choice}
-$$
+**Useful Match Screen = Score State + Advance Control + Rally Evidence + Tactical Choice**
 
 Any repeated status block that does not help the next decision should be removed or folded into a denser component.
 
@@ -356,17 +303,7 @@ Where:
 
 This makes the scoreboard feel closer to badminton broadcast language:
 
-$$
-\text{Match State}
-=
-\text{Player Row}
-+
-\text{Set History}
-+
-\text{Current Game Score}
-+
-\text{Server Marker}
-$$
+**Match State = Player Row + Set History + Current Game Score + Server Marker**
 
 The score should become a **compact match state strip**, not a large panel.
 
@@ -406,13 +343,7 @@ Suggested layout:
 
 The key space rule:
 
-$$
-\text{Scoreboard Height}
-+
-\text{Action Height}
-\le
-\text{one compact top band}
-$$
+**Scoreboard Height + Action Height ≤ one compact top band**
 
 Do not keep a separate large action panel and a separate status strip if the compact top band already explains the match state.
 
@@ -444,13 +375,7 @@ Match Rail         30%
 
 This is not a strict CSS requirement. It is the product priority:
 
-$$
-\text{Rally Pattern Map}
->
-\text{Live Feed}
->
-\text{Telemetry Detail}
-$$
+**Rally Pattern Map > Live Feed > Telemetry Detail**
 
 The player is in a match. The most important thing is not raw logging. It is knowing what pattern is working and what button to press next.
 
@@ -550,11 +475,7 @@ Later, add real shot-chain detection.
 
 For `Finish Set`, the MVP implementation can repeatedly resolve points until:
 
-$$
-\text{set complete}
-\quad \text{or} \quad
-\text{match complete}
-$$
+**set complete; or; match complete**
 
 This should use the same deterministic match engine path as `Next Point`, only looped through a faster command.
 
@@ -562,15 +483,11 @@ This should use the same deterministic match engine path as `Next Point`, only l
 
 The viewer should stop feeling like:
 
-$$
-\text{soccer territory analytics}
-$$
+**soccer territory analytics**
 
 and start feeling like:
 
-$$
-\text{badminton rally coaching}
-$$
+**badminton rally coaching**
 
 The player should look at the map and instantly understand:
 
@@ -584,22 +501,8 @@ That would make the feature more natural, more readable, and much more useful fo
 
 The whole Match Command Center should feel like:
 
-$$
-\text{broadcast scoreboard}
-+
-\text{coach's rally read}
-+
-\text{fast match controls}
-$$
+**broadcast scoreboard + coach's rally read + fast match controls**
 
 not:
 
-$$
-\text{large score panel}
-+
-\text{large action panel}
-+
-\text{repeated status cards}
-+
-\text{squeezed tactical map}
-$$
+**large score panel + large action panel + repeated status cards + squeezed tactical map**

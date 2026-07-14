@@ -4,14 +4,7 @@ This directory is the durable system memory for **Badminton Manager**. Start her
 
 The first stop for agents is still `AGENTS.md`; the first stop for documentation routing is this file.
 
-$$
-\text{maintainable system memory}
-=
-\text{orientation}
-+ \text{contracts}
-+ \text{decision history}
-+ \text{update discipline}
-$$
+**maintainable system memory = orientation + contracts + decision history + update discipline**
 
 ## First Stops
 
@@ -90,10 +83,7 @@ Historical tickets and release packets explain why the project moved, but curren
 
 When code changes materially, update documentation in the same work session.
 
-$$
-\text{code change} + \text{stale docs}
-= \text{future archaeology}
-$$
+**code change + stale docs = future archaeology**
 
 Rules of thumb:
 

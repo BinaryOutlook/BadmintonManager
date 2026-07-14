@@ -85,10 +85,7 @@ The Calendar layout also splits content into multiple panels that feel like half
 
 The goal is not a full official tournament operations simulator. The goal is a close-enough badminton career abstraction:
 
-$$
-\text{entry deadline} \rightarrow \text{draw published} \rightarrow
-\text{R16 day} \rightarrow \text{QF day} \rightarrow \text{SF day} \rightarrow \text{Final day}
-$$
+**entry deadline → draw published → R16 day → QF day → SF day → Final day**
 
 For the current 16-player draw, use one managed match round per day:
 
@@ -103,9 +100,7 @@ If the event has more duration days than four, extra days can be treated as trav
 
 This keeps the model simple:
 
-$$
-\text{scheduledMatchDate} = \text{event.startDate} + \text{roundOffset}
-$$
+**scheduledMatchDate = event.startDate + roundOffset**
 
 ## 4. Workstream Split
 
@@ -383,9 +378,7 @@ Add a `Past Events` sub-page under Calendar. It should show:
 
 The history view should make past activity legible:
 
-$$
-\text{event memory} = \text{result} + \text{reward} + \text{cost} + \text{context}
-$$
+**event memory = result + reward + cost + context**
 
 ### Data Model Recommendation
 
@@ -561,9 +554,7 @@ Secondary:
 
 The page should use the width intentionally:
 
-$$
-\text{Calendar value} = \text{timeline clarity} + \text{next action clarity} + \text{history recall}
-$$
+**Calendar value = timeline clarity + next action clarity + history recall**
 
 ### Implementation Notes
 
@@ -624,9 +615,7 @@ For every current event:
 
 Suggested invariant:
 
-$$
-\text{entryDeadline} \le \text{withdrawalDeadline} \le \text{drawDate} < \text{startDate}
-$$
+**entryDeadline ≤ withdrawalDeadline ≤ drawDate < startDate**
 
 This does not need to mimic a specific official calendar. It should merely feel like a plausible badminton circuit.
 

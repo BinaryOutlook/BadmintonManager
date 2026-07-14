@@ -119,9 +119,7 @@ MATCH_BALANCE_SEEDS=10 npm run calibrate:match
 
 The score-shape pass keeps the same scoring laws:
 
-$$
-\text{best of three games},\quad \text{rally scoring to }21,\quad \text{win by }2,\quad \text{cap at }30
-$$
+**Best of three games; rally scoring to 21; win by 2; cap at 30**
 
 but changes the detailed engine so realistic match texture matters as much as legal endpoints.
 
@@ -248,11 +246,7 @@ Tests:
 
 The detailed engine now produces credible badminton score shapes for normal roster matchups:
 
-$$
-\text{favorites still win}
-+ \text{underdogs still score}
-+ \text{close matchups breathe}
-$$
+**favorites still win + underdogs still score + close matchups breathe**
 
 The calibration harness now reports the score-shape evidence needed to keep that behavior from
 regressing.

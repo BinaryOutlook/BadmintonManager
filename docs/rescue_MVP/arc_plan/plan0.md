@@ -16,10 +16,7 @@ This rescue pass should remove four pieces of friction that currently slow the p
 
 The intended product equation for this pass is:
 
-$$
-\text{Fewer navigation chores} + \text{visible tournament context} + \text{forced athlete identity} + \text{one-screen match control}
-\rightarrow \text{clearer coaching flow}
-$$
+**Fewer navigation chores + visible tournament context + forced athlete identity + one-screen match control → clearer coaching flow**
 
 No match-engine behavior should change in this pass. The work is primarily React composition, shell routing, layout CSS, and focused regression coverage.
 
@@ -79,11 +76,7 @@ The primary point simulation action is at the bottom of the directive panel. Thi
 
 The target image instead implies:
 
-$$
-\text{scoreboard} \parallel \text{primary point action}
-\quad\text{above}\quad
-\text{feed} \parallel \text{viewer} \parallel \text{telemetry/options}
-$$
+**scoreboard beside primary point action; above; feed beside viewer beside telemetry/options**
 
 ## 3. Workstream Split
 
@@ -158,9 +151,7 @@ Identifying the controlled athlete is a core game decision, but the current flow
 
 The selection flow should feel like:
 
-$$
-\text{Start mode} \rightarrow \text{blocking athlete selection modal} \rightarrow \text{explicit confirmation}
-$$
+**Start mode → blocking athlete selection modal → explicit confirmation**
 
 ### Desired Behavior
 
@@ -365,9 +356,7 @@ More concrete CSS grid areas:
 
 The final exact tracks can be tuned, but the governing rule is:
 
-$$
-\text{primary action distance from scoreboard} \approx 0
-$$
+**primary action distance from scoreboard ≈ 0**
 
 ### Required UI Changes
 

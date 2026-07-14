@@ -16,13 +16,9 @@ Preserve the current bracket/pre-match screen, but route it through `Live Match`
 
 The new command model is:
 
-$$
-\text{Calendar} = \text{event list and commitments}
-$$
+**Calendar = event list and commitments**
 
-$$
-\text{Live Match} = \text{pre-match briefing} \rightarrow \text{live match}
-$$
+**Live Match = pre-match briefing → live match**
 
 `Competitions` should no longer exist as a permanent sidebar command.
 
@@ -90,11 +86,7 @@ npm run build
 
 The command rail reads cleanly:
 
-$$
-\text{Calendar for schedule}
-\quad
-\text{Live Match for match path}
-$$
+**Calendar for schedule; Live Match for match path**
 
 No duplicate competition command remains.
 

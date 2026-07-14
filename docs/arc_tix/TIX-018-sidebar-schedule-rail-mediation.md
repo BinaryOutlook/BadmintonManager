@@ -16,15 +16,11 @@ Clean up the left sidebar so it follows the manager's daily mental flow and avoi
 
 The sidebar should become pure navigation:
 
-$$
-\text{Sidebar} = \text{commands}
-$$
+**Sidebar = commands**
 
 not:
 
-$$
-\text{Sidebar} = \text{brand block} + \text{managed-player identity} + \text{commands}
-$$
+**Sidebar = brand block + managed-player identity + commands**
 
 The `BM` logo and associated managed-player text should not be repeated in the left sidebar now that the topbar already carries that identity.
 
@@ -73,9 +69,7 @@ This ticket must coordinate with `TIX-016`.
 
 `TIX-016` establishes:
 
-$$
-\text{Schedule} = \text{Upcoming} + \text{Past Events} + \text{Timeline} + \text{Calendar}
-$$
+**Schedule = Upcoming + Past Events + Timeline + Calendar**
 
 The sidebar language in this ticket should not accidentally recreate the old ambiguity.
 
@@ -86,13 +80,9 @@ Acceptable implementation paths:
 
 The chosen implementation must keep the conceptual split:
 
-$$
-\text{Timeline} = \text{chronological event log}
-$$
+**Timeline = chronological event log**
 
-$$
-\text{Calendar} = \text{month-grid confirmed commitments}
-$$
+**Calendar = month-grid confirmed commitments**
 
 Do not let `Calendar` return to meaning the whole schedule hub.
 
@@ -158,16 +148,6 @@ Add or update tests for:
 
 The command rail reads like a manager's workspace:
 
-$$
-\text{time}
-\rightarrow
-\text{program}
-\rightarrow
-\text{match}
-\rightarrow
-\text{operations}
-\rightarrow
-\text{system}
-$$
+**time → program → match → operations → system**
 
 The topbar says who we are managing. The sidebar says what we can do.

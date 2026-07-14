@@ -128,9 +128,7 @@ npm run build
 
 The player profile can answer:
 
-$$
-\text{What has this player actually done in this save?}
-$$
+**What has this player actually done in this save?**
 
 with record, trophies, finals, and opponent history.
 

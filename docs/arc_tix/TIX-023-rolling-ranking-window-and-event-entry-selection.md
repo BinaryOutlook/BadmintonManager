@@ -30,31 +30,15 @@ The new model must start every save from a simulated prior-year ranking ledger, 
 
 The product direction is:
 
-$$
-\text{ranking} =
-\text{recent results inside a rolling window}
-$$
+**ranking = recent results inside a rolling window**
 
 not:
 
-$$
-\text{ranking} =
-\text{static seed ladder} + \text{permanent accumulated points}
-$$
+**ranking = static seed ladder + permanent accumulated points**
 
 The event-entry direction is:
 
-$$
-\text{field}
-=
-\text{rank invitations}
-\rightarrow
-\text{non-entry/dropout}
-\rightarrow
-\text{alternates}
-\rightarrow
-\text{rank-based seeding}
-$$
+**field = rank invitations → non-entry/dropout → alternates → rank-based seeding**
 
 The career world should feel like a fictional badminton tour. Strong players usually belong near the top, but lower-ranked players must have believable routes into draws when higher-ranked athletes skip, rest, withdraw, choose other events, or miss a tier.
 
@@ -75,11 +59,7 @@ However, the model should align with the public principles of the BWF ranking sy
 
 The fidelity target is:
 
-$$
-\text{BWF-inspired mechanics}
-\ne
-\text{official BWF reproduction}
-$$
+**BWF-inspired mechanics ≠ official BWF reproduction**
 
 ## 3. Current Failure Modes
 
@@ -125,17 +105,7 @@ unless product tuning changes the cap.
 
 The loop becomes:
 
-$$
-\text{low rank}
-\rightarrow
-\text{no event entry}
-\rightarrow
-\text{no matches}
-\rightarrow
-\text{no points}
-\rightarrow
-\text{low rank}
-$$
+**low rank → no event entry → no matches → no points → low rank**
 
 That is the gridlock this ticket must remove.
 
@@ -151,21 +121,11 @@ After implementation, a new career save must begin with a believable ranking eco
 
 The invariant is:
 
-$$
-\text{New Save}
-\Rightarrow
-\text{prior-year ranking ledger exists}
-\Rightarrow
-\text{current rank is derived from that ledger}
-$$
+**New Save ⇒ prior-year ranking ledger exists ⇒ current rank is derived from that ledger**
 
 As the save progresses:
 
-$$
-\text{bootstrap results expire}
-\quad\land\quad
-\text{played/simulated universe results replace them}
-$$
+**bootstrap results expire; and; played/simulated universe results replace them**
 
 Event fields must no longer be monopolized by the same top window. Every eligible player should have a plausible route into the post-save universe.
 
@@ -353,21 +313,11 @@ At career creation, generate a seeded fictional prior year so the first ranking 
 
 Current save creation:
 
-$$
-\text{selected athlete} + \text{random seed}
-\rightarrow
-\text{static ranking table}
-$$
+**selected athlete + random seed → static ranking table**
 
 Required save creation:
 
-$$
-\text{selected athlete} + \text{random seed}
-\rightarrow
-\text{52-week bootstrap circuit}
-\rightarrow
-\text{rolling ranking table}
-$$
+**selected athlete + random seed → 52-week bootstrap circuit → rolling ranking table**
 
 ### 8.2 Determinism
 
@@ -559,15 +509,7 @@ Alternates are the mechanism that breaks gridlock.
 
 The intended loop is:
 
-$$
-\text{top invitee skips}
-\rightarrow
-\text{alternate enters}
-\rightarrow
-\text{lower-ranked player records matches}
-\rightarrow
-\text{rank can move}
-$$
+**top invitee skips → alternate enters → lower-ranked player records matches → rank can move**
 
 ### 10.2 Alternate Pool
 
@@ -772,11 +714,7 @@ Step 6: Bracket placement uses seed positions, not original rank numbers.
 
 The outcome is believable:
 
-$$
-\text{top field integrity}
-\quad+\quad
-\text{lower-rank oxygen}
-$$
+**top field integrity; +; lower-rank oxygen**
 
 For a future `32`-player event:
 
@@ -1067,9 +1005,7 @@ After implementation, capture at least:
 
 The UI should answer:
 
-$$
-\text{Why am I ranked here?}
-$$
+**Why am I ranked here?**
 
 with:
 
@@ -1081,9 +1017,7 @@ with:
 
 The UI should answer:
 
-$$
-\text{Why is this lower-ranked player in the event?}
-$$
+**Why is this lower-ranked player in the event?**
 
 with:
 
@@ -1105,26 +1039,10 @@ These questions should be answered in ADR-004 or in the implementation PR notes.
 
 The career ranking system should feel like a living tour:
 
-$$
-\text{prior-year simulation}
-\rightarrow
-\text{rolling ranking window}
-\rightarrow
-\text{tiered event entry}
-\rightarrow
-\text{dropouts and alternates}
-\rightarrow
-\text{rank-seeded brackets}
-\rightarrow
-\text{new results replacing old history}
-$$
+**prior-year simulation → rolling ranking window → tiered event entry → dropouts and alternates → rank-seeded brackets → new results replacing old history**
 
 The old static ladder is gone for new saves. Lower-ranked players can breathe into the circuit. Strong players remain favored because skill and results matter, not because the initial seed formula gave them permanent oxygen.
 
 The final user-facing standard is:
 
-$$
-\text{Rankings explain the world}
-\quad\text{and}\quad
-\text{the world can change the rankings}
-$$
+**Rankings explain the world; and; the world can change the rankings**

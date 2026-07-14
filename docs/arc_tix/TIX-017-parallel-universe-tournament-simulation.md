@@ -17,9 +17,7 @@ If the managed player does not enter, loses early, or is not involved in a match
 
 The product rule is:
 
-$$
-\text{Career Universe} \ne \text{Managed Player Diary}
-$$
+**Career Universe ≠ Managed Player Diary**
 
 The managed athlete is one actor inside the world, not the reason the world exists.
 
@@ -31,13 +29,7 @@ This mediation ticket now takes the next step: tournament home pages and archive
 
 The improved model is:
 
-$$
-\text{Tournament Home}
-=
-\text{managed player context}
-+
-\text{whole event outcome}
-$$
+**Tournament Home = managed player context + whole event outcome**
 
 ## 3. Problem Statement
 
@@ -62,11 +54,7 @@ For each tournament:
 
 The event closeout rule is:
 
-$$
-\text{Event Closed}
-\Rightarrow
-\text{Champion} + \text{Runner-Up} + \text{Match Records} + \text{Ranking Deltas}
-$$
+**Event Closed ⇒ Champion + Runner-Up + Match Records + Ranking Deltas**
 
 ## 5. Managed Match Integrity
 
@@ -74,9 +62,7 @@ Do not overwrite matches the user actually played.
 
 The simulation pipeline should treat managed matches as fixed facts:
 
-$$
-\text{Played Managed Match Result} = \text{source of truth}
-$$
+**Played Managed Match Result = source of truth**
 
 Quick simulation only fills missing event matches. If the managed player loses in the quarter-final, the semi-finals and final should still be simulated from the remaining bracket.
 
@@ -132,19 +118,11 @@ The top summary should not say `Not archived` when the event has enough simulate
 
 This ticket should be implemented with a universe-first mindset:
 
-$$
-\text{Player Record}
-=
-\text{all matches in the save universe}
-$$
+**Player Record = all matches in the save universe**
 
 not:
 
-$$
-\text{Player Record}
-=
-\text{matches against my managed player only}
-$$
+**Player Record = matches against my managed player only**
 
 This principle should guide data selectors, tournament archives, rankings, and profile records.
 
@@ -194,12 +172,6 @@ Add focused tests for:
 
 The tournament system feels like a living badminton world:
 
-$$
-\text{I manage one athlete}
-\quad
-\text{inside}
-\quad
-\text{a complete competitive universe}
-$$
+**I manage one athlete; inside; a complete competitive universe**
 
 Other players win events, build records, and move through the rankings whether or not the managed athlete is involved.

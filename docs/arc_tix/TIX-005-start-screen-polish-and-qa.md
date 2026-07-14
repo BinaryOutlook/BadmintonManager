@@ -40,12 +40,7 @@ The risk with the current start screen is that it can still become visually busy
 
 The goal is not more decoration. It is better decision clarity.
 
-\[
-\text{Launch Quality}
-=
-\frac{\text{primary action clarity} + \text{save confidence} + \text{clean hierarchy}}
-{\text{panel noise} + \text{copy clutter} + \text{unverified states}}
-\]
+**Launch Quality = (primary action clarity + save confidence + clean hierarchy) / (panel noise + copy clutter + unverified states)**
 
 ## 3. Objective
 
@@ -101,11 +96,7 @@ The finished screen should answer these questions in under three seconds:
 
 The start screen is a decision gate, not a dashboard.
 
-\[
-\text{Start Screen}
-\neq
-\text{Career Command Center}
-\]
+**Start Screen ≠ Career Command Center**
 
 It should not try to show every system. It should guide the player into one of four launch actions:
 
@@ -561,11 +552,7 @@ Finish with the full verification suite before handoff.
 
 This ticket is done when the start screen feels like a confident front door:
 
-\[
-\text{Resume if possible}
-+ \text{start deliberately}
-+ \text{manage local save safely}
-\]
+**Resume if possible + start deliberately + manage local save safely**
 
 with the player never needing to decode implementation language, scan competing panels, or wonder which button is the real next step.
 

@@ -27,15 +27,7 @@ The result feels awkward because the player is not being guided through a launch
 
 The start screen should answer:
 
-\[
-\text{What can I continue?}
-\quad
-\text{What can I start?}
-\quad
-\text{What is safe to change?}
-\quad
-\text{What happens if I click this?}
-\]
+**What can I continue?; What can I start?; What is safe to change?; What happens if I click this?**
 
 The current screen answers those questions, but weakly. It wastes space, lacks a strong focal point, and inherits too much career-era chrome for a pre-launch context.
 
@@ -55,15 +47,7 @@ The screenshot exposes several problems:
 
 Rebuild the start screen into a proper launch hub with clear hierarchy:
 
-\[
-\text{Primary resume}
-+ \text{career start}
-+ \text{quick run}
-+ \text{save tools}
-+ \text{preferences}
-\rightarrow
-\text{confident first action}
-\]
+**Primary resume + career start + quick run + save tools + preferences → confident first action**
 
 The screen should feel intentional, game-like, and management-grade. It should not become a marketing landing page, but it should have a stronger sense of place than five cards on a dark canvas.
 
@@ -96,12 +80,7 @@ The start screen is not a dashboard. It is a decision gate.
 
 The UX should optimize:
 
-\[
-\text{Launch Clarity}
-=
-\frac{\text{confidence in next click} + \text{save trust}}
-{\text{choice ambiguity} + \text{chrome noise}}
-\]
+**Launch Clarity = (confidence in next click + save trust) / (choice ambiguity + chrome noise)**
 
 Everything on the screen should help the player either resume safely, start deliberately, or manage local data.
 
@@ -653,12 +632,6 @@ Manual visual checks:
 
 The ticket is done when the start screen feels like a deliberate front door:
 
-\[
-\text{Resume safely}
-\quad \lor \quad
-\text{start a career}
-\quad \lor \quad
-\text{run a quick tournament}
-\]
+**Resume safely; or; start a career; or; run a quick tournament**
 
 is immediately legible, while save tools and preferences remain available without competing for the player's first click.

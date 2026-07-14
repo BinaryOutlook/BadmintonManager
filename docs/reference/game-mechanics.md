@@ -4,12 +4,7 @@ This document explains **Badminton Manager** as a playable system. It is not mar
 
 Core product equation:
 
-$$
-\text{meaningful management}
-= \text{clear choices}
-+ \text{trustworthy simulation}
-+ \text{inspectable consequences}
-$$
+**meaningful management = clear choices + trustworthy simulation + inspectable consequences**
 
 ## Player Fantasy
 
@@ -148,10 +143,7 @@ The product should be honest when evidence is incomplete. Old summary-only archi
 
 For a fixed simulation path, identical inputs should produce stable outcomes:
 
-$$
-\text{same seed} + \text{same players} + \text{same tactics} + \text{same choices}
-\rightarrow \text{same output}
-$$
+**same seed + same players + same tactics + same choices → same output**
 
 Detailed and quick fidelity modes do not need to match each other point-for-point. They do need deterministic behavior inside the chosen fidelity and calibrated macro behavior across the sport model.
 
@@ -172,12 +164,6 @@ Any change that weakens this local-first promise needs an ADR and a save/persist
 
 ## Boundary To Preserve
 
-$$
-\text{React UI}
-\rightarrow \text{player intent}
-\rightarrow \text{game state}
-\rightarrow \text{simulation engine}
-\rightarrow \text{events, records, saves, presentation}
-$$
+**React UI → player intent → game state → simulation engine → events, records, saves, presentation**
 
 React components may render choices and dispatch intent. Game modules decide outcomes, mutate career/tournament state through typed actions, and produce durable records.

@@ -16,31 +16,17 @@ Redesign Tournament Home so the bracket becomes the page's main work surface and
 
 The current knockout tree reads well at 16 players, but it spends too much vertical and horizontal space per match. A normal badminton event often needs a 32-player draw:
 
-$$
-\text{Round of 32 matches} = \frac{32}{2} = 16
-$$
+**Round of 32 matches = (32) / (2) = 16**
 
 The optimized Tournament Home should make that possible without turning the page into a long scroll of oversized cards.
 
 Desired shape:
 
-$$
-\text{Tournament Home}
-=
-\text{compact event header}
-+ \text{dense knockout bracket}
-+ \text{selected-match details}
-$$
+**Tournament Home = compact event header + dense knockout bracket + selected-match details**
 
 not:
 
-$$
-\text{Tournament Home}
-=
-\text{diagnostic panels}
-+ \text{large evidence cards}
-+ \text{oversized bracket cards}
-$$
+**Tournament Home = diagnostic panels + large evidence cards + oversized bracket cards**
 
 ## 2. Why This Ticket Exists
 
@@ -59,11 +45,7 @@ Those sections were useful while proving the tournament system, but they now beh
 
 The bracket itself also uses full names and narrative card structure. For a 32 draw, that approach compounds quickly:
 
-$$
-16 \text{ opening matches} \times \text{large match card height}
-\Rightarrow
-\text{excessive vertical scroll}
-$$
+**16 opening matches × large match card height ⇒ excessive vertical scroll**
 
 ## 3. Page Priority Contract
 
@@ -88,15 +70,11 @@ If any of that information remains available, move it behind a compact affordanc
 
 The default page should answer:
 
-$$
-\text{Who is in the draw, what is the current path, and what match matters next?}
-$$
+**Who is in the draw, what is the current path, and what match matters next?**
 
 before it answers:
 
-$$
-\text{Which internal evidence rows did the simulator record?}
-$$
+**Which internal evidence rows did the simulator record?**
 
 ## 4. Compact Bracket Cell Contract
 
@@ -121,9 +99,7 @@ Rules:
 
 The compact cell should use tabular score columns:
 
-$$
-\text{name column} + \text{score}_{1} + \text{score}_{2} + \text{score}_{3} + \text{status}
-$$
+**name column + score 1 + score 2 + score 3 + status**
 
 For unplayed matches:
 
@@ -155,11 +131,7 @@ Examples:
 
 Collision rule:
 
-$$
-\text{same compact name in same draw}
-\Rightarrow
-\text{expand only the minimum needed to disambiguate}
-$$
+**same compact name in same draw ⇒ expand only the minimum needed to disambiguate**
 
 For example, if `Pablo Reyes` and `Pedro Reyes` both appear, use a slightly longer variant such as `Pab. Reyes` and `Ped. Reyes`, or another deterministic local pattern.
 
@@ -169,9 +141,7 @@ Do not abbreviate in places where the full player identity is the primary conten
 
 The bracket UI should be able to render:
 
-$$
-32 \rightarrow 16 \rightarrow 8 \rightarrow 4 \rightarrow 2 \rightarrow 1
-$$
+**32 → 16 → 8 → 4 → 2 → 1**
 
 This means supporting a five-round structure:
 
@@ -209,9 +179,7 @@ Horizontal:
 
 The density target is:
 
-$$
-\text{opening-round match cell height} \le 56\text{px}
-$$
+**opening-round match cell height ≤ 56px**
 
 on desktop, with responsive adjustments allowed for touch readability.
 
@@ -234,15 +202,11 @@ This can be a right-side panel on desktop and a bottom drawer or stacked panel o
 
 The bracket cells provide the overview:
 
-$$
-\text{compact node} = \text{identity} + \text{score} + \text{state}
-$$
+**compact node = identity + score + state**
 
 The detail surface provides the explanation:
 
-$$
-\text{selected detail} = \text{full context} + \text{evidence} + \text{actions}
-$$
+**selected detail = full context + evidence + actions**
 
 ## 9. Visual Contract
 
@@ -313,12 +277,6 @@ Use Playwright screenshots for at least:
 
 Tournament Home should feel like a real tournament operations screen:
 
-$$
-\text{less narration}
-+ \text{denser bracket}
-+ \text{clearer path}
-=
-\text{better tournament management}
-$$
+**less narration + denser bracket + clearer path = better tournament management**
 
 The bracket should preserve the app's premium visual tone while becoming compact enough to support normal badminton draw sizes.

@@ -16,9 +16,7 @@ Every visible known tournament name should route to that tournament's home page,
 
 The rule is:
 
-$$
-\text{Tournament Name On Screen} \Rightarrow \text{Open Tournament Home}
-$$
+**Tournament Name On Screen ⇒ Open Tournament Home**
 
 TIX-008 owns the tournament home. This ticket owns the links, address model, provider, and consistent clickable behavior across the app.
 
@@ -28,9 +26,7 @@ Tournament navigation is currently action-specific and inconsistent. Some places
 
 The player should learn one interaction rule:
 
-$$
-\text{click competition} = \text{inspect competition}
-$$
+**click competition = inspect competition**
 
 That rule must apply to future, entered, active, completed, missed, skipped, and archived events whenever the app has a stable event identity.
 
@@ -114,13 +110,9 @@ Do not use row index, event name, venue name, or date window as a route key.
 
 The target separation is:
 
-$$
-\text{TournamentLink} = \text{inspect}
-$$
+**TournamentLink = inspect**
 
-$$
-\text{Command Button} = \text{act}
-$$
+**Command Button = act**
 
 ## 7. Data And Fallback Rules
 
@@ -174,11 +166,6 @@ Add focused tests for:
 
 Tournament identity becomes a system:
 
-$$
-\text{known tournament id}
-+ \text{visible tournament name}
-=
-\text{tournament home address}
-$$
+**known tournament id + visible tournament name = tournament home address**
 
 The user should not need to search for `Open Event` when the competition name itself is already on screen.

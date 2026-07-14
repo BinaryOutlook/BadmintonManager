@@ -16,13 +16,7 @@ The managed player must be highlighted.
 
 The page should answer:
 
-$$
-\text{Who is ahead?}
-\quad
-\text{Where are we?}
-\quad
-\text{How many points separate the field?}
-$$
+**Who is ahead?; Where are we?; How many points separate the field?**
 
 ## 2. Page Contract
 
@@ -92,10 +86,4 @@ npm run build
 
 Rankings become a first-class career surface:
 
-$$
-\text{ranking data}
-\rightarrow
-\text{sortable readable table}
-\rightarrow
-\text{player profile addresses}
-$$
+**ranking data → sortable readable table → player profile addresses**

@@ -69,9 +69,7 @@ $$
 
 Each Calendar tab should show at most five records per page:
 
-$$
-\text{visibleEvents} = \text{events.slice}(5p, 5p + 5)
-$$
+**visibleEvents = events.slice(5p, 5p + 5)**
 
 where \(p\) is the zero-based page index.
 
@@ -192,9 +190,7 @@ Also add regression coverage where two future events are entered, then the earli
 
 Past events should not continue to occupy Upcoming schedule rows after their event window has fully ended. Once:
 
-$$
-\text{career.date} > \text{event.startDate} + \text{event.durationDays} - 1
-$$
+**career.date > event.startDate + event.durationDays - 1**
 
 the event belongs in `Past Events`, not the future/current schedule list.
 
@@ -613,8 +609,6 @@ npm run test -- tests/unit/career.test.ts tests/unit/app-career-shell.test.tsx t
 
 Keep the domain rule below the UI. React should ask the career/event helpers what is due; it should not invent its own calendar truth. The clean dependency direction remains:
 
-$$
-\text{React UI} \rightarrow \text{intent} \rightarrow \text{career/store helpers} \rightarrow \text{state + route}
-$$
+**React UI → intent → career/store helpers → state + route**
 
 Do not solve the event-entry bug by adding special cases for `Metro Open` or `National Command Championship`. The correct fix is event-id-safe scheduling plus table-driven tests over the catalog. If the fix only works for one named event, it is not a Plan 3 pass.

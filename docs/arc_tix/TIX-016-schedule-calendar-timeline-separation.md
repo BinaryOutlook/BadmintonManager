@@ -17,21 +17,15 @@ Rename the current career `Calendar` command to `Schedule`.
 
 The key separation is:
 
-$$
-\text{Schedule} = \text{Upcoming} + \text{Past Events} + \text{Timeline} + \text{Calendar}
-$$
+**Schedule = Upcoming + Past Events + Timeline + Calendar**
 
 where:
 
-$$
-\text{Timeline} = \text{chronological event log}
-$$
+**Timeline = chronological event log**
 
 and:
 
-$$
-\text{Calendar} = \text{month-grid of confirmed commitments}
-$$
+**Calendar = month-grid of confirmed commitments**
 
 The calendar must show confirmed reality, not possible futures.
 
@@ -95,15 +89,11 @@ Exclude:
 
 The operating rule is:
 
-$$
-\text{Calendar Entry} \iff \text{played} \lor \text{confirmed scheduled commitment}
-$$
+**Calendar Entry if and only if played or confirmed scheduled commitment**
 
 For knockout events:
 
-$$
-\text{Future Round Visible} \iff \text{managed player has qualified for that round}
-$$
+**Future Round Visible if and only if managed player has qualified for that round**
 
 ## 5. Timeline Data Contract
 
@@ -156,13 +146,9 @@ The schedule calendar should not duplicate the full bracket.
 
 Use this split:
 
-$$
-\text{Tournament Home} = \text{possible path} + \text{draw} + \text{stakes}
-$$
+**Tournament Home = possible path + draw + stakes**
 
-$$
-\text{Schedule Calendar} = \text{confirmed date commitments}
-$$
+**Schedule Calendar = confirmed date commitments**
 
 If a manager wants to inspect unearned future rounds, they should open the tournament page, not the calendar.
 
@@ -213,13 +199,6 @@ Add or update tests for:
 
 The schedule area reads like a manager's diary, not a chronicle:
 
-$$
-\text{Schedule}
-\rightarrow
-\begin{cases}
-\text{Timeline: what happened and when} \\
-\text{Calendar: what is confirmed on my actual dates}
-\end{cases}
-$$
+**Schedule → Timeline: what happened and when; Calendar: what is confirmed on my actual dates**
 
 The user can trust that anything shown in the `Calendar` grid is either already played or genuinely scheduled.

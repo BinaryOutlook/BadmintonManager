@@ -4,9 +4,7 @@ This is the short operational checklist for humans and agents changing **Badmint
 
 Rule of thumb:
 
-$$
-\text{If the next agent would need your chat transcript, document it.}
-$$
+**If the next agent would need your chat transcript, document it.**
 
 ## Before Changing A Feature
 

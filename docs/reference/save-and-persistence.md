@@ -4,9 +4,7 @@ This document owns the local save contract for **Badminton Manager**.
 
 Safety invariant:
 
-$$
-\text{invalid import} \Rightarrow \text{no active-save mutation}
-$$
+**invalid import ⇒ no active-save mutation**
 
 ## Storage Layers And Keys
 

@@ -18,11 +18,7 @@ Every athlete should have a career record built from all matches recorded in the
 
 The profile rule is:
 
-$$
-\text{Player Profile Record}
-=
-\text{all recorded matches for that player in the career universe}
-$$
+**Player Profile Record = all recorded matches for that player in the career universe**
 
 ## 2. Mediation Context
 
@@ -34,15 +30,11 @@ This mediation ticket sharpens the data interpretation. Those records should not
 
 The current profile direction risks answering only:
 
-$$
-\text{How did this player relate to my managed athlete?}
-$$
+**How did this player relate to my managed athlete?**
 
 That is useful, but incomplete. A living sports world also needs to answer:
 
-$$
-\text{What has this player done in the universe?}
-$$
+**What has this player done in the universe?**
 
 Players should gain wins, losses, finals, titles, and head-to-head histories through all tournament matches that the save records.
 
@@ -81,11 +73,7 @@ Head-to-head should be universe-wide.
 
 For a given player pair:
 
-$$
-\text{H2H}(A, B)
-=
-\text{all recorded matches where } A \text{ played } B
-$$
+**H2H(A, B) = all recorded matches where A played B**
 
 This includes matches where neither athlete is the managed player.
 
@@ -191,10 +179,6 @@ Add focused tests for:
 
 Player profiles feel like records from a shared badminton universe:
 
-$$
-\text{Every player}
-\rightarrow
-\text{their own career history}
-$$
+**Every player → their own career history**
 
 The manager's athlete is central to the user's story, but not central to the world's data model.

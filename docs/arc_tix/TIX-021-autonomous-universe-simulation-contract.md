@@ -17,21 +17,15 @@ Every tournament in the career calendar must resolve as part of the save univers
 
 The product rule is:
 
-$$
-\text{Universe} > \text{Managed Athlete Diary}
-$$
+**Universe > Managed Athlete Diary**
 
 The managed athlete is one participant inside the world:
 
-$$
-\text{Managed Athlete} \in \text{Universe}
-$$
+**Managed Athlete in Universe**
 
 not:
 
-$$
-\text{Universe} = \text{Managed Athlete Matches}
-$$
+**Universe = Managed Athlete Matches**
 
 This is the Football Manager-style principle that matters most: the world keeps moving when the user is not looking at it.
 
@@ -137,9 +131,7 @@ The universe simulator may fill missing non-managed matches, but it must not rew
 
 The rule is:
 
-$$
-\text{played managed result} = \text{immutable universe fact}
-$$
+**played managed result = immutable universe fact**
 
 Required behavior:
 
@@ -281,9 +273,7 @@ For every completed event:
 
 The ranking settlement must be idempotent:
 
-$$
-\text{same player} + \text{same event} \Rightarrow \text{one ranking settlement}
-$$
+**same player + same event ⇒ one ranking settlement**
 
 Do not double-count points when:
 
@@ -311,9 +301,7 @@ Completed non-entered events must still display a champion and runner-up.
 
 The home page must not imply:
 
-$$
-\text{No managed participation} \Rightarrow \text{No event data}
-$$
+**No managed participation ⇒ No event data**
 
 ## 12. Player Profile Contract
 
@@ -321,12 +309,7 @@ Player profiles must consume the universe stream.
 
 For every player:
 
-$$
-\text{profile record}
-=
-\text{all persisted universe matches for that player}
-+ \text{all persisted universe achievements for that player}
-$$
+**profile record = all persisted universe matches for that player + all persisted universe achievements for that player**
 
 The managed athlete may receive spotlight treatment, but selectors must not filter the world down to managed-athlete interactions.
 
@@ -419,16 +402,6 @@ Add focused tests for:
 
 The career world feels larger than the user's direct matches:
 
-$$
-\text{Every event}
-\rightarrow
-\text{field}
-\rightarrow
-\text{matches}
-\rightarrow
-\text{champion}
-\rightarrow
-\text{rankings and records}
-$$
+**Every event → field → matches → champion → rankings and records**
 
 The managed athlete is important because the user manages them, not because the universe refuses to exist without them.

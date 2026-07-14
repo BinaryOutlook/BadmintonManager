@@ -17,10 +17,7 @@ information architecture into a badminton coaching product.
 
 The goal is:
 
-$$
-\text{Player Profile} =
-\text{Identity} + \text{Badminton Attributes} + \text{Tactical Meaning} + \text{Match Evidence}
-$$
+**Player Profile = Identity + Badminton Attributes + Tactical Meaning + Match Evidence**
 
 This is the first documentation step toward reinventing the UI and UX around dedicated pages instead
 of one crowded command-center surface.
@@ -431,11 +428,7 @@ Decision:
 
 The rule is:
 
-$$
-\text{Navigation Click} \rightarrow \text{Page}
-\qquad
-\text{Preference Click} \rightarrow \text{Settings Modal}
-$$
+**Navigation Click → Page; Preference Click → Settings Modal**
 
 ## 11. Outer Ring Item Placement
 

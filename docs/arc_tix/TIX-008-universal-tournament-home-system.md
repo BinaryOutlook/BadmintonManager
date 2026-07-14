@@ -16,13 +16,9 @@ The Calendar becomes a fast scan surface. The tournament home becomes the comple
 
 The product rule is:
 
-$$
-\text{Calendar} = \text{scan and choose}
-$$
+**Calendar = scan and choose**
 
-$$
-\text{Tournament Home} = \text{inspect, enter, manage, review}
-$$
+**Tournament Home = inspect, enter, manage, review**
 
 No information is removed. Information is relocated into the correct surface.
 
@@ -34,14 +30,7 @@ The app already has an `eventDetails` page, but it is not yet strong enough to r
 
 The result is an unhelpful information equation:
 
-$$
-\text{Calendar Row Load}
-=
-\text{decision facts}
-+ \text{administrative timeline}
-+ \text{draw explanation}
-+ \text{archive detail}
-$$
+**Calendar Row Load = decision facts + administrative timeline + draw explanation + archive detail**
 
 This ticket moves the last three terms into the tournament home.
 
@@ -340,12 +329,6 @@ Required e2e proof:
 
 This ticket is done when tournament navigation feels universal:
 
-$$
-\text{one competition}
-\rightarrow
-\text{one home}
-\rightarrow
-\text{entry, draw, result, archive}
-$$
+**one competition → one home → entry, draw, result, archive**
 
 The Calendar should feel calm enough to scan. The tournament home should feel complete enough that no event information needs to live in the Calendar row.

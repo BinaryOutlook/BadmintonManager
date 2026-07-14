@@ -22,12 +22,7 @@ However, the screenshot still reads more like a restrained admin dashboard than 
 
 The target improvement is:
 
-\[
-\text{Start Menu Quality}
-=
-\frac{\text{primary action clarity} + \text{save confidence} + \text{badminton identity}}
-{\text{visual competition} + \text{generic dashboard feel} + \text{wasted first-viewport space}}
-\]
+**Start Menu Quality = (primary action clarity + save confidence + badminton identity) / (visual competition + generic dashboard feel + wasted first-viewport space)**
 
 This ticket is a refinement pass. It should not restart the launch hub from scratch.
 
@@ -45,13 +40,7 @@ From the reviewed screenshot, the start menu has a strong dark-management mood a
 
 The UI should guide the player in under three seconds:
 
-\[
-\text{Continue if possible}
-\quad\rightarrow\quad
-\text{start something new}
-\quad\rightarrow\quad
-\text{manage local setup}
-\]
+**Continue if possible; →; start something new; →; manage local setup**
 
 ## 3. Objective
 
@@ -111,11 +100,7 @@ The finished design should keep the existing dark command-console tone, but add 
 
 The start menu is a launch decision, not an information dashboard.
 
-\[
-\text{Start Menu}
-\neq
-\text{Career Command Center}
-\]
+**Start Menu ≠ Career Command Center**
 
 Every visible element should help the player choose one of four actions:
 
@@ -222,12 +207,7 @@ Requirements:
 
 Priority model:
 
-\[
-\text{Visual Priority}
-=
-\frac{\text{importance} \times \text{usage frequency}}
-{\text{nearby visual competition}}
-\]
+**Visual Priority = (importance × usage frequency) / (nearby visual competition)**
 
 By that model, continuing the active save should outrank every other visible action.
 
@@ -253,13 +233,7 @@ Avoid:
 
 The visual identity should be quiet but specific:
 
-\[
-\text{Atmosphere}
-=
-\text{sport signal}
-+ \text{management discipline}
-- \text{decorative noise}
-\]
+**Atmosphere = sport signal + management discipline - decorative noise**
 
 ### 7.4 Simplify Secondary Groups
 
@@ -579,11 +553,6 @@ npx playwright test e2e/app.spec.ts
 
 This ticket is done when the start menu feels like a polished front door for a badminton management game:
 
-\[
-\text{resume with confidence}
-+ \text{start deliberately}
-+ \text{manage local saves safely}
-+ \text{feel the sport immediately}
-\]
+**resume with confidence + start deliberately + manage local saves safely + feel the sport immediately**
 
 The player should never need to decode competing panels, wonder which button matters most, or mistake the launch menu for a generic dashboard.

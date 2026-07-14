@@ -96,9 +96,7 @@ This tab is a schedule index. It does not replace the tournament home.
 
 Clicking a commitment should open the tournament home for that event when practical:
 
-$$
-\text{Commitment} \rightarrow \text{Tournament Home}
-$$
+**Commitment → Tournament Home**
 
 Player name clicks should still open player profiles.
 
@@ -137,11 +135,5 @@ npm run build
 
 The Calendar gains a true schedule lens:
 
-$$
-\text{date}
-\rightarrow
-\text{competition round}
-\rightarrow
-\text{opponent/result}
-$$
+**date → competition round → opponent/result**
 

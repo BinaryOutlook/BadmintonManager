@@ -15,36 +15,21 @@ Rework the Career Command Center from a flat dashboard of available systems into
 
 The home screen should answer:
 
-$$
-\text{What should I do today, and what happens if I do it?}
-$$
+**What should I do today, and what happens if I do it?**
 
 before it answers:
 
-$$
-\text{Which subsystems have data available?}
-$$
+**Which subsystems have data available?**
 
 The current page has strong atmosphere and a credible management-sim tone, but it spreads attention too evenly across tasks, route metadata, readiness, ledger rows, ecosystem counters, recent evidence, ranking pressure, and calendar fragments. The optimized screen should keep the serious command-center feel while becoming more ruthless about hierarchy.
 
 Desired shape:
 
-$$
-\text{Career Home}
-=
-\text{today's decision}
-+ \text{player condition}
-+ \text{near-term schedule}
-+ \text{urgent context}
-$$
+**Career Home = today's decision + player condition + near-term schedule + urgent context**
 
 not:
 
-$$
-\text{Career Home}
-=
-\text{all tracked systems with similar visual weight}
-$$
+**Career Home = all tracked systems with similar visual weight**
 
 ## 2. Why This Ticket Exists
 
@@ -60,11 +45,7 @@ Several signals are repeated without adding enough new meaning:
 
 Repetition is useful when each placement serves a different job. Here, some repetition becomes friction:
 
-$$
-\text{Screen Value}
-=
-\frac{\text{Decision-Relevant Information}}{\text{Cognitive Load}}
-$$
+**Screen Value = (Decision-Relevant Information) / (Cognitive Load)**
 
 This ticket should improve that ratio. The page should feel dense because the decisions are rich, not because every subsystem is shouting at the same volume.
 
@@ -83,15 +64,11 @@ The Career Command Center should be organized around this order of importance:
 
 The main screen should make the player think:
 
-$$
-\text{Enter? Skip? Train? Recover? Scout? Advance?}
-$$
+**Enter? Skip? Train? Recover? Scout? Advance?**
 
 not:
 
-$$
-\text{Where did the page put the same event name this time?}
-$$
+**Where did the page put the same event name this time?**
 
 ## 4. Layout Contract
 
@@ -151,13 +128,7 @@ The `Next Decision` panel must become the most useful and visually dominant pane
 
 It should summarize the next event or next career step using consequence-first language:
 
-$$
-\text{Enter Event}
-\Rightarrow
-+950\text{ pts}
--12\%\text{ condition}
--\$7{,}450
-$$
+**Enter Event ⇒ +950 pts -12% condition -$7,450**
 
 The exact numbers should come from existing career state where available. If a number is projected, label it as projected instead of presenting it as resolved truth.
 
@@ -194,9 +165,7 @@ Rules:
 
 The target is:
 
-$$
-\text{One signal} \rightarrow \text{one primary home-screen owner}
-$$
+**One signal → one primary home-screen owner**
 
 with exceptions only for genuinely navigational context.
 
@@ -270,11 +239,7 @@ Replace the large `Ledger` treatment with a compact finance summary unless a fin
 
 Preferred default:
 
-$$
-\text{Cash} = \$206{,}150,\quad
-\Delta_{30d} = +\$34{,}600,\quad
-\text{Next Cost} = \$7{,}450
-$$
+**Cash = $206,150; 30-day change = +$34,600; Next Cost = $7,450**
 
 The full transaction list should live in a dedicated finance, operations, or reports destination if the game needs one later.
 
@@ -326,9 +291,7 @@ Required visual outcomes:
 
 The screen should feel disciplined:
 
-$$
-\text{dense} \ne \text{flat}
-$$
+**dense ≠ flat**
 
 Dense means there is a lot to manage. Flat means the page refuses to tell the player what matters first.
 
@@ -350,9 +313,7 @@ Do not move simulation logic into React. If new derived values become nontrivial
 
 The architecture boundary remains:
 
-$$
-\text{React UI} \rightarrow \text{intent} \rightarrow \text{career state} \rightarrow \text{derived display model}
-$$
+**React UI → intent → career state → derived display model**
 
 ## 15. Absolute Rules
 
@@ -409,14 +370,10 @@ Capture visual QA screenshots for at least:
 
 The Career Command Center should feel less like:
 
-$$
-\text{Dashboard of Everything}
-$$
+**Dashboard of Everything**
 
 and more like:
 
-$$
-\text{Decision Center for Today}
-$$
+**Decision Center for Today**
 
 The player should immediately understand the next meaningful badminton decision, the athlete's ability to handle it, and the consequence of committing. Secondary systems should remain reachable, but they should stop competing with the heart of the management loop.

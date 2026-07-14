@@ -45,10 +45,7 @@ Public tier labels are fictional circuit names: `Circuit 300`, `Circuit 500`, `C
 
 Deadline ordering is deterministic:
 
-$$
-\text{ranking cutoff} \le \text{seeding} \le \text{entry deadline}
-\le \text{withdrawal deadline} \le \text{draw date} \le \text{start date}
-$$
+**ranking cutoff ≤ seeding ≤ entry deadline ≤ withdrawal deadline ≤ draw date ≤ start date**
 
 Every playable `16`-player career event must have at least four event days. The managed main-draw cadence is schedule-aware:
 
@@ -100,9 +97,7 @@ still waiting for user-played managed match resolution, universe simulation reco
 
 The product boundary is:
 
-$$
-\text{Universe} > \text{Managed Athlete Diary}
-$$
+**Universe > Managed Athlete Diary**
 
 React components consume these records; they do not run tournament simulation.
 
@@ -314,11 +309,7 @@ season/event/round/slot material rather than randomness.
 
 Player Profile Career records use persisted universe facts only:
 
-$$
-\text{Profile record} =
-\texttt{career.matchHistory}
-+ \texttt{career.playerAchievements}
-$$
+**Profile record = `career.matchHistory` + `career.playerAchievements`**
 
 All-time W-L, win percentage, and head-to-head leaders are derived from completed
 `career.matchHistory` rows for the player, including non-managed quick-simulated matches. Titles,

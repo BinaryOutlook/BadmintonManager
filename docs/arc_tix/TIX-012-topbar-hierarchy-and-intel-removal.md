@@ -26,9 +26,7 @@ BM | Managed Player | Search/Command                 Date | Advance Day | Save |
 
 The date and advance/play action should behave like one daily-control cluster:
 
-$$
-\text{Date} + \text{Daily CTA} = \text{career clock control}
-$$
+**Date + Daily CTA = career clock control**
 
 The managed player should appear directly after the brand mark so the topbar starts with identity, not utility.
 
@@ -74,9 +72,5 @@ npm run build
 
 The topbar reads like a manager clock:
 
-$$
-\text{who we manage}
-+ \text{what day it is}
-+ \text{what happens next}
-$$
+**who we manage + what day it is + what happens next**
 

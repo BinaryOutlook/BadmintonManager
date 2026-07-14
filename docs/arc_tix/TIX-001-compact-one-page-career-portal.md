@@ -15,12 +15,7 @@ The screen should feel like a management cockpit, not a loose collection of pres
 
 The product goal is:
 
-\[
-\text{One-page portal value}
-=
-\frac{\text{decisions surfaced} + \text{status clarity} + \text{direct actions}}
-{\text{scrolling} + \text{empty area} + \text{visual fragmentation}}
-\]
+**One-page portal value = (decisions surfaced + status clarity + direct actions) / (scrolling + empty area + visual fragmentation)**
 
 Right now, the denominator is too high. The redesign should reduce wasted area while preserving the dark, high-contrast command style already established in the app.
 
@@ -40,15 +35,7 @@ Rebuild the `Career Command Center` into a denser one-page dashboard that fits t
 
 The target experience:
 
-\[
-\text{Portal Home}
-\rightarrow
-\text{status at top}
-\rightarrow
-\text{next decision in center}
-\rightarrow
-\text{tasks, calendar, readiness, ledger, evidence, and ecosystem visible together}
-\]
+**Portal Home → status at top → next decision in center → tasks, calendar, readiness, ledger, evidence, and ecosystem visible together**
 
 This is a layout and information architecture ticket. It should not alter career simulation rules, save data, rankings, match logic, event eligibility, or economy calculations.
 
@@ -88,9 +75,7 @@ If a block does none of those, remove it or fold it into another block.
 
 The layout target is:
 
-\[
-\text{Compact} \neq \text{cramped}
-\]
+**Compact ≠ cramped**
 
 The screen should become denser through alignment, grouping, and less ceremony, not through tiny unreadable text.
 
@@ -583,13 +568,6 @@ For screenshots, inspect:
 
 This ticket is done when the career portal feels like a dense, readable command center:
 
-\[
-\text{Current day}
-+ \text{next event}
-+ \text{next decision}
-+ \text{risks}
-+ \text{recent evidence}
-+ \text{program state}
-\]
+**Current day + next event + next decision + risks + recent evidence + program state**
 
 are all visible together on desktop, with the player able to understand the save state and choose the next action within a few seconds.
