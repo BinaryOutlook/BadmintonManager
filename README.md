@@ -45,13 +45,16 @@ Then open the local Vite URL shown in the terminal.
 | `npm run build` | Typecheck and build the production bundle |
 | `npm run typecheck` | Run TypeScript without emitting files |
 | `npm run test` | Run Vitest unit and integration tests |
+| `npm run test:coverage` | Run Vitest with coverage gates for core simulation and persistence domains |
 | `npm run test:e2e` | Run Playwright browser smoke tests |
 
 ## Continuous Integration
 
-The small workflow in `.github/workflows/ci.yml` runs on every push and pull request. It installs the
-locked dependencies with `npm ci`, then typechecks, tests, and builds the project. Browser tests,
-coverage thresholds, security scanning, and deployment are intentionally left for later iterations.
+The workflow in `.github/workflows/ci.yml` runs on every push and pull request. It installs the locked
+dependencies with `npm ci`, then typechecks, runs the full Vitest suite with coverage scoped to
+`game/core`, `game/store`, `game/career`, and `game/tournament`, and builds the project. The measured
+per-domain thresholds prevent coverage from falling below the committed baseline. Browser tests,
+security scanning, and deployment are intentionally left for later iterations.
 
 ## Project Shape
 

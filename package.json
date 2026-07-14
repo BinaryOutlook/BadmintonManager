@@ -11,6 +11,7 @@
     "calibrate:stats": "STAT_COMPOSITION_CALIBRATION=1 vitest run tests/calibration/stat-composition.calibration.test.ts --reporter=verbose --testTimeout=120000",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "test:e2e": "playwright test"
   },
@@ -28,6 +29,7 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^5.0.0",
+    "@vitest/coverage-v8": "^4.1.10",
     "jsdom": "^26.0.0",
     "typescript": "^5.8.0",
     "vite": "^7.0.0",

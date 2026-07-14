@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   verify:
-    name: Typecheck, test, and build
+    name: Typecheck, domain coverage, and build
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -29,8 +29,8 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Run tests
-        run: npm run test
+      - name: Run domain coverage gate
+        run: npm run test:coverage
 
       - name: Build production bundle
         run: npm run build
